@@ -58,7 +58,7 @@ gh_curl() {
     error "GitHub API returned $http_code — token is invalid or missing required permissions."
   elif [[ "$http_code" == "404" ]]; then
     if [[ -z "$LITELENS_ACCESS_TOKEN" ]]; then
-      error "GitHub API returned 404 — this is a private repo.\nExport your token and re-run:\n  export LITELENS_ACCESS_TOKEN=ghp_xxx"
+      error "GitHub API returned 404 — check the repo name or that the release/tag exists.\nIf this is a private repo, export a token and re-run:\n  export LITELENS_ACCESS_TOKEN=ghp_xxx"
     else
       error "GitHub API returned 404 — check the repo name or that the release/tag exists."
     fi

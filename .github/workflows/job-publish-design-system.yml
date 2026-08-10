@@ -25,6 +25,11 @@ jobs:
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node-pnpm
 
+      - name: Set package version
+        run: pnpm -F @litelens/design-system exec npm version "${VERSION#v}" --no-git-tag-version --allow-same-version
+        env:
+          VERSION: ${{ inputs.version }}
+
       - name: Build package
         run: pnpm -F @litelens/design-system run build
 

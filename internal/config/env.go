@@ -27,7 +27,7 @@ func getBoolEnvOrDefault(key string, defaultValue bool) bool {
 // GetInstallScriptURL returns the URL of the install script, allowing it to be
 // overridden via the INSTALL_SCRIPT_URL environment variable (primarily for testing).
 func GetInstallScriptURL() string {
-	return getEnvOrDefault("INSTALL_SCRIPT_URL", "https://api.github.com/repos/litelensapp/litelens/contents/scripts/install.sh")
+	return getEnvOrDefault("INSTALL_SCRIPT_URL", "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh")
 }
 
 // GetReleasesBaseURL returns the GitHub API base URL for the repo's releases,
@@ -54,7 +54,7 @@ func GetMarketplaceBaseURL() string {
 // via the authenticated API asset endpoint (required for private repos) rather
 // than the public browser_download_url (which rejects Bearer tokens on private
 // repos). Overridable via the PRIVATE_REPO_ACCESS environment variable.
-// Defaults to true because the shipped repo (litelensapp/litelens) is private.
+// Defaults to false because the shipped repo (litelensapp/litelens) is public.
 // Reserved for the app's own self-update flow (internal/app/updater.go,
 // internal/updater/updater.go) — the plugin marketplace does not use this;
 // see internal/app/plugin.go's use of MarketplaceRepository.Private instead.

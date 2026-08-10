@@ -49,7 +49,7 @@ Single frontend test: `pnpm --filter litelens-frontend exec vitest run path/to/F
 
 ```bash
 minikube addons enable metrics-server
-# or, for Docker Desktop's docker-desktop context, patch metrics-server with --kubelet-insecure-tls (see README.md)
+# or, for Docker Desktop's docker-desktop context, patch metrics-server with --kubelet-insecure-tls (see CONTRIBUTING.md)
 ```
 
 ## Architecture

@@ -35,7 +35,7 @@ func Test_getEnvOrDefault_EmptyStringVsUnset(t *testing.T) {
 func Test_GetInstallScriptURL_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := GetInstallScriptURL()
-		expected := "https://api.github.com/repos/litelensapp/litelens/contents/scripts/install.sh"
+		expected := "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh"
 		if result != expected {
 			t.Errorf("expected default URL %s, got %s", expected, result)
 		}
