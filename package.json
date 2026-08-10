@@ -1,0 +1,49 @@
+{
+  "name": "litelens",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "26"
+  },
+  "packageManager": "pnpm@11.10.0",
+  "scripts": {
+    "dev": "pnpm --filter litelens-frontend run dev",
+    "build:ds": "pnpm --filter @litelens/design-system run build",
+    "build:report:fe": "pnpm --filter litelens-frontend --filter @litelens/design-system --filter @litelens/helm-plugin-frontend run build:report",
+    "build:app": "bash scripts/build.sh",
+    "build:app:fe": "pnpm build:ds && pnpm --filter litelens-frontend run build",
+    "build:plugin:helm": "bash plugins/helm/scripts/build.sh",
+    "build:plugin:helm:fe": "pnpm build:ds && pnpm --filter @litelens/helm-plugin-frontend run build",
+    "build:plugin:helm:local": "pnpm build:plugin:helm:fe && node plugins/helm/scripts/deploy-plugin-helm-local.mjs",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md,yml}\"",
+    "lint": "eslint frontend/src design-system/src",
+    "test:ds": "pnpm --filter @litelens/design-system run test",
+    "test:ds:coverage": "pnpm --filter @litelens/design-system run test:coverage",
+    "test:fe": "pnpm --filter litelens-frontend run test",
+    "test:fe:coverage": "pnpm --filter litelens-frontend run test:coverage",
+    "test:be": " go test -race -v ./internal/...",
+    "test:be:coverage": "go test -race -v -cover -coverprofile=coverage.out ./internal/...",
+    "test:plugin:helm:fe": "pnpm --filter @litelens/helm-plugin-frontend run test",
+    "test:plugin:helm:fe:coverage": "pnpm --filter @litelens/helm-plugin-frontend run test:coverage",
+    "test:plugin:helm:be": "cd plugins/helm && go test -race -v ./...",
+    "test:plugin:helm:be:coverage": "cd plugins/helm && go test -race -v -cover -coverprofile=coverage.out ./...",
+    "prepare": "husky",
+    "doctor": "npx react-doctor@latest",
+    "upgrade:all": "pnpm up -S -r"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.2",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.9.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.6.14",
+    "react-doctor": "^0.4.2",
+    "typescript-eslint": "^8.66.0"
+  }
+}

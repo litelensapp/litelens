@@ -1,0 +1,57 @@
+@import "@fontsource-variable/geist";
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: "Geist Variable", sans-serif;
+}
+
+@layer utilities {
+  /* Typography Scale
+   * Semantic wrappers over Tailwind v4's built-in --font-weight-* tokens (light 300, normal 400, medium 500, semibold 600, bold 700).
+   * Use these utilities (.text-h1, .text-h2, .text-body, etc.) instead of raw font-* classes to preserve semantic hierarchy.
+   */
+  .text-display {
+    @apply text-2xl font-bold;
+  }
+  .text-h1 {
+    @apply text-lg font-bold;
+  }
+  .text-h2 {
+    @apply text-base font-semibold;
+  }
+  .text-h3 {
+    @apply text-sm font-semibold;
+  }
+  .text-body {
+    @apply text-sm font-normal;
+  }
+  .text-caption {
+    @apply text-xs font-normal;
+  }
+  .text-label {
+    @apply text-xs font-medium;
+  }
+
+  /* Semantic Aliases (optional, for intent-based naming) */
+  .headline-display {
+    @apply text-2xl font-bold;
+  }
+  .headline-1 {
+    @apply text-lg font-bold;
+  }
+  .headline-2 {
+    @apply text-base font-semibold;
+  }
+  .headline-3 {
+    @apply text-sm font-semibold;
+  }
+  .body-text {
+    @apply text-sm font-normal;
+  }
+  .caption-text {
+    @apply text-xs font-normal;
+  }
+  .label-text {
+    @apply text-xs font-medium;
+  }
+}

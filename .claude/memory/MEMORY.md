@@ -1,0 +1,22 @@
+# litelens memory
+
+## Architecture
+
+- [Architecture decisions](architecture_decisions.md) — IPC, SharedInformerFactory caching, DTO design, package deps, Wails bindings, macOS build
+- [File structure](file_structure.md) — full annotated project tree (Go backend + React frontend + Helm plugin module)
+- [Unified tray architecture](unified_tray_architecture.md) — 3 tray families (modification/pod/helm-chart) share one shell via discriminated union + registry
+- [Modification tray architecture](modification_tray_architecture.md) — generic cross-resource bottom tray; how to add a new resource kind
+- [Detail drawer pattern](detail_drawer_pattern.md) — DetailDrawerContext + DetailBlock; full steps for adding a new drawer end-to-end
+
+## Component & UI conventions
+
+- [Component guidelines](component_guidelines.md) — shadcn-first rule, status badge pattern, ResourceLink, CTA button components, aria-label rule
+- [React code quality](react_code_quality.md) — no inline render fns, useReducer for grouped state, React 19 ref-as-prop, no ref access during render
+- [Color palettes](project_color_palettes.md) — green-500 positive/active, red-500 destructive, amber=stop/pause, palette CSS token locations
+- [Typography scale](typography_scale.md) — .text-h1/-h2/-h3/-body/-caption/-label utility classes, rolled out codebase-wide
+- [Tailwind v4 @theme inline](tailwind_v4_theme_inline.md) — color-mix() must live directly in @theme inline, not behind an indirect var()
+- [Tinted shadow utilities](tinted_shadow_utilities.md) — .shadow-subtle/-depth-1/-depth-2, Dialog=depth-2, Sheet=depth-1
+
+## Feedback & Conventions
+
+- [Development workflow](development_workflow.md) — always run pnpm format + lint + go vet + go build before reporting done; sync auto memory after codebase changes

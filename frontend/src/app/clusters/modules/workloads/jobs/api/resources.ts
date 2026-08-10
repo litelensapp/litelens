@@ -1,0 +1,27 @@
+import type { ManagedField } from "../../../../../shared/api/resources";
+export { GetJobByName, GetJobYAML, ListJobs, UpdateJobYAML } from "@wailsjs/go/app/App";
+
+export interface Job {
+  Name: string;
+  Namespace: string;
+  Completions: number;
+  Age: string;
+  Conditions: string[];
+  Resumed: boolean;
+  Status: string;
+  Succeeded: number;
+  Parallelism: number;
+  Duration: string;
+  CreatedAt: string;
+  Labels: Record<string, string>;
+  Annotations: Record<string, string>;
+  ManagedFields: ManagedField[];
+  Selector: string;
+  CompletionMode: string;
+  StartTime: string;
+  StartTimeAge: string;
+  CompletedAt: string;
+  CompletedAtAge: string;
+  PodsStatuses: string;
+  PodStatus: string;
+}

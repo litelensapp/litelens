@@ -1,0 +1,63 @@
+import { ConfirmationModal } from "@litelens/design-system";
+import { FC, useMemo } from "react";
+
+interface PriorityClassDeleteConfirmationModalProps {
+  open: boolean;
+  mode: "single" | "bulk";
+  name?: string;
+  items?: Array<{ name: string }>;
+  isPending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export const PriorityClassDeleteConfirmationModal: FC<
+  PriorityClassDeleteConfirmationModalProps
+> = ({ open, mode, name, items, isPending, onClose, onConfirm }) => {
+  const { title, description } = useMemo(() => {
+    if (mode === "single") {
+      return {
+        title: (
+          <>
+            Delete PriorityClass:{" "}
+            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+          </>
+        ),
+        description: (
+          <>
+            This will permanently delete{" "}
+            <span className="text-foreground font-mono font-medium">{name}</span>. Pods using this
+            PriorityClass will retain their priority but cannot be created. This action cannot be
+            undone.
+          </>
+        ),
+      };
+    }
+
+    const count = items?.length ?? 0;
+
+    return {
+      title: `Delete ${count} PriorityClass${count === 1 ? "" : "es"}`,
+      description: (
+        <>
+          This will permanently delete {count} priorityclass{count === 1 ? "" : "es"}. Pods using
+          these PriorityClasses will retain their priority but cannot be created. This action cannot
+          be undone.
+        </>
+      ),
+    };
+  }, [mode, name, items]);
+
+  return (
+    <ConfirmationModal
+      open={open}
+      title={title}
+      description={description}
+      confirmLabel="Delete"
+      confirmVariant="destructive"
+      isPending={isPending}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+};

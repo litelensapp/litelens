@@ -1,0 +1,67 @@
+import { ConfirmationModal } from "@litelens/design-system";
+import { FC, useMemo } from "react";
+
+interface IngressClassDeleteConfirmationModalProps {
+  open: boolean;
+  mode: "single" | "bulk";
+  name?: string;
+  items?: Array<{ name: string }>;
+  isPending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export const IngressClassDeleteConfirmationModal: FC<IngressClassDeleteConfirmationModalProps> = ({
+  open,
+  mode,
+  name,
+  items,
+  isPending,
+  onClose,
+  onConfirm,
+}) => {
+  const { title, description } = useMemo(() => {
+    if (mode === "single") {
+      return {
+        title: (
+          <>
+            Delete IngressClass:{" "}
+            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+          </>
+        ),
+        description: (
+          <>
+            This will permanently delete{" "}
+            <span className="text-foreground font-mono font-medium">{name}</span>. Ingresses may
+            become unroutable if they reference this class. This action cannot be undone.
+          </>
+        ),
+      };
+    }
+
+    const count = items?.length ?? 0;
+
+    return {
+      title: `Delete ${count} IngressClass${count === 1 ? "" : "es"}`,
+      description: (
+        <>
+          This will permanently delete {count} ingressclass{count === 1 ? "" : "es"}. Ingresses may
+          become unroutable if they reference these classes. This action cannot be undone.
+        </>
+      ),
+    };
+  }, [mode, name, items]);
+
+  return (
+    <ConfirmationModal
+      open={open}
+      title={title}
+      description={description}
+      confirmLabel="Delete"
+      confirmVariant="destructive"
+      isPending={isPending}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+};

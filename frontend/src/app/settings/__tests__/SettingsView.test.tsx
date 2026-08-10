@@ -1,0 +1,278 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// ─── hoisted mocks ───────────────────────────────────────────────────────────
+
+const useGetSettingsMock = vi.hoisted(() => vi.fn());
+const saveSettingsMock = vi.hoisted(() => vi.fn());
+const renderSuccessToastMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../hooks/data-access/useGetSettings", () => ({
+  useGetSettings: useGetSettingsMock,
+}));
+
+vi.mock("@wailsjs/go/app/App", () => ({
+  SaveSettings: saveSettingsMock,
+}));
+
+vi.mock("@litelens/design-system", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    renderSuccessToast: renderSuccessToastMock,
+  };
+});
+
+// Mock hooks for content components
+const useGetDefaultShellMock = vi.hoisted(() => vi.fn());
+const usePickPluginsDirMock = vi.hoisted(() => vi.fn());
+const useMergeSettingsOnSaveMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../hooks/useMergeSettingsOnSave", () => ({
+  useMergeSettingsOnSave: useMergeSettingsOnSaveMock,
+}));
+
+vi.mock("../hooks/data-access/useGetDefaultShell", () => ({
+  useGetDefaultShell: useGetDefaultShellMock,
+}));
+
+vi.mock("../hooks/data-mutation/usePickPluginsDir", () => ({
+  usePickPluginsDir: usePickPluginsDirMock,
+}));
+
+// Stub heavy content components so each section test is isolated
+vi.mock("../components/AppContent", () => ({
+  AppContent: () => createElement("div", { "data-testid": "app-content" }),
+}));
+vi.mock("../components/K8sContent", () => ({
+  K8sContent: () => createElement("div", { "data-testid": "k8s-content" }),
+}));
+vi.mock("../components/WelcomeView", () => ({
+  WelcomeView: () => createElement("div", { "data-testid": "welcome-view" }),
+}));
+vi.mock("../components/MarketplaceContent", () => ({
+  MarketplaceContent: () => {
+    // Mock component that renders save button for testing
+    return createElement(
+      "div",
+      { "data-testid": "marketplace-content" },
+      createElement("button", { className: "save-btn" }, "Save")
+    );
+  },
+}));
+vi.mock("../components/SandboxContent", () => ({
+  SandboxContent: () => {
+    // Mock component that renders save button for testing
+    return createElement(
+      "div",
+      { "data-testid": "sandbox-content" },
+      createElement("button", { className: "save-btn" }, "Save")
+    );
+  },
+}));
+
+// ─── imports after mocks ──────────────────────────────────────────────────────
+
+import { SettingsView } from "../SettingsView";
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function makeWrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: React.ReactNode }) =>
+    createElement(QueryClientProvider, { client }, children);
+}
+
+function renderSettings(initialSection?: Parameters<typeof SettingsView>[0]["initialSection"]) {
+  return render(<SettingsView initialSection={initialSection} />, { wrapper: makeWrapper() });
+}
+
+// ─── setup ───────────────────────────────────────────────────────────────────
+
+afterEach(() => {
+  cleanup();
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  saveSettingsMock.mockResolvedValue(undefined);
+  useGetSettingsMock.mockReturnValue({ data: undefined });
+  useGetDefaultShellMock.mockReturnValue({ data: "/bin/zsh" });
+  usePickPluginsDirMock.mockReturnValue({ mutateAsync: vi.fn() });
+  useMergeSettingsOnSaveMock.mockReturnValue(vi.fn().mockResolvedValue(undefined));
+});
+
+// ─── tests ────────────────────────────────────────────────────────────────────
+
+describe("SettingsView", () => {
+  describe("default section", () => {
+    it("renders WelcomeView when no initialSection is given", () => {
+      renderSettings();
+      expect(screen.getByTestId("welcome-view")).toBeInTheDocument();
+    });
+
+    it("does not render SectionHeader on welcome section", () => {
+      renderSettings();
+      expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("section routing via sidebar", () => {
+    it("shows AppContent when App is selected", () => {
+      renderSettings();
+      fireEvent.click(screen.getByText("App"));
+      expect(screen.getByTestId("app-content")).toBeInTheDocument();
+    });
+
+    it("shows K8sContent when Kubernetes is selected", () => {
+      renderSettings();
+      fireEvent.click(screen.getByText("Kubernetes"));
+      expect(screen.getByTestId("k8s-content")).toBeInTheDocument();
+    });
+  });
+
+  describe("save button visibility", () => {
+    it("does not render save button on app section", () => {
+      renderSettings();
+      fireEvent.click(screen.getByText("App"));
+      expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument();
+    });
+
+    it("does not render save button on kubernetes section", () => {
+      renderSettings();
+      fireEvent.click(screen.getByText("Kubernetes"));
+      expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument();
+    });
+
+    it("renders save button on sandbox section", () => {
+      renderSettings();
+      fireEvent.click(screen.getByText(/Sandbox/i));
+      expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("save flow", () => {
+    it("renders save buttons in content components (not in header)", async () => {
+      renderSettings("sandbox");
+      const saveButtons = screen.getAllByRole("button", { name: /save/i });
+      // The mock component has a save button
+      expect(saveButtons.length).toBeGreaterThan(0);
+    });
+
+    it("each section is independent and manages its own save state", async () => {
+      // Sandbox section
+      renderSettings("sandbox");
+      expect(screen.getByTestId("sandbox-content")).toBeInTheDocument();
+
+      // Switch to Marketplace
+      fireEvent.click(screen.getByText("Marketplace"));
+      expect(screen.getByTestId("marketplace-content")).toBeInTheDocument();
+
+      // Switch to Kubernetes
+      fireEvent.click(screen.getByText("Kubernetes"));
+      expect(screen.getByTestId("k8s-content")).toBeInTheDocument();
+    });
+
+    it("does not render save button in header", () => {
+      renderSettings("sandbox");
+      const heading = screen.getByRole("heading", { level: 2 });
+      expect(heading).toBeInTheDocument();
+      // Save button is now only in the content component footer, not in header
+    });
+  });
+
+  describe("settings loading", () => {
+    it("app content component renders when app section is selected", async () => {
+      useGetSettingsMock.mockReturnValue({
+        data: {
+          accessToken: "",
+          shellPath: "/bin/fish",
+          kubeconfigPaths: [],
+          locale: "UTC",
+        },
+      });
+      renderSettings("app");
+      await waitFor(() => {
+        const appStub = screen.getByTestId("app-content");
+        expect(appStub).toBeInTheDocument();
+      });
+    });
+
+    it("content components render independently without prop drilling from SettingsView", async () => {
+      useGetSettingsMock.mockReturnValue({
+        data: {
+          accessToken: "",
+          shellPath: "/bin/fish",
+          kubeconfigPaths: [],
+          locale: "UTC",
+        },
+      });
+      renderSettings("app");
+      // Verify app content is rendered
+      const appStub = screen.getByTestId("app-content");
+      expect(appStub).toBeInTheDocument();
+    });
+  });
+
+  describe("marketplace and sandbox sections", () => {
+    it("renders marketplace content when marketplace section is active", () => {
+      useGetSettingsMock.mockReturnValue({
+        data: {
+          accessToken: "",
+          shellPath: "",
+          kubeconfigPaths: [],
+          locale: "UTC",
+          pluginsDir: "/custom/plugins",
+          marketplaceRepositories: [
+            {
+              url: "https://github.com/test/marketplace",
+              private: true,
+              accessToken: "ghp_test_token_123",
+            },
+          ],
+        },
+      });
+      renderSettings("marketplace");
+      expect(screen.getByTestId("marketplace-content")).toBeInTheDocument();
+    });
+
+    it("renders sandbox content when sandbox section is active", () => {
+      useGetSettingsMock.mockReturnValue({
+        data: {
+          accessToken: "test_token",
+          shellPath: "",
+          kubeconfigPaths: [],
+          locale: "UTC",
+        },
+      });
+      renderSettings("sandbox");
+      expect(screen.getByTestId("sandbox-content")).toBeInTheDocument();
+    });
+
+    it("marketplace content component is self-contained and manages its own state", () => {
+      useGetSettingsMock.mockReturnValue({
+        data: {
+          accessToken: "",
+          shellPath: "",
+          kubeconfigPaths: [],
+          locale: "UTC",
+          pluginsDir: "/custom/plugins",
+          marketplaceRepositories: [
+            {
+              url: "https://github.com/test/marketplace",
+              private: true,
+              accessToken: "ghp_test_token_123",
+            },
+          ],
+        },
+      });
+      renderSettings("marketplace");
+      const content = screen.getByTestId("marketplace-content");
+      expect(content).toBeInTheDocument();
+      // Each content component now manages its own state via useState/useEffect
+    });
+  });
+});

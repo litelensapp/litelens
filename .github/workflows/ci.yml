@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  unit-test:
+    name: Unit Tests
+    uses: ./.github/workflows/job-unit-test.yml
+    secrets: inherit
+
+  unit-test-plugin-helm:
+    name: Unit Tests - Helm Plugin
+    uses: ./.github/workflows/job-unit-test-plugin-helm.yml
+    secrets: inherit
+
+  build-check:
+    name: Build Check
+    uses: ./.github/workflows/job-build-check.yml
+    with:
+      RUNNER: ubuntu-latest
+    secrets: inherit
+
+  build-check-plugin-helm:
+    name: Build Check - Helm Plugin
+    uses: ./.github/workflows/job-build-check-plugin-helm.yml
+    with:
+      RUNNER: ubuntu-latest
+    secrets: inherit
