@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-08-09T12:03:57.754Z
+  modified: 2026-08-10T17:02:32.999Z
 ---
 
 ```text
@@ -425,16 +425,21 @@ metadata:
             useGetActiveKubeconfigPaths.ts
             useGetDefaultShell.ts
             useGetSettings.ts
+            useIsPrivateRepoAccess.ts  # NEW: helper to check if marketplace access token is configured
           /data-mutation/
             usePickKubeconfigPath.tsx
             useSaveKubeconfigPaths.ts
             useSaveLocaleTimezone.ts
             useSaveSettings.tsx
             usePickPluginsDir.tsx  # NEW 2026-08-01: open folder dialog to pick plugins directory
+            useSavePluginsDir.ts  # save plugins directory setting
+            useSaveMarketplaceRepositories.ts  # save marketplace repository list
           /async-events/
             useMenuOpenSettingsEvents.ts
+          useMergeSettingsOnSave.ts  # helper hook for merging settings
+          useSectionSaveState.ts  # hook for managing section save state
           /__tests__/
-            useGetSettingsHooks.test.ts / useGetSettingsHooks.edge.test.ts / useSettingsMutationHooks.test.ts
+            useGetSettingsHooks.test.ts / useGetSettingsHooks.edge.test.ts / useMergeSettingsOnSave.test.ts / useSettingsMutationHooks.test.ts / MarketplaceRemountRealQuery.test.ts / SettingsSectionIndependence.test.ts
         /components/          # moved 2026-07-21 (all settings files except SettingsView.tsx)
           AppContent.tsx  # app-level settings tab (locale timezone, terminal shell path, about, updates); UPDATED 2026-08-06: absorbed shellPath setting from deleted TerminalContent.tsx (Terminal section removed — see [[gotcha_terminal_section_removed]])
           K8sContent.tsx  # Kubernetes-related settings
@@ -446,7 +451,7 @@ metadata:
           WelcomeView.tsx       # entry-point screen (no cluster selected); default SettingsView section ("welcome")
           types.ts  # Section union type — UPDATED 2026-08-06 to "welcome" | "sandbox" | "kubernetes" | "app" | "marketplace" (removed "terminal"), SaveStatus, SECTION_HEADER label map
           /__tests__/
-            AppContent.test.tsx / K8sContent.test.tsx / SectionHeader.test.tsx / SettingsSidebar.test.tsx
+            AppContent.test.tsx / K8sContent.test.tsx / SectionHeader.test.tsx / SettingsSidebar.test.tsx / TokenModal.test.tsx / MarketplaceRemountRealQuery.test.tsx / SettingsSectionIndependence.test.tsx
         /__tests__/
           SettingsView.test.tsx
       /clusters/             # everything cluster-connected: resource views + MainLayout/DetailBlock/NavSidebar/navConfig
@@ -721,22 +726,6 @@ metadata:
                 /data-access/    # useGetStorageClassByName.ts, useGetStorageClassYAML.ts, useGetStorageClasses.ts
                 /data-mutation/  # useDeleteStorageClass.tsx, useDeleteStorageClasses.tsx, useUpdateStorageClassYAML.tsx
                 /async-events/   # useStorageClassesUpdateEvents.ts (+ __tests__/)
-          /endpointslices/
-            EndpointSlicesView.tsx        # click row → opens EndpointSliceDetailDrawer; resets on namespace change
-            EndpointSliceDetailDrawer.tsx # tabs: Overview (metadata, labels, annotations, controlled by, managed fields, Endpoints section with Addresses+Ports tables), Events
-            EndpointSliceDeleteConfirmationModal.tsx  # confirmation for endpointslice deletion
-            EndpointSliceModificationTray.tsx  # YAML edit tray for EndpointSlice
-          /endpoints/
-            EndpointsView.tsx             # click row → opens EndpointDetailDrawer; resets on namespace change
-            EndpointDetailDrawer.tsx      # tabs: Overview (metadata, labels, annotations, managed fields, Subsets section with Addresses+Ports tables), Events
-            EndpointDeleteConfirmationModal.tsx  # confirmation for endpoint deletion
-            EndpointModificationTray.tsx  # YAML edit tray for Endpoint
-          /services/
-            ServicesView.tsx              # click row → opens ServiceDetailDrawer; resets on namespace change; accepts onNavigateToPortForwarding prop threaded from MainLayout
-            ServiceDetailDrawer.tsx       # tabs: Overview (metadata, Connection section with active "Forward..." buttons per port via PortForwardCtaButton, Endpoint Slices placeholder), Events; "Forward..." sets pendingPort → renders PortForwardOperationDialog; uses resolvePodPort() to pass TargetPort (not Port) as podPort — pod's actual container port (falls back to Port for named TargetPorts)
-            ServiceStatusBadge.tsx        # status badge: Terminating=orange, default=green
-            ServiceDeleteConfirmationModal.tsx  # confirmation for service deletion
-            ServiceModificationTray.tsx  # YAML edit tray for Service
           /base/            # 2026-07-21: submodule grouping events/namespaces/nodes; git mv'd from modules/<resource>/ to modules/base/<resource>/ (stage A), then split into components/ (stage B), hooks/ (stage C), api/ (stage D — final, completes the pattern for ALL 6 submodules), mirroring [[gotcha_workloads_submodule_move]]. Each resource dir now has components/, hooks/{data-access,data-mutation,async-events}/, api/{resources.ts,api.const.ts}. See [[gotcha_base_submodule_move]], [[gotcha_events_components_split]], [[gotcha_namespaces_components_move]], [[gotcha_nodes_components_split]], [[gotcha_base_submodule_hooks_move]], [[gotcha_base_submodule_api_split]].
             /nodes/
               NodesView.tsx           # stays at top level; click row → onToggleNodeDetail(node.Name) via MainLayoutContext; no local drawer state; tri-state header Checkbox + per-row Checkbox for bulk selection; toolbar ResourceBulkDeletionButton; NodeTableCtaButtons owns single-delete (useDeleteNode + NodeDeleteConfirmationModal mode="single") + edit (openTab("modification", { kind: "Node", name })) + Cordon/Uncordon toggle + Drain internally

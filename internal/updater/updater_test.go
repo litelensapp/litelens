@@ -145,9 +145,13 @@ func TestCheck(t *testing.T) {
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-			got := Check(tt.current, "")
+			got, err := Check(tt.current, "")
 			if (got != nil) != tt.wantRelease {
 				t.Errorf("Check(%q, \"\"): got release=%v, want release=%v", tt.current, got != nil, tt.wantRelease)
+			}
+			// For the primary happy-path test, we expect no error on success or no-update cases
+			if tt.wantRelease && err != nil {
+				t.Errorf("Check(%q, \"\"): got err=%v, want nil", tt.current, err)
 			}
 
 			if tt.wantRelease && got != nil {
@@ -207,7 +211,10 @@ func TestCheckPrivateRepoAccess(t *testing.T) {
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 			t.Setenv("PRIVATE_REPO_ACCESS", tt.privateRepoAccess)
 
-			got := Check("v1.0.0", "")
+			got, err := Check("v1.0.0", "")
+			if err != nil {
+				t.Fatalf("Check() returned err=%v, want nil", err)
+			}
 			if got == nil {
 				t.Fatalf("Check() returned nil, want Release")
 			}
@@ -238,7 +245,10 @@ func TestCheckWithToken(t *testing.T) {
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-	got := Check("v1.0.0", "test-token")
+	got, err := Check("v1.0.0", "test-token")
+	if err != nil {
+		t.Errorf("Check() returned err=%v, want nil", err)
+	}
 	if gotAuth != "Bearer test-token" {
 		t.Errorf("Check() Authorization header = %q, want %q", gotAuth, "Bearer test-token")
 	}
@@ -578,10 +588,14 @@ func Test_Check_EdgeCases(t *testing.T) {
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-			got := Check(tt.current, "")
+			got, err := Check(tt.current, "")
 			if (got != nil) != tt.wantRelease {
 				t.Errorf("Check(%q, \"\"): got release=%v, want release=%v (%s)",
 					tt.current, got != nil, tt.wantRelease, tt.description)
+			}
+			// For edge cases, we expect no error on success or no-update cases
+			if tt.wantRelease && err != nil {
+				t.Errorf("Check(%q, \"\"): got err=%v, want nil (%s)", tt.current, err, tt.description)
 			}
 		})
 	}
@@ -598,9 +612,12 @@ func Test_Check_MalformedJSON(t *testing.T) {
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-	got := Check("v1.0.0", "")
+	got, err := Check("v1.0.0", "")
 	if got != nil {
 		t.Errorf("Check() with malformed JSON body = %v, want nil", got)
+	}
+	if err == nil {
+		t.Errorf("Check() with malformed JSON should return error, got nil")
 	}
 }
 

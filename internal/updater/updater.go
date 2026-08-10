@@ -29,13 +29,14 @@ type Release struct {
 	DownloadSize int64   `json:"-"`
 }
 
-// Check returns the latest release if it is newer than current, or nil if
-// current is up-to-date, a dev build, or the check fails for any reason.
+// Check returns the latest release if it is newer than current, or (nil, nil)
+// if current is up-to-date, a dev build, or no update is needed.
+// Returns (nil, error) if a transient failure occurs (network error, rate limit, etc.).
 // token is optional; when non-empty it is sent as a Bearer header so that
 // private repositories can be queried.
-func Check(current, token string) *Release {
+func Check(current, token string) (*Release, error) {
 	if current == "dev" || !semver.IsValid(current) {
-		return nil
+		return nil, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -44,7 +45,7 @@ func Check(current, token string) *Release {
 	url := config.GetReleasesBaseURL() + "/latest"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
@@ -53,14 +54,18 @@ func Check(current, token string) *Release {
 	}
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil
+	if err != nil {
+		return nil, fmt.Errorf("fetch latest release: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetch latest release: HTTP %d", resp.StatusCode)
+	}
+
 	var rel Release
 	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-		return nil
+		return nil, fmt.Errorf("decode release: %w", err)
 	}
 
 	latest := rel.TagName
@@ -68,7 +73,7 @@ func Check(current, token string) *Release {
 		latest = "v" + latest
 	}
 	if !semver.IsValid(latest) || semver.Compare(latest, current) <= 0 {
-		return nil
+		return nil, nil
 	}
 
 	if a := platformAsset(rel.Assets); a != nil {
@@ -80,7 +85,7 @@ func Check(current, token string) *Release {
 		rel.DownloadSize = a.Size
 	}
 
-	return &rel
+	return &rel, nil
 }
 
 // FetchRelease returns the named release (adding a leading "v" if the tag

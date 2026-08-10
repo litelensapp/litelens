@@ -1,10 +1,11 @@
 import logo from "@/assets/images/logo-universal.png";
-import { Button, Dialog, DialogContent, Divider } from "@litelens/design-system";
+import { Button, Dialog, DialogContent, Divider, Loader2Icon } from "@litelens/design-system";
 import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
 import { FC } from "react";
 import pkg from "../../../package.json";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
 import { formatBytes } from "../marketplace/utils/formatBytes";
+import { useCheckForUpdate } from "./hooks/useCheckForUpdate";
 
 // Strip leading non-numeric characters (^, ~, v, "go", etc.)
 function clean(v: string): string {
@@ -30,6 +31,8 @@ interface Props {
 }
 
 export const AboutModal: FC<Props> = ({ payload, onClose }) => {
+  const { checkingForUpdate, checkForUpdate } = useCheckForUpdate();
+
   const runtimeTech = [
     { label: "Go", version: clean(payload.go) },
     { label: "Wails", version: clean(payload.wails) },
@@ -129,6 +132,26 @@ export const AboutModal: FC<Props> = ({ payload, onClose }) => {
               </div>
             </>
           )}
+
+          <Divider className="my-5" />
+
+          {/* Check for Updates */}
+          <Button
+            variant="outline"
+            onClick={checkForUpdate}
+            disabled={checkingForUpdate}
+            className="w-full"
+            aria-label="Check for Updates"
+          >
+            {checkingForUpdate ? (
+              <>
+                <Loader2Icon className="size-4 animate-spin" />
+                Checking…
+              </>
+            ) : (
+              "Check for Updates"
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

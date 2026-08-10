@@ -102,13 +102,8 @@ Each resource has a `dto.<Type>` (Go) and matching TS interface. List views use 
 
 ## Project-specific conventions
 
-- **Before building any custom UI primitive**, check shadcn first: `cd design-system && pnpm run ui:add <component>`. Only hand-roll if no shadcn/Base UI equivalent exists.
-- **Status badges** use `Badge`'s `success`/`warning`/`destructive`/`ghost` `cva` variants for red/green/amber/muted; other colors still use `variant="outline"` + manual className.
-- **Never use `toast.error()`/`toast.success()`** — use `toast.custom(() => renderErrorToast/renderSuccessToast({...}), { style: TOAST_STYLE })` from `design-system/src/components/toasts`.
-- Reuse the shared CTA button components (`ResourceModificationButton`, `ResourceDeletionButton`, `ResourceRestartButton`, `ResourceScaleButton`, `ResourceBulkDeletionButton`, `ResourceCreationButton`) instead of inlining icon+dropdown/tooltip markup for edit/delete/restart/scale/bulk-delete/create actions.
-- Icon-only buttons require `aria-label` (WCAG 2.1 Level A) — enforced by the custom `icon-button-aria-label/check` ESLint rule (`eslint.rules/icon-button-aria-label.js`).
 - Imports: files within the same top-level dir (`design-system`, or a given `app/...` module) use **relative imports**, not the `@/...` alias — the alias is reserved for cross-top-level imports.
-- After any dev task: run `pnpm format`, `pnpm lint`, `go vet`, `go build` before reporting done.
+- Full UI conventions (shadcn-first rule, status badge variants, toast helpers, shared CTA button components, icon-button `aria-label` rule) are in `.claude/memory/component_guidelines.md` — check it before hand-rolling any of these.
 
 ## Memory
 
