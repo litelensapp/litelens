@@ -2,10 +2,6 @@ import { ErrorBoundary, Toaster, TooltipProvider } from "@litelens/design-system
 import { useQueryClient } from "@tanstack/react-query";
 import { ToggleFullscreen } from "@wailsjs/go/app/App";
 import { FC, useEffect, useReducer, useRef } from "react";
-import { useKubeconfigChangedEvents } from "./shared/hooks/async-events/useKubeconfigChangedEvents";
-import { usePluginsChangedEvents } from "./shared/hooks/async-events/usePluginsChangedEvents";
-import { useGetContextsGrouped } from "./shared/hooks/data-access/useGetContextsGrouped";
-import { useConnect } from "./shared/hooks/useConnect";
 import { AboutModal } from "./about/AboutModal";
 import { useMenuOpenAboutEvents } from "./about/hooks/async-events/useMenuOpenAboutEvents";
 import { AppFooter } from "./AppFooter";
@@ -14,9 +10,14 @@ import { ClusterSettingsModal } from "./clusters/ClusterSettingsModal";
 import { ConnectingView } from "./clusters/ConnectingView";
 import { MainLayout } from "./clusters/MainLayout";
 import { MarketplaceView } from "./marketplace/MarketplaceView";
+import type { Section } from "./settings/components/types";
 import { useMenuOpenSettingsEvents } from "./settings/hooks/async-events/useMenuOpenSettingsEvents";
 import { SettingsView } from "./settings/SettingsView";
-import type { Section } from "./settings/components/types";
+import { useKubeconfigChangedEvents } from "./shared/hooks/async-events/useKubeconfigChangedEvents";
+import { usePluginsChangedEvents } from "./shared/hooks/async-events/usePluginsChangedEvents";
+import { useGetContextsGrouped } from "./shared/hooks/data-access/useGetContextsGrouped";
+import { useConnect } from "./shared/hooks/useConnect";
+import { useIsMarketplaceEnabled } from "./shared/hooks/useIsMarketplaceEnabled";
 import { useGetVersion } from "./updater/hooks/data-access/useGetVersion";
 import { useUpdateAvailableEvents } from "./updater/hooks/data-mutation/useUpdateAvailableEvents";
 import { UpdateModal } from "./updater/UpdateModal";
@@ -142,7 +143,8 @@ const AppContent: FC<{
   onOpenMarketplace,
   onGoToMarketplaceSettings,
 }) => {
-  if (marketplaceOpen) {
+  const isMarketplaceEnabled = useIsMarketplaceEnabled();
+  if (marketplaceOpen && isMarketplaceEnabled) {
     return <MarketplaceView onGoToMarketplaceSettings={onGoToMarketplaceSettings} />;
   }
   if (settingsOpen) {

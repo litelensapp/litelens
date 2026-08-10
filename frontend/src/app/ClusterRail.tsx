@@ -8,8 +8,8 @@ import {
   ContextMenuTrigger,
   Divider,
   PackageIcon,
-  SettingsIcon,
   Settings2Icon,
+  SettingsIcon,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -17,6 +17,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useIsMarketplaceEnabled } from "./shared/hooks/useIsMarketplaceEnabled";
 
 const PALETTE = [
   "#2563eb", // blue-600
@@ -80,6 +81,7 @@ export const ClusterRail: FC<ClusterRailProps> = ({
   // so the original collapsed buttons never appear inside a wide-then-shrinking rail.
   const [expanded, setExpanded] = useState(false);
   const [contentExpanded, setContentExpanded] = useState(false);
+  const isMarketplaceEnabled = useIsMarketplaceEnabled();
 
   const toggle = () => {
     if (expanded) {
@@ -205,23 +207,25 @@ export const ClusterRail: FC<ClusterRailProps> = ({
       </div>
 
       {/* Marketplace button */}
-      <div className={cn("w-full px-2", !contentExpanded && "flex justify-center px-0")}>
-        <Button
-          variant="ghost"
-          title="Marketplace"
-          onClick={onMarketplaceToggle}
-          className={cn(
-            "h-10",
-            contentExpanded ? "w-full justify-start gap-2 px-2" : "w-10 justify-center",
-            marketplaceOpen
-              ? "bg-secondary text-secondary-foreground ring-offset-background ring-2 ring-white ring-offset-2"
-              : "text-muted-foreground"
-          )}
-        >
-          <PackageIcon className="size-5 shrink-0" />
-          {contentExpanded && <span className="truncate text-xs font-normal">Marketplace</span>}
-        </Button>
-      </div>
+      {isMarketplaceEnabled && (
+        <div className={cn("w-full px-2", !contentExpanded && "flex justify-center px-0")}>
+          <Button
+            variant="ghost"
+            title="Marketplace"
+            onClick={onMarketplaceToggle}
+            className={cn(
+              "h-10",
+              contentExpanded ? "w-full justify-start gap-2 px-2" : "w-10 justify-center",
+              marketplaceOpen
+                ? "bg-secondary text-secondary-foreground ring-offset-background ring-2 ring-white ring-offset-2"
+                : "text-muted-foreground"
+            )}
+          >
+            <PackageIcon className="size-5 shrink-0" />
+            {contentExpanded && <span className="truncate text-xs font-normal">Marketplace</span>}
+          </Button>
+        </div>
+      )}
 
       <Divider className={cn(contentExpanded ? "w-full" : "w-8")} />
 

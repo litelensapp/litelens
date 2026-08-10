@@ -9,8 +9,9 @@ import {
 } from "@litelens/design-system";
 
 import { FC } from "react";
-import { Section, SECTION_HEADER } from "./types";
+import { useIsMarketplaceEnabled } from "../../shared/hooks/useIsMarketplaceEnabled";
 import { useIsPrivateRepoAccess } from "../hooks/data-access/useIsPrivateRepoAccess";
+import { Section, SECTION_HEADER } from "./types";
 
 interface SettingsSidebarProps {
   section: Section;
@@ -19,6 +20,7 @@ interface SettingsSidebarProps {
 
 export const SettingsSidebar: FC<SettingsSidebarProps> = ({ section, onSelect }) => {
   const { data: isPrivateRepoAccess = true } = useIsPrivateRepoAccess();
+  const isMarketplaceEnabled = useIsMarketplaceEnabled();
   return (
     <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r">
       <div className="flex flex-col gap-0.5 p-2">
@@ -58,17 +60,19 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({ section, onSelect })
           {SECTION_HEADER.kubernetes}
         </Button>
 
-        <Button
-          variant="ghost"
-          onClick={() => onSelect("marketplace")}
-          className={cn(
-            "w-full justify-start font-medium",
-            section === "marketplace" && "bg-secondary text-secondary-foreground"
-          )}
-        >
-          <PackageIcon className="size-4 shrink-0" />
-          {SECTION_HEADER.marketplace}
-        </Button>
+        {isMarketplaceEnabled && (
+          <Button
+            variant="ghost"
+            onClick={() => onSelect("marketplace")}
+            className={cn(
+              "w-full justify-start font-medium",
+              section === "marketplace" && "bg-secondary text-secondary-foreground"
+            )}
+          >
+            <PackageIcon className="size-4 shrink-0" />
+            {SECTION_HEADER.marketplace}
+          </Button>
+        )}
 
         {isPrivateRepoAccess && (
           <Button
