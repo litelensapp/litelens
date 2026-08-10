@@ -6,13 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
-
+	"github.com/litelensapp/litelens/internal/dto"
 	batchv1 "k8s.io/api/batch/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersbatchv1 "k8s.io/client-go/listers/batch/v1"
+	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func humanDuration(d time.Duration) string {

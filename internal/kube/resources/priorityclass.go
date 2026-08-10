@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersschedulingv1 "k8s.io/client-go/listers/scheduling/v1"

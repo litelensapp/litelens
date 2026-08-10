@@ -3,8 +3,8 @@ package app
 import (
 	"log"
 
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/kube/resources"
 )
 
 func (a *App) GetPersistentVolumeByName(name string) (dto.PersistentVolumeDetail, error) {

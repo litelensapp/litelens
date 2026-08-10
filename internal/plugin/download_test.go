@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 )
 
 func TestResolveAssetNames(t *testing.T) {

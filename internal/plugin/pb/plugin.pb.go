@@ -295,7 +295,7 @@ const file_plugin_proto_rawDesc = "" +
 	"\x06Plugin\x12D\n" +
 	"\x0fGetCapabilities\x12\x10.pluginapi.Empty\x1a\x1f.pluginapi.CapabilitiesResponse\x12J\n" +
 	"\x11SetClusterContext\x12#.pluginapi.SetClusterContextRequest\x1a\x10.pluginapi.Empty\x12=\n" +
-	"\x06Invoke\x12\x18.pluginapi.InvokeRequest\x1a\x19.pluginapi.InvokeResponseB1Z/github.com/gknguyen/litelens/internal/plugin/pbb\x06proto3"
+	"\x06Invoke\x12\x18.pluginapi.InvokeRequest\x1a\x19.pluginapi.InvokeResponseB1Z/github.com/litelensapp/litelens/internal/plugin/pbb\x06proto3"
 
 var (
 	file_plugin_proto_rawDescOnce sync.Once

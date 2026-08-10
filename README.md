@@ -38,7 +38,7 @@ Then install:
 curl -fsSL \
   -H "Authorization: Bearer $LITELENS_ACCESS_TOKEN" \
   -H "Accept: application/vnd.github.raw+json" \
-  "https://api.github.com/repos/gknguyen/litelens/contents/scripts/install.sh" \
+  "https://api.github.com/repos/litelensapp/litelens/contents/scripts/install.sh" \
   | LITELENS_ACCESS_TOKEN="$LITELENS_ACCESS_TOKEN" bash
 ```
 
@@ -48,7 +48,7 @@ curl -fsSL \
 curl -fsSL \
   -H "Authorization: Bearer $LITELENS_ACCESS_TOKEN" \
   -H "Accept: application/vnd.github.raw+json" \
-  "https://api.github.com/repos/gknguyen/litelens/contents/scripts/install.sh" \
+  "https://api.github.com/repos/litelensapp/litelens/contents/scripts/install.sh" \
   | LITELENS_ACCESS_TOKEN="$LITELENS_ACCESS_TOKEN" bash -s v1.2.0
 ```
 
@@ -72,7 +72,7 @@ sudo apt-get install libgtk-3-0 libwebkit2gtk-4.1-0
 curl -fsSL \
   -H "Authorization: Bearer $LITELENS_ACCESS_TOKEN" \
   -H "Accept: application/vnd.github.raw+json" \
-  "https://api.github.com/repos/gknguyen/litelens/contents/scripts/uninstall.sh" \
+  "https://api.github.com/repos/litelensapp/litelens/contents/scripts/uninstall.sh" \
   | LITELENS_ACCESS_TOKEN="$LITELENS_ACCESS_TOKEN" bash
 ```
 

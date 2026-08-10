@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"

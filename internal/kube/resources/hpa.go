@@ -2,10 +2,10 @@ package kubeResources
 
 import (
 	"fmt"
-	"github.com/gknguyen/litelens/internal/dto"
 	"strings"
 	"time"
 
+	"github.com/litelensapp/litelens/internal/dto"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"

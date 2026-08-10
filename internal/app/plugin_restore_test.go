@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 )
 
 // TestRestoreInstalledPluginsValidMetadata verifies a plugin with valid .plugin-metadata.json

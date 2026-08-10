@@ -462,7 +462,7 @@ describe("Settings Sections Independence", () => {
       const initialSettings = makeMockSettings({
         marketplaceRepositories: [
           {
-            url: "https://api.github.com/repos/gknguyen/litelens/releases",
+            url: "https://api.github.com/repos/litelensapp/litelens/releases",
             private: false,
             accessToken: "",
             locked: false,

@@ -3,7 +3,7 @@ package kubeResources
 import (
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersrbacv1 "k8s.io/client-go/listers/rbac/v1"

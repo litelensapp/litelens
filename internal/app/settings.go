@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gknguyen/litelens/internal/config"
-	"github.com/gknguyen/litelens/internal/kube"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 )

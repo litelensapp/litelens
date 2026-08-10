@@ -3,12 +3,11 @@ package kube
 import (
 	"context"
 
+	"github.com/litelensapp/litelens/internal/dto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
-
-	"github.com/gknguyen/litelens/internal/dto"
 )
 
 // NewMetricsClient creates a metrics-server client from a rest.Config.

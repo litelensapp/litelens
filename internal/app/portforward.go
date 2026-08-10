@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/kube"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"

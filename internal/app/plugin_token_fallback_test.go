@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/config"
 )
 
 // TestTokenResolutionInInstallPlugin verifies that InstallPlugin resolves the access

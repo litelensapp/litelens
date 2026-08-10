@@ -4,8 +4,8 @@ import (
 	"log"
 	"sort"
 
-	"github.com/gknguyen/litelens/internal/dto"
-	kubeResources "github.com/gknguyen/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/internal/dto"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 

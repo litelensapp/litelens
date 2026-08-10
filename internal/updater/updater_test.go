@@ -118,7 +118,7 @@ func TestCheck(t *testing.T) {
 				Assets: []Asset{
 					{
 						Name:               fmt.Sprintf("litelens-%s-%s", goruntime.GOOS, goruntime.GOARCH),
-						URL:                "https://api.github.com/repos/gknguyen/litelens/releases/assets/1",
+						URL:                "https://api.github.com/repos/litelensapp/litelens/releases/assets/1",
 						BrowserDownloadURL: "https://example.com/download",
 						Size:               1024,
 					},
@@ -311,13 +311,13 @@ func TestFetchRelease(t *testing.T) {
 				Assets: []Asset{
 					{
 						Name:               "litelens-other-platform-decoy",
-						URL:                "https://api.github.com/repos/gknguyen/litelens/releases/assets/1",
+						URL:                "https://api.github.com/repos/litelensapp/litelens/releases/assets/1",
 						BrowserDownloadURL: "https://example.com/decoy",
 						Size:               2048,
 					},
 					{
 						Name:               fmt.Sprintf("litelens-%s-%s", goruntime.GOOS, goruntime.GOARCH),
-						URL:                "https://api.github.com/repos/gknguyen/litelens/releases/assets/2",
+						URL:                "https://api.github.com/repos/litelensapp/litelens/releases/assets/2",
 						BrowserDownloadURL: "https://example.com/match",
 						Size:               1024,
 					},

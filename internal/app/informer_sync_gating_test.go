@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/kube"
+	"github.com/litelensapp/litelens/internal/kube"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

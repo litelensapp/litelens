@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/updater"
+	"github.com/litelensapp/litelens/internal/updater"
 )
 
 // mockUpdater is a mock for internal/updater.FetchRelease

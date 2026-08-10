@@ -2,11 +2,11 @@ package kubeResources
 
 import (
 	"fmt"
-	"github.com/gknguyen/litelens/internal/dto"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/litelensapp/litelens/internal/dto"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
@@ -32,7 +32,7 @@ func toDaemonSet(ds *appsv1.DaemonSet) dto.DaemonSet {
 		Pods:         pods,
 		NodeSelector: nodeSelector,
 		Age:          humanAge(ds.CreationTimestamp.Time),
-		CreatedAt: ds.CreationTimestamp.Format(time.RFC3339),
+		CreatedAt:    ds.CreationTimestamp.Format(time.RFC3339),
 		Labels: func() map[string]string {
 			if ds.Labels == nil {
 				return map[string]string{}

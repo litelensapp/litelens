@@ -11,10 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/plugin/pb"
 	"google.golang.org/grpc"
-
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/plugin/pb"
 )
 
 // PluginLoader manages a single plugin instance lifecycle

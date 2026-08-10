@@ -1,5 +1,5 @@
 package main
 
-import "github.com/gknguyen/litelens/internal/version"
+import "github.com/litelensapp/litelens/internal/version"
 
 var Version = version.Dev

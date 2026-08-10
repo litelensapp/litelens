@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 )
 
 // mockPluginBinary creates a test-only plugin binary that emits a handshake and stays alive.

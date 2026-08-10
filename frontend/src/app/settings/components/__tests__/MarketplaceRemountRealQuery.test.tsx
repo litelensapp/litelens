@@ -72,7 +72,7 @@ describe("MarketplaceContent remount with real react-query (no hook mocking)", (
       createElement(QueryClientProvider, { client }, children);
 
     const defaultRepo = {
-      url: "https://api.github.com/repos/gknguyen/litelens/releases",
+      url: "https://api.github.com/repos/litelensapp/litelens/releases",
       private: false,
       accessToken: "",
       locked: false,

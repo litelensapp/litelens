@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/config"
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/plugin"
 )
 
 // TestGetPluginsFromMultipleMarketplaces verifies that GetPluginsFromMarketplace

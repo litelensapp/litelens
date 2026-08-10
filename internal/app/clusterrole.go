@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/internal/dto"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

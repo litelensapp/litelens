@@ -3,12 +3,10 @@ package kubeResources
 import (
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
-	"strings"
-
-	"github.com/gknguyen/litelens/internal/dto"
-
+	"github.com/litelensapp/litelens/internal/dto"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersnetworkingv1 "k8s.io/client-go/listers/networking/v1"

@@ -3,7 +3,7 @@ package kubeResources
 import (
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	discoveryv1listers "k8s.io/client-go/listers/discovery/v1"

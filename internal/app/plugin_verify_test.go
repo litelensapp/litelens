@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/plugin"
 )
 
 // TestBinarySHA256SelectsFromBinariesMap verifies that the verification logic

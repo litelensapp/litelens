@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-LiteLens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.io) (Go backend + React/TypeScript frontend, native webview shell, no Electron). Root module `github.com/gknguyen/litelens`. pnpm workspace with `frontend` and `design-system` as packages. Plugins are separate Go modules, launched as subprocesses and driven over gRPC — never compiled into the main binary. No plugins currently ship; the plugin host (`internal/plugin`, marketplace UI, tray registry) is generic infrastructure for plugins installed at runtime.
+LiteLens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.io) (Go backend + React/TypeScript frontend, native webview shell, no Electron). Root module `github.com/litelensapp/litelens`. pnpm workspace with `frontend` and `design-system` as packages. Plugins are separate Go modules, launched as subprocesses and driven over gRPC — never compiled into the main binary. No plugins currently ship; the plugin host (`internal/plugin`, marketplace UI, tray registry) is generic infrastructure for plugins installed at runtime.
 
 ## Commands
 
@@ -77,7 +77,7 @@ minikube addons enable metrics-server
 
 ### Plugin architecture
 
-Plugins are **fully standalone Go modules** (e.g. `plugins/<name>` — own `go.mod` under `github.com/gknguyen/litelens/plugins/<name>`, zero dependency on the root module: local copies of `dto`, the plugin gRPC `pb` package, and `kube.LoadingRules`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package).
+Plugins are **fully standalone Go modules** (e.g. `plugins/<name>` — own `go.mod` under `github.com/litelensapp/litelens/plugins/<name>`, zero dependency on the root module: local copies of `dto`, the plugin gRPC `pb` package, and `kube.LoadingRules`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package).
 
 - The plugin binary is launched as a subprocess by `internal/plugin`, emits a one-line JSON `READY` handshake (`grpcPort`, `pid`, version) on stdout, then serves gRPC.
 - The main app never calls plugin methods directly — everything crosses the boundary via the generic `pb.PluginServer` contract (`GetCapabilities` / `SetClusterContext` / `Invoke(method, payloadJson)`), dispatched inside the plugin's own `internal/server/grpc.go`.

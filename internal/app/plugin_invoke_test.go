@@ -6,10 +6,10 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/gknguyen/litelens/internal/config"
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/plugin"
-	"github.com/gknguyen/litelens/internal/plugin/pb"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/plugin/pb"
 )
 
 // mockPluginClient implements pb.PluginClient for testing

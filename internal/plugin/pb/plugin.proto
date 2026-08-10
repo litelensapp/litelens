@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pluginapi;
 
-option go_package = "github.com/gknguyen/litelens/internal/plugin/pb";
+option go_package = "github.com/litelensapp/litelens/internal/plugin/pb";
 
 service Plugin {
   rpc GetCapabilities(Empty) returns (CapabilitiesResponse);

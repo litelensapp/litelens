@@ -16,9 +16,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/gknguyen/litelens/internal/config"
-	"github.com/gknguyen/litelens/internal/dto"
-	appversion "github.com/gknguyen/litelens/internal/version"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/dto"
+	appversion "github.com/litelensapp/litelens/internal/version"
 )
 
 const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"

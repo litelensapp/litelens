@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/config"
 	"golang.org/x/mod/semver"
 )
 

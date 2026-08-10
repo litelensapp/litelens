@@ -1,4 +1,4 @@
-module github.com/gknguyen/litelens
+module github.com/litelensapp/litelens
 
 go 1.26.5
 

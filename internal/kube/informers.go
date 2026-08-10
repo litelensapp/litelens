@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/config"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"

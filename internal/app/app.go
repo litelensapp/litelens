@@ -6,18 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/kube"
+	"github.com/litelensapp/litelens/internal/plugin"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/remotecommand"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
-
-	"github.com/gknguyen/litelens/internal/config"
-	"github.com/gknguyen/litelens/internal/kube"
-	"github.com/gknguyen/litelens/internal/plugin"
 )
 
 // metricsFetchTimeout bounds queries to metrics-server (cluster-local call on desktop-app IPC path).

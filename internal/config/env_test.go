@@ -35,7 +35,7 @@ func Test_getEnvOrDefault_EmptyStringVsUnset(t *testing.T) {
 func Test_GetInstallScriptURL_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := GetInstallScriptURL()
-		expected := "https://api.github.com/repos/gknguyen/litelens/contents/scripts/install.sh"
+		expected := "https://api.github.com/repos/litelensapp/litelens/contents/scripts/install.sh"
 		if result != expected {
 			t.Errorf("expected default URL %s, got %s", expected, result)
 		}
@@ -68,7 +68,7 @@ func Test_GetInstallScriptURL_EmptyStringWhenSetToEmpty(t *testing.T) {
 func Test_GetReleasesBaseURL_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := GetReleasesBaseURL()
-		expected := "https://api.github.com/repos/gknguyen/litelens/releases"
+		expected := "https://api.github.com/repos/litelensapp/litelens/releases"
 		if result != expected {
 			t.Errorf("expected default URL %s, got %s", expected, result)
 		}
@@ -100,7 +100,7 @@ func Test_GetReleasesBaseURL_EmptyStringWhenSetToEmpty(t *testing.T) {
 func Test_GetMarketplaceBaseURL_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := GetMarketplaceBaseURL()
-		expected := "https://api.github.com/repos/gknguyen/litelens/releases"
+		expected := "https://api.github.com/repos/litelensapp/litelens/releases"
 		if result != expected {
 			t.Errorf("expected default URL %s, got %s", expected, result)
 		}
@@ -120,7 +120,7 @@ func Test_GetMarketplaceBaseURL_DefaultAndOverride(t *testing.T) {
 		t.Setenv("APP_VERSION_RELEASES_BASE_URL", "https://releases.example.com")
 
 		result := GetMarketplaceBaseURL()
-		expected := "https://api.github.com/repos/gknguyen/litelens/releases"
+		expected := "https://api.github.com/repos/litelensapp/litelens/releases"
 		if result != expected {
 			t.Errorf("expected GetMarketplaceBaseURL to ignore APP_VERSION_RELEASES_BASE_URL, got %s", result)
 		}

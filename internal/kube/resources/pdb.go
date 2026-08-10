@@ -4,7 +4,7 @@ import (
 	"maps"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/dto"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listerspolicyv1 "k8s.io/client-go/listers/policy/v1"

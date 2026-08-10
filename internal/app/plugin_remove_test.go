@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/plugin"
 )
 
 // TestRemovePluginNotInstalled verifies error when plugin is not installed

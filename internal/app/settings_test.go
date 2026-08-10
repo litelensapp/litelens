@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gknguyen/litelens/internal/config"
-	"github.com/gknguyen/litelens/internal/dto"
-	"github.com/gknguyen/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/plugin"
 )
 
 // TestSaveSettingsPluginsDirChange verifies that changing PluginsDir in SaveSettings
@@ -292,7 +292,7 @@ func TestGranularSectionSavesDoNotClobberMarketplaceRepositories(t *testing.T) {
 	}
 
 	marketplaceRepos := []config.MarketplaceRepository{
-		{URL: "https://api.github.com/repos/gknguyen/litelens/releases"},
+		{URL: "https://api.github.com/repos/litelensapp/litelens/releases"},
 		{URL: "https://github.com/userA/repoA"},
 		{URL: "https://github.com/userB/repoB"},
 	}

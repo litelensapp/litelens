@@ -136,9 +136,9 @@ Install script URL is configured in `.env` as `INSTALL_SCRIPT_URL`, loaded at st
 
 ```bash
 # Private repo (current default):
-INSTALL_SCRIPT_URL=https://api.github.com/repos/gknguyen/litelens/contents/scripts/install.sh
+INSTALL_SCRIPT_URL=https://api.github.com/repos/litelensapp/litelens/contents/scripts/install.sh
 # Public repo:
-INSTALL_SCRIPT_URL=https://raw.githubusercontent.com/gknguyen/litelens/master/scripts/install.sh
+INSTALL_SCRIPT_URL=https://raw.githubusercontent.com/litelensapp/litelens/master/scripts/install.sh
 ```
 
 ### Wails Bindings
