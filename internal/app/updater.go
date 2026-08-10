@@ -7,12 +7,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/plugin"
@@ -25,10 +27,36 @@ func (a *App) checkForUpdate() {
 	token := a.settings.AccessToken
 	a.mu.RUnlock()
 
-	rel := updater.Check(a.version, token)
-	if rel == nil {
+	// Retry with bounded backoff: 3 attempts total, sleeping 5s then 10s between attempts
+	var rel *updater.Release
+	var err error
+	sleeps := []time.Duration{5 * time.Second, 10 * time.Second}
+	for attempt := range 3 {
+		rel, err = updater.Check(a.version, token)
+		if err == nil {
+			// Success (either update available or no update needed)
+			break
+		}
+		// Failure; log and retry if we have attempts left
+		log.Printf("app: checkForUpdate: attempt %d: %v", attempt+1, err)
+		if attempt < len(sleeps) {
+			time.Sleep(sleeps[attempt])
+		}
+	}
+
+	if err != nil {
+		// All retries exhausted
+		log.Printf("app: checkForUpdate: giving up after 3 attempts")
 		return
 	}
+
+	if rel == nil {
+		// No update available (expected case when already up-to-date)
+		return
+	}
+
+	// Update available; emit the event
+	log.Printf("app: checkForUpdate: update available: %s", rel.TagName)
 	runtime.EventsEmit(a.ctx, "update:available", map[string]any{
 		"latestVersion": rel.TagName,
 		"releaseURL":    rel.HTMLURL,
@@ -36,6 +64,12 @@ func (a *App) checkForUpdate() {
 		"assetURL":      rel.AssetURL,
 		"downloadSize":  config.FormatBytes(rel.DownloadSize),
 	})
+}
+
+// CheckForUpdate manually triggers a check for app updates. It runs synchronously
+// and emits the update:available event if a new version is found.
+func (a *App) CheckForUpdate() {
+	a.checkForUpdate()
 }
 
 // selectUpdateStrategy returns the update strategy name for a given OS.
