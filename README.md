@@ -8,6 +8,10 @@ clusters. It's built with [Wails](https://wails.io) (Go backend + React
 webview, no Electron), so it stays small and fast while giving you a clean,
 modern watch-based UI over your cluster.
 
+<!-- markdownlint-disable-next-line MD034 -->
+
+https://github.com/user-attachments/assets/7afe5c08-fb14-4ca1-ac33-4a2cbe8d2849
+
 ## Installation
 
 ### Linux / macOS
