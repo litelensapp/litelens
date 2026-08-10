@@ -15,37 +15,14 @@ metadata:
 /go.sum
 /wails.json           # Wails project config (uses pnpm)
 /package.json         # pnpm workspace root (private)
-/pnpm-workspace.yaml  # declares frontend/, design-system, plugins/helm/frontend as workspace packages (plugins/helm/frontend added 2026-07-23)
+/pnpm-workspace.yaml  # declares frontend/, design-system as workspace packages
 /pnpm-lock.yaml       # lockfile (committed)
-/plugins/
-  /helm/
-    go.mod            # NEW 2026-07-23 Phase B: standalone module `github.com/gknguyen/litelens/plugins/helm`. UPDATED 2026-08-09: `require`+`replace` for the root module `github.com/gknguyen/litelens` REMOVED entirely — plugins/helm now has ZERO dependency on the root module (dto moved local 2026-08-09 earlier same day, pb moved local same day, and internal/kube's only used symbol (LoadingRules) copied to a new local internal/kube/config.go, see helm_release.go entry below); `go mod tidy` run after
-    go.sum
-    /internal/
-      /dto/
-        helm.go         # MOVED 2026-08-09: internal/dto/helm.go (root module) -> plugins/helm/internal/dto/helm.go; HelmChart, HelmChartDetail, HelmRepository, HelmRelease, HelmReleaseResource, HelmReleaseDetail, HelmReleaseRevisionHistory — package name still `dto`, but now a SEPARATE local package (import path github.com/gknguyen/litelens/plugins/helm/internal/dto), not the root module's internal/dto; moved because only plugins/helm ever referenced dto.Helm* (grep confirmed zero root-module usages) — root's internal/dto no longer has a helm.go at all. The 4 consumers (helm.go, helm_chart.go, helm_release.go, internal/server/grpc.go) had their import path updated accordingly; no code changes beyond the import line
-      /helm/
-        helm.go         # moved 2026-08-09: plugins/helm/helm.go -> plugins/helm/internal/helm/helm.go (module root -> internal/helm, no longer directly importable outside the plugins/helm module); package name still `helm`, import path now `.../plugins/helm/internal/helm`, only consumer is internal/main.go (aliased `helmgo`); business logic unchanged. UPDATED 2026-08-01: clusterProviderFunc struct + NewClusterProviderFunc (the built-in in-process-bridge ClusterProvider adapter) deleted along with built-in Helm — see [[gotcha_generic_plugin_grpc_boundary]]; ClusterProvider interface itself stays (implemented by the subprocess's own dynamicClusterProvider in internal/main.go). SPLIT 2026-08-09: chart-discovery logic extracted to helm_chart.go, release-lifecycle logic extracted to helm_release.go (both below) — helm.go now holds ONLY core infra: EventEmitter, ClusterProvider/MutableClusterProvider interfaces, Service struct + NewService + SetActiveContext, ListHelmRepositories (repo config listing, kept here since it's neither chart- nor release-specific)
-        helm_chart.go   # NEW 2026-08-09, split out of helm.go: chart discovery/download surface — ListHelmCharts, ListHelmChartVersions, GetHelmChartDetail, GetHelmChartValues, resolveArtifactHubRepoName, GetArtifactHubReadme (all `Service` methods); same `helm` package, no new exported API. SPLIT AGAIN 2026-08-09 (later): standalone (non-`Service`-method) helpers resolveChartURL/downloadChart moved OUT to utils.go (see below) — helm_chart.go no longer has any non-method funcs
-        helm_release.go # NEW 2026-08-09, split out of helm.go: release-lifecycle surface — HelmRepositoryLabel const, ListHelmReleases, InstallHelmChart, UpgradeHelmRelease (both call resolveChartURL/downloadChart, now in utils.go — same-package call, no import needed), DeleteHelmRelease, DeleteHelmReleaseWithCleanup, GetHelmReleaseByName, GetHelmReleaseHistory, RollbackHelmRelease (all `Service` methods only). UPDATED 2026-08-09 (later same day): import switched from root module's `github.com/gknguyen/litelens/internal/kube` to NEW local `github.com/gknguyen/litelens/plugins/helm/internal/kube` — only `kube.LoadingRules(kubeconfigPaths)` was used (8 call sites, all `rules: kube.LoadingRules(...)`), so a minimal local copy was created rather than porting the whole (much larger) root kube package; see /internal/kube/ entry below. SPLIT AGAIN 2026-08-09 (later): standalone (non-`Service`-method) helpers moved out to NEW utils.go (see below) — helmRestGetter/mergedValuesYAML/compressValuesYAML/helmHasVerb/parseManifestResources/helmAge no longer here
-        utils.go        # NEW 2026-08-09, split out of helm_release.go: standalone (non-`Service`-method) helpers — mergedValuesYAML, compressValuesYAML, helmHasVerb, parseManifestResources, helmAge; same `helm` package, no new exported API. UPDATED 2026-08-09 (later): helmRestGetter (RESTClientGetter impl) moved OUT to new rest/ subpackage (see below) — utils.go no longer has any REST-getter code. UPDATED 2026-08-09 (later still): resolveChartURL/downloadChart moved IN from helm_chart.go — helm_release.go's InstallHelmChart/UpgradeHelmRelease and helm_chart.go's GetHelmChartValues all call these as same-package funcs (no import needed); gofmt-verified, `go build`/`go vet`/`go test ./...` all pass
-        rest/
-          rest.go       # NEW 2026-08-09, split out of utils.go: helmRestGetter renamed+exported as `rest.Getter` (own package `github.com/gknguyen/litelens/plugins/helm/internal/helm/rest`), fields RC/Rules/Overrides (also exported) + same 4 methods (ToRESTConfig/ToDiscoveryClient/ToRESTMapper/ToRawKubeConfigLoader); helm_release.go's 8 call sites updated to `&helmrest.Getter{RC: rc, Rules: ..., Overrides: ...}` with import aliased `helmrest` (avoids collision with k8s.io/client-go/rest, also imported there); gofmt-verified, `go build`/`go vet`/`go test` all pass
-        helm_test.go    # unchanged by the chart/release split; still covers both files (same package) — user explicitly decided 2026-08-09 to leave as-is rather than split into helm_chart_test.go/helm_release_test.go since there's no natural content boundary to move
-      /kube/
-        config.go       # NEW 2026-08-09: local `LoadingRules(paths []string) *clientcmd.ClientConfigLoadingRules` only — minimal copy of root's internal/kube/config.go's same-named func (empty paths -> clientcmd.NewDefaultClientConfigLoadingRules(), else &clientcmd.ClientConfigLoadingRules{Precedence: paths}); package name `kube`, import path `.../plugins/helm/internal/kube`; only consumer is helm_release.go. Root's internal/kube package (client.go/config.go/informers.go/metrics.go + resources/ subpackage, much larger) is untouched and still used by the main app
-      main.go           # moved 2026-08-09: plugins/helm/cmd/plugin/main.go -> plugins/helm/internal/main.go (cmd/plugin/ dir removed, now empty); still `package main`, standalone plugin binary entrypoint; flags --kubeconfig/--listen (default 127.0.0.1:0); starts gRPC server, emits ONE JSON handshake line to stdout on readiness ({"type":"READY","version","grpcPort","pid","timestamp"}), then blocks serving — this is now the ONLY way Helm functionality reaches the app (no built-in in-process path); scripts/build.sh's `go build ./internal` target updated to match (was `./cmd/plugin`)
-    server.go         # DELETED 2026-08-01 — was NewPluginServer(svc) pb.PluginServer, the in-process bridge for built-in Helm; no longer needed now that Helm is install-only, see [[gotcha_generic_plugin_grpc_boundary]]
-    proto/helm.proto, pb/helm.pb.go, pb/helm_grpc.pb.go  # DELETED — superseded by the generic internal/plugin/pb/plugin.proto contract (GetCapabilities/SetClusterContext/Invoke), see [[gotcha_generic_plugin_grpc_boundary]]
-    /internal/server/
-      grpc.go         # REWRITTEN 2026-08-01 to implement the generic pb.PluginServer instead of the old Helm-specific pb.HelmServer; Invoke(method, payloadJson) dispatch()es via a switch on `method` to the 14 helm.Service methods, JSON-(un)marshaling ad hoc anonymous request structs; local `Service` interface mirrors helm.Service's methods. UPDATED 2026-08-09: import switched from root module's `github.com/gknguyen/litelens/internal/plugin/pb` to a NEW local copy — plugins/helm must not import root's internal/ at all (future repo split); briefly lived at plugins/helm/internal/plugin/pb, then moved same day to plugins/helm/internal/server/pb/ (nested under server, its only consumer); see entry below
-      /pb/            # NEW 2026-08-09 (moved same day from ../plugin/pb): local copy of the generic Plugin gRPC contract (GetCapabilities/SetClusterContext/Invoke RPCs; Empty/CapabilitiesResponse/SetClusterContextRequest/InvokeRequest/InvokeResponse messages), regenerated via `protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative plugin.proto`; go_package = github.com/gknguyen/litelens/plugins/helm/internal/server/pb — fully independent Go package from the root module's internal/plugin/pb, wire-compatible since both are generated from byte-identical .proto content (proto file carries a sync-comment noting this); only grpc.go (sibling file, same dir's parent) imports it. See [[gotcha_helm_plugin_local_pb_copy]]
-        plugin.proto      # 1:1 copy of root's internal/plugin/pb/plugin.proto except go_package path
-        plugin.pb.go       # generated
-        plugin_grpc.pb.go  # generated
-    /frontend/
-      package.json      # new 2026-07-23: @litelens/helm-plugin-frontend workspace package, private, exports "." -> ./src/index.ts (UPDATED 2026-07-25: was ./src/main.ts, see src/index.ts + src/const.ts rename below)
-      /src/             # entire former frontend/plugins/helm/* tree (43 files) git-mv'd here 2026-07-23; see frontend/ section below for per-file annotations (paths there are stale, mentally prefix with plugins/helm/frontend/src/ instead of frontend/plugins/helm/)
+# /plugins/helm/ REMOVED (2026-08-10): the standalone Helm plugin Go module + its frontend package
+# (@litelens/helm-plugin-frontend) were deleted along with every reference to them — workspace
+# config, root package.json build/test scripts, CI/CD workflow jobs, vite.config.ts alias,
+# .gitignore entries. The generic plugin host (internal/plugin, marketplace UI, unified tray
+# plugin registry) is untouched and still generic; no plugin currently ships. See
+# [[gotcha_generic_plugin_grpc_boundary]] for the earlier built-in-Helm removal this followed.
 /.env                 # build-time env vars (git-ignored); INSTALL_SCRIPT_URL
 /.env.example         # template for .env
 /.github/workflows/
@@ -83,15 +60,14 @@ metadata:
   /wailsjs/             # Wails auto-generated TypeScript bindings (regenerated via `wails generate module` after Go changes)
     /go/
       /app/
-        App.d.ts        # *App methods bound to Wails (auto-generated; excludes Helm methods moved to helm/Service 2026-07-13)
+        App.d.ts        # *App methods bound to Wails (auto-generated)
         App.js          # runtime implementation
-      /helm/            # NEW 2026-07-13: Helm service bindings
-        Service.d.ts    # helm.Service methods: DeleteHelmRelease, DeleteHelmReleaseWithCleanup, GetArtifactHubReadme, GetHelmChartDetail, GetHelmChartValues, GetHelmReleaseByName, InstallHelmChart, ListHelmCharts, ListHelmChartVersions, ListHelmReleases, ListHelmRepositories (auto-generated)
-        Service.js      # runtime implementation
+      # /helm/ Wails bindings REMOVED (2026-08-10) along with the rest of the Helm plugin — helm.Service
+      # is gone, no in-process Helm bindings remain
       models.ts         # Wails DTO model definitions (auto-generated)
     /api/               # STALE PATH as of 2026-07-25 review: this dir no longer exists on disk — contents (resources.ts/api.const.ts/api.ts) moved to /app/shared/api/ (see below). Left here as historical note until the /hooks/data-access/ list further down (which still refers to "src/hooks/data-access/") is fully swept per its own stale-note at line ~85.
-      resources.ts      # (now at /app/shared/api/resources.ts) TypeScript type interfaces + re-exports list functions (Helm-specific exports/interfaces moved out to /plugins/helm/api/resources.ts 2026-07-13; 7 workloads resources' types/bindings/query-keys moved out to modules/workloads/<resource>/api/ 2026-07-21)
-      api.const.ts      # (now at /app/shared/api/api.const.ts) query key constants only (Helm query-key constants moved out to /plugins/helm/api/api.const.ts 2026-07-13; workloads resources' keys moved out 2026-07-21)
+      resources.ts      # (now at /app/shared/api/resources.ts) TypeScript type interfaces + re-exports list functions (7 workloads resources' types/bindings/query-keys moved out to modules/workloads/<resource>/api/ 2026-07-21)
+      api.const.ts      # (now at /app/shared/api/api.const.ts) query key constants only (workloads resources' keys moved out 2026-07-21)
       api.ts             # (now at /app/shared/api/api.ts) DEFAULT_QUERY_OPTIONS (refetchOnWindowFocus: false, retry: false, placeholderData: keepPreviousData); RESTORED HERE 2026-07-20 (event-performance fix commit `1a9b843a`) — previously lived at design-system/utils/api.ts (2026-07-13–2026-07-20), that file was deleted; consumers import via `@/app/shared/api/api` (confirmed used by frontend/src/app/marketplace/hooks/* and frontend/src/app/clusters/plugins/hooks/* as of 2026-07-31, was frontend/src/app/plugins/hooks/* pre-2026-07-31 rename), not the design-system barrel
     /hooks/             # DELETED 2026-07-22 — moved wholesale to /app/shared/hooks/ (see [[gotcha_src_hooks_to_app_shared_hooks_move]]); usePodLogs/usePodExec/useResourceLinks had already moved elsewhere earlier (usePodLogs/usePodExec into workloads/pods/hooks/, useResourceLinks into clusters/shared/hooks/ per [[gotcha_use_resource_links_move]]) so only 4 files made this final move
     /app/shared/hooks/  # app-wide shared hooks (distinct from /app/clusters/shared/hooks/, which is cluster-scoped only — see [[gotcha_src_hooks_to_app_shared_hooks_move]])
@@ -382,7 +358,7 @@ metadata:
           TableSkeletonRow.tsx
         /texts/           # text-rendering composite components; has index.ts barrel
           index.ts  # re-exports Markdown + TruncatedText
-          Markdown.tsx  # markdown renderer (used for Helm chart READMEs); moved from components/ root
+          Markdown.tsx  # markdown renderer; moved from components/ root
           TruncatedText.tsx   # truncated text with overflow-only tooltip (detectsscrollWidth > clientWidth); moved from components/ root
         /icons/           # has index.ts barrel
           index.ts  # re-exports LineIcon
@@ -401,8 +377,8 @@ metadata:
       /types/             # barrel-exported via index.ts (added 2026-07-13); consumers import from "@/design-system/types" (not the per-file paths)
         index.ts            # export * from "./api"; export * from "./nav"; export * from "./resources/namespace"; export * from "./tray" (both NEW 2026-07-25)
         nav.ts            # NavItem, NavGroup, NavEntry type definitions
-        api.ts            # UseQueryCallback<T> generic (select?: (data?: T) => T); moved from src/api/api.interface.ts 2026-07-13; ~35 consumers in src/hooks/data-access/* + NavSidebar.tsx/navConfig.ts/MainLayout.tsx/plugins/helm/main.ts import via barrel "@/design-system/types"
-        tray.ts           # NEW 2026-07-25 (Phase 4): SharedUnifiedTrayContext boundary contract ({openTab(family, params)}) consumed by both the main app and standalone plugin frontend bundles (e.g. plugins/helm), since plugin bundles can't import the main app's own `UnifiedTrayContextValue`; UnifiedTrayCoreFamily ("modification"|"pod") + UnifiedTrayHelmFamily ("helm-chart"|"helm-chart-upgrade") union into UnifiedTrayAllFamily; the main app's real UnifiedTrayContextValue is a structural superset that extends this type
+        api.ts            # UseQueryCallback<T> generic (select?: (data?: T) => T); moved from src/api/api.interface.ts 2026-07-13; ~35 consumers in src/hooks/data-access/* + NavSidebar.tsx/navConfig.ts/MainLayout.tsx import via barrel "@/design-system/types"
+        tray.ts           # NEW 2026-07-25 (Phase 4): SharedUnifiedTrayContext boundary contract ({openTab(family, params)}) consumed by both the main app and standalone plugin frontend bundles, since plugin bundles can't import the main app's own `UnifiedTrayContextValue`; UnifiedTrayCoreFamily ("modification"|"pod") union into UnifiedTrayAllFamily, extended per-plugin by whatever families an installed plugin registers at runtime; the main app's real UnifiedTrayContextValue is a structural superset that extends this type
         /resources/
           namespace.ts    # NEW 2026-07-25 (Phase 4): SharedNamespaceContext ({Name: string}) — same plugin-boundary rationale as tray.ts; main app's real Namespace type extends this
     /app/                 # all top-level and cluster-connected modules (renamed from /modules/ 2026-07-12; 248 files, imports updated @/modules/* -> @/app/*)
@@ -476,8 +452,8 @@ metadata:
       /clusters/             # everything cluster-connected: resource views + MainLayout/DetailBlock/NavSidebar/navConfig
         ClusterSettingsModal.tsx  # modal for cluster-level settings (kubeconfig path display, HTTP/HTTPS proxy); imports useGetClusterProxy/useGetContextKubeconfigPath/useSaveClusterProxy from ./shared/hooks/... (moved there 2026-07-22, see [[gotcha_clusters_shared_hooks_move]])
         ConnectingView.tsx  # connection status log shown while connecting/failed (subscribes to connect:status events); imports useConnectStatusEvents from ./shared/hooks/async-events/useConnectStatusEvents (moved there 2026-07-22)
-        MainLayoutContext.tsx  # global context (MainLayoutProvider + useMainLayoutContext); moved here from context/ (2026-07-10, imported via @/views/clusters/MainLayoutContext everywhere); trimmed (2026-07-10) to ONLY activeContext/namespace/onNamespaceChange; provider (2026-07-10) internally composes DetailDrawerProvider > UnifiedTrayProvider around children (takes onNavigateToHelmReleases prop, passed through to DetailDrawerProvider); wraps MainLayout's root div
-        MainLayout.tsx         # root layout: renders <MainLayoutProvider> (which internally nests DetailDrawerProvider + UnifiedTrayProvider — see MainLayoutContext.tsx), passing onNavigateToHelmReleases; renders NavSidebar + header + content area + DetailBlock; lazy-loads all resource views; uses useCatchForbiddenResources + toast on forbidden navigation; no longer calls useListenAllResourceEvents (removed 2026-07-20, see /hooks/async-events/)
+        MainLayoutContext.tsx  # global context (MainLayoutProvider + useMainLayoutContext); moved here from context/ (2026-07-10, imported via @/views/clusters/MainLayoutContext everywhere); trimmed (2026-07-10) to ONLY activeContext/namespace/onNamespaceChange; provider (2026-07-10) internally composes DetailDrawerProvider > UnifiedTrayProvider around children; wraps MainLayout's root div. NOTE: an onNavigateToHelmReleases prop threaded through here for the (now-removed, 2026-08-10) Helm plugin's cross-resource nav no longer exists
+        MainLayout.tsx         # root layout: renders <MainLayoutProvider> (which internally nests DetailDrawerProvider + UnifiedTrayProvider — see MainLayoutContext.tsx); renders NavSidebar + header + content area + DetailBlock; lazy-loads all resource views; uses useCatchForbiddenResources + toast on forbidden navigation; no longer calls useListenAllResourceEvents (removed 2026-07-20, see /hooks/async-events/)
         NavSidebar.tsx         # NavSidebar FC only (<aside> with nav items and collapsible groups); imports NAV from navConfig.ts; re-exports ViewType, NavItem, NavGroup, NavEntry types (type-only, fine for Fast Refresh); props: activeResource, openGroups, onToggleGroup, onSelectItem
         navConfig.ts           # non-component exports: ViewType, NavItem, NavGroup, NavEntry types + NAV array + RESOURCE_LABEL derived map; MainLayout.tsx imports RESOURCE_LABEL from here
         /plugins/               # cluster-shell-side wiring that hosts an already-installed plugin's dynamically-imported bundle inside MainLayout — distinct from app/marketplace/ (browse/install/remove UI); previously undocumented, first captured 2026-07-31
@@ -492,7 +468,7 @@ metadata:
           /hooks/
             useGetInstalledPlugin.ts  # singular — per-pluginId hook, distinct from ../../marketplace/hooks/useGetInstalledPlugins.ts (plural, batch). Polls Wails-bound GetInstalledPlugin(pluginId) every 5s via refetchInterval while status is INSTALLING, stops once READY/CRASHED/INCOMPATIBLE; exports QUERY_KEY_PLUGIN_STATUS ("plugin-status"), invalidated by marketplace's useMutateInstallPlugin/useMutateRemovePlugin on success; accepts optional `hasAttemptedInstall` to mask a stale CRASHED/INCOMPATIBLE status as NOT_INSTALLED until an install is attempted this mount (via maskTerminalStatus util)
             useGetInstalledPluginNav.ts  # discovers installed (READY) plugins at runtime via ../../marketplace/hooks/useGetInstalledPlugins, dynamically imports each plugin bundle's nav entries, builds merged viewType->pluginId / pluginName / resourceLabels maps consumed by NavSidebar; plugin discovery is independent of marketplace availability — already-installed plugins still populate nav even if the marketplace fetch fails
-            usePluginTrayRegistry.ts  # discovers each READY plugin's PLUGIN_TRAY_FAMILIES export at runtime (e.g. helm's HelmChartVersionTrayFamily/HelmChartVersionUpgradeTrayFamily), registering them with UnifiedTrayTypes so the host never has static knowledge of plugin-owned tray family names or param shapes
+            usePluginTrayRegistry.ts  # discovers each READY plugin's PLUGIN_TRAY_FAMILIES export at runtime, registering them with UnifiedTrayTypes so the host never has static knowledge of plugin-owned tray family names or param shapes
             __tests__/
               useGetInstalledPlugin.test.ts / useGetInstalledPluginNav.test.ts / useInstallPlugin.useGetInstalledPluginNav.integration.test.ts
           /utils/
@@ -509,7 +485,7 @@ metadata:
           /async-events/
             useConnectStatusEvents.ts  # moved from src/hooks/async-events/; used only by ConnectingView.tsx
         /shared/components/details/  # DetailBlock.tsx + DetailDrawerContext.tsx moved here 2026-07-12 (from clusters/ directly); moved again 2026-07-21 from /shared/details/ into /shared/components/details/ (whole shared/ tree brought under a components/ subfolder, mirroring the per-submodule split pattern); imports now @/app/clusters/shared/components/details/...; see [[gotcha_clusters_shared_components_move]]
-          DetailDrawerContext.tsx  # global context (DetailDrawerProvider + useDetailDrawerContext); split out of MainLayoutContext (2026-07-10); holds every selectedXxxName/selectedXxxNamespace/onToggleXxxDetail pair for all ~30 K8s resource types + onNavigateToHelmReleases; useReducer (detailDrawerReducer) atomically manages all fields; composed inside MainLayoutProvider itself (2026-07-10), not in MainLayout.tsx
+          DetailDrawerContext.tsx  # global context (DetailDrawerProvider + useDetailDrawerContext); split out of MainLayoutContext (2026-07-10); holds every selectedXxxName/selectedXxxNamespace/onToggleXxxDetail pair for all ~30 K8s resource types; useReducer (detailDrawerReducer) atomically manages all fields; composed inside MainLayoutProvider itself (2026-07-10), not in MainLayout.tsx
           DetailBlock.tsx        # always-mounted drawer host inside MainLayoutProvider; composes 5 domain-split sub-hosts below (react-doctor no-giant-component fix, 2026-07-13); must stay mounted here (not in lazy views) so drawers open from any active view
           RbacDetailDrawers.tsx        # ClusterRole/ClusterRoleBinding/Role/RoleBinding/ServiceAccount drawers; each domain file calls useDetailDrawerContext() itself
           NetworkDetailDrawers.tsx     # Ingress/IngressClass/ValidatingWebhookConfig/NetworkPolicy/Service/Endpoint/EndpointSlice drawers; takes onNavigateToPortForwarding (Service drawer)
@@ -522,7 +498,7 @@ metadata:
           ModificationTrayTypes.ts     # ModificationResourceKind union + ModificationTrayTab/ModificationTrayContentProps types
           ModificationTrayToolbar.tsx  # shared toolbar row (Kind/Name/Namespace chips + Cancel/Save/Save & Close); imports Button/cn via @/design-system/... alias (cross-top-level, correct)
           modificationTrayRegistry.tsx # Record<ModificationResourceKind, ModificationTrayContentComponent>; imports each resource's ModificationTray via relative path ../../../../modules/<resource>/... (workloads resources now ../../../../modules/workloads/<resource>/...; self-alias rule; gained one more `../` 2026-07-21 with the components/ move)
-        /shared/components/trays/  # tray system (bottom sheet for logs, exec, helm chart version, YAML edit, etc.) moved here 2026-07-13 from design-system/components/tray/; nested one level deeper under components/ 2026-07-21
+        /shared/components/trays/  # tray system (bottom sheet for logs, exec, YAML edit, plugin-owned families, etc.) moved here 2026-07-13 from design-system/components/tray/; nested one level deeper under components/ 2026-07-21
           TrayTabBar.tsx       # tab bar for unified tray; moved here 2026-07-13 from design-system/components/tray/
         /shared/components/trays/unified/  # moved here 2026-07-13 from design-system/components/tray/unified/ (same rationale as modification/ above); nested one level deeper under components/ 2026-07-21
           UnifiedTrayContext.tsx  # UnifiedTrayProvider + useUnifiedTray only; UnifiedTrayOutlet split out 2026-07-21 into its own file (no longer imports UnifiedTrayShell)
@@ -533,7 +509,7 @@ metadata:
           /families/
             ModificationTrayFamily.tsx     # dispatches to MODIFICATION_TRAY_CONTENT_REGISTRY[tab.kind]; imports it via relative ../../modification/modificationTrayRegistry (sibling-relative, unchanged by 2026-07-21 components/ move)
             PodTrayFamily.tsx              # imports PodTray via relative ../../../../../modules/workloads/pods/components/PodTray (gained one more `../` 2026-07-21 with the components/ move)
-            HelmChartVersionTrayFamily.tsx # imports HelmChartVersionTray via @plugins/helm/components/HelmChartVersionTray alias (switched from relative path 2026-07-13; alias changed @/plugins/... -> @plugins/... 2026-07-21 when plugins/ moved out of src/)
+            # A HelmChartVersionTrayFamily.tsx once lived here, registering the Helm plugin's own tray family; REMOVED 2026-08-10 along with the rest of the Helm plugin. Plugin-owned tray families are now discovered purely at runtime via usePluginTrayRegistry.ts, no static per-plugin family files in this dir
         /modules/           # all resource-view subdirs below moved here 2026-07-12; imports updated to ./modules/... or @/app/clusters/modules/...
           /overview/        # moved here 2026-07-21 from clusters/overview/ (now a sibling of workloads/base/etc under modules/); MainLayout.tsx import path updated to ./modules/overview/OverviewView; internal relative imports gained one `../` level (../../MainLayoutContext, ../../navConfig; workloads/base refs unchanged since overview is now a sibling of those too)
             OverviewView.tsx
@@ -817,67 +793,11 @@ metadata:
             RoleBindingDetailDrawer.tsx  # tabs: Overview (metadata, labels, annotations, role ref, subjects table), Events
             RoleBindingDeleteConfirmationModal.tsx  # confirmation for rolebinding deletion
             RoleBindingModificationTray.tsx  # YAML edit tray for RoleBinding
-/plugins/               # (2026-07-23 Phase A extraction: entire frontend/plugins/helm/ tree git-mv'd OUT to /plugins/helm/frontend/src/ at repo root, see top-level /plugins/ entry; frontend/plugins/ dir removed. Historical note below describes the pre-2026-07-23 frontend/plugins/ location, kept for context.)
-  # MOVED 2026-07-21: out of frontend/src/plugins to frontend/plugins (sibling of /src and /wailsjs, not nested under /src); dedicated `@plugins/*` alias added (vite.config.ts resolve.alias, tsconfig.json paths+include, vitest.config.ts alias array), mirroring the existing `@wailsjs` sibling-dir convention; external call sites (MainLayout.tsx, navConfig.ts, HelmChartVersionTrayFamily.tsx, HelmChartVersionUpgradeTrayFamily.tsx) changed `@/plugins/...` -> `@plugins/...`; tsconfig.json `exclude` gained `plugins/**/*.test.ts(x)` entries (previously only `src/**/*.test.tsx` was excluded, so plugin test files started failing tsc on jest-dom matcher types until this was added); internal relative imports within plugins/ untouched, its few `@/...` imports (to src/app, src/hooks, design-system) still resolve since `@` still maps to src
-  /helm/              # Helm package management plugin
-        /components/          # REFACTORED 2026-07-31 (commit 03e4d10 "refactor helm plugin"): flat file list split into /chart/ and /release/ subfolders (with their own __tests__/); HelmView.tsx and HelmEventBridge.tsx stay directly under /components/ since they span both chart and release concerns; index.ts's PLUGIN_TRAY_FAMILIES imports updated to ./components/chart/HelmChartVersionTrayFamily + ./components/chart/HelmChartVersionUpgradeTrayFamily
-          HelmView.tsx      # wrapper of HelmChartsView + HelmReleasesView (now imported from ./chart/ and ./release/ respectively), mounts HelmProvider as top-level wrapper (2026-07-13); takes activeResource: HelmViewType, activeContext, namespace, onNavigateToHelmReleases, onToggleNamespaceDetail (all forwarded from MainLayout.tsx into HelmProvider so Helm plugin has zero @/app imports outside test mocks); sole HelmProvider mount point, replaces MainLayoutContext.tsx's previous global wrap; MainLayout.tsx renders it via a local connector component HelmViewWithNamespaceDetail (calls useDetailDrawerContext() since MainLayout's own function body isn't a DetailDrawerProvider descendant) instead of <HelmView> directly
-          HelmEventBridge.tsx  # bridges Wails helm:* events into the plugin's own query-invalidation/toast wiring (previously undocumented)
-          /chart/             # NEW 2026-07-31: chart-browsing + chart-install surface, split out of the flat /components/ list
-            HelmChartsView.tsx
-            HelmChartDetailDrawer.tsx  # tabs: Overview (from ArtifactHub: description, latest version, stars, readme), Versions, Values
-            HelmChartIcon.tsx  # renders chart icon or fallback avatar
-            HelmChartVersionSelectDropdown.tsx  # dropdown to select Helm chart version
-            HelmChartVersionTray.tsx  # tray panel showing chart details (description, version, repository, icon, homepage link, install button)
-            HelmChartVersionTrayFamily.tsx
-            HelmChartVersionUpgradeTray.tsx
-            HelmChartVersionUpgradeTrayFamily.tsx
-            __tests__/
-              HelmChartDetailDrawer.test.tsx / HelmChartVersionTray.test.tsx / HelmChartsView.test.tsx
-          /release/           # NEW 2026-07-31: installed-release management surface, split out of the flat /components/ list
-            HelmReleasesView.tsx  # list-level table; HelmReleaseTableCtaButtons now decodes compressed ValuesYAML on upgrade click (no longer fetches detail endpoint) (2026-07-17)
-            HelmReleaseDetailDrawer.tsx  # tabs: Overview (metadata, status, chart info, resources deployed), Events (if any), Resources (kubectl YAML list)
-            HelmReleaseStatusBadge.tsx  # status badge: deployed=green, failed=red, superseded=muted, etc.
-            HelmReleaseCleanupConfirmationModal.tsx  # confirmation when deleting with cleanup flag
-            HelmReleaseDeleteConfirmationModal.tsx  # confirmation when deleting release
-            HelmReleaseRollbackButton.tsx  # DropdownMenuItem, mirrors HelmReleaseUpgradeButton (2026-07-18)
-            HelmReleaseRollbackModal.tsx  # FormModal revision picker; internally orchestrates the full 2-step flow, uses useGetHelmReleaseHistory/useRollbackHelmRelease + HelmReleaseRollbackConfirmationModal itself; external props are just open/onClose/namespace/releaseName/currentRevision (2026-07-18)
-            HelmReleaseRollbackConfirmationModal.tsx  # ConfirmationModal, mirrors HelmReleaseDeleteConfirmationModal; true confirm step, mounted inside HelmReleaseRollbackModal (not HelmReleasesView), confirmVariant="destructive" (2026-07-18)
-            HelmReleaseUpgradeButton.tsx
-            __tests__/
-              HelmReleaseStatusBadge.test.tsx / HelmReleasesView.test.tsx
-        /api/             # api.const.ts, resources.ts (2026-07-13); + api.ts (2026-07-21, see below)
-          api.ts          # DEFAULT_QUERY_OPTIONS, copied from src/api/api.ts into plugins/helm/api/ 2026-07-21 so the 6 data-access hooks below no longer reach back into src/ via the @/ alias; content identical to src/api/api.ts (not re-exported, a real duplicate — keep both in sync manually if DEFAULT_QUERY_OPTIONS changes)
-        /hooks/           # Helm-specific hooks; import Helm bindings/types/query-keys via relative ../../api/resources + ../../api/api.const + ../../api/api (all local to plugins/helm/, not root @/api since 2026-07-21); split into data-access/data-mutation/async-events subdirs 2026-07-20, mirroring root /hooks/ (see [[pattern_helm_hooks_split]])
-          /data-access/
-            useGetArtifactHubReadme.ts  # fetch Helm chart README from ArtifactHub
-            useGetHelmChartDetail.ts  # fetch chart values/README from ArtifactHub
-            useGetHelmChartValues.ts  # parse chart values.yaml
-            useGetHelmChartVersions.ts  # list available versions for a chart
-            useGetHelmCharts.ts  # list all Helm charts from configured repositories
-            useGetHelmReleaseDetail.ts
-            useGetHelmReleaseHistory.ts  # split out of the old combined useRollbackHelmRelease.tsx 2026-07-20; used by HelmReleaseRollbackModal.tsx alongside data-mutation/useRollbackHelmRelease
-            useGetHelmReleases.ts
-            useGetHelmRepositories.ts
-          /data-mutation/
-            useDeleteHelmRelease.tsx  # also exports useDeleteHelmReleaseWithCleanup
-            useInstallHelmChart.tsx
-            useRollbackHelmRelease.tsx  # mutation only now; query half moved to data-access/useGetHelmReleaseHistory.ts (2026-07-20)
-            useUpgradeHelmChart.tsx
-          /async-events/
-            useHelmCleanupEvents.tsx  # event streaming for cleanup operations
-            useHelmInstallEvents.tsx  # event streaming for install operations
-            useHelmUpgradeEvents.tsx  # event streaming for upgrade operations; consumed by app/clusters/MainLayout.tsx alongside the other two async-events hooks
-        /api/             # Helm-only API surface, split out of root src/api/{resources,api.const}.ts 2026-07-13
-          resources.ts    # re-exports Helm Go bindings (DeleteHelmRelease, DeleteHelmReleaseWithCleanup, GetArtifactHubReadme, GetHelmChartDetail, GetHelmChartValues, GetHelmReleaseByName, InstallHelmChart, ListHelmCharts, ListHelmChartVersions, ListHelmReleases, ListHelmRepositories) from ../../../../wailsjs/go/helm/Service (changed from wailsjs/go/app/App 2026-07-13); defines HelmChart, HelmRepository, HelmRelease (now includes ValuesYAML: gzip+base64 compressed 2026-07-17), HelmReleaseResource, HelmReleaseDetail (ValuesYAML is plain YAML, unchanged) interfaces
-          api.const.ts    # Helm query-key constants: QUERY_KEY_HELM_CHARTS, QUERY_KEY_HELM_RELEASES, QUERY_KEY_HELM_RELEASE_DETAIL, QUERY_KEY_HELM_REPOSITORIES, QUERY_KEY_HELM_CHART_DETAIL, QUERY_KEY_HELM_CHART_VERSIONS, QUERY_KEY_HELM_CHART_VALUES, QUERY_KEY_ARTIFACTHUB_README
-          valuesYamlCodec.ts  # decodeValuesYAML(compressed): Promise<string>; base64 decodes + DecompressionStream gzip decompression for list-level HelmRelease.ValuesYAML field (2026-07-17)
-        HelmContext.tsx   # HelmProvider/useHelmContext, split out of app/clusters/shared/details/DetailDrawerContext.tsx 2026-07-13; owns selectedHelmChartName/Repo, onToggleHelmChartDetail, selectedHelmReleaseName/Namespace, onToggleHelmReleaseDetail, onNavigateToHelmReleases; wired in MainLayoutContext.tsx nested outside DetailDrawerProvider; see [[detail_drawer_context_split]]; UPDATED 2026-07-25 (Phase 4): now also receives injected `namespaces: SharedNamespaceContext[]`, `unifiedTray: SharedUnifiedTrayContext`, `getResourceLinks()` from the host app, since the plugin now builds/loads as a standalone bundle and can no longer reach into `@/app`; STALE PATH as of 2026-07-31: the old dedicated HelmViewWithNamespaceDetail connector no longer exists — the injection now happens generically for every plugin via frontend/src/app/clusters/plugins/PluginResourceView.tsx's lazy-loaded PluginViewProps (see that file)
-        index.ts          # replaces main.ts as the package.json "." export entry point (see plugins/helm/frontend/package.json exports map): barrel re-exporting `HelmView` (from ./components/HelmView), `NAV_HELM` (from ./const), and the `HelmViewType` type (from ./types) — this is what's dynamic-`import()`-ed by frontend/src/app/clusters/plugins/PluginResourceView.tsx (STALE PATH note: the old frontend/src/app/plugins/components/helm/ dir no longer exists, see [[file_structure]] app/clusters/plugins/ entry); UPDATED 2026-07-31: also re-exports PLUGIN_TRAY_FAMILIES, now importing HelmChartVersionTrayFamily/HelmChartVersionUpgradeTrayFamily from ./components/chart/ (moved there in the chart/release component split)
-        const.ts          # NEW 2026-07-25, renamed from main.ts: now holds only the `NAV_HELM: NavEntry<HelmViewType>` nav config (Charts/Releases group entries); the barrel-export role main.ts used to play moved to index.ts
-        wailsRuntimeBridge.ts  # NEW 2026-07-25: hand-mirrors the relevant slice of the generated `wailsjs/runtime/runtime.js` (`EventsOn` via `window.runtime.EventsOnMultiple`), since the plugin bundle builds standalone and can't resolve the main app's `@wailsjs` alias, but `window.runtime` is still injected by Wails into the shared webview regardless of which bundle calls it
-        /api/
-          wailsBridge.ts  # NEW 2026-07-25: hand-mirrors the generated `wailsjs/go/app/App.js` bindings, scoped to just the RPCs the helm plugin proxies through App (ListHelmCharts, ListHelmRepositories, ListHelmReleases, etc., calling `window.go.app.App.<Method>()` directly) — same standalone-bundle rationale as wailsRuntimeBridge.ts
+# frontend/plugins/ (formerly frontend/plugins/helm/, moved to /plugins/helm/frontend/src/ at repo root
+# 2026-07-23) REMOVED entirely 2026-08-10 along with the rest of the Helm plugin — the whole
+# Helm chart-browse/install/release-management surface, its dedicated hooks/api/context files,
+# and its @plugins/* vite alias are gone. No plugin ships in-tree anymore; installed plugins are
+# discovered purely at runtime (see app/clusters/plugins/ above).
 /internal/
   /dto/                   # package dto — type definitions only, one file per entity (no DTO suffix; dto.Pod, dto.Service, etc.)
     pod.go                # Pod

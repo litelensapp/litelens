@@ -453,7 +453,7 @@ Two co-located modules — use both together for any new full-text search featur
 
 Props: `searchTerm`, `matchCount`, `currentMatchIdx`, `onSearch(term)`, `onSearchNext()`, `ariaLabel?` (default `"Search"`).
 
-Used by `TrayToolbar` in `HelmChartVersionTray` (`ariaLabel="Search YAML"`) and `PodTray` (`ariaLabel="Search logs"`). Shows "0" when `searchTerm` set but no matches; shows `N/M` counter when matches found; empty when no search term. Includes `aria-live="polite" role="status"` on counter span. Enter key triggers `onSearchNext`.
+Used by `TrayToolbar` in `PodTray` (`ariaLabel="Search logs"`) and formerly the (now-removed) Helm plugin's YAML tray. Shows "0" when `searchTerm` set but no matches; shows `N/M` counter when matches found; empty when no search term. Includes `aria-live="polite" role="status"` on counter span. Enter key triggers `onSearchNext`.
 
 ## `ButtonGroup` (visual button grouping)
 

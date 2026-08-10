@@ -220,7 +220,7 @@ function rewriteImportSpecifiers(
  * If import maps are supported: calls import() directly (fast path).
  * If not: fetches bundle as text, rewrites import specifiers, and imports via Blob URL.
  *
- * @param pluginId The plugin ID (e.g. "helm")
+ * @param pluginId The plugin ID
  * @param bundleChecksum The bundle checksum for cache-busting (optional)
  * @returns The loaded module (same as what import() returns)
  */

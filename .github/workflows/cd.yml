@@ -20,15 +20,6 @@ jobs:
     with:
       version: ${{ needs.release-version.outputs.tag_name }}
 
-  build-plugin:
-    name: Build Plugin
-    needs: [release-version]
-    if: ${{ needs.release-version.result == 'success' }}
-    uses: ./.github/workflows/job-build-plugin-helm.yml
-    secrets: inherit
-    with:
-      version: ${{ needs.release-version.outputs.tag_name }}
-
   publish-design-system:
     name: Publish Design System
     needs: [release-version]

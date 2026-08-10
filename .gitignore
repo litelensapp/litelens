@@ -10,12 +10,6 @@ frontend/pkg/
 design-system/dist/
 design-system/pkg/
 
-plugins/helm/frontend/dist/
-plugins/helm/frontend/pkg/
-plugins/helm/frontend/src/generated-style.css
-plugins/helm/plugin
-plugins/helm/.output/
-
 build/bin/
 /litelens
 

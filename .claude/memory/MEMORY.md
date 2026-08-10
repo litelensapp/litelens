@@ -3,8 +3,8 @@
 ## Architecture
 
 - [Architecture decisions](architecture_decisions.md) — IPC, SharedInformerFactory caching, DTO design, package deps, Wails bindings, macOS build
-- [File structure](file_structure.md) — full annotated project tree (Go backend + React frontend + Helm plugin module)
-- [Unified tray architecture](unified_tray_architecture.md) — 3 tray families (modification/pod/helm-chart) share one shell via discriminated union + registry
+- [File structure](file_structure.md) — full annotated project tree (Go backend + React frontend)
+- [Unified tray architecture](unified_tray_architecture.md) — built-in tray families (modification/pod) share one shell via discriminated union + registry; plugin-owned families merge in at runtime
 - [Modification tray architecture](modification_tray_architecture.md) — generic cross-resource bottom tray; how to add a new resource kind
 - [Detail drawer pattern](detail_drawer_pattern.md) — DetailDrawerContext + DetailBlock; full steps for adding a new drawer end-to-end
 

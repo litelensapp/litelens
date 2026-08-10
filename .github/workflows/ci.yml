@@ -14,21 +14,9 @@ jobs:
     uses: ./.github/workflows/job-unit-test.yml
     secrets: inherit
 
-  unit-test-plugin-helm:
-    name: Unit Tests - Helm Plugin
-    uses: ./.github/workflows/job-unit-test-plugin-helm.yml
-    secrets: inherit
-
   build-check:
     name: Build Check
     uses: ./.github/workflows/job-build-check.yml
-    with:
-      RUNNER: ubuntu-latest
-    secrets: inherit
-
-  build-check-plugin-helm:
-    name: Build Check - Helm Plugin
-    uses: ./.github/workflows/job-build-check-plugin-helm.yml
     with:
       RUNNER: ubuntu-latest
     secrets: inherit

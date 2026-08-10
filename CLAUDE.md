@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-LiteLens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.io) (Go backend + React/TypeScript frontend, native webview shell, no Electron). Root module `github.com/gknguyen/litelens`. pnpm workspace with `frontend`, `design-system`, and `plugins/helm/frontend` as packages. Plugins (e.g. Helm) are separate Go modules, launched as subprocesses and driven over gRPC — never compiled into the main binary.
+LiteLens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.io) (Go backend + React/TypeScript frontend, native webview shell, no Electron). Root module `github.com/gknguyen/litelens`. pnpm workspace with `frontend` and `design-system` as packages. Plugins are separate Go modules, launched as subprocesses and driven over gRPC — never compiled into the main binary. No plugins currently ship; the plugin host (`internal/plugin`, marketplace UI, tray registry) is generic infrastructure for plugins installed at runtime.
 
 ## Commands
 
@@ -21,7 +21,6 @@ pnpm dev                # frontend only (vite), for pure UI work
 pnpm build:app          # full app build (bash scripts/build.sh; wraps `wails build`, macOS ad-hoc codesigns)
 pnpm build:ds            # build @litelens/design-system package (needed before frontend build)
 pnpm build:app:fe        # build:ds + frontend build only (no Wails binary)
-pnpm build:plugin:helm   # build the Helm plugin (standalone Go module + its own frontend)
 ```
 
 ### Lint / format / vet (run after every change, before reporting done)
@@ -41,8 +40,6 @@ pnpm test:be:coverage
 pnpm test:fe               # vitest run (frontend)
 pnpm test:fe:coverage
 pnpm test:ds                # design-system vitest
-pnpm test:plugin:helm:be    # cd plugins/helm && go test -race -v ./...
-pnpm test:plugin:helm:fe
 ```
 
 Single Go test: `go test -race -run TestName ./internal/app/...`
@@ -78,9 +75,9 @@ minikube addons enable metrics-server
 - Adding a new Go method requires manually adding it to `frontend/src/api/resources.ts`'s re-export list (Wails bindings are auto-generated into `frontend/wailsjs/`, but that file is hand-maintained) — same for any new DTO type needing hand-added entries in `frontend/wailsjs/go/models.ts` if you're not running `wails dev`/`wails generate module` to regenerate.
 - `wails generate` mutates `go.mod` — never run it as a shortcut for other tasks.
 
-### Plugin architecture (Helm)
+### Plugin architecture
 
-Plugins are **fully standalone Go modules** (e.g. `plugins/helm` — `go.mod` for `github.com/gknguyen/litelens/plugins/helm`, zero dependency on the root module: local copies of `dto`, the plugin gRPC `pb` package, and `kube.LoadingRules`). Each plugin ships its own frontend bundle too (`plugins/helm/frontend`, workspace package `@litelens/helm-plugin-frontend`).
+Plugins are **fully standalone Go modules** (e.g. `plugins/<name>` — own `go.mod` under `github.com/gknguyen/litelens/plugins/<name>`, zero dependency on the root module: local copies of `dto`, the plugin gRPC `pb` package, and `kube.LoadingRules`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package).
 
 - The plugin binary is launched as a subprocess by `internal/plugin`, emits a one-line JSON `READY` handshake (`grpcPort`, `pid`, version) on stdout, then serves gRPC.
 - The main app never calls plugin methods directly — everything crosses the boundary via the generic `pb.PluginServer` contract (`GetCapabilities` / `SetClusterContext` / `Invoke(method, payloadJson)`), dispatched inside the plugin's own `internal/server/grpc.go`.
@@ -97,7 +94,7 @@ Plugins are **fully standalone Go modules** (e.g. `plugins/helm` — `go.mod` fo
 
 ### Unified tray system
 
-Three tray "families" (modification/YAML-edit, pod logs+exec, Helm chart install) share one bottom-tray shell (`UnifiedTrayProvider`/`UnifiedTrayShell`, mounted once in `MainLayout.tsx`) via a discriminated-union tab type and a family→content-component registry. Open a tab from anywhere with `useUnifiedTray().openTab(family, params)`. To add a new resource's modification tray: add the kind to `ModificationResourceKind`, create `<Resource>ModificationTray.tsx` (mirror `NamespaceModificationTray.tsx`), register it in `modificationTrayRegistry.tsx` — no changes needed to the shell itself. See `.claude/memory/unified_tray_architecture.md` and `.claude/memory/modification_tray_architecture.md` for full detail.
+Two built-in tray "families" (modification/YAML-edit, pod logs+exec) share one bottom-tray shell, and plugin-owned families can be merged in at runtime (see `usePluginTrayRegistry`) (`UnifiedTrayProvider`/`UnifiedTrayShell`, mounted once in `MainLayout.tsx`) via a discriminated-union tab type and a family→content-component registry. Open a tab from anywhere with `useUnifiedTray().openTab(family, params)`. To add a new resource's modification tray: add the kind to `ModificationResourceKind`, create `<Resource>ModificationTray.tsx` (mirror `NamespaceModificationTray.tsx`), register it in `modificationTrayRegistry.tsx` — no changes needed to the shell itself. See `.claude/memory/unified_tray_architecture.md` and `.claude/memory/modification_tray_architecture.md` for full detail.
 
 ### DTO/detail-drawer conventions
 

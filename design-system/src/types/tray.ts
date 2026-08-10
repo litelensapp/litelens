@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 // Shared contract for the unified tray, consumed across the main app and
-// plugin frontends (e.g. plugins/helm). Plugin bundles build standalone and
+// plugin frontends. Plugin bundles build standalone and
 // cannot import from the main app's `@/app` module tree, so this lives here
 // instead. Keep this to the minimal shape actually consumed across the
 // boundary — the main app's `UnifiedTrayContextValue` is a structural

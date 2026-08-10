@@ -37,7 +37,6 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@wailsjs": path.resolve(__dirname, "./wailsjs"),
-      "@plugins/helm": path.resolve(__dirname, "../plugins/helm/frontend/src"),
     },
   },
   build: {

@@ -1,6 +1,6 @@
 ---
 name: unified-tray-architecture
-description: How the three bottom tray families (modification, pod logs/exec, Helm install) share one UnifiedTrayProvider/Shell via discriminated-union tab type + family registry
+description: How the built-in bottom tray families (modification, pod logs/exec) share one UnifiedTrayProvider/Shell via discriminated-union tab type + family registry; plugin-owned families (e.g. the former Helm "helm-chart" family, removed 2026-08-10) merge in at runtime instead of being statically registered
 metadata:
   node_type: memory
   type: project
@@ -9,7 +9,9 @@ metadata:
 
 ## Overview
 
-Unified three separate bottom tray systems (Modification, Pod, Helm Chart) into ONE shared tray shell with a single tab bar, eliminating visual stacking. All three families now render tabs together using a discriminated-union tab type system + registry pattern.
+Unified three separate bottom tray systems (Modification, Pod, Helm Chart) into ONE shared tray shell with a single tab bar, eliminating visual stacking. All three families rendered tabs together using a discriminated-union tab type system + registry pattern.
+
+**2026-08-10: the Helm plugin was removed entirely** (see `[[file_structure]]`), taking the `"helm-chart"`/`helm-chart-upgrade` families and `HelmChartVersionTrayFamily`/`HelmChartVersionUpgradeTrayFamily` with it. The built-in `unifiedTrayRegistry` now only registers `modification` and `pod` (`frontend/src/app/clusters/shared/components/trays/unified/unifiedTrayRegistry.tsx`). Everything below describing the Helm family is historical — it documents how the pattern was designed/proven out, not current code. Plugin-owned families are (and, since the runtime-plugin architecture landed, always were meant to be) discovered generically at runtime via `usePluginTrayRegistry.ts`, not statically imported into this registry.
 
 ## Architecture
 

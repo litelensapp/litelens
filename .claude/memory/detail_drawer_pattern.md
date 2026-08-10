@@ -60,10 +60,7 @@ Namespace-scoped (namespace + name):
 - `selectedSecretName + selectedSecretNamespace / onToggleSecretDetail`
 - `selectedEndpointName + selectedEndpointNamespace / onToggleEndpointDetail`
 
-Special (repo + name):
-
-- `selectedHelmChartName + selectedHelmChartRepo / onToggleHelmChartDetail`
-- `selectedHelmReleaseName + selectedHelmReleaseNamespace / onToggleHelmReleaseDetail`
+Special (repo + name): historically the Helm plugin had its own `selectedHelmChartName`/`selectedHelmReleaseName` pair here, but that state had already moved out to the plugin's own `HelmContext.tsx` (a plugin-scoped context, not `DetailDrawerContext`) before the Helm plugin itself was removed entirely on 2026-08-10 — see `[[unified_tray_architecture]]`'s "Gotcha (2026-07-15)" entry for why plugin-scoped state can't live here.
 
 ### Where the drawer lives (`src/views/DetailBlock.tsx`)
 

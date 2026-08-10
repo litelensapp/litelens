@@ -26,7 +26,7 @@ describe("loadPluginModule", () => {
       const bundleSource = `
 import { Suspense, lazy } from "react";
 import { Button } from "@litelens/design-system";
-const TrayComponent = lazy(() => import("./HelmChartVersionTray-T6UFBCRM.js").then(m => ({ default: m.HelmChartVersionTray })));
+const TrayComponent = lazy(() => import("./SampleTray-T6UFBCRM.js").then(m => ({ default: m.SampleTray })));
 export const PLUGIN_TRAY_FAMILIES = { tray: TrayComponent };
       `.trim();
 
@@ -51,13 +51,13 @@ export const PLUGIN_TRAY_FAMILIES = { tray: TrayComponent };
       } as any);
 
       try {
-        await loadPluginModule("helm", "abc123def");
+        await loadPluginModule("sample-plugin", "abc123def");
       } catch {
         // Expected to fail when trying to import blob URL in test environment
       }
 
       // Verify fetch was called with correct URL
-      expect(fetchMock).toHaveBeenCalledWith("/api/plugins/helm/dist/index.js?v=abc123de");
+      expect(fetchMock).toHaveBeenCalledWith("/api/plugins/sample-plugin/dist/index.js?v=abc123de");
 
       // Verify Blob URL was created
       expect(createObjectURLMock).toHaveBeenCalled();
@@ -127,8 +127,8 @@ export const PLUGIN_NAV_ENTRY = {};
 
     it("should rewrite relative specifiers to absolute /api/plugins paths", async () => {
       const bundleSource = `
-const TrayComponent = lazy(() => import("./HelmChartVersionTray-T6UFBCRM.js").then(m => ({ default: m.HelmChartVersionTray })));
-const UpgradeTray = lazy(() => import("./HelmChartVersionUpgradeTray-IIPS3IKW.js"));
+const TrayComponent = lazy(() => import("./SampleTray-T6UFBCRM.js").then(m => ({ default: m.SampleTray })));
+const UpgradeTray = lazy(() => import("./SampleUpgradeTray-IIPS3IKW.js"));
       `.trim();
 
       vi.stubGlobal("HTMLScriptElement", {
@@ -159,7 +159,7 @@ const UpgradeTray = lazy(() => import("./HelmChartVersionUpgradeTray-IIPS3IKW.js
       } as any);
 
       try {
-        await loadPluginModule("helm", "checksum");
+        await loadPluginModule("sample-plugin", "checksum");
       } catch {
         // Expected to fail
       }
@@ -169,15 +169,15 @@ const UpgradeTray = lazy(() => import("./HelmChartVersionUpgradeTray-IIPS3IKW.js
 
       // Verify relative specifiers were rewritten to absolute paths
       expect(capturedBlobContent).toContain(
-        'import("/api/plugins/helm/dist/HelmChartVersionTray-T6UFBCRM.js")'
+        'import("/api/plugins/sample-plugin/dist/SampleTray-T6UFBCRM.js")'
       );
       expect(capturedBlobContent).toContain(
-        'import("/api/plugins/helm/dist/HelmChartVersionUpgradeTray-IIPS3IKW.js")'
+        'import("/api/plugins/sample-plugin/dist/SampleUpgradeTray-IIPS3IKW.js")'
       );
 
       // Verify original relative specifiers are gone
-      expect(capturedBlobContent).not.toContain('import("./HelmChartVersionTray');
-      expect(capturedBlobContent).not.toContain('import("./HelmChartVersionUpgradeTray');
+      expect(capturedBlobContent).not.toContain('import("./SampleTray');
+      expect(capturedBlobContent).not.toContain('import("./SampleUpgradeTray');
     });
 
     it("should handle mixed static and dynamic imports", async () => {
@@ -299,14 +299,14 @@ const x = "string with import('fake') inside";
       } as any);
 
       try {
-        await loadPluginModule("helm", "checksum");
+        await loadPluginModule("sample-plugin", "checksum");
       } catch {
         // Expected to fail
       }
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          "[loadPluginModule] import-map not supported; using fallback path for helm"
+          "[loadPluginModule] import-map not supported; using fallback path for sample-plugin"
         )
       );
 
@@ -453,23 +453,34 @@ const C = () => import("../../too-far/Chunk-C.js");
       } as any);
 
       try {
-        await loadPluginModule("helm", "checksum");
+        await loadPluginModule("sample-plugin", "checksum");
       } catch {
         // Expected to fail
       }
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // "../shared/..." from /api/plugins/helm/dist/ resolves up one level.
-      expect(capturedBlobContent).toContain('import("/api/plugins/helm/shared/Chunk-A.js")');
+      // "../shared/..." from /api/plugins/sample-plugin/dist/ resolves up one level.
+      expect(capturedBlobContent).toContain(
+        'import("/api/plugins/sample-plugin/shared/Chunk-A.js")'
+      );
       // "./sibling/..." stays under dist/.
-      expect(capturedBlobContent).toContain('import("/api/plugins/helm/dist/sibling/Chunk-B.js")');
+      expect(capturedBlobContent).toContain(
+        'import("/api/plugins/sample-plugin/dist/sibling/Chunk-B.js")'
+      );
       // "../../too-far/..." resolves up two levels from dist/.
       expect(capturedBlobContent).toContain('import("/api/plugins/too-far/Chunk-C.js")');
     });
 
-    it("should rewrite the real production Helm plugin bundle without corrupting it", async () => {
-      const realBundlePath = join(homedir(), ".litelens", "plugins", "helm", "dist", "index.js");
+    it("should rewrite a real production plugin bundle without corrupting it", async () => {
+      const realBundlePath = join(
+        homedir(),
+        ".litelens",
+        "plugins",
+        "sample-plugin",
+        "dist",
+        "index.js"
+      );
       if (!existsSync(realBundlePath)) {
         // Sandbox-dependent fixture: skip if the plugin isn't installed locally.
         return;
@@ -504,7 +515,7 @@ const C = () => import("../../too-far/Chunk-C.js");
       } as any);
 
       try {
-        await loadPluginModule("helm", "checksum");
+        await loadPluginModule("sample-plugin", "checksum");
       } catch {
         // Expected to fail (jsdom can't import a blob: URL), we only care about the rewrite.
       }
@@ -517,7 +528,7 @@ const C = () => import("../../too-far/Chunk-C.js");
       expect(capturedBlobContent).not.toMatch(/from\s+["']react["']/);
       expect(capturedBlobContent).not.toMatch(/from\s+["']@litelens\/design-system["']/);
       expect(capturedBlobContent).not.toMatch(/from\s+["']@tanstack\/react-query["']/);
-      // Relative chunk imports must be rewritten to absolute /api/plugins/helm/... paths,
+      // Relative chunk imports must be rewritten to absolute /api/plugins/sample-plugin/... paths,
       // never left as "./..." and never mangled by the old substring(1) bug
       // (which would have produced a malformed "dist./Chunk" path).
       expect(capturedBlobContent).not.toMatch(/import\(\s*["']\.\//);

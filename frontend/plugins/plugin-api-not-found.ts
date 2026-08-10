@@ -1,7 +1,7 @@
 import type { Plugin } from "vite";
 
 // In `wails dev`, requests the webview makes (e.g. a plugin's dynamic
-// `import("/api/plugins/helm/dist/index.js")`) are proxied by the Wails Go
+// `import("/api/plugins/<plugin-id>/dist/index.js")`) are proxied by the Wails Go
 // asset server to this Vite dev server first, falling back to our Go
 // plugin-asset handler only when Vite responds 404/405. Vite's own SPA
 // history fallback intercepts any unmatched request whose Accept header

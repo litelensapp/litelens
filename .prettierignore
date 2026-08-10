@@ -7,9 +7,6 @@ frontend/pkg/
 design-system/dist/
 design-system/pkg/
 
-plugins/helm/frontend/dist/
-plugins/helm/frontend/pkg/
-
 build/
 
 pnpm-lock.yaml

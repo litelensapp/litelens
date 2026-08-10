@@ -22,7 +22,7 @@ Semantic aliases exist 1:1 with the same CSS: `.headline-display/-1/-2/-3`, `.bo
 
 Validated first at two call sites (`DeploymentsView.tsx` view title, `PodDetailDrawer.tsx` field-label grid), then rolled out codebase-wide the same day (2026-07-15), ~75 files touched:
 
-- **All 33 view titles** (`frontend/src/app/clusters/modules/*/*View.tsx` + `plugins/helm/components/HelmReleasesView.tsx`/`HelmChartsView.tsx`) — `text-sm font-medium` → `.text-h1`, done via uniform `sed` since the pattern was 100% consistent (verified via grep count before/after).
+- **All 33 view titles** (`frontend/src/app/clusters/modules/*/*View.tsx`, plus the now-removed Helm plugin's own view titles) — `text-sm font-medium` → `.text-h1`, done via uniform `sed` since the pattern was 100% consistent (verified via grep count before/after).
 - **All 34 drawer titles** (`SheetTitle`) — `text-sm` → `.text-h1`, same sed approach; one exception kept `font-mono` alongside (`PortForwardDetailDrawer.tsx`: `text-h1 font-mono`).
 - **All ~40 confirmation/creation/scale modal titles** — collapsed into 2 shared-component edits instead of per-file changes: `design-system/src/components/modal/ConfirmationModal.tsx` (`DialogTitle` → `.text-h2`, description `<p>` → `.text-body`) and the `DialogTitle` atom default in `design-system/src/atoms/dialog.tsx` (→ `.text-h2 leading-none`). Two modals with custom titles were edited directly: `DeploymentScaleModal.tsx`, `ReplicaSetScaleModal.tsx` (`DialogTitle className="text-h2 flex gap-2"`).
 - **`frontend/src/app/clusters/shared/details/SectionDivider.tsx`** — shared component, one edit covers all section dividers app-wide: `"bg-muted/40 text-muted-foreground text-h3 border-y px-4 py-2"`.

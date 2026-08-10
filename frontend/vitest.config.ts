@@ -15,10 +15,6 @@ export default defineConfig({
         find: /.*\/wailsjs\/(.*)/,
         replacement: `${path.resolve(__dirname, "./src/__mocks__/wailsjs")}/$1`,
       },
-      {
-        find: "@plugins/helm",
-        replacement: path.resolve(__dirname, "../plugins/helm/frontend/src"),
-      },
     ],
   },
   test: {
