@@ -531,10 +531,11 @@ func Test_Check_EdgeCases(t *testing.T) {
 			description: "missing v prefix should fail validation",
 		},
 		{
-			name:        "invalid semver incomplete version",
-			current:     "v1.2",
-			wantRelease: false,
-			description: "incomplete version should fail validation",
+			name:         "incomplete version is valid shorthand, no matching release",
+			current:      "v1.2",
+			serverStatus: http.StatusNotFound,
+			wantRelease:  false,
+			description:  "x/mod/semver accepts \"v1.2\" as valid (implicit .0 patch), so Check reaches the network; a 404 means no release",
 		},
 		{
 			name:        "invalid semver too many segments",
@@ -563,8 +564,13 @@ func Test_Check_EdgeCases(t *testing.T) {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				w.WriteHeader(tt.serverStatus)
-				if tt.serverResponse != nil && tt.serverStatus == http.StatusOK {
+				status := tt.serverStatus
+				if status == 0 {
+					t.Errorf("test case %q reached the network but sets no serverStatus", tt.name)
+					status = http.StatusNotFound
+				}
+				w.WriteHeader(status)
+				if tt.serverResponse != nil && status == http.StatusOK {
 					json.NewEncoder(w).Encode(tt.serverResponse)
 				}
 			}))

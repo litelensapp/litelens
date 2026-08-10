@@ -479,9 +479,9 @@ func Test_findReleaseChecksumInRelease_MatchesPlatformAsset(t *testing.T) {
 	rel := &updater.Release{
 		AssetURL: "https://example.com/litelens-windows-amd64.exe",
 		Assets: []updater.Asset{
-			{Name: "litelens-linux-amd64.tar.gz", URL: "https://example.com/litelens-linux-amd64.tar.gz"},
-			{Name: "litelens-windows-amd64.exe", URL: "https://example.com/litelens-windows-amd64.exe"},
-			{Name: "litelens-windows-amd64.exe.sha256", URL: srv.URL},
+			{Name: "litelens-linux-amd64.tar.gz", BrowserDownloadURL: "https://example.com/litelens-linux-amd64.tar.gz"},
+			{Name: "litelens-windows-amd64.exe", BrowserDownloadURL: "https://example.com/litelens-windows-amd64.exe"},
+			{Name: "litelens-windows-amd64.exe.sha256", BrowserDownloadURL: srv.URL},
 		},
 	}
 
@@ -500,7 +500,7 @@ func Test_findReleaseChecksumInRelease_NoChecksumAsset(t *testing.T) {
 	rel := &updater.Release{
 		AssetURL: "https://example.com/litelens-darwin-arm64.zip",
 		Assets: []updater.Asset{
-			{Name: "litelens-darwin-arm64.zip", URL: "https://example.com/litelens-darwin-arm64.zip"},
+			{Name: "litelens-darwin-arm64.zip", BrowserDownloadURL: "https://example.com/litelens-darwin-arm64.zip"},
 		},
 	}
 
@@ -531,8 +531,8 @@ func Test_findReleaseChecksumInRelease_AuthorizationHeaderWithToken(t *testing.T
 	rel := &updater.Release{
 		AssetURL: "https://example.com/litelens-linux-amd64.tar.gz",
 		Assets: []updater.Asset{
-			{Name: "litelens-linux-amd64.tar.gz", URL: "https://example.com/litelens-linux-amd64.tar.gz"},
-			{Name: "litelens-linux-amd64.tar.gz.sha256", URL: srv.URL},
+			{Name: "litelens-linux-amd64.tar.gz", BrowserDownloadURL: "https://example.com/litelens-linux-amd64.tar.gz"},
+			{Name: "litelens-linux-amd64.tar.gz.sha256", BrowserDownloadURL: srv.URL},
 		},
 	}
 
@@ -565,8 +565,8 @@ func Test_findReleaseChecksumInRelease_NoAuthorizationHeaderWhenTokenEmpty(t *te
 	rel := &updater.Release{
 		AssetURL: "https://example.com/litelens-windows-amd64.exe",
 		Assets: []updater.Asset{
-			{Name: "litelens-windows-amd64.exe", URL: "https://example.com/litelens-windows-amd64.exe"},
-			{Name: "litelens-windows-amd64.exe.sha256", URL: srv.URL},
+			{Name: "litelens-windows-amd64.exe", BrowserDownloadURL: "https://example.com/litelens-windows-amd64.exe"},
+			{Name: "litelens-windows-amd64.exe.sha256", BrowserDownloadURL: srv.URL},
 		},
 	}
 
