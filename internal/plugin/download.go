@@ -70,8 +70,10 @@ func newAssetDownloadRequest(ctx context.Context, url, token string) (*http.Requ
 // If baseURL is empty, uses config.GetMarketplaceBaseURL() (env-var/default behavior).
 // If baseURL is non-empty, uses it directly (expected to be in the form: https://api.github.com/repos/owner/repo/releases).
 // Token is sent as a Bearer header when non-empty, so private repos work identically.
+// private indicates whether to use the authenticated API asset endpoint (asset.URL) for private repos
+// or the public browser_download_url (asset.BrowserDownloadURL) for public repos.
 // Returns a map of asset name -> download URL and the release tag name.
-func FetchLatestRelease(ctx context.Context, baseURL, token string) (assets map[string]string, tag string, err error) {
+func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool) (assets map[string]string, tag string, err error) {
 	if baseURL == "" {
 		baseURL = config.GetMarketplaceBaseURL()
 	}
@@ -99,7 +101,7 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string) (assets map[
 
 	assets = make(map[string]string)
 	for _, asset := range release.Assets {
-		if config.IsPrivateRepoAccess() {
+		if private {
 			assets[asset.Name] = asset.URL
 		} else {
 			assets[asset.Name] = asset.BrowserDownloadURL
@@ -113,10 +115,12 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string) (assets map[
 // If baseURL is empty, uses config.GetMarketplaceBaseURL() (env-var/default behavior).
 // If baseURL is non-empty, uses it directly (expected to be in the form: https://api.github.com/repos/owner/repo/releases).
 // If tag is empty, behaves identically to FetchLatestRelease.
+// private indicates whether to use the authenticated API asset endpoint (asset.URL) for private repos
+// or the public browser_download_url (asset.BrowserDownloadURL) for public repos.
 // Returns a map of asset name -> download URL and the resolved tag name.
-func FetchRelease(ctx context.Context, baseURL, token, tag string) (assets map[string]string, resolvedTag string, err error) {
+func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool) (assets map[string]string, resolvedTag string, err error) {
 	if tag == "" {
-		return FetchLatestRelease(ctx, baseURL, token)
+		return FetchLatestRelease(ctx, baseURL, token, private)
 	}
 
 	if baseURL == "" {
@@ -146,7 +150,7 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string) (assets map[s
 
 	assets = make(map[string]string)
 	for _, asset := range release.Assets {
-		if config.IsPrivateRepoAccess() {
+		if private {
 			assets[asset.Name] = asset.URL
 		} else {
 			assets[asset.Name] = asset.BrowserDownloadURL

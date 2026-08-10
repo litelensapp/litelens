@@ -55,6 +55,9 @@ func GetMarketplaceBaseURL() string {
 // than the public browser_download_url (which rejects Bearer tokens on private
 // repos). Overridable via the PRIVATE_REPO_ACCESS environment variable.
 // Defaults to true because the shipped repo (gknguyen/litelens) is private.
+// Reserved for the app's own self-update flow (internal/app/updater.go,
+// internal/updater/updater.go) — the plugin marketplace does not use this;
+// see internal/app/plugin.go's use of MarketplaceRepository.Private instead.
 func IsPrivateRepoAccess() bool {
 	return getBoolEnvOrDefault("PRIVATE_REPO_ACCESS", true)
 }

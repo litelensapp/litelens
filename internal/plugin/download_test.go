@@ -3,6 +3,7 @@ package plugin
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -181,14 +182,17 @@ func TestIsHostVersionCompatible(t *testing.T) {
 	}
 }
 
-func TestFetchLatestRelease(t *testing.T) {
-	// Setup a mock HTTP server
+func TestFetchLatestRelease_PrivateSelectsAPIURL(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup a mock HTTP server for /latest endpoint
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/latest" {
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return
 		}
 
+		// Return a release with distinct url and browser_download_url per asset
 		release := dto.GitHubRelease{
 			TagName: "v1.0.0",
 			Assets: []dto.GitHubAsset{
@@ -210,8 +214,197 @@ func TestFetchLatestRelease(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Test fetch (requires integration with config, skipped for unit test isolation)
-	_ = server
+	// Call with private=true; should select asset.URL
+	assets, tag, err := FetchLatestRelease(ctx, server.URL, "", true)
+	if err != nil {
+		t.Fatalf("FetchLatestRelease() error = %v", err)
+	}
+
+	if tag != "v1.0.0" {
+		t.Errorf("tag = %q; want %q", tag, "v1.0.0")
+	}
+
+	// Check manifest URL: must be the API URL, not browser_download_url
+	manifestURL := assets["litelens-plugin-helm-manifest.json"]
+	wantManifestURL := "https://api.github.com/repos/test/test/releases/assets/123"
+	if manifestURL != wantManifestURL {
+		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	}
+
+	// Check bundle URL: must be the API URL, not browser_download_url
+	bundleURL := assets["litelens-plugin-helm-frontend.tar.gz"]
+	wantBundleURL := "https://api.github.com/repos/test/test/releases/assets/124"
+	if bundleURL != wantBundleURL {
+		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	}
+}
+
+func TestFetchLatestRelease_PublicSelectsBrowserURL(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup a mock HTTP server for /latest endpoint
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/latest" {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+
+		release := dto.GitHubRelease{
+			TagName: "v2.1.0",
+			Assets: []dto.GitHubAsset{
+				{
+					Name:               "litelens-plugin-kustomize-manifest.json",
+					URL:                "https://api.github.com/repos/test/test/releases/assets/999",
+					BrowserDownloadURL: "https://github.com/test/test/releases/download/v2.1.0/litelens-plugin-kustomize-manifest.json",
+				},
+				{
+					Name:               "litelens-plugin-kustomize-frontend.tar.gz",
+					URL:                "https://api.github.com/repos/test/test/releases/assets/1000",
+					BrowserDownloadURL: "https://github.com/test/test/releases/download/v2.1.0/litelens-plugin-kustomize-frontend.tar.gz",
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	// Call with private=false; should select asset.BrowserDownloadURL
+	assets, tag, err := FetchLatestRelease(ctx, server.URL, "", false)
+	if err != nil {
+		t.Fatalf("FetchLatestRelease() error = %v", err)
+	}
+
+	if tag != "v2.1.0" {
+		t.Errorf("tag = %q; want %q", tag, "v2.1.0")
+	}
+
+	// Check manifest URL: must be the browser download URL, not the API URL
+	manifestURL := assets["litelens-plugin-kustomize-manifest.json"]
+	wantManifestURL := "https://github.com/test/test/releases/download/v2.1.0/litelens-plugin-kustomize-manifest.json"
+	if manifestURL != wantManifestURL {
+		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	}
+
+	// Check bundle URL: must be the browser download URL, not the API URL
+	bundleURL := assets["litelens-plugin-kustomize-frontend.tar.gz"]
+	wantBundleURL := "https://github.com/test/test/releases/download/v2.1.0/litelens-plugin-kustomize-frontend.tar.gz"
+	if bundleURL != wantBundleURL {
+		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	}
+}
+
+func TestFetchRelease_PrivateSelectsAPIURL(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup a mock HTTP server for /tags/<tag> endpoint
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/tags/v3.5.0" {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+
+		release := dto.GitHubRelease{
+			TagName: "v3.5.0",
+			Assets: []dto.GitHubAsset{
+				{
+					Name:               "litelens-plugin-flux-manifest.json",
+					URL:                "https://api.github.com/repos/test/test/releases/assets/555",
+					BrowserDownloadURL: "https://github.com/test/test/releases/download/v3.5.0/litelens-plugin-flux-manifest.json",
+				},
+				{
+					Name:               "litelens-plugin-flux-frontend.tar.gz",
+					URL:                "https://api.github.com/repos/test/test/releases/assets/556",
+					BrowserDownloadURL: "https://github.com/test/test/releases/download/v3.5.0/litelens-plugin-flux-frontend.tar.gz",
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	// Call with private=true and a specific tag; should select asset.URL
+	assets, tag, err := FetchRelease(ctx, server.URL, "", "v3.5.0", true)
+	if err != nil {
+		t.Fatalf("FetchRelease() error = %v", err)
+	}
+
+	if tag != "v3.5.0" {
+		t.Errorf("tag = %q; want %q", tag, "v3.5.0")
+	}
+
+	// Check manifest URL: must be the API URL
+	manifestURL := assets["litelens-plugin-flux-manifest.json"]
+	wantManifestURL := "https://api.github.com/repos/test/test/releases/assets/555"
+	if manifestURL != wantManifestURL {
+		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	}
+
+	// Check bundle URL: must be the API URL
+	bundleURL := assets["litelens-plugin-flux-frontend.tar.gz"]
+	wantBundleURL := "https://api.github.com/repos/test/test/releases/assets/556"
+	if bundleURL != wantBundleURL {
+		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	}
+}
+
+func TestFetchRelease_PublicSelectsBrowserURL(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup a mock HTTP server for /tags/<tag> endpoint
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/tags/v1.2.3" {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+
+		release := dto.GitHubRelease{
+			TagName: "v1.2.3",
+			Assets: []dto.GitHubAsset{
+				{
+					Name:               "litelens-plugin-argocd-manifest.json",
+					URL:                "https://api.github.com/repos/test/test/releases/assets/777",
+					BrowserDownloadURL: "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-manifest.json",
+				},
+				{
+					Name:               "litelens-plugin-argocd-frontend.tar.gz",
+					URL:                "https://api.github.com/repos/test/test/releases/assets/778",
+					BrowserDownloadURL: "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-frontend.tar.gz",
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	// Call with private=false and a specific tag; should select asset.BrowserDownloadURL
+	assets, tag, err := FetchRelease(ctx, server.URL, "", "v1.2.3", false)
+	if err != nil {
+		t.Fatalf("FetchRelease() error = %v", err)
+	}
+
+	if tag != "v1.2.3" {
+		t.Errorf("tag = %q; want %q", tag, "v1.2.3")
+	}
+
+	// Check manifest URL: must be the browser download URL
+	manifestURL := assets["litelens-plugin-argocd-manifest.json"]
+	wantManifestURL := "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-manifest.json"
+	if manifestURL != wantManifestURL {
+		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	}
+
+	// Check bundle URL: must be the browser download URL
+	bundleURL := assets["litelens-plugin-argocd-frontend.tar.gz"]
+	wantBundleURL := "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-frontend.tar.gz"
+	if bundleURL != wantBundleURL {
+		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	}
 }
 
 func TestNormalizeVersion(t *testing.T) {

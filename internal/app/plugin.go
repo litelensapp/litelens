@@ -343,18 +343,21 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 	// Set status to INSTALLING
 	loader.SetStatus(dto.PluginStatusInstalling)
 
-	// Resolve token and baseURL based on sourceURL. Settings.AccessToken is
+	// Resolve token, baseURL, and private flag based on sourceURL. Settings.AccessToken is
 	// reserved for the app's own update-check downloads and must never be used
 	// as a fallback here: each marketplace repository uses its own configured
 	// AccessToken only (empty for the public default marketplace, or if the
 	// user left a private repo's token unset — the subsequent fetch will fail
-	// naturally with an auth error in that case).
+	// naturally with an auth error in that case). The default marketplace
+	// (sourceURL == "", no matching MarketplaceRepository) is treated as public.
 	a.mu.RLock()
 	baseURL := sourceURL
 	token := ""
+	private := false
 	for _, repo := range a.settings.MarketplaceRepositories {
 		if repo.URL == sourceURL {
 			token = repo.AccessToken
+			private = repo.Private
 			break
 		}
 	}
@@ -366,7 +369,7 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 		defer cancel()
 
 		// 1. Fetch release from GitHub (specific tag if provided, otherwise latest)
-		assets, tag, err := plugin.FetchRelease(ctx, baseURL, token, targetTag)
+		assets, tag, err := plugin.FetchRelease(ctx, baseURL, token, targetTag, private)
 		if err != nil {
 			loader.SetStatusWithError(dto.PluginStatusCrashed, fmt.Sprintf("fetch release: %v", err))
 			return
@@ -685,6 +688,7 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 	type source struct {
 		sourceURL string // empty for default, repo URL for user-added
 		token     string
+		private   bool
 	}
 
 	// Build list of sources: default (baseURL="") + non-disabled user repos.
@@ -692,6 +696,7 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 		{
 			sourceURL: "",
 			token:     "",
+			private:   false,
 		},
 	}
 	// User-added repository sources (skip disabled ones)
@@ -702,6 +707,7 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 		sources = append(sources, source{
 			sourceURL: repo.URL,
 			token:     repo.AccessToken,
+			private:   repo.Private,
 		})
 	}
 
@@ -720,7 +726,7 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 				sourceLabel = "default"
 			}
 
-			assets, _, err := plugin.FetchLatestRelease(ctx, src.sourceURL, src.token)
+			assets, _, err := plugin.FetchLatestRelease(ctx, src.sourceURL, src.token, src.private)
 			if err != nil {
 				resultsChan <- fetchResult{
 					manifests: nil,

@@ -417,6 +417,7 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 	type source struct {
 		sourceURL string
 		token     string
+		private   bool
 	}
 	type fetchResult struct {
 		manifests []*dto.Manifest
@@ -427,6 +428,7 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 	src := source{
 		sourceURL: testRepoURL,
 		token:     "ghp_test",
+		private:   true,
 	}
 
 	// Run the fixed goroutine logic
@@ -437,7 +439,7 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 			sourceLabel = "default"
 		}
 
-		assets, _, err := plugin.FetchLatestRelease(context.Background(), src.sourceURL, src.token)
+		assets, _, err := plugin.FetchLatestRelease(context.Background(), src.sourceURL, src.token, src.private)
 		if err != nil {
 			resultsChan <- fetchResult{
 				manifests: nil,
