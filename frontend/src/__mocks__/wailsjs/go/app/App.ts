@@ -1,0 +1,35 @@
+export const Connect = (_context: string): Promise<void> => Promise.resolve();
+export const GetContexts = (): Promise<string[]> => Promise.resolve([]);
+export const GetCurrentContext = (): Promise<string> => Promise.resolve("");
+export const GetVersion = (): Promise<string> => Promise.resolve("");
+export const GetSettings = (): Promise<unknown> => Promise.resolve(null);
+export const SaveSettings = (_settings: unknown): Promise<void> => Promise.resolve();
+export const GetClusterProxy = (): Promise<unknown> => Promise.resolve(null);
+export const SaveClusterProxy = (_proxy: unknown): Promise<void> => Promise.resolve();
+export const ClipboardGetText = (): Promise<string> => Promise.resolve("");
+export const GetDefaultShell = (): Promise<string> => Promise.resolve("");
+export const IsResourceForbidden = (_resource: string): Promise<boolean> => Promise.resolve(false);
+export const PerformUpdate = (): Promise<void> => Promise.resolve();
+export const GetActiveKubeconfigPaths = (): Promise<string[]> => Promise.resolve([]);
+export const GetContextKubeconfigPath = (_context: string): Promise<string> => Promise.resolve("");
+export const SaveKubeconfigPaths = (_paths: string[]): Promise<void> => Promise.resolve();
+export const SaveLocaleTimezone = (_tz: string): Promise<void> => Promise.resolve();
+export const UpdateConfigMap = (
+  _namespace: string,
+  _name: string,
+  _data: Record<string, string>
+): Promise<void> => Promise.resolve();
+export const DeleteResourceQuota = (_namespace: string, _name: string): Promise<void> =>
+  Promise.resolve();
+export const DeletePod = (_namespace: string, _name: string): Promise<void> => Promise.resolve();
+export const DeletePods = (_items: unknown): Promise<void> => Promise.resolve();
+export const DeleteReplicaSet = (_namespace: string, _name: string): Promise<void> =>
+  Promise.resolve();
+export const DeleteNamespace = (_name: string): Promise<void> => Promise.resolve();
+export const DeleteNamespaces = (_names: string[]): Promise<void> => Promise.resolve();
+export const DeleteNode = (_name: string): Promise<void> => Promise.resolve();
+export const DeleteNodes = (_names: string[]): Promise<void> => Promise.resolve();
+export const GetNamespaceYAML = (_name: string): Promise<string> => Promise.resolve("");
+export const UpdateNamespaceYAML = (_yamlString: string): Promise<void> => Promise.resolve();
+export const GetPluginsFromMarketplace = (): Promise<unknown[]> => Promise.resolve([]);
+export const IsPrivateRepoAccess = (): Promise<boolean> => Promise.resolve(true);

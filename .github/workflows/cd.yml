@@ -1,0 +1,30 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release-version:
+    name: Release Version
+    uses: ./.github/workflows/job-release-semver.yml
+    secrets: inherit
+
+  build:
+    name: Build
+    needs: [release-version]
+    if: ${{ needs.release-version.result == 'success' }}
+    uses: ./.github/workflows/job-build.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.release-version.outputs.tag_name }}
+
+  publish-design-system:
+    name: Publish Design System
+    needs: [release-version]
+    if: ${{ needs.release-version.result == 'success' && vars.DESIGN_SYSTEM_RELEASED == 'true' }}
+    uses: ./.github/workflows/job-publish-design-system.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.release-version.outputs.tag_name }}

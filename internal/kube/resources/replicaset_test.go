@@ -1,0 +1,228 @@
+package kubeResources
+
+import (
+	"testing"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	listersappsv1 "k8s.io/client-go/listers/apps/v1"
+	"k8s.io/client-go/tools/cache"
+)
+
+type errorReplicaSetLister struct{ err error }
+
+func (e *errorReplicaSetLister) List(_ labels.Selector) ([]*appsv1.ReplicaSet, error) {
+	return nil, e.err
+}
+func (e *errorReplicaSetLister) ReplicaSets(_ string) listersappsv1.ReplicaSetNamespaceLister {
+	return &errorReplicaSetNamespaceLister{e.err}
+}
+
+type errorReplicaSetNamespaceLister struct{ err error }
+
+func (e *errorReplicaSetNamespaceLister) List(_ labels.Selector) ([]*appsv1.ReplicaSet, error) {
+	return nil, e.err
+}
+func (e *errorReplicaSetNamespaceLister) Get(_ string) (*appsv1.ReplicaSet, error) {
+	return nil, e.err
+}
+
+func newReplicaSetLister(rss ...*appsv1.ReplicaSet) listersappsv1.ReplicaSetLister {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	for _, rs := range rss {
+		_ = indexer.Add(rs)
+	}
+	return listersappsv1.NewReplicaSetLister(indexer)
+}
+
+func makeReplicaSet(name, namespace string) *appsv1.ReplicaSet {
+	return &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         namespace,
+			CreationTimestamp: metav1.Time{Time: fixedTime},
+		},
+		Status: appsv1.ReplicaSetStatus{
+			Replicas:      1,
+			ReadyReplicas: 1,
+		},
+	}
+}
+
+func TestListReplicaSets_SingleNamespace(t *testing.T) {
+	rs := makeReplicaSet("rs-1", "default")
+	lister := newReplicaSetLister(rs)
+
+	result, err := ListReplicaSets(lister, "default")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(result))
+	}
+	if result[0].Name != "rs-1" {
+		t.Errorf("Name = %q; want %q", result[0].Name, "rs-1")
+	}
+}
+
+func TestListReplicaSets_EmptyNamespaceReturnsAll(t *testing.T) {
+	rs1 := makeReplicaSet("rs-a", "ns-a")
+	rs2 := makeReplicaSet("rs-b", "ns-b")
+	lister := newReplicaSetLister(rs1, rs2)
+
+	result, err := ListReplicaSets(lister, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 results, got %d", len(result))
+	}
+}
+
+func TestListReplicaSets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
+	lister := newReplicaSetLister()
+
+	result, err := ListReplicaSets(lister, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Error("expected non-nil slice; got nil")
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result; got %d items", len(result))
+	}
+}
+
+
+func TestToReplicaSet_NilReplicas_DefaultsToOne(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Spec.Replicas = nil
+
+	got := toReplicaSet(rs)
+	if got.Desired != 0 {
+		t.Errorf("Desired = %d; want 0 (nil handled as zero)", got.Desired)
+	}
+}
+
+func TestToReplicaSet_WithReplicas(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	replicas := int32(3)
+	rs.Spec.Replicas = &replicas
+
+	got := toReplicaSet(rs)
+	if got.Desired != 3 {
+		t.Errorf("Desired = %d; want 3", got.Desired)
+	}
+}
+
+func TestToReplicaSet_NilSelector_EmptySelector(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Spec.Selector = nil
+
+	got := toReplicaSet(rs)
+	if got.Selector != "" {
+		t.Errorf("Selector = %q; want empty string", got.Selector)
+	}
+}
+
+func TestToReplicaSet_WithSelector(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: map[string]string{"app": "test"},
+	}
+
+	got := toReplicaSet(rs)
+	if got.Selector != "app=test" {
+		t.Errorf("Selector = %q; want %q", got.Selector, "app=test")
+	}
+}
+
+func TestToReplicaSet_WithOwnerReferences(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.OwnerReferences = []metav1.OwnerReference{
+		{Name: "dep-1", Kind: "Deployment"},
+	}
+
+	got := toReplicaSet(rs)
+	if got.OwnerName != "dep-1" {
+		t.Errorf("OwnerName = %q; want %q", got.OwnerName, "dep-1")
+	}
+	if got.OwnerKind != "Deployment" {
+		t.Errorf("OwnerKind = %q; want %q", got.OwnerKind, "Deployment")
+	}
+}
+
+func TestToReplicaSet_NilLabels_EmptyMap(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Labels = nil
+
+	got := toReplicaSet(rs)
+	if len(got.Labels) != 0 {
+		t.Errorf("Labels length = %d; want 0", len(got.Labels))
+	}
+}
+
+func TestGetReplicaSetByName_Success(t *testing.T) {
+	rs := makeReplicaSet("rs-1", "default")
+	lister := newReplicaSetLister(rs)
+
+	result, err := GetReplicaSetByName(lister, "default", "rs-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Name != "rs-1" {
+		t.Errorf("Name = %q; want %q", result.Name, "rs-1")
+	}
+}
+
+func TestGetReplicaSetByName_NotFound(t *testing.T) {
+	rs := makeReplicaSet("rs-1", "default")
+	lister := newReplicaSetLister(rs)
+
+	_, err := GetReplicaSetByName(lister, "default", "nonexistent")
+	if err == nil {
+		t.Error("expected error for nonexistent ReplicaSet; got nil")
+	}
+}
+
+func TestToReplicaSet_MultipleContainers(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Spec.Template.Spec.Containers = []corev1.Container{
+		{Image: "image-1"},
+		{Image: "image-2"},
+	}
+
+	got := toReplicaSet(rs)
+	if len(got.Images) != 2 {
+		t.Errorf("Images length = %d; want 2", len(got.Images))
+	}
+	if got.Images[0] != "image-1" {
+		t.Errorf("Images[0] = %q; want %q", got.Images[0], "image-1")
+	}
+}
+
+func TestToReplicaSet_WithTolerations(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Spec.Template.Spec.Tolerations = []corev1.Toleration{
+		{Key: "key1"},
+		{Key: "key2"},
+	}
+
+	got := toReplicaSet(rs)
+	if got.Tolerations != 2 {
+		t.Errorf("Tolerations = %d; want 2", got.Tolerations)
+	}
+}
+
+func TestToReplicaSet_WithAffinity(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Spec.Template.Spec.Affinity = &corev1.Affinity{}
+
+	got := toReplicaSet(rs)
+	if got.Affinities != 1 {
+		t.Errorf("Affinities = %d; want 1", got.Affinities)
+	}
+}

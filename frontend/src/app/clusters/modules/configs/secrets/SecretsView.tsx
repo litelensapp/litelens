@@ -1,0 +1,257 @@
+import {
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  EmptyState,
+  LockIcon,
+  MoreVerticalIcon,
+  ResourceBulkDeletionButton,
+  ResourceDeletionButton,
+  ResourceLink,
+  ResourceModificationButton,
+  SearchInput,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonLoader,
+  TruncatedText,
+  cn,
+} from "@litelens/design-system";
+import { FC, useState } from "react";
+import { useMainLayoutContext } from "../../../MainLayoutContext";
+import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
+import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { SecretDeleteConfirmationModal } from "./components/SecretDeleteConfirmationModal";
+import { useGetSecrets } from "./hooks/data-access/useGetSecrets";
+import { useDeleteSecret } from "./hooks/data-mutation/useDeleteSecret";
+import { useDeleteSecrets } from "./hooks/data-mutation/useDeleteSecrets";
+
+interface SecretTableCtaButtonsProps {
+  name: string;
+  namespace: string;
+}
+
+const SecretTableCtaButtons: FC<SecretTableCtaButtonsProps> = ({ namespace, name }) => {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { openTab } = useUnifiedTray();
+
+  const { mutate: deleteSecret, isPending: isDeletePending } = useDeleteSecret();
+
+  const handleDeleteConfirm = () => {
+    deleteSecret({ namespace, name }, { onSuccess: () => setShowDeleteModal(false) });
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="Actions"
+          className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreVerticalIcon className="size-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <ResourceModificationButton
+            onClick={() => openTab("modification", { kind: "Secret", name, namespace })}
+          />
+          <ResourceDeletionButton
+            disabled={isDeletePending}
+            onClick={() => setShowDeleteModal(true)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <SecretDeleteConfirmationModal
+        open={showDeleteModal}
+        mode="single"
+        name={name}
+        namespace={namespace}
+        isPending={isDeletePending}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+      />
+    </>
+  );
+};
+
+export const SecretsView: FC = () => {
+  const [search, setSearch] = useState("");
+  const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
+  const { activeContext, namespace } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext();
+
+  const { mutate: deleteSecrets, isPending: isBulkDeletePending } = useDeleteSecrets();
+
+  const { data: raw = [], isLoading } = useGetSecrets({ context: activeContext, namespace });
+
+  const secrets = raw
+    .filter((s) => !search || s.Name.toLowerCase().includes(search.toLowerCase()))
+    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span className="text-h1">Secrets</span>
+        <span className="text-muted-foreground text-xs">
+          {secrets.length} item{secrets.length !== 1 ? "s" : ""}
+        </span>
+        <div className="ml-auto flex items-center gap-4">
+          <ResourceBulkDeletionButton
+            count={selectedSecretIds.size}
+            ariaLabel="Delete selected secrets"
+            tooltip="Delete selected Secrets"
+            onClick={() => setShowBulkDeleteModal(true)}
+          />
+          <SearchInput
+            placeholder="Search Secrets..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            wrapperClassName="w-68"
+          />
+        </div>
+      </div>
+
+      <Table containerClassName="flex-1 overflow-y-auto">
+        <TableHeader className="bg-background z-sticky sticky top-0">
+          <TableRow>
+            <TableHead className="w-12">
+              <Checkbox
+                checked={
+                  secrets.length > 0 &&
+                  secrets.every((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`))
+                }
+                indeterminate={
+                  secrets.some((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`)) &&
+                  !secrets.every((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`))
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    const newSelection = new Set(selectedSecretIds);
+                    secrets.forEach((s) => newSelection.add(`${s.Namespace}/${s.Name}`));
+                    setSelectedSecretIds(newSelection);
+                  } else {
+                    const newSelection = new Set(selectedSecretIds);
+                    secrets.forEach((s) => newSelection.delete(`${s.Namespace}/${s.Name}`));
+                    setSelectedSecretIds(newSelection);
+                  }
+                }}
+                aria-label="Select all visible secrets"
+              />
+            </TableHead>
+            <TableHead>Name</TableHead>
+            {!namespace && <TableHead>Namespace</TableHead>}
+            <TableHead>Labels</TableHead>
+            <TableHead>Keys</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Age</TableHead>
+            <TableHead className="w-8" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoading ? (
+            <TableSkeletonLoader
+              rows={5}
+              columns={namespace ? 5 : 6}
+              includeCheckbox={true}
+              columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[35%]", "w-[30%]", "w-[30%]"]}
+            />
+          ) : secrets.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={namespace ? 7 : 8} className="px-0 py-0">
+                <EmptyState
+                  icon={<LockIcon className="size-8" />}
+                  title="No Secrets"
+                  description="Create a secret to store sensitive data"
+                />
+              </TableCell>
+            </TableRow>
+          ) : (
+            secrets.map((s) => {
+              const sId = `${s.Namespace}/${s.Name}`;
+              const isSelected = selectedSecretIds.has(sId);
+              return (
+                <TableRow
+                  key={sId}
+                  className={cn(isSelected && "bg-accent/30", "cursor-pointer")}
+                  onClick={() => onToggleSecretDetail(s.Namespace, s.Name)}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => {
+                        const newSelection = new Set(selectedSecretIds);
+                        if (isSelected) newSelection.delete(sId);
+                        else newSelection.add(sId);
+                        setSelectedSecretIds(newSelection);
+                      }}
+                      aria-label={`Select secret ${s.Name}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{s.Name}</TableCell>
+                  {!namespace && (
+                    <TableCell className="text-xs">
+                      <ResourceLink
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleNamespaceDetail(s.Namespace);
+                        }}
+                      >
+                        {s.Namespace}
+                      </ResourceLink>
+                    </TableCell>
+                  )}
+                  <TableCell className="text-muted-foreground max-w-36">
+                    <TruncatedText text={s.Labels?.length ? s.Labels.join(", ") : "—"} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-36">
+                    <TruncatedText text={s.Keys?.join(", ") || "—"} />
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{s.Type}</TableCell>
+                  <TableCell className="text-xs">{s.Age}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <SecretTableCtaButtons name={s.Name} namespace={s.Namespace} />
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+
+      {selectedSecretIds.size > 0 && (
+        <SecretDeleteConfirmationModal
+          open={showBulkDeleteModal}
+          mode="bulk"
+          items={Array.from(selectedSecretIds).map((id) => {
+            const [ns, name] = id.split("/");
+            return { namespace: ns, name };
+          })}
+          isPending={isBulkDeletePending}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => {
+            const items = Array.from(selectedSecretIds).map((id) => {
+              const [ns, name] = id.split("/");
+              return { namespace: ns, name };
+            });
+            deleteSecrets(
+              { items },
+              {
+                onSuccess: () => {
+                  setShowBulkDeleteModal(false);
+                  setSelectedSecretIds(new Set());
+                },
+              }
+            );
+          }}
+        />
+      )}
+    </div>
+  );
+};

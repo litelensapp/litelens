@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package pluginapi;
+
+option go_package = "github.com/litelensapp/litelens/internal/plugin/pb";
+
+service Plugin {
+  rpc GetCapabilities(Empty) returns (CapabilitiesResponse);
+  rpc SetClusterContext(SetClusterContextRequest) returns (Empty);
+  rpc Invoke(InvokeRequest) returns (InvokeResponse);
+}
+
+message Empty {}
+
+message CapabilitiesResponse {
+  string version = 1;
+  bool ready = 2;
+  repeated string features = 3;
+}
+
+message SetClusterContextRequest {
+  string contextName = 1;
+  string kubeconfigPath = 2;
+}
+
+message InvokeRequest {
+  string method = 1;
+  string payloadJson = 2;
+}
+
+message InvokeResponse {
+  string payloadJson = 1;
+  string error = 2;
+}
