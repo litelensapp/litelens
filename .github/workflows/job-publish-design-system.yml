@@ -34,7 +34,6 @@ jobs:
         run: pnpm -F @litelens/design-system run build
 
       - name: Publish to NPM
-        if:
         run: pnpm publish -F @litelens/design-system --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
