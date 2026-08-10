@@ -28,3 +28,6 @@ jobs:
     secrets: inherit
     with:
       version: ${{ needs.release-version.outputs.tag_name }}
+    permissions:
+      id-token: write
+      contents: read
