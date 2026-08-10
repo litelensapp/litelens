@@ -10,6 +10,7 @@ import {
 
 import { FC } from "react";
 import { Section, SECTION_HEADER } from "./types";
+import { useIsPrivateRepoAccess } from "../hooks/data-access/useIsPrivateRepoAccess";
 
 interface SettingsSidebarProps {
   section: Section;
@@ -17,6 +18,7 @@ interface SettingsSidebarProps {
 }
 
 export const SettingsSidebar: FC<SettingsSidebarProps> = ({ section, onSelect }) => {
+  const { data: isPrivateRepoAccess = true } = useIsPrivateRepoAccess();
   return (
     <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r">
       <div className="flex flex-col gap-0.5 p-2">
@@ -68,17 +70,19 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({ section, onSelect })
           {SECTION_HEADER.marketplace}
         </Button>
 
-        <Button
-          variant="ghost"
-          onClick={() => onSelect("sandbox")}
-          className={cn(
-            "w-full justify-start font-medium",
-            section === "sandbox" && "bg-secondary text-secondary-foreground"
-          )}
-        >
-          <LockIcon className="size-4 shrink-0" />
-          {SECTION_HEADER.sandbox}
-        </Button>
+        {isPrivateRepoAccess && (
+          <Button
+            variant="ghost"
+            onClick={() => onSelect("sandbox")}
+            className={cn(
+              "w-full justify-start font-medium",
+              section === "sandbox" && "bg-secondary text-secondary-foreground"
+            )}
+          >
+            <LockIcon className="size-4 shrink-0" />
+            {SECTION_HEADER.sandbox}
+          </Button>
+        )}
       </div>
     </aside>
   );

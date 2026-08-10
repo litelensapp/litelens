@@ -32,3 +32,4 @@ export const DeleteNodes = (_names: string[]): Promise<void> => Promise.resolve(
 export const GetNamespaceYAML = (_name: string): Promise<string> => Promise.resolve("");
 export const UpdateNamespaceYAML = (_yamlString: string): Promise<void> => Promise.resolve();
 export const GetPluginsFromMarketplace = (): Promise<unknown[]> => Promise.resolve([]);
+export const IsPrivateRepoAccess = (): Promise<boolean> => Promise.resolve(true);

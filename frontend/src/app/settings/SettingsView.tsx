@@ -8,33 +8,41 @@ import { SectionHeader } from "./components/SectionHeader";
 import { SettingsSidebar } from "./components/SettingsSidebar";
 import { Section, SECTION_HEADER } from "./components/types";
 import { WelcomeView } from "./components/WelcomeView";
+import { useIsPrivateRepoAccess } from "./hooks/data-access/useIsPrivateRepoAccess";
 
 export const SettingsView: FC<{
   initialSection?: Section;
 }> = ({ initialSection = "welcome" }) => {
+  const { data: isPrivateRepoAccess = true } = useIsPrivateRepoAccess();
+
   const [section, setSection] = useState<Section>(initialSection);
+
+  // Derived every render (not just at mount) so a sandbox selection is never
+  // shown once private repo access resolves to disabled, without needing an
+  // effect to reset state.
+  const displaySection = section === "sandbox" && !isPrivateRepoAccess ? "welcome" : section;
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <SettingsSidebar section={section} onSelect={setSection} />
+      <SettingsSidebar section={displaySection} onSelect={setSection} />
 
       {/* Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {section === "welcome" ? (
+        {displaySection === "welcome" ? (
           <WelcomeView />
         ) : (
           <>
-            <SectionHeader title={SECTION_HEADER[section]} />
+            <SectionHeader title={SECTION_HEADER[displaySection]} />
             <div
               className={cn(
                 "flex flex-1 flex-col px-6 py-4",
-                section === "marketplace" ? "overflow-hidden" : "overflow-auto"
+                displaySection === "marketplace" ? "overflow-hidden" : "overflow-auto"
               )}
             >
-              {section === "sandbox" && <SandboxContent />}
-              {section === "kubernetes" && <K8sContent />}
-              {section === "app" && <AppContent />}
-              {section === "marketplace" && <MarketplaceContent />}
+              {displaySection === "sandbox" && <SandboxContent />}
+              {displaySection === "kubernetes" && <K8sContent />}
+              {displaySection === "app" && <AppContent />}
+              {displaySection === "marketplace" && <MarketplaceContent />}
             </div>
           </>
         )}

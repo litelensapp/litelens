@@ -59,5 +59,5 @@ func GetMarketplaceBaseURL() string {
 // internal/updater/updater.go) — the plugin marketplace does not use this;
 // see internal/app/plugin.go's use of MarketplaceRepository.Private instead.
 func IsPrivateRepoAccess() bool {
-	return getBoolEnvOrDefault("PRIVATE_REPO_ACCESS", true)
+	return getBoolEnvOrDefault("PRIVATE_REPO_ACCESS", false)
 }

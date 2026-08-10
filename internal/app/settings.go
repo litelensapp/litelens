@@ -229,6 +229,13 @@ func (a *App) GetActiveKubeconfigPaths() ([]string, error) {
 	return rules.Precedence, nil
 }
 
+// IsPrivateRepoAccess reports whether the backend is configured for private-repo
+// GitHub asset access (see config.IsPrivateRepoAccess), so the frontend can hide
+// the Sandbox access-token UI when there is nothing for the user to configure.
+func (a *App) IsPrivateRepoAccess() bool {
+	return config.IsPrivateRepoAccess()
+}
+
 // GetContextKubeconfigPath returns the kubeconfig file path that defines the given context.
 // Returns an empty string if the context is not found in any loaded kubeconfig.
 func (a *App) GetContextKubeconfigPath(contextName string) (string, error) {
