@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "Design system components, utilities, and hooks for litelens",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/litelensapp/litelens.git",
+    "directory": "design-system"
+  },
   "publishConfig": {
     "access": "public"
   },
