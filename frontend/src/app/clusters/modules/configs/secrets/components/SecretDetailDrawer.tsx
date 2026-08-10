@@ -295,7 +295,7 @@ const SecretOverviewTab: FC<{ secret: SecretDetail }> = ({ secret }) => {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ScrollArea className={dataKeys.length > 0 ? "min-h-0 flex-none" : "min-h-0 flex-1"}>
+      <ScrollArea className="min-h-0 flex-1">
         <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
           <span className="text-h3 text-muted-foreground">Created</span>
           <span className="text-body font-mono">
@@ -333,16 +333,14 @@ const SecretOverviewTab: FC<{ secret: SecretDetail }> = ({ secret }) => {
             )}
           </div>
         </div>
-      </ScrollArea>
 
-      {dataKeys.length > 0 && (
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <SectionDivider
-            label="Data"
-            className="bg-muted/50 border-y-0 border-t uppercase tracking-wide"
-          />
+        {dataKeys.length > 0 && (
+          <form onSubmit={handleSubmit}>
+            <SectionDivider
+              label="Data"
+              className="bg-muted/50 border-y-0 border-t uppercase tracking-wide"
+            />
 
-          <ScrollArea className="min-h-0 flex-1">
             <div className="flex flex-col px-4 pb-4">
               {dataKeys.map((key) => {
                 const original = secret.Data[key] ?? "";
@@ -384,38 +382,38 @@ const SecretOverviewTab: FC<{ secret: SecretDetail }> = ({ secret }) => {
                   />
                 ))}
             </div>
-          </ScrollArea>
 
-          <div className="mt-4 flex items-center gap-2 border-t px-4 py-3">
-            {isEditing ? (
-              <div className="flex flex-1 justify-between">
-                <Button size="sm" variant="outline" type="button" onClick={handleCancel}>
-                  Cancel
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" type="button" onClick={addEntry}>
-                    <PlusIcon className="h-3.5 w-3.5" />
-                    Add
+            <div className="mt-4 flex items-center gap-2 border-t px-4 py-3">
+              {isEditing ? (
+                <div className="flex flex-1 justify-between">
+                  <Button size="sm" variant="outline" type="button" onClick={handleCancel}>
+                    Cancel
                   </Button>
-                  <Button size="sm" type="submit" disabled={!hasChanges || isPending}>
-                    {isPending && <Loader2Icon className="h-3.5 w-3.5 animate-spin" />}
-                    SaveIcon
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" type="button" onClick={addEntry}>
+                      <PlusIcon className="h-3.5 w-3.5" />
+                      Add
+                    </Button>
+                    <Button size="sm" type="submit" disabled={!hasChanges || isPending}>
+                      {isPending && <Loader2Icon className="h-3.5 w-3.5 animate-spin" />}
+                      SaveIcon
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                type="button"
-                onClick={() => dispatch({ type: "start_editing" })}
-              >
-                Edit
-              </Button>
-            )}
-          </div>
-        </form>
-      )}
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => dispatch({ type: "start_editing" })}
+                >
+                  Edit
+                </Button>
+              )}
+            </div>
+          </form>
+        )}
+      </ScrollArea>
 
       <SecretModificationConfirmationModal
         open={showConfirm}

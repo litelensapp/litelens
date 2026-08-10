@@ -55,7 +55,17 @@ gh_curl() {
   body=$(cat "$tmp"); rm -f "$tmp"
 
   if [[ "$http_code" == "401" || "$http_code" == "403" ]]; then
-    error "GitHub API returned $http_code — token is invalid or missing required permissions."
+    # Surface GitHub's own explanation instead of guessing — a 401/403 can mean
+    # an invalid/expired token, missing scopes, rate limiting, or an org policy
+    # rejecting the token (e.g. fine-grained PAT lifetime limits), and each of
+    # those needs a different fix.
+    local gh_message
+    gh_message=$(echo "$body" | grep -o '"message": *"[^"]*"' | head -1 | sed -E 's/"message": *"//; s/"$//')
+    if [[ -n "$gh_message" ]]; then
+      error "GitHub API returned $http_code: $gh_message"
+    else
+      error "GitHub API returned $http_code — token is invalid or missing required permissions."
+    fi
   elif [[ "$http_code" == "404" ]]; then
     if [[ -z "$LITELENS_ACCESS_TOKEN" ]]; then
       error "GitHub API returned 404 — check the repo name or that the release/tag exists.\nIf this is a private repo, export a token and re-run:\n  export LITELENS_ACCESS_TOKEN=ghp_xxx"
@@ -76,25 +86,47 @@ VERSION="${1:-${VERSION:-}}"
 if [[ -n "$VERSION" ]]; then
   TAG="$VERSION"
   info "Installing version: $TAG"
-else
+elif [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   info "Fetching latest release..."
   TAG=$(gh_curl "https://api.github.com/repos/${REPO}/releases/latest" \
     | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
-  [[ -z "$TAG" ]] && error "Could not resolve latest release. For private repos set LITELENS_ACCESS_TOKEN."
+  [[ -z "$TAG" ]] && error "Could not resolve latest release."
+  info "Latest version: $TAG"
+else
+  # Public repo, no token: resolve the latest tag via the releases page
+  # redirect instead of the GitHub API. The unauthenticated API is capped at
+  # 60 requests/hour *per source IP*, which is shared by everyone behind the
+  # same NAT/office network/CI runner pool — easy to exhaust without ever
+  # having made 60 requests yourself, and it fails with a 403 that looks
+  # identical to a bad token. The releases page redirect isn't rate-limited.
+  info "Fetching latest release..."
+  FINAL_URL=$(curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" -o /dev/null -w '%{url_effective}' \
+    "https://github.com/${REPO}/releases/latest") \
+    || error "Could not reach https://github.com/${REPO}/releases/latest"
+  TAG="${FINAL_URL##*/tag/}"
+  [[ -z "$TAG" || "$TAG" == "$FINAL_URL" ]] && error "Could not resolve latest release for ${REPO}."
   info "Latest version: $TAG"
 fi
 
-# ── resolve asset ID (required for private repo downloads) ───────────────────
-info "Resolving asset..."
-RELEASE_JSON=$(gh_curl "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
+# ── resolve asset ID (required for private repo downloads only) ──────────────
+# Public downloads use direct github.com/.../releases/download URLs below and
+# never need the API, so skip this (and its share of the rate limit) entirely
+# when there's no token.
+RELEASE_JSON=""
+ASSET_ID=""
+CHECKSUM_ASSET_ID=""
+if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
+  info "Resolving asset..."
+  RELEASE_JSON=$(gh_curl "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
 
-# Extract asset id — tracks last seen "id" value, stops at matching "name"
-ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="$ARTIFACT" '
-  /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
-  /"name":/ && index($0, art) { print last_id; exit }
-')
+  # Extract asset id — tracks last seen "id" value, stops at matching "name"
+  ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="$ARTIFACT" '
+    /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
+    /"name":/ && index($0, art) { print last_id; exit }
+  ')
 
-[[ -z "$ASSET_ID" ]] && error "Asset '${ARTIFACT}' not found in release ${TAG}. Check the tag name and repo."
+  [[ -z "$ASSET_ID" ]] && error "Asset '${ARTIFACT}' not found in release ${TAG}. Check the tag name and repo."
+fi
 
 # ── download ─────────────────────────────────────────────────────────────────
 TMP_DIR="$(mktemp -d)"
@@ -112,18 +144,21 @@ else
   # Public repo: direct download URL
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" --progress-bar \
     "https://github.com/${REPO}/releases/download/${TAG}/${ARTIFACT}" \
-    -o "$TMP_DIR/$ARTIFACT"
+    -o "$TMP_DIR/$ARTIFACT" \
+    || error "Could not download ${ARTIFACT} for release ${TAG}. Check the tag name and repo."
 fi
 
 # ── verify checksum ──────────────────────────────────────────────────────────
 # Fail closed: if no checksum asset is published for this release, refuse to
 # install rather than run an unverified binary.
 info "Verifying checksum..."
-CHECKSUM_ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="${ARTIFACT}.sha256" '
-  /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
-  /"name":/ && index($0, art) { print last_id; exit }
-')
-[[ -z "$CHECKSUM_ASSET_ID" ]] && error "No SHA256 checksum published for '${ARTIFACT}' in release ${TAG}; refusing to install an unverified binary."
+if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
+  CHECKSUM_ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="${ARTIFACT}.sha256" '
+    /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
+    /"name":/ && index($0, art) { print last_id; exit }
+  ')
+  [[ -z "$CHECKSUM_ASSET_ID" ]] && error "No SHA256 checksum published for '${ARTIFACT}' in release ${TAG}; refusing to install an unverified binary."
+fi
 
 if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
@@ -134,7 +169,8 @@ if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
 else
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
     "https://github.com/${REPO}/releases/download/${TAG}/${ARTIFACT}.sha256" \
-    -o "$TMP_DIR/$ARTIFACT.sha256"
+    -o "$TMP_DIR/$ARTIFACT.sha256" \
+    || error "No SHA256 checksum published for '${ARTIFACT}' in release ${TAG}; refusing to install an unverified binary."
 fi
 
 EXPECTED_SHA256=$(tr -d '[:space:]' < "$TMP_DIR/$ARTIFACT.sha256")
