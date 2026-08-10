@@ -16,7 +16,7 @@ jobs:
     name: Publish to NPM
     runs-on: ${{ inputs.RUNNER }}
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - name: Checkout
@@ -32,11 +32,6 @@ jobs:
 
       - name: Build package
         run: pnpm -F @litelens/design-system run build
-
-      - name: Configure NPM auth
-        run: pnpm config set "//registry.npmjs.org/:_authToken" "${NODE_AUTH_TOKEN}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM
         run: pnpm publish -F @litelens/design-system --no-git-checks
