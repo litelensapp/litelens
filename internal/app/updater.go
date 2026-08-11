@@ -372,6 +372,15 @@ func extractBinaryFromTarGz(tarGzPath string) (extractedPath string, err error) 
 // If no checksum is found, returns ("", nil) — the caller must decide
 // whether to fail or proceed without verification.
 func findReleaseChecksumInRelease(ctx context.Context, rel *updater.Release, token string) (string, error) {
+	// When Assets is empty, the release was resolved via the unauthenticated
+	// public path (no token configured), which never calls the GitHub API
+	// and so never populates Assets. The checksum asset still exists at the
+	// well-known convention scripts/install.sh uses: the download asset's
+	// name with a ".sha256" suffix.
+	if len(rel.Assets) == 0 {
+		return downloadChecksum(ctx, rel.AssetURL+".sha256", token)
+	}
+
 	// The checksum file name mirrors the platform asset name with a ".sha256"
 	// suffix, e.g. "litelens-windows-amd64.exe.sha256".
 	checksumName := ""
@@ -409,7 +418,12 @@ func findReleaseChecksumInRelease(ctx context.Context, rel *updater.Release, tok
 		return "", nil
 	}
 
-	// Download the checksum file (tiny, just a hex string + newline).
+	return downloadChecksum(ctx, checksumAssetURL, token)
+}
+
+// downloadChecksum fetches a SHA256 checksum file (tiny, just a hex string +
+// newline) from the given URL and returns its trimmed contents.
+func downloadChecksum(ctx context.Context, checksumAssetURL, token string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, checksumAssetURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("create checksum request: %w", err)
@@ -434,8 +448,7 @@ func findReleaseChecksumInRelease(ctx context.Context, rel *updater.Release, tok
 		return "", fmt.Errorf("read checksum: %w", err)
 	}
 
-	checksumHex := strings.TrimSpace(string(checksumBytes))
-	return checksumHex, nil
+	return strings.TrimSpace(string(checksumBytes)), nil
 }
 
 // resolveInstallerHelper locates the litelens-install-helper binary.

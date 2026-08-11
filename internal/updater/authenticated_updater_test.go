@@ -136,7 +136,7 @@ func TestCheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/latest" {
+				if r.URL.Path != "/releases/latest" {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -149,13 +149,13 @@ func TestCheck(t *testing.T) {
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-			got, err := Check(tt.current, "")
+			got, err := Check(tt.current, "test-token")
 			if (got != nil) != tt.wantRelease {
-				t.Errorf("Check(%q, \"\"): got release=%v, want release=%v", tt.current, got != nil, tt.wantRelease)
+				t.Errorf("Check(%q, token): got release=%v, want release=%v", tt.current, got != nil, tt.wantRelease)
 			}
 			// For the primary happy-path test, we expect no error on success or no-update cases
 			if tt.wantRelease && err != nil {
-				t.Errorf("Check(%q, \"\"): got err=%v, want nil", tt.current, err)
+				t.Errorf("Check(%q, token): got err=%v, want nil", tt.current, err)
 			}
 
 			if tt.wantRelease && got != nil {
@@ -191,7 +191,7 @@ func TestCheckPrivateRepoAccess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/latest" {
+				if r.URL.Path != "/releases/latest" {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -215,7 +215,7 @@ func TestCheckPrivateRepoAccess(t *testing.T) {
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 			t.Setenv("PRIVATE_REPO_ACCESS", tt.privateRepoAccess)
 
-			got, err := Check("v1.0.0", "")
+			got, err := Check("v1.0.0", "test-token")
 			if err != nil {
 				t.Fatalf("Check() returned err=%v, want nil", err)
 			}
@@ -348,7 +348,7 @@ func TestFetchRelease(t *testing.T) {
 				if len(tt.tag) > 0 && tt.tag[0] != 'v' {
 					expectedTag = "v" + tt.tag
 				}
-				expectedPath := fmt.Sprintf("/tags/%s", expectedTag)
+				expectedPath := fmt.Sprintf("/releases/tags/%s", expectedTag)
 				if r.URL.Path != expectedPath {
 					w.WriteHeader(http.StatusNotFound)
 					return
@@ -362,20 +362,20 @@ func TestFetchRelease(t *testing.T) {
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-			got, err := FetchRelease(tt.tag, "")
+			got, err := FetchRelease(tt.tag, "test-token")
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FetchRelease(%q, \"\"): got err=%v, wantErr=%v", tt.tag, err, tt.wantErr)
+				t.Errorf("FetchRelease(%q, token): got err=%v, wantErr=%v", tt.tag, err, tt.wantErr)
 			}
 
 			if !tt.wantErr && got == nil {
-				t.Errorf("FetchRelease(%q, \"\"): got nil, want Release", tt.tag)
+				t.Errorf("FetchRelease(%q, token): got nil, want Release", tt.tag)
 			}
 			if !tt.wantErr && got != nil && tt.serverResponse != nil && len(tt.serverResponse.Assets) > 0 {
 				if got.AssetURL == "" {
-					t.Errorf("FetchRelease(%q, \"\") expected AssetURL to be populated", tt.tag)
+					t.Errorf("FetchRelease(%q, token) expected AssetURL to be populated", tt.tag)
 				}
 				if got.DownloadSize == 0 {
-					t.Errorf("FetchRelease(%q, \"\") expected DownloadSize to be populated", tt.tag)
+					t.Errorf("FetchRelease(%q, token) expected DownloadSize to be populated", tt.tag)
 				}
 			}
 		})
@@ -403,7 +403,7 @@ func TestFetchReleasePrivateRepoAccess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/tags/v1.0.0" {
+				if r.URL.Path != "/releases/tags/v1.0.0" {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -427,7 +427,7 @@ func TestFetchReleasePrivateRepoAccess(t *testing.T) {
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 			t.Setenv("PRIVATE_REPO_ACCESS", tt.privateRepoAccess)
 
-			got, err := FetchRelease("v1.0.0", "")
+			got, err := FetchRelease("v1.0.0", "test-token")
 			if err != nil {
 				t.Fatalf("FetchRelease() returned error: %v", err)
 			}
@@ -574,7 +574,7 @@ func Test_Check_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/latest" {
+				if r.URL.Path != "/releases/latest" {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -592,14 +592,14 @@ func Test_Check_EdgeCases(t *testing.T) {
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-			got, err := Check(tt.current, "")
+			got, err := Check(tt.current, "test-token")
 			if (got != nil) != tt.wantRelease {
-				t.Errorf("Check(%q, \"\"): got release=%v, want release=%v (%s)",
+				t.Errorf("Check(%q, token): got release=%v, want release=%v (%s)",
 					tt.current, got != nil, tt.wantRelease, tt.description)
 			}
 			// For edge cases, we expect no error on success or no-update cases
 			if tt.wantRelease && err != nil {
-				t.Errorf("Check(%q, \"\"): got err=%v, want nil (%s)", tt.current, err, tt.description)
+				t.Errorf("Check(%q, token): got err=%v, want nil (%s)", tt.current, err, tt.description)
 			}
 		})
 	}
@@ -616,7 +616,7 @@ func Test_Check_MalformedJSON(t *testing.T) {
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-	got, err := Check("v1.0.0", "")
+	got, err := Check("v1.0.0", "test-token")
 	if got != nil {
 		t.Errorf("Check() with malformed JSON body = %v, want nil", got)
 	}
@@ -668,9 +668,9 @@ func Test_FetchRelease_EdgeCases(t *testing.T) {
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-			_, err := FetchRelease(tt.tag, "")
+			_, err := FetchRelease(tt.tag, "test-token")
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FetchRelease(%q, \"\"): got err=%v, wantErr=%v (%s)",
+				t.Errorf("FetchRelease(%q, token): got err=%v, wantErr=%v (%s)",
 					tt.tag, err != nil, tt.wantErr, tt.description)
 			}
 			if tt.wantRateLimitErr && err != nil {
@@ -760,7 +760,7 @@ func TestCheck_RateLimit403(t *testing.T) {
 	resetUnix := resetTime.Unix()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/latest" {
+		if r.URL.Path != "/releases/latest" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -771,7 +771,7 @@ func TestCheck_RateLimit403(t *testing.T) {
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-	_, err := Check("v1.0.0", "")
+	_, err := Check("v1.0.0", "test-token")
 	if err == nil {
 		t.Fatalf("Check() with 403 should return error, got nil")
 	}
@@ -798,7 +798,7 @@ func TestCheck_RateLimit403(t *testing.T) {
 // X-RateLimit-Reset header returns a generic rate-limit message.
 func TestCheck_RateLimit403NoHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/latest" {
+		if r.URL.Path != "/releases/latest" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -809,7 +809,7 @@ func TestCheck_RateLimit403NoHeader(t *testing.T) {
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-	_, err := Check("v1.0.0", "")
+	_, err := Check("v1.0.0", "test-token")
 	if err == nil {
 		t.Fatalf("Check() with 403 and no header should return error, got nil")
 	}
@@ -837,7 +837,7 @@ func TestFetchRelease_RateLimit403(t *testing.T) {
 	resetUnix := resetTime.Unix()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/tags/v1.0.0" {
+		if r.URL.Path != "/releases/tags/v1.0.0" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -848,7 +848,7 @@ func TestFetchRelease_RateLimit403(t *testing.T) {
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
-	_, err := FetchRelease("v1.0.0", "")
+	_, err := FetchRelease("v1.0.0", "test-token")
 	if err == nil {
 		t.Fatalf("FetchRelease() with 403 should return error, got nil")
 	}

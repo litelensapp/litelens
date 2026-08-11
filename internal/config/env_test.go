@@ -68,7 +68,7 @@ func Test_GetInstallScriptURL_EmptyStringWhenSetToEmpty(t *testing.T) {
 func Test_GetReleasesBaseURL_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := GetReleasesBaseURL()
-		expected := "https://api.github.com/repos/litelensapp/litelens/releases"
+		expected := "https://github.com/litelensapp/litelens"
 		if result != expected {
 			t.Errorf("expected default URL %s, got %s", expected, result)
 		}

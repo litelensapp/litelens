@@ -518,6 +518,38 @@ func Test_findReleaseChecksumInRelease_NoChecksumAsset(t *testing.T) {
 	}
 }
 
+// Test_findReleaseChecksumInRelease_NilAssetsUsesConventionURL verifies that
+// when Assets is empty (the release was resolved via the unauthenticated
+// public path — no token configured, so the GitHub API was never called),
+// the checksum is fetched from AssetURL+".sha256" by convention instead of
+// being treated as "no checksum found".
+func Test_findReleaseChecksumInRelease_NilAssetsUsesConventionURL(t *testing.T) {
+	const expectedChecksum = "deadbeefcafe"
+	var requestedPath string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		w.Write([]byte(expectedChecksum + "\n")) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	rel := &updater.Release{
+		AssetURL: srv.URL + "/litelens-darwin-arm64.zip",
+		Assets:   nil,
+	}
+
+	got, err := findReleaseChecksumInRelease(context.Background(), rel, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != expectedChecksum {
+		t.Errorf("checksum mismatch: got %q, want %q", got, expectedChecksum)
+	}
+	if requestedPath != "/litelens-darwin-arm64.zip.sha256" {
+		t.Errorf("checksum request path = %q, want %q", requestedPath, "/litelens-darwin-arm64.zip.sha256")
+	}
+}
+
 // Test_findReleaseChecksumInRelease_AuthorizationHeaderWithToken verifies
 // that when a token is provided, the Authorization: Bearer <token> header
 // is sent on the checksum download request. This tests the fix for the
@@ -937,7 +969,7 @@ func TestCheckForUpdate_RateLimitNoRetry(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
-		if r.URL.Path != "/latest" {
+		if r.URL.Path != "/releases/latest" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -951,7 +983,7 @@ func TestCheckForUpdate_RateLimitNoRetry(t *testing.T) {
 	app := &App{
 		version:  "v1.0.0",
 		ctx:      context.Background(),
-		settings: config.Settings{AccessToken: ""},
+		settings: config.Settings{AccessToken: "test-token"},
 	}
 
 	err := app.checkForUpdate()
@@ -990,7 +1022,7 @@ func TestCheckForUpdate_NonRateLimitRetryExhaustion(t *testing.T) {
 	app := &App{
 		version:  "v1.0.0",
 		ctx:      context.Background(),
-		settings: config.Settings{AccessToken: ""},
+		settings: config.Settings{AccessToken: "test-token"},
 	}
 
 	err := app.checkForUpdate()
@@ -1029,7 +1061,7 @@ func TestApp_CheckForUpdate_ReturnsUnderlyingError(t *testing.T) {
 	app := &App{
 		version:  "v1.0.0",
 		ctx:      context.Background(),
-		settings: config.Settings{AccessToken: ""},
+		settings: config.Settings{AccessToken: "test-token"},
 	}
 
 	err := app.CheckForUpdate()

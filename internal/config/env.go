@@ -30,13 +30,17 @@ func GetInstallScriptURL() string {
 	return getEnvOrDefault("INSTALL_SCRIPT_URL", "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh")
 }
 
-// GetReleasesBaseURL returns the GitHub API base URL for the repo's releases,
-// allowing it to be overridden via the APP_VERSION_RELEASES_BASE_URL
-// environment variable (primarily for testing). Used by the app's own
-// auto-updater (internal/updater); plugin marketplace fetches use
-// GetMarketplaceBaseURL instead.
+// GetReleasesBaseURL returns the base URL for the repo's releases (not
+// including the "/releases" path segment — callers append that, plus
+// "/latest" or "/tags/{tag}"), allowing it to be overridden via the
+// APP_VERSION_RELEASES_BASE_URL environment variable (primarily for
+// testing). Defaults to the public github.com host since litelensapp/litelens
+// is public and the unauthenticated path takes precedence; set this to
+// https://api.github.com/repos/<owner>/<repo> when a private repo requires
+// an access token. Used by the app's own auto-updater (internal/updater);
+// plugin marketplace fetches use GetMarketplaceBaseURL instead.
 func GetReleasesBaseURL() string {
-	return getEnvOrDefault("APP_VERSION_RELEASES_BASE_URL", "https://api.github.com/repos/litelensapp/litelens/releases")
+	return getEnvOrDefault("APP_VERSION_RELEASES_BASE_URL", "https://github.com/litelensapp/litelens")
 }
 
 // GetMarketplaceBaseURL returns the GitHub API base URL used as the default

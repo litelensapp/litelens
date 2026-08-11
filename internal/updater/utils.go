@@ -1,0 +1,35 @@
+package updater
+
+import (
+	"fmt"
+
+	"github.com/litelensapp/litelens/internal/config"
+)
+
+// getReleasesLatestUrl returns the URL used to resolve the latest release,
+// shared by both the authenticated (api.github.com, token present) and
+// unauthenticated (github.com redirect, no token) paths — GetReleasesBaseURL
+// defaults to the public github.com host and is overridden to
+// api.github.com/repos/<owner>/<repo> for private-repo/token access.
+func getReleasesLatestUrl() string {
+	return config.GetReleasesBaseURL() + "/releases/latest"
+}
+
+// getAuthenticatedReleaseTagsUrl returns the api.github.com URL for the
+// given release tag, used by the token-present (authenticated) path.
+func getAuthenticatedReleaseTagsUrl(tag string) string {
+	return fmt.Sprintf("%s/releases/tags/%s", config.GetReleasesBaseURL(), tag)
+}
+
+// getUnauthenticatedReleaseTagsUrl returns the github.com HTML URL for the
+// given release tag, used by the no-token (unauthenticated) path.
+func getUnauthenticatedReleaseTagsUrl(tag string) string {
+	return fmt.Sprintf("%s/releases/tag/%s", config.GetReleasesBaseURL(), tag)
+}
+
+// getUnauthenticatedReleaseAssetUrl returns the github.com direct download
+// URL for the given release tag and asset name, used by the no-token
+// (unauthenticated) path.
+func getUnauthenticatedReleaseAssetUrl(tag, name string) string {
+	return fmt.Sprintf("%s/releases/download/%s/%s", config.GetReleasesBaseURL(), tag, name)
+}
