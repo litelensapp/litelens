@@ -185,21 +185,62 @@ if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   [[ -z "$ASSET_ID" ]] && error "Asset '${ARTIFACT}' not found in release ${TAG}. Check the tag name and repo."
 fi
 
+# ── backup current installation ─────────────────────────────────────────────
+# Snapshot whatever's currently installed before touching anything, so a
+# failed/corrupt download leaves the user with a working app instead of a
+# half-installed one. Restored on any download/checksum failure below;
+# discarded once the new artifact is verified good.
+if [[ "$OS" == "Darwin" ]]; then
+  CURRENT_INSTALL="/Applications/LiteLens.app"
+else
+  CURRENT_INSTALL="$INSTALL_DIR/$BIN_NAME"
+fi
+BACKUP_PATH="$TMP_DIR/backup.$(basename "$CURRENT_INSTALL")"
+HAVE_BACKUP=0
+
+if [[ -e "$CURRENT_INSTALL" ]]; then
+  info "Backing up current installation..."
+  if [[ -w "$CURRENT_INSTALL" || -w "$(dirname "$CURRENT_INSTALL")" ]]; then
+    cp -a "$CURRENT_INSTALL" "$BACKUP_PATH"
+  else
+    sudo cp -a "$CURRENT_INSTALL" "$BACKUP_PATH"
+  fi
+  HAVE_BACKUP=1
+fi
+
+restore_backup() {
+  [[ "$HAVE_BACKUP" -eq 1 ]] || return
+  warn "Restoring previous installation..."
+  if [[ -w "$CURRENT_INSTALL" || -w "$(dirname "$CURRENT_INSTALL")" ]]; then
+    rm -rf "$CURRENT_INSTALL"
+    cp -a "$BACKUP_PATH" "$CURRENT_INSTALL"
+  else
+    sudo rm -rf "$CURRENT_INSTALL"
+    sudo cp -a "$BACKUP_PATH" "$CURRENT_INSTALL"
+  fi
+  warn "Previous installation restored"
+}
+
 # ── download ─────────────────────────────────────────────────────────────────
 info "Downloading $ARTIFACT..."
+DOWNLOAD_OK=1
 if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   # Private repo: use the GitHub API assets endpoint with Accept: application/octet-stream
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" --progress-bar \
     -H "Authorization: Bearer ${LITELENS_ACCESS_TOKEN}" \
     -H "Accept: application/octet-stream" \
     "${RELEASES_BASE_URL}/releases/assets/${ASSET_ID}" \
-    -o "$TMP_DIR/$ARTIFACT"
+    -o "$TMP_DIR/$ARTIFACT" || DOWNLOAD_OK=0
 else
   # Public repo: direct download URL
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" --progress-bar \
     "${RELEASES_BASE_URL}/releases/download/${TAG}/${ARTIFACT}" \
-    -o "$TMP_DIR/$ARTIFACT" \
-    || error "Could not download ${ARTIFACT} for release ${TAG}. Check the tag name and repo."
+    -o "$TMP_DIR/$ARTIFACT" || DOWNLOAD_OK=0
+fi
+
+if [[ "$DOWNLOAD_OK" -eq 0 ]]; then
+  restore_backup
+  error "Could not download ${ARTIFACT} for release ${TAG}. Check the tag name and repo."
 fi
 
 # ── verify checksum ──────────────────────────────────────────────────────────
@@ -208,8 +249,16 @@ fi
 # where EXPECTED_SHA256 is read from the manifest.
 info "Verifying checksum..."
 ACTUAL_SHA256=$(shasum -a 256 "$TMP_DIR/$ARTIFACT" | awk '{print $1}')
-[[ "$EXPECTED_SHA256" == "$ACTUAL_SHA256" ]] || error "Checksum mismatch for ${ARTIFACT}: expected ${EXPECTED_SHA256}, got ${ACTUAL_SHA256}"
+if [[ "$EXPECTED_SHA256" != "$ACTUAL_SHA256" ]]; then
+  restore_backup
+  error "Checksum mismatch for ${ARTIFACT}: expected ${EXPECTED_SHA256}, got ${ACTUAL_SHA256}"
+fi
 success "Checksum verified"
+
+# Download verified good — the backup has served its purpose.
+if [[ "$HAVE_BACKUP" -eq 1 ]]; then
+  rm -rf "$BACKUP_PATH"
+fi
 
 # ── extract ──────────────────────────────────────────────────────────────────
 info "Extracting..."
