@@ -37,6 +37,7 @@ import type { Job } from "../api/resources";
 import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
 import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { JobConditionBadge } from "./JobConditionBadge";
+import { JobResumedBadge } from "./JobResumedBadge";
 import { JobDeleteConfirmationModal } from "./JobDeleteConfirmationModal";
 
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
@@ -111,7 +112,7 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
         <span className="text-body font-mono">{j.CompletionMode}</span>
 
         <span className="text-h3 text-muted-foreground">Resumed</span>
-        <span className="text-body font-mono">{j.Resumed ? "True" : "False"}</span>
+        <JobResumedBadge resumed={j.Resumed} />
 
         {j.StartTime && (
           <>

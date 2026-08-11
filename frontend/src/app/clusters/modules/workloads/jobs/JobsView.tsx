@@ -25,6 +25,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { JobConditionBadge } from "./components/JobConditionBadge";
 import { JobDeleteConfirmationModal } from "./components/JobDeleteConfirmationModal";
+import { JobResumedBadge } from "./components/JobResumedBadge";
 import { useGetJobs } from "./hooks/data-access/useGetJobs";
 import { useDeleteJob } from "./hooks/data-mutation/useDeleteJob";
 import { useDeleteJobs } from "./hooks/data-mutation/useDeleteJobs";
@@ -216,7 +217,9 @@ export const JobsView: FC = () => {
                     </ResourceLink>
                   </TableCell>
                 )}
-                <TableCell className="text-xs">{j.Resumed ? "True" : "False"}</TableCell>
+                <TableCell className="text-xs">
+                  <JobResumedBadge resumed={j.Resumed} />
+                </TableCell>
                 <TableCell>
                   <JobConditionBadge condition={j.Status} />
                 </TableCell>

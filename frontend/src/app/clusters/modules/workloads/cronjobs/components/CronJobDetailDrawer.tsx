@@ -23,18 +23,18 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { CronJob } from "../api/resources";
-import { useGetCronJobDetail } from "../hooks/data-access/useGetCronJobDetail";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetJobs } from "../../jobs/hooks/data-access/useGetJobs";
-import { useDeleteCronJob } from "../hooks/data-mutation/useDeleteCronJob";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { JobConditionBadge } from "../../jobs/components/JobConditionBadge";
+import { useGetJobs } from "../../jobs/hooks/data-access/useGetJobs";
+import type { CronJob } from "../api/resources";
+import { useGetCronJobDetail } from "../hooks/data-access/useGetCronJobDetail";
+import { useDeleteCronJob } from "../hooks/data-mutation/useDeleteCronJob";
 import { CronJobDeleteConfirmationModal } from "./CronJobDeleteConfirmationModal";
 
 const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
