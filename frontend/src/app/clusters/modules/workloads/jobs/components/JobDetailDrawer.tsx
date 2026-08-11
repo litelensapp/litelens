@@ -24,19 +24,20 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { Job } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
-import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
-import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
+import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
+import type { Job } from "../api/resources";
+import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
+import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { JobConditionBadge } from "./JobConditionBadge";
+import { JobResumedBadge } from "./JobResumedBadge";
 import { JobDeleteConfirmationModal } from "./JobDeleteConfirmationModal";
 
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
@@ -83,7 +84,7 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
         {(j.ManagedFields ?? []).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               {j.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
               ))}
@@ -111,7 +112,7 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
         <span className="text-body font-mono">{j.CompletionMode}</span>
 
         <span className="text-h3 text-muted-foreground">Resumed</span>
-        <span className="text-body font-mono">{j.Resumed ? "True" : "False"}</span>
+        <JobResumedBadge resumed={j.Resumed} />
 
         {j.StartTime && (
           <>
@@ -153,7 +154,7 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
             <span className="text-h3 text-muted-foreground">Conditions</span>
             <div className="flex flex-wrap gap-1">
               {j.Conditions.map((c) => (
-                <JobConditionBadge key={c} condition={c} />
+                <JobConditionBadge key={c.Type} condition={c} />
               ))}
             </div>
           </>

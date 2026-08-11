@@ -346,7 +346,7 @@ function TextareaCode({
   return (
     <div
       className={cn(
-        "relative overflow-x-auto border border-zinc-800 bg-zinc-950",
+        "relative min-w-0 overflow-hidden border border-zinc-800 bg-zinc-950",
         borderRounded && "rounded-md",
         className
       )}
@@ -378,15 +378,17 @@ function TextareaCode({
         </div>
 
         {disabled ? (
-          <pre className="flex flex-1 flex-col py-2">
-            {lines.map((line, i) => (
-              <span key={`${i}-${line}`} className="flex">
-                <span className="whitespace-pre pl-3 font-mono text-xs leading-5 text-zinc-200">
-                  {line || " "}
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <pre className="flex flex-col py-2">
+              {lines.map((line, i) => (
+                <span key={`${i}-${line}`} className="flex">
+                  <span className="whitespace-pre pl-3 font-mono text-xs leading-5 text-zinc-200">
+                    {line || " "}
+                  </span>
                 </span>
-              </span>
-            ))}
-          </pre>
+              ))}
+            </pre>
+          </div>
         ) : (
           <textarea
             value={value}

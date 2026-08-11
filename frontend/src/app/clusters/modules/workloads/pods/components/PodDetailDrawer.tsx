@@ -662,7 +662,7 @@ const PodOverviewTab: FC<{
             {(pod.ManagedFields ?? []).length > 0 && (
               <>
                 <span className="text-muted-foreground self-start pt-0.5">Managed Fields</span>
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   {pod.ManagedFields.map((mf) => (
                     <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
                   ))}

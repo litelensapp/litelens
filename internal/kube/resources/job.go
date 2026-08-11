@@ -27,6 +27,15 @@ func humanDuration(d time.Duration) string {
 	}
 }
 
+func isJobStatusConditionType(t batchv1.JobConditionType) bool {
+	switch t {
+	case batchv1.JobComplete, batchv1.JobFailed, batchv1.JobSuspended:
+		return true
+	default:
+		return false
+	}
+}
+
 func toJob(j *batchv1.Job) dto.Job {
 	var desired int32 = 1
 	if j.Spec.Completions != nil {
@@ -38,14 +47,27 @@ func toJob(j *batchv1.Job) dto.Job {
 		parallelism = *j.Spec.Parallelism
 	}
 
-	var conditions []string
+	var conditions []dto.JobCondition
 	status := "Unknown"
 	for _, c := range j.Status.Conditions {
-		if c.Status == corev1.ConditionTrue {
-			conditions = append(conditions, string(c.Type))
-			if status == "Unknown" {
-				status = string(c.Type)
-			}
+		lastProbeTime := ""
+		if !c.LastProbeTime.IsZero() {
+			lastProbeTime = c.LastProbeTime.Format(time.RFC3339)
+		}
+		lastTransitionTime := ""
+		if !c.LastTransitionTime.IsZero() {
+			lastTransitionTime = c.LastTransitionTime.Format(time.RFC3339)
+		}
+		conditions = append(conditions, dto.JobCondition{
+			Type:               string(c.Type),
+			Status:             string(c.Status),
+			Message:            c.Message,
+			Reason:             c.Reason,
+			LastProbeTime:      lastProbeTime,
+			LastTransitionTime: lastTransitionTime,
+		})
+		if c.Status == corev1.ConditionTrue && status == "Unknown" && isJobStatusConditionType(c.Type) {
+			status = string(c.Type)
 		}
 	}
 

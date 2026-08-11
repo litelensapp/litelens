@@ -20,14 +20,15 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetJobs } from "./hooks/data-access/useGetJobs";
-import { useDeleteJob } from "./hooks/data-mutation/useDeleteJob";
-import { useDeleteJobs } from "./hooks/data-mutation/useDeleteJobs";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { JobConditionBadge } from "./components/JobConditionBadge";
 import { JobDeleteConfirmationModal } from "./components/JobDeleteConfirmationModal";
+import { JobResumedBadge } from "./components/JobResumedBadge";
+import { useGetJobs } from "./hooks/data-access/useGetJobs";
+import { useDeleteJob } from "./hooks/data-mutation/useDeleteJob";
+import { useDeleteJobs } from "./hooks/data-mutation/useDeleteJobs";
 
 interface JobTableCtaButtonsProps {
   name: string;
@@ -79,12 +80,12 @@ const JobTableCtaButtons: FC<JobTableCtaButtonsProps> = ({ namespace, name }) =>
 };
 
 export const JobsView: FC = () => {
+  const { activeContext, namespace } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleJobDetail } = useDetailDrawerContext();
+
   const [search, setSearch] = useState("");
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespace } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleJobDetail } = useDetailDrawerContext();
 
   const { mutate: deleteJobs, isPending: isBulkDeletePending } = useDeleteJobs();
 
@@ -216,7 +217,9 @@ export const JobsView: FC = () => {
                     </ResourceLink>
                   </TableCell>
                 )}
-                <TableCell className="text-xs">{j.Resumed ? "True" : "False"}</TableCell>
+                <TableCell className="text-xs">
+                  <JobResumedBadge resumed={j.Resumed} />
+                </TableCell>
                 <TableCell>
                   <JobConditionBadge condition={j.Status} />
                 </TableCell>

@@ -5,12 +5,21 @@ type JobRef struct {
 	Name      string `json:"name"`
 }
 
+type JobCondition struct {
+	Type               string
+	Status             string
+	Message            string
+	Reason             string
+	LastProbeTime      string
+	LastTransitionTime string
+}
+
 type Job struct {
 	Name        string
 	Namespace   string
 	Completions int32
 	Age         string
-	Conditions  []string
+	Conditions  []JobCondition
 	Resumed     bool
 	Status      string
 	Succeeded   int32

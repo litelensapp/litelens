@@ -1,5 +1,9 @@
 import { Divider, DonutChart, ResourceLink } from "@litelens/design-system";
 import { FC } from "react";
+import { useMainLayoutContext } from "../../MainLayoutContext";
+import { ViewType } from "../../navConfig";
+import { EventsTable } from "../base/events/components/EventsTable";
+import { useGetWarningEvents } from "../base/events/hooks/data-access/useGetWarningEvents";
 import { useGetCronJobs } from "../workloads/cronjobs/hooks/data-access/useGetCronJobs";
 import { useGetDaemonSets } from "../workloads/daemonsets/hooks/data-access/useGetDaemonSets";
 import { useGetDeployments } from "../workloads/deployments/hooks/data-access/useGetDeployments";
@@ -7,10 +11,6 @@ import { useGetJobs } from "../workloads/jobs/hooks/data-access/useGetJobs";
 import { useGetPods } from "../workloads/pods/hooks/data-access/useGetPods";
 import { useGetReplicaSets } from "../workloads/replicasets/hooks/data-access/useGetReplicaSets";
 import { useGetStatefulSets } from "../workloads/statefulsets/hooks/data-access/useGetStatefulSets";
-import { useGetWarningEvents } from "../base/events/hooks/data-access/useGetWarningEvents";
-import { useMainLayoutContext } from "../../MainLayoutContext";
-import { EventsTable } from "../base/events/components/EventsTable";
-import { ViewType } from "../../navConfig";
 
 function parsePodsStr(str: string): { ready: number; desired: number } {
   const [r, d] = str.split("/").map(Number);
@@ -71,10 +71,10 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
 
   // Jobs
   const succeededJobs = jobs.filter((j) =>
-    j.Conditions?.map((c) => c.toLowerCase()).includes("complete")
+    j.Conditions?.map((c) => c.Type.toLowerCase()).includes("complete")
   ).length;
   const failedJobs = jobs.filter((j) =>
-    j.Conditions?.map((c) => c.toLowerCase()).includes("failed")
+    j.Conditions?.map((c) => c.Type.toLowerCase()).includes("failed")
   ).length;
   const pendingJobs = jobs.length - succeededJobs - failedJobs;
 
