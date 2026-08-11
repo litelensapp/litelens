@@ -36,7 +36,6 @@
     "lint-staged": "^16.4.0",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.6.14",
-    "react-doctor": "^0.4.2",
     "typescript-eslint": "^8.66.0"
   }
 }

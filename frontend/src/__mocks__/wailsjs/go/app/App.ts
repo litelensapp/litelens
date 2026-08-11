@@ -9,7 +9,7 @@ export const SaveClusterProxy = (_proxy: unknown): Promise<void> => Promise.reso
 export const ClipboardGetText = (): Promise<string> => Promise.resolve("");
 export const GetDefaultShell = (): Promise<string> => Promise.resolve("");
 export const IsResourceForbidden = (_resource: string): Promise<boolean> => Promise.resolve(false);
-export const CheckForUpdate = (): Promise<void> => Promise.resolve();
+export const CheckForUpdate = (): Promise<void> => Promise.resolve(undefined);
 export const PerformUpdate = (): Promise<void> => Promise.resolve();
 export const GetActiveKubeconfigPaths = (): Promise<string[]> => Promise.resolve([]);
 export const GetContextKubeconfigPath = (_context: string): Promise<string> => Promise.resolve("");

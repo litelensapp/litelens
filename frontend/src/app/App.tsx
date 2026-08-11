@@ -311,7 +311,11 @@ export const App: FC = () => {
         <AppFooter updateInfo={updateInfo} onUpdateClick={() => setUpdateModalOpen(true)} />
 
         {aboutOpen && aboutPayload && (
-          <AboutModal payload={aboutPayload} onClose={() => dispatch({ type: "CLOSE_ABOUT" })} />
+          <AboutModal
+            payload={aboutPayload}
+            onClose={() => dispatch({ type: "CLOSE_ABOUT" })}
+            onUpdateAvailable={() => setUpdateModalOpen(true)}
+          />
         )}
 
         {updateInfo && (

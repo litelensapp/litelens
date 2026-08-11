@@ -20,3 +20,4 @@
 ## Feedback & Conventions
 
 - [Development workflow](development_workflow.md) — always run pnpm format + lint + go vet + go build before reporting done; sync auto memory after codebase changes
+- [Review findings log](review-findings.md) — recurring issues flagged by `/agent-team --fix` Phase 5 reviews, so future fixes don't repeat them
