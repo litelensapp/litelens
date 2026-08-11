@@ -1,4 +1,4 @@
-import { useDetailDrawerContext } from "@/app/clusters/shared/components/details/DetailDrawerContext";
+import { useDetailDrawerContext } from "../components/details/DetailDrawerContext";
 
 export function useResourceLinks(): Record<string, (namespace: string, name: string) => void> {
   const {

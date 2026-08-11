@@ -22,7 +22,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-func (a *App) checkForUpdate() {
+func (a *App) checkForUpdate() error {
 	a.mu.RLock()
 	token := a.settings.AccessToken
 	a.mu.RUnlock()
@@ -47,12 +47,15 @@ func (a *App) checkForUpdate() {
 	if err != nil {
 		// All retries exhausted
 		log.Printf("app: checkForUpdate: giving up after 3 attempts")
-		return
+		return err
 	}
 
 	if rel == nil {
 		// No update available (expected case when already up-to-date)
-		return
+		runtime.EventsEmit(a.ctx, "update:check-complete", map[string]any{
+			"updateAvailable": false,
+		})
+		return nil
 	}
 
 	// Update available; emit the event
@@ -64,12 +67,14 @@ func (a *App) checkForUpdate() {
 		"assetURL":      rel.AssetURL,
 		"downloadSize":  config.FormatBytes(rel.DownloadSize),
 	})
+	return nil
 }
 
 // CheckForUpdate manually triggers a check for app updates. It runs synchronously
-// and emits the update:available event if a new version is found.
-func (a *App) CheckForUpdate() {
-	a.checkForUpdate()
+// and emits the update:available event if a new version is found. Returns an error
+// if the check fails after all retries.
+func (a *App) CheckForUpdate() error {
+	return a.checkForUpdate()
 }
 
 // selectUpdateStrategy returns the update strategy name for a given OS.

@@ -1,11 +1,11 @@
-import logo from "@/assets/images/logo-universal.png";
 import { Button, Dialog, DialogContent, Divider, Loader2Icon } from "@litelens/design-system";
 import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
 import { FC } from "react";
 import pkg from "../../../package.json";
+import logo from "../../assets/images/logo-universal.png";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
 import { formatBytes } from "../marketplace/utils/formatBytes";
-import { useCheckForUpdate } from "./hooks/useCheckForUpdate";
+import { useCheckForUpdate } from "../updater/hooks/data-mutation/useCheckForUpdate";
 
 // Strip leading non-numeric characters (^, ~, v, "go", etc.)
 function clean(v: string): string {
@@ -28,10 +28,11 @@ interface Payload {
 interface Props {
   payload: Payload;
   onClose: () => void;
+  onUpdateAvailable: () => void;
 }
 
-export const AboutModal: FC<Props> = ({ payload, onClose }) => {
-  const { checkingForUpdate, checkForUpdate } = useCheckForUpdate();
+export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) => {
+  const { checkingForUpdate, checkForUpdate } = useCheckForUpdate(onUpdateAvailable);
 
   const runtimeTech = [
     { label: "Go", version: clean(payload.go) },
