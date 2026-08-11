@@ -19,6 +19,7 @@ import (
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/storage"
 	"github.com/litelensapp/litelens/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -268,6 +269,14 @@ func (a *App) performLinuxUpdate(version, token string) error {
 	}
 	defer os.Remove(extractedPath)
 
+	// Refresh the icon cached in ~/.litelens from the same archive, so an
+	// auto-update keeps it in sync the same way scripts/install.sh does on a
+	// fresh install. Best-effort: an older release archive predating the
+	// icon, or a write failure, shouldn't block the actual binary update.
+	if err := refreshCachedIcon(tmpFile.Name()); err != nil {
+		log.Printf("app: performLinuxUpdate: refresh cached icon: %v", err)
+	}
+
 	// Make the extracted binary readable (not executable yet; install-helper will chmod it).
 	if err := os.Chmod(extractedPath, 0o644); err != nil {
 		return fmt.Errorf("chmod extracted binary: %w", err)
@@ -315,6 +324,30 @@ func (a *App) performLinuxUpdate(version, token string) error {
 // archive (e.g. litelens-install-helper, appicon.png) are skipped. Returns
 // the path to the extracted temp file; the caller must os.Remove() it.
 func extractBinaryFromTarGz(tarGzPath string) (extractedPath string, err error) {
+	return extractEntryFromTarGz(tarGzPath, "litelens")
+}
+
+// refreshCachedIcon extracts the "appicon.png" entry from the release
+// archive and writes it to ~/.litelens (the single on-disk dir for all
+// persistent app data — see internal/storage), mirroring where
+// scripts/install.sh stores it on a fresh install.
+func refreshCachedIcon(tarGzPath string) error {
+	extractedPath, err := extractEntryFromTarGz(tarGzPath, "appicon.png")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(extractedPath)
+
+	if err := os.MkdirAll(storage.Dir(), 0o700); err != nil {
+		return fmt.Errorf("create app dir: %w", err)
+	}
+	return copyFile(extractedPath, storage.Dir("appicon.png"))
+}
+
+// extractEntryFromTarGz opens a gzip-compressed tar archive and extracts
+// the named entry to a new temp file. Returns the path to the extracted
+// temp file; the caller must os.Remove() it.
+func extractEntryFromTarGz(tarGzPath, entryName string) (extractedPath string, err error) {
 	f, err := os.Open(tarGzPath)
 	if err != nil {
 		return "", fmt.Errorf("opening archive: %w", err)
@@ -331,18 +364,18 @@ func extractBinaryFromTarGz(tarGzPath string) (extractedPath string, err error) 
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			return "", fmt.Errorf("litelens entry not found in archive")
+			return "", fmt.Errorf("%s entry not found in archive", entryName)
 		}
 		if err != nil {
 			return "", fmt.Errorf("reading tar: %w", err)
 		}
 
-		if hdr.Name != "litelens" {
+		if hdr.Name != entryName {
 			continue
 		}
 
 		if hdr.Typeflag != tar.TypeReg {
-			return "", fmt.Errorf("litelens entry is not a regular file (type %v)", hdr.Typeflag)
+			return "", fmt.Errorf("%s entry is not a regular file (type %v)", entryName, hdr.Typeflag)
 		}
 
 		tmp, err := os.CreateTemp("", "litelens-extracted-*.tmp")
@@ -353,13 +386,12 @@ func extractBinaryFromTarGz(tarGzPath string) (extractedPath string, err error) 
 
 		if _, err := io.Copy(tmp, tr); err != nil {
 			os.Remove(tmp.Name())
-			return "", fmt.Errorf("extract binary: %w", err)
+			return "", fmt.Errorf("extract %s: %w", entryName, err)
 		}
 
 		return tmp.Name(), nil
 	}
 }
-
 
 // resolveInstallerHelper locates the litelens-install-helper binary.
 // It first checks /usr/local/bin (the trusted, production install location),

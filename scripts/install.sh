@@ -114,9 +114,14 @@ if [[ -n "$VERSION" ]]; then
   info "Installing version: $TAG"
 elif [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   info "Fetching latest release..."
+  # The trailing `|| true` keeps a no-match `grep` from tripping `pipefail`
+  # and silently killing the script via `set -e` before the explicit check
+  # below ever runs — without it, a bad response (e.g. LITELENS_ACCESS_TOKEN
+  # set but RELEASES_BASE_URL still pointing at the HTML host instead of the
+  # API) exits with zero output instead of the error message.
   TAG=$(gh_curl "${RELEASES_BASE_URL}/releases/latest" \
-    | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
-  [[ -z "$TAG" ]] && error "Could not resolve latest release."
+    | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/') || true
+  [[ -z "$TAG" ]] && error "Could not resolve latest release. If LITELENS_ACCESS_TOKEN is set, make sure APP_VERSION_RELEASES_BASE_URL also points at the GitHub API host (e.g. https://api.github.com/repos/${REPO}) — the plain github.com host returns HTML, not the JSON this expects."
   info "Latest version: $TAG"
 else
   # Public repo, no token: resolve the latest tag via the releases page
@@ -364,6 +369,11 @@ else
   # ── icon (Linux) ──────────────────────────────────────────────────────────
   ICON_SRC=$(find "$TMP_DIR" -name "appicon.png" -type f | head -1)
   if [[ -n "$ICON_SRC" ]]; then
+    # Kept in ~/.litelens (the single on-disk dir for all persistent app
+    # data — see internal/storage) alongside the themed copy below, so the
+    # icon lives in one place uninstall/cleanup tooling already knows about.
+    cp "$ICON_SRC" "$LITELENS_DIR/appicon.png"
+
     ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
     mkdir -p "$ICON_DIR"
     cp "$ICON_SRC" "$ICON_DIR/litelens.png"
