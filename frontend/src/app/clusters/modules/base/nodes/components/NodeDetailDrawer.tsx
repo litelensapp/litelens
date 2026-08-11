@@ -109,7 +109,7 @@ const NodeInfoTab: FC<{ node: Node }> = ({ node }) => {
               <span className="text-h3 text-muted-foreground self-start pt-0.5">
                 Managed Fields
               </span>
-              <div className="flex flex-col gap-2">
+              <div className="flex min-w-0 flex-col gap-2">
                 {node.ManagedFields.map((mf) => (
                   <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
                 ))}

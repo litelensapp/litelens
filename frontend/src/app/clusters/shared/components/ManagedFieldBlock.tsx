@@ -6,7 +6,7 @@ export const ManagedFieldBlock: FC<{ mf: ManagedField }> = ({ mf }) => {
   const [show, setShow] = useState(false);
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <div className="flex items-center justify-between">
         <span className="text-muted-foreground font-mono">
           {mf.Manager}: {mf.Operation}
