@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -168,8 +168,8 @@ func TestRegisterDebouncerMultiple(t *testing.T) {
 	cs := fake.NewSimpleClientset()
 	h := NewFactoryHandle(cs, func(string) {})
 
-	debouncer1 := config.NewDebouncer(config.DefaultDebounceInterval, func(s string) {}, func() bool { return true })
-	debouncer2 := config.NewDebouncer(config.DefaultDebounceInterval, func(s string) {}, func() bool { return true })
+	debouncer1 := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(s string) {}, func() bool { return true })
+	debouncer2 := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(s string) {}, func() bool { return true })
 
 	h.RegisterDebouncer(debouncer1)
 	h.RegisterDebouncer(debouncer2)

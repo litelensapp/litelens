@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -25,7 +25,7 @@ type FactoryHandle struct {
 	globalStop   chan struct{}
 	globalOnce   sync.Once
 	forbidden    sync.Map // map[string]struct{} — resource keys that failed to sync
-	debouncers   []*config.Debouncer
+	debouncers   []*debouncer.Debouncer
 	synced       map[string]chan struct{}
 	syncedOnce   map[string]*sync.Once
 }
@@ -191,7 +191,7 @@ func (h *FactoryHandle) IsForbidden(resource string) bool {
 }
 
 // RegisterDebouncer records a debouncer for lifecycle management.
-func (h *FactoryHandle) RegisterDebouncer(d *config.Debouncer) {
+func (h *FactoryHandle) RegisterDebouncer(d *debouncer.Debouncer) {
 	h.debouncers = append(h.debouncers, d)
 }
 
