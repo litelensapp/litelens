@@ -26,16 +26,19 @@ import { FC, useEffect, useState } from "react";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
+import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { JobConditionBadge } from "../../jobs/components/JobConditionBadge";
+import { JobResumedBadge } from "../../jobs/components/JobResumedBadge";
 import { useGetJobs } from "../../jobs/hooks/data-access/useGetJobs";
 import type { CronJob } from "../api/resources";
 import { useGetCronJobDetail } from "../hooks/data-access/useGetCronJobDetail";
 import { useDeleteCronJob } from "../hooks/data-mutation/useDeleteCronJob";
 import { CronJobDeleteConfirmationModal } from "./CronJobDeleteConfirmationModal";
+import { CronJobResumedBadge } from "./CronJobResumedBadge";
 
 const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
@@ -87,9 +90,7 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
         <span className="text-body font-mono">{cj.ConcurrencyPolicy}</span>
 
         <span className="text-h3 text-muted-foreground">Resumed</span>
-        <span className="text-body">
-          {cj.Suspend ? <span className="text-warning">False</span> : <span>True</span>}
-        </span>
+        <CronJobResumedBadge resumed={!cj.Suspend} />
 
         <span className="text-h3 text-muted-foreground">Successful Jobs History Limit</span>
         <span className="text-body font-mono">{cj.SuccessfulJobsHistoryLimit}</span>
@@ -114,9 +115,10 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
         <span className="text-h3 text-muted-foreground">Active</span>
         <span className="text-body font-mono">{cj.Active}</span>
 
-        <div className="text-h3 text-muted-foreground col-span-2 border-t pt-2 font-semibold">
-          Template
-        </div>
+        <SectionDivider
+          label="Template"
+          className="bg-muted/50 col-span-2 -mx-4 border-y-0 uppercase tracking-wide"
+        />
 
         <span className="text-h3 text-muted-foreground">Parallelism</span>
         <span className="text-body font-mono">
@@ -127,9 +129,7 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
         <span className="text-body font-mono">{cj.JobCompletions}</span>
 
         <span className="text-h3 text-muted-foreground">Job Resumed</span>
-        <span className="text-body">
-          {cj.JobSuspend ? <span className="text-warning">False</span> : <span>True</span>}
-        </span>
+        <JobResumedBadge resumed={!cj.JobSuspend} />
 
         <span className="text-h3 text-muted-foreground">TTL Seconds After Finished</span>
         <span className="text-body font-mono">

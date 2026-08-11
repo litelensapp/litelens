@@ -27,6 +27,7 @@ import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { CronJobDeleteConfirmationModal } from "./components/CronJobDeleteConfirmationModal";
+import { CronJobResumedBadge } from "./components/CronJobResumedBadge";
 
 interface CronJobTableCtaButtonsProps {
   name: string;
@@ -218,7 +219,7 @@ export const CronJobsView: FC = () => {
                   {cj.Timezone || "—"}
                 </TableCell>
                 <TableCell className="text-xs">
-                  {cj.Suspend ? <span className="text-warning">False</span> : <span>True</span>}
+                  <CronJobResumedBadge resumed={!cj.Suspend} />
                 </TableCell>
                 <TableCell className="text-xs">{cj.Active}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">
