@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	goruntime "runtime"
 	"strings"
@@ -53,8 +54,14 @@ func fetchManifestAuthenticated(ctx context.Context, assets []Asset, token strin
 		return nil, fmt.Errorf("fetch manifest: HTTP %d", resp.StatusCode)
 	}
 
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	cacheManifest(data)
+
 	var manifest Manifest
-	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("decode manifest: %w", err)
 	}
 	return &manifest, nil

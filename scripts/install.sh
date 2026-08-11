@@ -98,6 +98,13 @@ gh_curl() {
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# manifest.json is cached in ~/.litelens (same location internal/updater
+# persists it to) rather than TMP_DIR, so it survives past this run for
+# inspection/debugging instead of being deleted on exit.
+LITELENS_DIR="$HOME/.litelens"
+mkdir -p "$LITELENS_DIR"
+MANIFEST_PATH="$LITELENS_DIR/manifest.json"
+
 # ── resolve version ───────────────────────────────────────────────────────────
 # Priority: positional arg > VERSION env var > latest release
 VERSION="${1:-${VERSION:-}}"
@@ -148,13 +155,13 @@ if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
     -H "Authorization: Bearer ${LITELENS_ACCESS_TOKEN}" \
     -H "Accept: application/octet-stream" \
     "${RELEASES_BASE_URL}/releases/assets/${MANIFEST_ASSET_ID}" \
-    -o "$TMP_DIR/manifest.json" \
+    -o "$MANIFEST_PATH" \
     || error "Could not download manifest for release ${TAG}."
 else
   info "Resolving asset from manifest..."
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
     "${RELEASES_BASE_URL}/releases/download/${TAG}/manifest.json" \
-    -o "$TMP_DIR/manifest.json" \
+    -o "$MANIFEST_PATH" \
     || error "Could not download manifest for release ${TAG}."
 fi
 
@@ -162,13 +169,13 @@ fi
 # injection if these values were ever derived from untrusted sources.
 ARTIFACT=$(jq -r --arg os "$PLATFORM_OS" --arg arch "$PLATFORM_ARCH" \
   '.artifacts[] | select(.os == $os and .arch == $arch) | .filename' \
-  "$TMP_DIR/manifest.json")
+  "$MANIFEST_PATH")
 [[ -z "$ARTIFACT" || "$ARTIFACT" == "null" ]] && \
   error "Platform ${PLATFORM_OS}/${PLATFORM_ARCH} not found in release manifest for ${TAG}."
 
 EXPECTED_SHA256=$(jq -r --arg os "$PLATFORM_OS" --arg arch "$PLATFORM_ARCH" \
   '.artifacts[] | select(.os == $os and .arch == $arch) | .sha256' \
-  "$TMP_DIR/manifest.json")
+  "$MANIFEST_PATH")
 [[ -z "$EXPECTED_SHA256" || "$EXPECTED_SHA256" == "null" ]] && \
   error "No SHA256 checksum in release manifest for ${PLATFORM_OS}/${PLATFORM_ARCH}; refusing to install an unverified binary."
 

@@ -2,8 +2,11 @@ package updater
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/storage"
 )
 
 // getReleasesLatestUrl returns the URL used to resolve the latest release,
@@ -41,4 +44,19 @@ func getUnauthenticatedReleaseAssetUrl(tag, name string) string {
 // guesses that can drift from the actual build matrix.
 func getManifestUrl(tag string) string {
 	return fmt.Sprintf("%s/releases/download/%s/manifest.json", config.GetReleasesBaseURL(), tag)
+}
+
+// cacheManifest persists the raw manifest.json bytes to ~/.litelens, mirroring
+// where scripts/install.sh stores it, so both update paths leave the same
+// on-disk artifact behind for inspection/debugging. Best-effort: a write
+// failure doesn't fail the update check, since the decoded manifest already
+// in memory is all that's actually required.
+func cacheManifest(data []byte) {
+	if err := os.MkdirAll(storage.Dir(), 0o700); err != nil {
+		log.Printf("updater: cache manifest.json: %v", err)
+		return
+	}
+	if err := os.WriteFile(storage.Dir("manifest.json"), data, 0o644); err != nil {
+		log.Printf("updater: cache manifest.json: %v", err)
+	}
 }
