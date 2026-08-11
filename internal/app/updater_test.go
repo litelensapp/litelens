@@ -972,3 +972,78 @@ func TestCheckForUpdate_RateLimitNoRetry(t *testing.T) {
 		t.Errorf("rate-limit error should not trigger retries, got %d calls, want 1", callCount)
 	}
 }
+
+// TestCheckForUpdate_NonRateLimitRetryExhaustion verifies that a non-rate-limit
+// failure (e.g. HTTP 500) is retried up to 3 attempts total, and the final
+// error is returned once all attempts are exhausted.
+func TestCheckForUpdate_NonRateLimitRetryExhaustion(t *testing.T) {
+	var callCount int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	app := &App{
+		version:  "v1.0.0",
+		ctx:      context.Background(),
+		settings: config.Settings{AccessToken: ""},
+	}
+
+	err := app.checkForUpdate()
+
+	if err == nil {
+		t.Fatalf("checkForUpdate() should return an error after retries are exhausted, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		t.Fatalf("checkForUpdate() should return a non-rate-limit error, got RateLimitError: %v", err)
+	}
+
+	if callCount != 3 {
+		t.Errorf("non-rate-limit error should retry until exhausted, got %d calls, want 3", callCount)
+	}
+}
+
+// TestApp_CheckForUpdate_ReturnsUnderlyingError verifies that the public
+// CheckForUpdate wrapper propagates the error returned by checkForUpdate,
+// rather than swallowing it.
+func TestApp_CheckForUpdate_ReturnsUnderlyingError(t *testing.T) {
+	var callCount int
+	resetTime := time.Now().Add(1 * time.Hour)
+	resetUnix := resetTime.Unix()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	app := &App{
+		version:  "v1.0.0",
+		ctx:      context.Background(),
+		settings: config.Settings{AccessToken: ""},
+	}
+
+	err := app.CheckForUpdate()
+
+	if err == nil {
+		t.Fatalf("CheckForUpdate() should propagate the underlying error, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("CheckForUpdate() should propagate RateLimitError, got %T: %v", err, err)
+	}
+
+	if callCount != 1 {
+		t.Errorf("CheckForUpdate() should not retry on rate-limit error, got %d calls, want 1", callCount)
+	}
+}
