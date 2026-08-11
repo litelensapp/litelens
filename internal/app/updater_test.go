@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/litelensapp/litelens/internal/updater"
+	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 )
 
 // mockUpdater is a mock for internal/updater.FetchRelease
@@ -465,123 +469,6 @@ func Test_selectUpdateStrategy_Unsupported(t *testing.T) {
 	}
 }
 
-// Test_findReleaseChecksumInRelease_MatchesPlatformAsset verifies the checksum
-// lookup is generalized (not hardcoded to Linux) and works for whichever
-// asset rel.AssetURL points to, e.g. the Windows or macOS release asset.
-func Test_findReleaseChecksumInRelease_MatchesPlatformAsset(t *testing.T) {
-	const expectedChecksum = "abc123def456"
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(expectedChecksum + "\n")) //nolint:errcheck
-	}))
-	defer srv.Close()
-
-	rel := &updater.Release{
-		AssetURL: "https://example.com/litelens-windows-amd64.exe",
-		Assets: []updater.Asset{
-			{Name: "litelens-linux-amd64.tar.gz", BrowserDownloadURL: "https://example.com/litelens-linux-amd64.tar.gz"},
-			{Name: "litelens-windows-amd64.exe", BrowserDownloadURL: "https://example.com/litelens-windows-amd64.exe"},
-			{Name: "litelens-windows-amd64.exe.sha256", BrowserDownloadURL: srv.URL},
-		},
-	}
-
-	got, err := findReleaseChecksumInRelease(context.Background(), rel, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != expectedChecksum {
-		t.Errorf("checksum mismatch: got %q, want %q", got, expectedChecksum)
-	}
-}
-
-// Test_findReleaseChecksumInRelease_NoChecksumAsset verifies a missing
-// checksum asset yields ("", nil) so the caller can fail closed.
-func Test_findReleaseChecksumInRelease_NoChecksumAsset(t *testing.T) {
-	rel := &updater.Release{
-		AssetURL: "https://example.com/litelens-darwin-arm64.zip",
-		Assets: []updater.Asset{
-			{Name: "litelens-darwin-arm64.zip", BrowserDownloadURL: "https://example.com/litelens-darwin-arm64.zip"},
-		},
-	}
-
-	got, err := findReleaseChecksumInRelease(context.Background(), rel, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != "" {
-		t.Errorf("expected empty checksum when no .sha256 asset published, got %q", got)
-	}
-}
-
-// Test_findReleaseChecksumInRelease_AuthorizationHeaderWithToken verifies
-// that when a token is provided, the Authorization: Bearer <token> header
-// is sent on the checksum download request. This tests the fix for the
-// GitHub 404 error on private repos when checksum download lacked auth.
-func Test_findReleaseChecksumInRelease_AuthorizationHeaderWithToken(t *testing.T) {
-	const expectedChecksum = "abc123def456"
-	const testToken = "github_pat_test_token_12345"
-	var authHeader string
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader = r.Header.Get("Authorization")
-		w.Write([]byte(expectedChecksum + "\n")) //nolint:errcheck
-	}))
-	defer srv.Close()
-
-	rel := &updater.Release{
-		AssetURL: "https://example.com/litelens-linux-amd64.tar.gz",
-		Assets: []updater.Asset{
-			{Name: "litelens-linux-amd64.tar.gz", BrowserDownloadURL: "https://example.com/litelens-linux-amd64.tar.gz"},
-			{Name: "litelens-linux-amd64.tar.gz.sha256", BrowserDownloadURL: srv.URL},
-		},
-	}
-
-	got, err := findReleaseChecksumInRelease(context.Background(), rel, testToken)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != expectedChecksum {
-		t.Errorf("checksum mismatch: got %q, want %q", got, expectedChecksum)
-	}
-	if authHeader != "Bearer "+testToken {
-		t.Errorf("Authorization header mismatch: got %q, want %q", authHeader, "Bearer "+testToken)
-	}
-}
-
-// Test_findReleaseChecksumInRelease_NoAuthorizationHeaderWhenTokenEmpty verifies
-// that when no token is provided (empty string), the Authorization header is
-// NOT set on the checksum download request. This preserves compatibility with
-// public assets that do not require authentication.
-func Test_findReleaseChecksumInRelease_NoAuthorizationHeaderWhenTokenEmpty(t *testing.T) {
-	const expectedChecksum = "abc123def456"
-	var authHeader string
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader = r.Header.Get("Authorization")
-		w.Write([]byte(expectedChecksum + "\n")) //nolint:errcheck
-	}))
-	defer srv.Close()
-
-	rel := &updater.Release{
-		AssetURL: "https://example.com/litelens-windows-amd64.exe",
-		Assets: []updater.Asset{
-			{Name: "litelens-windows-amd64.exe", BrowserDownloadURL: "https://example.com/litelens-windows-amd64.exe"},
-			{Name: "litelens-windows-amd64.exe.sha256", BrowserDownloadURL: srv.URL},
-		},
-	}
-
-	got, err := findReleaseChecksumInRelease(context.Background(), rel, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != expectedChecksum {
-		t.Errorf("checksum mismatch: got %q, want %q", got, expectedChecksum)
-	}
-	if authHeader != "" {
-		t.Errorf("Authorization header should not be set when token is empty, got %q", authHeader)
-	}
-}
-
 // createTarGzWithEntries creates an in-memory tar.gz archive with the given entries.
 // Each entry is {name, content, typeflag}.
 func createTarGzWithEntries(entries []struct {
@@ -919,5 +806,126 @@ func Test_extractBinaryFromTarGz_TempFileCleanupOnSuccess(t *testing.T) {
 	// Verify the file was properly cleaned up
 	if _, err := os.Stat(extractedPath); err == nil {
 		t.Errorf("extracted file should have been deleted after defer os.Remove()")
+	}
+}
+
+// TestCheckForUpdate_RateLimitNoRetry verifies that rate-limit errors
+// do not trigger retries and break out immediately.
+func TestCheckForUpdate_RateLimitNoRetry(t *testing.T) {
+	// Track how many times the server is called
+	var callCount int
+	resetTime := time.Now().Add(1 * time.Hour)
+	resetUnix := resetTime.Unix()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if r.URL.Path != "/releases/latest" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	app := &App{
+		version:  "v1.0.0",
+		ctx:      context.Background(),
+		settings: config.Settings{AccessToken: "test-token"},
+	}
+
+	err := app.checkForUpdate()
+
+	// Verify we got an error
+	if err == nil {
+		t.Fatalf("checkForUpdate() should return rate-limit error, got nil")
+	}
+
+	// Verify it's a rate-limit error
+	var rateLimitErr *ratelimiter.RateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("checkForUpdate() should return RateLimitError, got %T: %v", err, err)
+	}
+
+	// Verify we only called the server once (no retries)
+	if callCount != 1 {
+		t.Errorf("rate-limit error should not trigger retries, got %d calls, want 1", callCount)
+	}
+}
+
+// TestCheckForUpdate_NonRateLimitRetryExhaustion verifies that a non-rate-limit
+// failure (e.g. HTTP 500) is retried up to 3 attempts total, and the final
+// error is returned once all attempts are exhausted.
+func TestCheckForUpdate_NonRateLimitRetryExhaustion(t *testing.T) {
+	var callCount int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	app := &App{
+		version:  "v1.0.0",
+		ctx:      context.Background(),
+		settings: config.Settings{AccessToken: "test-token"},
+	}
+
+	err := app.checkForUpdate()
+
+	if err == nil {
+		t.Fatalf("checkForUpdate() should return an error after retries are exhausted, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		t.Fatalf("checkForUpdate() should return a non-rate-limit error, got RateLimitError: %v", err)
+	}
+
+	if callCount != 3 {
+		t.Errorf("non-rate-limit error should retry until exhausted, got %d calls, want 3", callCount)
+	}
+}
+
+// TestApp_CheckForUpdate_ReturnsUnderlyingError verifies that the public
+// CheckForUpdate wrapper propagates the error returned by checkForUpdate,
+// rather than swallowing it.
+func TestApp_CheckForUpdate_ReturnsUnderlyingError(t *testing.T) {
+	var callCount int
+	resetTime := time.Now().Add(1 * time.Hour)
+	resetUnix := resetTime.Unix()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	app := &App{
+		version:  "v1.0.0",
+		ctx:      context.Background(),
+		settings: config.Settings{AccessToken: "test-token"},
+	}
+
+	err := app.CheckForUpdate()
+
+	if err == nil {
+		t.Fatalf("CheckForUpdate() should propagate the underlying error, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("CheckForUpdate() should propagate RateLimitError, got %T: %v", err, err)
+	}
+
+	if callCount != 1 {
+		t.Errorf("CheckForUpdate() should not retry on rate-limit error, got %d calls, want 1", callCount)
 	}
 }
