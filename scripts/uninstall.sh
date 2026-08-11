@@ -29,22 +29,21 @@ else
 fi
 
 if [[ "$CLEANUP" == "true" ]]; then
-  # Settings (incl. AccessToken) live under the OS user-config dir, resolved the
-  # same way Go's os.UserConfigDir() does.
+  # All LiteLens app data (settings.json, plugins) now lives under ~/.litelens.
+  # Also remove old settings location for thoroughness.
+  APP_DATA_DIR="$HOME/.litelens"
+
+  # Remove old settings location (OS-specific config dir)
   case "$OS" in
     Darwin)
-      SETTINGS_DIR="$HOME/Library/Application Support/litelens"
+      rm -rf "$HOME/Library/Application Support/litelens"
       ;;
     *)
-      SETTINGS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/litelens"
+      rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/litelens"
       ;;
   esac
 
-  # Installed plugins live under ~/.litelens by default (overridable via
-  # settings.PluginsDir, which is being deleted below anyway).
-  DATA_DIR="$HOME/.litelens"
-
-  rm -rf "$SETTINGS_DIR"
-  rm -rf "$DATA_DIR"
+  # Remove consolidated app data directory
+  rm -rf "$APP_DATA_DIR"
   success "LiteLens persistent data removed"
 fi

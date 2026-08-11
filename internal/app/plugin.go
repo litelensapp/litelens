@@ -16,6 +16,7 @@ import (
 	"github.com/litelensapp/litelens/internal/dto"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/plugin/pb"
+	"github.com/litelensapp/litelens/internal/storage"
 )
 
 // pluginsRootDir returns the directory all installed plugins live under. If a custom
@@ -26,7 +27,7 @@ func (a *App) pluginsRootDir() string {
 	if a.settings.PluginsDir != "" {
 		return a.settings.PluginsDir
 	}
-	return filepath.Join(os.ExpandEnv("$HOME"), ".litelens", "plugins")
+	return storage.Dir("plugins")
 }
 
 // PluginAssetDir resolves the actual on-disk directory for an installed

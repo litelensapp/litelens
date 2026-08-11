@@ -61,10 +61,11 @@ minikube addons enable metrics-server
 - **`internal/kube/resources`** — per-resource-type `ListXxx`/`toXxx` conversion logic (raw K8s object → DTO).
 - **`internal/dto`** — leaf package, pure DTO type definitions (no imports of `kube`/`app`). One type per K8s resource kind; **fields must use `string` for timestamps, never `time.Time`** — Wails can't generate TS bindings for it.
 - **`internal/plugin`** — generic plugin host: discovery, download/verify, process lifecycle (`loader.go`), gRPC handshake. Talks to plugin subprocesses ONLY through `Invoke(pluginID, method, payloadJSON)` — see Plugin architecture below.
-- **`internal/updater`** — self-update (checks GitHub releases, downloads, swaps binary).
-- **`internal/config`** — app config (`~/.config/litelens/settings.json`).
+- **`internal/updater`** — self-update (checks GitHub releases, downloads, swaps binary); split into `authenticated_updater.go` (private repo, token-based) and `unauthenticated_updater.go` (public repo, driven by a `manifest.json` release artifact — the single source of truth for per-OS/arch download filenames + SHA256, see `manifest.go`).
+- **`internal/config`** — app config (`~/.litelens/settings.json`, via `internal/storage`).
+- **`internal/storage`** — resolves `~/.litelens`, the single on-disk directory for all persistent app data (settings, installed plugins). Leaf package (no internal deps); `internal/config` and `internal/app` both depend on it.
 
-**Package dependency direction** (no cycles): `dto` ← `kube/resources` ← `kube` ← `app`. `dto` is the leaf.
+**Package dependency direction** (no cycles): `dto` ← `kube/resources` ← `kube` ← `app`; `store` ← `config` ← `app`, `store` ← `app`. `dto` and `store` are the leaves.
 
 ### Core backend patterns
 

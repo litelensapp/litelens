@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
+  modified: 2026-08-11T16:17:50.232Z
 ---
 
 ### IPC Pattern
@@ -105,15 +106,19 @@ Each resource type has a dedicated type in `internal/dto/<type>.go` (no `DTO` su
 
 ```text
 internal/dto             →  (nothing — leaf package, pure type definitions)
+internal/storage           →  (nothing — leaf package, directory resolver only)
 internal/kube/resources  →  internal/dto  (uses DTO types) + k8s.io/...
 internal/kube            →  internal/dto  (metrics.go uses dto.NodeUsage)
 internal/kube            →  internal/kube/resources  (FactoryHandle, informers)
+internal/config          →  internal/storage  (settings path resolver, new 2026-08-11)
+internal/app             →  internal/storage  (plugins root dir resolver, new 2026-08-11; also injected into internal/plugin/assets.go's resolvePluginDir callback — internal/plugin itself has no direct storage import)
 internal/app             →  internal/dto  (DTO types in method signatures)
 internal/app             →  internal/kube/resources  (list functions)
 internal/app             →  internal/kube  (FactoryHandle, client primitives)
+internal/app             →  internal/config  (settings I/O)
 ```
 
-No circular imports. `dto` is the leaf — pure type definitions, no k8s or app imports.
+No circular imports. `dto` and `storage` are the leaves — `dto` holds pure type definitions, `storage` resolves persistent data directory.
 
 ### Clientset Cache
 

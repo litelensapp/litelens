@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
+
+	"github.com/litelensapp/litelens/internal/storage"
 )
 
 type ClusterProxy struct {
@@ -49,9 +50,19 @@ func Load() (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
+
 	var s Settings
-	if err := json.Unmarshal(data, &s); err != nil {
+	if err := unmarshalAndMigrate(data, &s); err != nil {
 		return Settings{}, err
+	}
+
+	return s, nil
+}
+
+// unmarshalAndMigrate unmarshals JSON data into Settings and applies legacy field migration.
+func unmarshalAndMigrate(data []byte, s *Settings) error {
+	if err := json.Unmarshal(data, s); err != nil {
+		return err
 	}
 
 	// Migration: if MarketplaceRepositories is empty and the JSON contains old flat fields,
@@ -69,7 +80,7 @@ func Load() (Settings, error) {
 		}
 	}
 
-	return s, nil
+	return nil
 }
 
 func Save(s Settings) error {
@@ -77,7 +88,7 @@ func Save(s Settings) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := os.MkdirAll(storage.Dir(), 0o700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -88,9 +99,5 @@ func Save(s Settings) error {
 }
 
 func settingsPath() (string, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "litelens", "settings.json"), nil
+	return storage.Dir("settings.json"), nil
 }
