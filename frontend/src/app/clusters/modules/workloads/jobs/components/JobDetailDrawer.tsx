@@ -153,7 +153,7 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
             <span className="text-h3 text-muted-foreground">Conditions</span>
             <div className="flex flex-wrap gap-1">
               {j.Conditions.map((c) => (
-                <JobConditionBadge key={c} condition={c} />
+                <JobConditionBadge key={c.Type} condition={c} />
               ))}
             </div>
           </>
