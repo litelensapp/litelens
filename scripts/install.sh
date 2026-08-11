@@ -369,6 +369,11 @@ else
   # ── icon (Linux) ──────────────────────────────────────────────────────────
   ICON_SRC=$(find "$TMP_DIR" -name "appicon.png" -type f | head -1)
   if [[ -n "$ICON_SRC" ]]; then
+    # Kept in ~/.litelens (the single on-disk dir for all persistent app
+    # data — see internal/storage) alongside the themed copy below, so the
+    # icon lives in one place uninstall/cleanup tooling already knows about.
+    cp "$ICON_SRC" "$LITELENS_DIR/appicon.png"
+
     ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
     mkdir -p "$ICON_DIR"
     cp "$ICON_SRC" "$ICON_DIR/litelens.png"
