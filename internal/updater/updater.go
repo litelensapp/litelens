@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 	"golang.org/x/mod/semver"
 )
 
@@ -60,6 +61,9 @@ func Check(current, token string) (*Release, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, ratelimiter.BuildError(resp)
+		}
 		return nil, fmt.Errorf("fetch latest release: HTTP %d", resp.StatusCode)
 	}
 
@@ -117,6 +121,9 @@ func FetchRelease(tag, token string) (*Release, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, ratelimiter.BuildError(resp)
+		}
 		return nil, fmt.Errorf("github API returned HTTP %d", resp.StatusCode)
 	}
 

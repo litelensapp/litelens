@@ -2,12 +2,16 @@ package updater
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	goruntime "runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 )
 
 // TestCheck covers the primary happy-path and common-failure behavior of
@@ -624,18 +628,20 @@ func Test_Check_MalformedJSON(t *testing.T) {
 // Test_FetchRelease_EdgeCases covers error cases and status code variations.
 func Test_FetchRelease_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name         string
-		tag          string
-		serverStatus int
-		wantErr      bool
-		description  string
+		name             string
+		tag              string
+		serverStatus     int
+		wantErr          bool
+		wantRateLimitErr bool
+		description      string
 	}{
 		{
-			name:         "forbidden status",
-			tag:          "v1.0.0",
-			serverStatus: http.StatusForbidden,
-			wantErr:      true,
-			description:  "403 Forbidden should return error with HTTP status",
+			name:             "forbidden status",
+			tag:              "v1.0.0",
+			serverStatus:     http.StatusForbidden,
+			wantErr:          true,
+			wantRateLimitErr: true,
+			description:      "403 Forbidden should return RateLimitError",
 		},
 		{
 			name:         "service unavailable",
@@ -667,7 +673,12 @@ func Test_FetchRelease_EdgeCases(t *testing.T) {
 				t.Errorf("FetchRelease(%q, \"\"): got err=%v, wantErr=%v (%s)",
 					tt.tag, err != nil, tt.wantErr, tt.description)
 			}
-			if err != nil && !strings.Contains(err.Error(), "HTTP") {
+			if tt.wantRateLimitErr && err != nil {
+				var rateLimitErr *ratelimiter.RateLimitError
+				if !errors.As(err, &rateLimitErr) {
+					t.Errorf("FetchRelease(%q) expected RateLimitError, got %T: %v", tt.tag, err, err)
+				}
+			} else if err != nil && !strings.Contains(err.Error(), "HTTP") {
 				t.Errorf("FetchRelease error message should contain HTTP status code: %v", err)
 			}
 		})
@@ -739,5 +750,119 @@ func Test_PlatformAsset_ReturnsPointerNotCopy(t *testing.T) {
 	}
 	if result != &assets[0] {
 		t.Errorf("platformAsset should return pointer to asset, not a copy")
+	}
+}
+
+// TestCheck_RateLimit403 verifies that a 403 response with X-RateLimit-Reset
+// header returns a RateLimitError with a parsed reset time.
+func TestCheck_RateLimit403(t *testing.T) {
+	resetTime := time.Now().Add(1 * time.Hour)
+	resetUnix := resetTime.Unix()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/latest" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := Check("v1.0.0", "")
+	if err == nil {
+		t.Fatalf("Check() with 403 should return error, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("Check() with 403 should return RateLimitError, got %T: %v", err, err)
+	}
+
+	// Verify the error message contains something more specific than "HTTP 403"
+	if !strings.Contains(rateLimitErr.Message, "rate limit exceeded") {
+		t.Errorf("Check() RateLimitError message should mention rate limit, got: %s", rateLimitErr.Message)
+	}
+
+	// Verify the reset time was parsed
+	if rateLimitErr.ResetTime == nil {
+		t.Errorf("Check() RateLimitError should have ResetTime parsed, got nil")
+	} else if rateLimitErr.ResetTime.Unix() != resetUnix {
+		t.Errorf("Check() RateLimitError ResetTime = %d, want %d", rateLimitErr.ResetTime.Unix(), resetUnix)
+	}
+}
+
+// TestCheck_RateLimit403NoHeader verifies that a 403 response without
+// X-RateLimit-Reset header returns a generic rate-limit message.
+func TestCheck_RateLimit403NoHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/latest" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusForbidden)
+		// No X-RateLimit-Reset header
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := Check("v1.0.0", "")
+	if err == nil {
+		t.Fatalf("Check() with 403 and no header should return error, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("Check() with 403 and no header should return RateLimitError, got %T: %v", err, err)
+	}
+
+	// Verify it has the generic message
+	if !strings.Contains(rateLimitErr.Message, "rate limit exceeded") {
+		t.Errorf("Check() RateLimitError message should mention rate limit, got: %s", rateLimitErr.Message)
+	}
+
+	// Verify ResetTime is nil (not parseable)
+	if rateLimitErr.ResetTime != nil {
+		t.Errorf("Check() RateLimitError with no header should have nil ResetTime, got %v", rateLimitErr.ResetTime)
+	}
+}
+
+// TestFetchRelease_RateLimit403 verifies that a 403 response in FetchRelease
+// returns a RateLimitError.
+func TestFetchRelease_RateLimit403(t *testing.T) {
+	resetTime := time.Now().Add(30 * time.Minute)
+	resetUnix := resetTime.Unix()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/tags/v1.0.0" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := FetchRelease("v1.0.0", "")
+	if err == nil {
+		t.Fatalf("FetchRelease() with 403 should return error, got nil")
+	}
+
+	var rateLimitErr *ratelimiter.RateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("FetchRelease() with 403 should return RateLimitError, got %T: %v", err, err)
+	}
+
+	if !strings.Contains(rateLimitErr.Message, "rate limit exceeded") {
+		t.Errorf("FetchRelease() RateLimitError message should mention rate limit, got: %s", rateLimitErr.Message)
+	}
+
+	if rateLimitErr.ResetTime == nil {
+		t.Errorf("FetchRelease() RateLimitError should have ResetTime parsed, got nil")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -37,7 +39,12 @@ func (a *App) checkForUpdate() error {
 			// Success (either update available or no update needed)
 			break
 		}
-		// Failure; log and retry if we have attempts left
+		// Check if this is a rate-limit error; if so, don't retry
+		if _, ok := errors.AsType[*ratelimiter.RateLimitError](err); ok {
+			log.Printf("app: checkForUpdate: rate limited: %v", err)
+			break
+		}
+		// Non-rate-limit failure; log and retry if we have attempts left
 		log.Printf("app: checkForUpdate: attempt %d: %v", attempt+1, err)
 		if attempt < len(sleeps) {
 			time.Sleep(sleeps[attempt])
@@ -45,8 +52,12 @@ func (a *App) checkForUpdate() error {
 	}
 
 	if err != nil {
-		// All retries exhausted
-		log.Printf("app: checkForUpdate: giving up after 3 attempts")
+		// Either rate-limited or all retries exhausted
+		if _, isRateLimitErr := err.(*ratelimiter.RateLimitError); isRateLimitErr {
+			log.Printf("app: checkForUpdate: giving up due to rate limit")
+		} else {
+			log.Printf("app: checkForUpdate: giving up after 3 attempts")
+		}
 		return err
 	}
 
