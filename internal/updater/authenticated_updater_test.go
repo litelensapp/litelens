@@ -135,17 +135,61 @@ func TestCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/releases/latest" {
-					w.WriteHeader(http.StatusNotFound)
-					return
-				}
-				w.WriteHeader(tt.serverStatus)
-				if tt.serverResponse != nil && tt.serverStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.serverResponse)
-				}
-			}))
+			// Create server first so we have the URL for the handlers
+			server := httptest.NewServer(http.NewServeMux())
+			serverURL := server.URL
 			defer server.Close()
+
+			// Set up the handler with the known server URL
+			server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/releases/latest" {
+					w.WriteHeader(tt.serverStatus)
+					if tt.serverResponse != nil && tt.serverStatus == http.StatusOK {
+						// Add manifest.json asset for authenticated tests
+						resp := *tt.serverResponse
+						resp.Assets = make([]Asset, len(tt.serverResponse.Assets))
+						copy(resp.Assets, tt.serverResponse.Assets)
+						// Fix asset names to match manifest filenames
+						hasPlatformAsset := false
+						for i := range resp.Assets {
+							if strings.Contains(resp.Assets[i].Name, goruntime.GOOS) && strings.Contains(resp.Assets[i].Name, goruntime.GOARCH) {
+								resp.Assets[i].Name = getAssetNameForPlatform()
+								hasPlatformAsset = true
+							}
+						}
+						// If no platform asset in test data, add one
+						if !hasPlatformAsset && len(resp.Assets) == 0 {
+							resp.Assets = append(resp.Assets, Asset{
+								Name:               getAssetNameForPlatform(),
+								URL:                serverURL + "/releases/assets/app",
+								BrowserDownloadURL: serverURL + "/releases/assets/app",
+								Size:               1024,
+							})
+						}
+						resp.Assets = append(resp.Assets, Asset{
+							Name:               "manifest.json",
+							URL:                serverURL + "/releases/assets/manifest",
+							BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+							Size:               256,
+						})
+						json.NewEncoder(w).Encode(resp)
+					}
+				} else if r.URL.Path == "/releases/assets/manifest" {
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{
+						"version": "v2.0.0",
+						"release_tag": "v2.0.0",
+						"generated_at": "2026-08-11T00:00:00Z",
+						"artifacts": [
+							{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+							{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+							{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024}
+						]
+					}`)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
+			})
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
@@ -164,6 +208,9 @@ func TestCheck(t *testing.T) {
 				}
 				if len(tt.serverResponse.Assets) > 0 && got.AssetURL == "" {
 					t.Errorf("Check() expected AssetURL to be populated for platform asset")
+				}
+				if got.SHA256 == "" {
+					t.Errorf("Check() expected SHA256 to be populated from manifest")
 				}
 			}
 		})
@@ -190,27 +237,49 @@ func TestCheckPrivateRepoAccess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/releases/latest" {
-					w.WriteHeader(http.StatusNotFound)
-					return
-				}
-				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(&Release{
-					TagName: "v2.0.0",
-					Body:    "Release notes",
-					HTMLURL: "https://example.com",
-					Assets: []Asset{
-						{
-							Name:               fmt.Sprintf("litelens-%s-%s", goruntime.GOOS, goruntime.GOARCH),
-							URL:                "https://api.github.com/repos/test-owner/test-repo/releases/assets/1",
-							BrowserDownloadURL: "https://example.com/download",
-							Size:               1024,
-						},
-					},
-				})
-			}))
+			server := httptest.NewServer(http.NewServeMux())
+			serverURL := server.URL
 			defer server.Close()
+
+			server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/releases/latest":
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(&Release{
+						TagName: "v2.0.0",
+						Body:    "Release notes",
+						HTMLURL: "https://example.com",
+						Assets: []Asset{
+							{
+								Name:               getAssetNameForPlatform(),
+								URL:                "https://api.github.com/repos/test-owner/test-repo/releases/assets/1",
+								BrowserDownloadURL: "https://example.com/download",
+								Size:               1024,
+							},
+							{
+								Name:               "manifest.json",
+								URL:                serverURL + "/releases/assets/manifest",
+								BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+								Size:               256,
+							},
+						},
+					})
+				case "/releases/assets/manifest":
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{
+						"version": "v2.0.0",
+						"release_tag": "v2.0.0",
+						"generated_at": "2026-08-11T00:00:00Z",
+						"artifacts": [
+							{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+							{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+							{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024}
+						]
+					}`)
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			})
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 			t.Setenv("PRIVATE_REPO_ACCESS", tt.privateRepoAccess)
@@ -231,21 +300,53 @@ func TestCheckPrivateRepoAccess(t *testing.T) {
 
 func TestCheckWithToken(t *testing.T) {
 	var gotAuth string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		if gotAuth != "Bearer test-token" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(&Release{
-			TagName: "v2.0.0",
-			Body:    "Release notes",
-			HTMLURL: "https://example.com",
-			Assets:  []Asset{},
-		})
-	}))
+	server := httptest.NewServer(http.NewServeMux())
 	defer server.Close()
+	serverURL := server.URL
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/releases/latest" {
+			gotAuth = r.Header.Get("Authorization")
+			if gotAuth != "Bearer test-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v2.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					{
+						Name:               "manifest.json",
+						URL:                serverURL + "/releases/assets/manifest",
+						BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+						Size:               256,
+					},
+				},
+			})
+		} else if r.URL.Path == "/releases/assets/manifest" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{
+				"version": "v2.0.0",
+				"release_tag": "v2.0.0",
+				"generated_at": "2026-08-11T00:00:00Z",
+				"artifacts": [
+					{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+					{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+					{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024}
+				]
+			}`)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
@@ -343,22 +444,66 @@ func TestFetchRelease(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.NewServeMux())
+			serverURL := server.URL
+			defer server.Close()
+
+			server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				expectedTag := tt.tag
 				if len(tt.tag) > 0 && tt.tag[0] != 'v' {
 					expectedTag = "v" + tt.tag
 				}
 				expectedPath := fmt.Sprintf("/releases/tags/%s", expectedTag)
-				if r.URL.Path != expectedPath {
+
+				switch r.URL.Path {
+				case expectedPath:
+					w.WriteHeader(tt.serverStatus)
+					if tt.serverResponse != nil && tt.serverStatus == http.StatusOK {
+						resp := *tt.serverResponse
+						resp.Assets = make([]Asset, len(tt.serverResponse.Assets))
+						copy(resp.Assets, tt.serverResponse.Assets)
+						// Fix asset names to match manifest filenames
+						hasPlatformAsset := false
+						for i := range resp.Assets {
+							if strings.Contains(resp.Assets[i].Name, goruntime.GOOS) && strings.Contains(resp.Assets[i].Name, goruntime.GOARCH) {
+								resp.Assets[i].Name = getAssetNameForPlatform()
+								hasPlatformAsset = true
+							}
+						}
+						// If no platform asset in test data, add one
+						if !hasPlatformAsset && len(resp.Assets) == 0 {
+							resp.Assets = append(resp.Assets, Asset{
+								Name:               getAssetNameForPlatform(),
+								URL:                serverURL + "/releases/assets/app",
+								BrowserDownloadURL: serverURL + "/releases/assets/app",
+								Size:               1024,
+							})
+						}
+						resp.Assets = append(resp.Assets, Asset{
+							Name:               "manifest.json",
+							URL:                serverURL + "/releases/assets/manifest",
+							BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+							Size:               256,
+						})
+						json.NewEncoder(w).Encode(resp)
+					}
+				case "/releases/assets/manifest":
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{
+						"version": "v1.0.0",
+						"release_tag": "v1.0.0",
+						"generated_at": "2026-08-11T00:00:00Z",
+						"artifacts": [
+							{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+							{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+							{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024},
+							{"os": "linux", "arch": "arm64", "filename": "litelens-linux-arm64.tar.gz", "sha256": "jkl012", "size": 1024}
+						]
+					}`)
+				default:
 					w.WriteHeader(http.StatusNotFound)
-					return
 				}
-				w.WriteHeader(tt.serverStatus)
-				if tt.serverResponse != nil && tt.serverStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.serverResponse)
-				}
-			}))
-			defer server.Close()
+			})
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
@@ -376,6 +521,9 @@ func TestFetchRelease(t *testing.T) {
 				}
 				if got.DownloadSize == 0 {
 					t.Errorf("FetchRelease(%q, token) expected DownloadSize to be populated", tt.tag)
+				}
+				if got.SHA256 == "" {
+					t.Errorf("FetchRelease(%q, token) expected SHA256 to be populated", tt.tag)
 				}
 			}
 		})
@@ -402,27 +550,54 @@ func TestFetchReleasePrivateRepoAccess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/releases/tags/v1.0.0" {
-					w.WriteHeader(http.StatusNotFound)
-					return
-				}
-				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(&Release{
-					TagName: "v1.0.0",
-					Body:    "Release notes",
-					HTMLURL: "https://example.com",
-					Assets: []Asset{
-						{
-							Name:               fmt.Sprintf("litelens-%s-%s", goruntime.GOOS, goruntime.GOARCH),
-							URL:                "https://api.github.com/repos/test-owner/test-repo/releases/assets/1",
-							BrowserDownloadURL: "https://example.com/download",
-							Size:               1024,
-						},
-					},
-				})
-			}))
+			server := httptest.NewServer(http.NewServeMux())
+			serverURL := server.URL
 			defer server.Close()
+
+			// Determine what URLs to use based on private repo access setting
+			// The test checks that the correct field (URL or BrowserDownloadURL) is used
+			apiURL := "https://api.github.com/repos/test-owner/test-repo/releases/assets/1"
+			publicURL := "https://example.com/download"
+
+			server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/releases/tags/v1.0.0":
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(&Release{
+						TagName: "v1.0.0",
+						Body:    "Release notes",
+						HTMLURL: "https://example.com",
+						Assets: []Asset{
+							{
+								Name:               getAssetNameForPlatform(),
+								URL:                apiURL,
+								BrowserDownloadURL: publicURL,
+								Size:               1024,
+							},
+							{
+								Name:               "manifest.json",
+								URL:                serverURL + "/releases/assets/manifest",
+								BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+								Size:               256,
+							},
+						},
+					})
+				case "/releases/assets/manifest":
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{
+						"version": "v1.0.0",
+						"release_tag": "v1.0.0",
+						"generated_at": "2026-08-11T00:00:00Z",
+						"artifacts": [
+							{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+							{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+							{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024}
+						]
+					}`)
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			})
 
 			t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 			t.Setenv("PRIVATE_REPO_ACCESS", tt.privateRepoAccess)
@@ -443,21 +618,55 @@ func TestFetchReleasePrivateRepoAccess(t *testing.T) {
 
 func TestFetchReleaseWithToken(t *testing.T) {
 	var gotAuth string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
 		if gotAuth != "Bearer test-token" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(&Release{
-			TagName: "v1.0.0",
-			Body:    "Release notes",
-			HTMLURL: "https://example.com",
-			Assets:  []Asset{},
-		})
-	}))
-	defer server.Close()
+
+		switch r.URL.Path {
+		case "/releases/tags/v1.0.0":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v1.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					{
+						Name:               "manifest.json",
+						URL:                serverURL + "/releases/assets/manifest",
+						BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+						Size:               256,
+					},
+				},
+			})
+		case "/releases/assets/manifest":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{
+				"version": "v1.0.0",
+				"release_tag": "v1.0.0",
+				"generated_at": "2026-08-11T00:00:00Z",
+				"artifacts": [
+					{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+					{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+					{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024}
+				]
+			}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
 
 	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
 
@@ -470,61 +679,6 @@ func TestFetchReleaseWithToken(t *testing.T) {
 	}
 	if got == nil {
 		t.Errorf("FetchRelease with token should return release")
-	}
-}
-
-func TestPlatformAsset(t *testing.T) {
-	matchName := fmt.Sprintf("litelens-%s-%s", goruntime.GOOS, goruntime.GOARCH)
-	middleMatchName := fmt.Sprintf("prefix-%s-%s-suffix", goruntime.GOOS, goruntime.GOARCH)
-	tests := []struct {
-		name      string
-		assets    []Asset
-		wantAsset *string
-	}{
-		{
-			name: "finds asset with os-arch suffix",
-			assets: []Asset{
-				{Name: matchName, BrowserDownloadURL: "https://example.com/match"},
-				{Name: "litelens-decoy-platform", BrowserDownloadURL: "https://example.com/decoy"},
-			},
-			wantAsset: &matchName,
-		},
-		{
-			name:   "no asset for empty list",
-			assets: []Asset{},
-		},
-		{
-			name: "suffix match in middle of name",
-			assets: []Asset{
-				{Name: middleMatchName, BrowserDownloadURL: "https://example.com/asset"},
-			},
-			wantAsset: &middleMatchName,
-		},
-		{
-			name: "skips sha256 checksum asset that shares the os-arch suffix",
-			assets: []Asset{
-				{Name: matchName + ".sha256", BrowserDownloadURL: "https://example.com/checksum", Size: 64},
-				{Name: matchName, BrowserDownloadURL: "https://example.com/match", Size: 123456},
-			},
-			wantAsset: &matchName,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := platformAsset(tt.assets)
-			if tt.wantAsset == nil {
-				if got != nil {
-					t.Errorf("platformAsset(): got %v, want nil", got)
-				}
-			} else {
-				if got == nil {
-					t.Errorf("platformAsset(): got nil, want asset with name %q", *tt.wantAsset)
-				} else if got.Name != *tt.wantAsset {
-					t.Errorf("platformAsset(): got %q, want %q", got.Name, *tt.wantAsset)
-				}
-			}
-		})
 	}
 }
 
@@ -685,74 +839,6 @@ func Test_FetchRelease_EdgeCases(t *testing.T) {
 	}
 }
 
-// Test_PlatformAsset_EdgeCases covers boundary conditions in asset selection.
-func Test_PlatformAsset_EdgeCases(t *testing.T) {
-	exactMatchName := fmt.Sprintf("%s-%s", goruntime.GOOS, goruntime.GOARCH)
-	multiMatchName := fmt.Sprintf("app-%s-%s.tar.gz", goruntime.GOOS, goruntime.GOARCH)
-	tests := []struct {
-		name        string
-		assets      []Asset
-		wantAsset   *string
-		description string
-	}{
-		{
-			name:        "empty asset list",
-			assets:      []Asset{},
-			wantAsset:   nil,
-			description: "no assets should return nil",
-		},
-		{
-			name: "asset name exactly matching suffix",
-			assets: []Asset{
-				{Name: exactMatchName, BrowserDownloadURL: "https://example.com/asset"},
-			},
-			wantAsset:   &exactMatchName,
-			description: "exact suffix match should be found",
-		},
-		{
-			name: "multiple assets, only one matches",
-			assets: []Asset{
-				{Name: "app-decoy-platform.exe", BrowserDownloadURL: "https://example.com/decoy1"},
-				{Name: "app-another-decoy", BrowserDownloadURL: "https://example.com/decoy2"},
-				{Name: multiMatchName, BrowserDownloadURL: "https://example.com/match"},
-			},
-			wantAsset:   &multiMatchName,
-			description: "should find the platform-specific asset",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := platformAsset(tt.assets)
-			if tt.wantAsset == nil {
-				if got != nil {
-					t.Errorf("platformAsset(): got %v, want nil (%s)", got, tt.description)
-				}
-			} else {
-				if got == nil {
-					t.Errorf("platformAsset(): got nil, want asset (%s)", tt.description)
-				} else if got.Name != *tt.wantAsset {
-					t.Errorf("platformAsset(): got %q, want %q (%s)", got.Name, *tt.wantAsset, tt.description)
-				}
-			}
-		})
-	}
-}
-
-// Test_PlatformAsset_ReturnsPointerNotCopy verifies the return value is a pointer.
-func Test_PlatformAsset_ReturnsPointerNotCopy(t *testing.T) {
-	assets := []Asset{
-		{Name: fmt.Sprintf("%s-%s", goruntime.GOOS, goruntime.GOARCH), BrowserDownloadURL: "http://example.com", Size: 1000},
-	}
-	result := platformAsset(assets)
-	if result == nil {
-		t.Fatalf("platformAsset() = nil, want match for %s-%s", goruntime.GOOS, goruntime.GOARCH)
-	}
-	if result != &assets[0] {
-		t.Errorf("platformAsset should return pointer to asset, not a copy")
-	}
-}
-
 // TestCheck_RateLimit403 verifies that a 403 response with X-RateLimit-Reset
 // header returns a RateLimitError with a parsed reset time.
 func TestCheck_RateLimit403(t *testing.T) {
@@ -864,5 +950,325 @@ func TestFetchRelease_RateLimit403(t *testing.T) {
 
 	if rateLimitErr.ResetTime == nil {
 		t.Errorf("FetchRelease() RateLimitError should have ResetTime parsed, got nil")
+	}
+}
+
+// TestFetchReleaseAuthenticatedManifestNotFound verifies fail-closed behavior
+// when manifest.json is missing from the release assets.
+func TestFetchReleaseAuthenticatedManifestNotFound(t *testing.T) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/releases/tags/v1.0.0":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v1.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					// Intentionally omit manifest.json
+				},
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := FetchRelease("v1.0.0", "test-token")
+	if err == nil {
+		t.Fatalf("FetchRelease() with missing manifest.json should return error, got nil")
+	}
+	if !strings.Contains(err.Error(), "manifest.json not found") {
+		t.Errorf("FetchRelease() error should mention manifest.json not found, got: %v", err)
+	}
+}
+
+// TestFetchReleaseAuthenticatedManifestFetchFails verifies fail-closed behavior
+// when the manifest.json asset fetch returns a non-200 status.
+func TestFetchReleaseAuthenticatedManifestFetchFails(t *testing.T) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/releases/tags/v1.0.0":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v1.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					{
+						Name:               "manifest.json",
+						URL:                serverURL + "/releases/assets/manifest",
+						BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+						Size:               256,
+					},
+				},
+			})
+		case "/releases/assets/manifest":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := FetchRelease("v1.0.0", "test-token")
+	if err == nil {
+		t.Fatalf("FetchRelease() with manifest.json fetch failing should return error, got nil")
+	}
+	if !strings.Contains(err.Error(), "fetch manifest") || !strings.Contains(err.Error(), "HTTP") {
+		t.Errorf("FetchRelease() error should mention manifest fetch failure, got: %v", err)
+	}
+}
+
+// TestFetchReleaseAuthenticatedPlatformNotInManifest verifies fail-closed behavior
+// when the manifest doesn't list the current platform.
+func TestFetchReleaseAuthenticatedPlatformNotInManifest(t *testing.T) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/releases/tags/v1.0.0":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v1.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					{
+						Name:               "manifest.json",
+						URL:                serverURL + "/releases/assets/manifest",
+						BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+						Size:               256,
+					},
+				},
+			})
+		case "/releases/assets/manifest":
+			w.Header().Set("Content-Type", "application/json")
+			// Manifest lists only unsupported platforms
+			fmt.Fprintf(w, `{
+				"version": "v1.0.0",
+				"release_tag": "v1.0.0",
+				"generated_at": "2026-08-11T00:00:00Z",
+				"artifacts": [
+					{"os": "freebsd", "arch": "amd64", "filename": "litelens-freebsd-amd64.tar.gz", "sha256": "abc123", "size": 1024}
+				]
+			}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := FetchRelease("v1.0.0", "test-token")
+	if err == nil {
+		t.Fatalf("FetchRelease() with unsupported platform should return error, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found in release manifest") {
+		t.Errorf("FetchRelease() error should mention platform not found in manifest, got: %v", err)
+	}
+}
+
+// TestFetchReleaseAuthenticatedArtifactNotInAssets verifies fail-closed behavior
+// when the manifest lists an artifact but the resolved filename isn't found in
+// the release's Assets list (consistency check).
+func TestFetchReleaseAuthenticatedArtifactNotInAssets(t *testing.T) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/releases/tags/v1.0.0":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v1.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					// Assets list doesn't match the manifest
+					{
+						Name:               "wrong-filename.tar.gz",
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					{
+						Name:               "manifest.json",
+						URL:                serverURL + "/releases/assets/manifest",
+						BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+						Size:               256,
+					},
+				},
+			})
+		case "/releases/assets/manifest":
+			w.Header().Set("Content-Type", "application/json")
+			// Include all platforms so the current platform will be found
+			fmt.Fprintf(w, `{
+				"version": "v1.0.0",
+				"release_tag": "v1.0.0",
+				"generated_at": "2026-08-11T00:00:00Z",
+				"artifacts": [
+					{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+					{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 1024},
+					{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 1024}
+				]
+			}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := FetchRelease("v1.0.0", "test-token")
+	if err == nil {
+		t.Fatalf("FetchRelease() with artifact not in assets should return error, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found in release assets") {
+		t.Errorf("FetchRelease() error should mention artifact not found in assets, got: %v", err)
+	}
+}
+
+// TestCheckAuthenticatedManifestNotFound mirrors
+// TestFetchReleaseAuthenticatedManifestNotFound for the Check() entry point,
+// since checkAuthenticated and fetchReleaseAuthenticated independently call
+// fetchManifestAuthenticated and must both fail closed the same way.
+func TestCheckAuthenticatedManifestNotFound(t *testing.T) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/releases/latest":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v2.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					// Intentionally omit manifest.json
+				},
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := Check("v1.0.0", "test-token")
+	if err == nil {
+		t.Fatalf("Check() with missing manifest.json should return error, got nil")
+	}
+	if !strings.Contains(err.Error(), "manifest.json not found") {
+		t.Errorf("Check() error should mention manifest.json not found, got: %v", err)
+	}
+}
+
+// TestCheckAuthenticatedPlatformNotInManifest mirrors
+// TestFetchReleaseAuthenticatedPlatformNotInManifest for the Check() entry point.
+func TestCheckAuthenticatedPlatformNotInManifest(t *testing.T) {
+	server := httptest.NewServer(http.NewServeMux())
+	serverURL := server.URL
+	defer server.Close()
+
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/releases/latest":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(&Release{
+				TagName: "v2.0.0",
+				Body:    "Release notes",
+				HTMLURL: "https://example.com",
+				Assets: []Asset{
+					{
+						Name:               getAssetNameForPlatform(),
+						URL:                serverURL + "/releases/assets/app",
+						BrowserDownloadURL: serverURL + "/releases/assets/app",
+						Size:               1024,
+					},
+					{
+						Name:               "manifest.json",
+						URL:                serverURL + "/releases/assets/manifest",
+						BrowserDownloadURL: serverURL + "/releases/assets/manifest",
+						Size:               256,
+					},
+				},
+			})
+		case "/releases/assets/manifest":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{
+				"version": "v2.0.0",
+				"release_tag": "v2.0.0",
+				"generated_at": "2026-08-11T00:00:00Z",
+				"artifacts": [
+					{"os": "freebsd", "arch": "amd64", "filename": "litelens-freebsd-amd64.tar.gz", "sha256": "abc123", "size": 1024}
+				]
+			}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := Check("v1.0.0", "test-token")
+	if err == nil {
+		t.Fatalf("Check() with unsupported platform should return error, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found in release manifest") {
+		t.Errorf("Check() error should mention platform not found in manifest, got: %v", err)
+	}
+}
+
+// getAssetNameForPlatform returns the manifest filename for the current platform.
+func getAssetNameForPlatform() string {
+	switch goruntime.GOOS {
+	case "darwin":
+		return fmt.Sprintf("litelens-%s-%s.zip", goruntime.GOOS, goruntime.GOARCH)
+	case "linux":
+		return fmt.Sprintf("litelens-%s-%s.tar.gz", goruntime.GOOS, goruntime.GOARCH)
+	case "windows":
+		return fmt.Sprintf("litelens-%s-%s.exe", goruntime.GOOS, goruntime.GOARCH)
+	default:
+		return ""
 	}
 }

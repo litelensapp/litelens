@@ -20,6 +20,11 @@ type Release struct {
 	Assets       []Asset `json:"assets"`
 	AssetURL     string  `json:"-"`
 	DownloadSize int64   `json:"-"`
+	// SHA256 is populated from manifest.json by both the authenticated and
+	// unauthenticated paths, and is empty if the manifest was unavailable or
+	// didn't list the current platform. Callers must treat empty as
+	// "no integrity verification available" and fail closed.
+	SHA256 string `json:"-"`
 }
 
 // Check returns the latest release if it is newer than current, or (nil, nil)

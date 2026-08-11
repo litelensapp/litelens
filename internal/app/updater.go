@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -217,17 +216,12 @@ func (a *App) performLinuxUpdate(version, token string) error {
 		return fmt.Errorf("no linux asset found for release %s", version)
 	}
 
-	// Check if a SHA256 checksum is available in the release assets
-	// (similar to the plugin release pattern). If no checksum is available,
-	// fail the update with a clear error to maintain security posture.
-	// Pass the already-fetched release object to avoid double-fetching.
-	checksumHex, err := findReleaseChecksumInRelease(a.ctx, rel, token)
-	if err != nil {
-		return fmt.Errorf("checksum verification unavailable: %w", err)
-	}
-	if checksumHex == "" {
+	// Fail closed if no checksum is published for this release asset, matching
+	// the integrity guarantee already enforced on the Linux update path.
+	if rel.SHA256 == "" {
 		return fmt.Errorf("update failed: release has no integrity verification (missing SHA256 checksum asset)")
 	}
+	checksumHex := rel.SHA256
 
 	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, rel.AssetURL, nil)
 	if err != nil {
@@ -366,90 +360,6 @@ func extractBinaryFromTarGz(tarGzPath string) (extractedPath string, err error) 
 	}
 }
 
-// findReleaseChecksumInRelease searches a pre-fetched release object for a SHA256
-// checksum file matching the current platform's release asset (as resolved by
-// updater.FetchRelease/rel.AssetURL). Returns the checksum hex string.
-// If no checksum is found, returns ("", nil) — the caller must decide
-// whether to fail or proceed without verification.
-func findReleaseChecksumInRelease(ctx context.Context, rel *updater.Release, token string) (string, error) {
-	// When Assets is empty, the release was resolved via the unauthenticated
-	// public path (no token configured), which never calls the GitHub API
-	// and so never populates Assets. The checksum asset still exists at the
-	// well-known convention scripts/install.sh uses: the download asset's
-	// name with a ".sha256" suffix.
-	if len(rel.Assets) == 0 {
-		return downloadChecksum(ctx, rel.AssetURL+".sha256", token)
-	}
-
-	// The checksum file name mirrors the platform asset name with a ".sha256"
-	// suffix, e.g. "litelens-windows-amd64.exe.sha256".
-	checksumName := ""
-	for _, asset := range rel.Assets {
-		assetURL := asset.URL
-		if !config.IsPrivateRepoAccess() {
-			assetURL = asset.BrowserDownloadURL
-		}
-		if assetURL != "" && assetURL == rel.AssetURL {
-			checksumName = asset.Name + ".sha256"
-			break
-		}
-	}
-
-	if checksumName == "" {
-		// No checksum available; this is security-critical.
-		return "", nil
-	}
-
-	// Find the checksum asset URL.
-	checksumAssetURL := ""
-	for _, asset := range rel.Assets {
-		if asset.Name == checksumName {
-			if config.IsPrivateRepoAccess() {
-				checksumAssetURL = asset.URL
-			} else {
-				checksumAssetURL = asset.BrowserDownloadURL
-			}
-			break
-		}
-	}
-
-	if checksumAssetURL == "" {
-		// Checksum file was expected but not found in assets.
-		return "", nil
-	}
-
-	return downloadChecksum(ctx, checksumAssetURL, token)
-}
-
-// downloadChecksum fetches a SHA256 checksum file (tiny, just a hex string +
-// newline) from the given URL and returns its trimmed contents.
-func downloadChecksum(ctx context.Context, checksumAssetURL, token string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, checksumAssetURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("create checksum request: %w", err)
-	}
-	req.Header.Set("Accept", "application/octet-stream")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("download checksum: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("checksum download returned HTTP %d", resp.StatusCode)
-	}
-
-	checksumBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read checksum: %w", err)
-	}
-
-	return strings.TrimSpace(string(checksumBytes)), nil
-}
 
 // resolveInstallerHelper locates the litelens-install-helper binary.
 // It first checks /usr/local/bin (the trusted, production install location),
@@ -514,13 +424,10 @@ func (a *App) performWindowsUpdate(version, token string) error {
 
 	// Fail closed if no checksum is published for this release asset, matching
 	// the integrity guarantee already enforced on the Linux update path.
-	checksumHex, err := findReleaseChecksumInRelease(a.ctx, rel, token)
-	if err != nil {
-		return fmt.Errorf("checksum verification unavailable: %w", err)
-	}
-	if checksumHex == "" {
+	if rel.SHA256 == "" {
 		return fmt.Errorf("update failed: release has no integrity verification (missing SHA256 checksum asset)")
 	}
+	checksumHex := rel.SHA256
 
 	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, rel.AssetURL, nil)
 	if err != nil {

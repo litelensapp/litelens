@@ -2,30 +2,13 @@ package updater
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	goruntime "runtime"
 	"strings"
 	"time"
 )
-
-// assetFileName returns the exact release artifact filename for the given
-// GOOS/GOARCH, matching scripts/install.sh's naming convention and the
-// release matrix built by .github/workflows/job-build.yml.
-func assetFileName(goos, goarch string) (string, error) {
-	switch {
-	case goos == "darwin" && goarch == "arm64":
-		return "litelens-darwin-arm64.zip", nil
-	case goos == "darwin" && goarch == "amd64":
-		return "litelens-darwin-amd64.zip", nil
-	case goos == "linux" && goarch == "amd64":
-		return "litelens-linux-amd64.tar.gz", nil
-	case goos == "windows" && goarch == "amd64":
-		return "litelens-windows-amd64.exe", nil
-	default:
-		return "", fmt.Errorf("unsupported platform: %s/%s", goos, goarch)
-	}
-}
 
 // resolveLatestTagUnauthenticated resolves the latest release tag via
 // GitHub's unauthenticated releases/latest redirect, which is not subject to
@@ -63,43 +46,57 @@ func resolveLatestTagUnauthenticated() (string, error) {
 	return tag, nil
 }
 
-// downloadSizeUnauthenticated best-effort resolves the Content-Length of a
-// direct download URL via a HEAD request. Returns 0 on any failure; the size
-// is cosmetic (UpdateModal hides the row when it's 0/empty), never a hard
-// requirement.
-func downloadSizeUnauthenticated(assetURL string) int64 {
+// fetchManifest fetches the manifest.json release asset for the given tag,
+// providing the single source of truth for asset names, checksums, and sizes
+// from the actual build matrix output.
+func fetchManifest(tag string) (*Manifest, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, assetURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getManifestUrl(tag), nil)
 	if err != nil {
-		return 0
+		return nil, fmt.Errorf("build request: %w", err)
 	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return 0
+		return nil, fmt.Errorf("fetch manifest: %w", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return 0
+		return nil, fmt.Errorf("fetch manifest: HTTP %d", resp.StatusCode)
 	}
-	return resp.ContentLength
+
+	var manifest Manifest
+	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+		return nil, fmt.Errorf("decode manifest: %w", err)
+	}
+
+	return &manifest, nil
 }
 
 // unauthenticatedRelease builds a Release for the given tag using only
 // public github.com URLs (no api.github.com calls), matching the unauthenticated
-// path in scripts/install.sh.
+// path in scripts/install.sh. It queries the manifest.json release asset to
+// resolve the correct artifact filename and size for the current platform.
 func unauthenticatedRelease(tag string) (*Release, error) {
-	name, err := assetFileName(goruntime.GOOS, goruntime.GOARCH)
+	manifest, err := fetchManifest(tag)
 	if err != nil {
 		return nil, err
 	}
 
-	assetURL := getUnauthenticatedReleaseAssetUrl(tag, name)
+	artifact := manifest.FindArtifact(goruntime.GOOS, goruntime.GOARCH)
+	if artifact == nil {
+		return nil, fmt.Errorf("current platform %s/%s not found in release manifest for %s", goruntime.GOOS, goruntime.GOARCH, tag)
+	}
+
+	assetURL := getUnauthenticatedReleaseAssetUrl(tag, artifact.Filename)
 	return &Release{
 		TagName:      tag,
 		HTMLURL:      getUnauthenticatedReleaseTagsUrl(tag),
 		AssetURL:     assetURL,
-		DownloadSize: downloadSizeUnauthenticated(assetURL),
+		DownloadSize: artifact.Size,
+		SHA256:       artifact.SHA256,
 	}, nil
 }

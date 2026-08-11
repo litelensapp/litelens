@@ -6,12 +6,24 @@ BIN_NAME="litelens"
 INSTALL_DIR="/usr/local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
 
+# Base URL for all release lookups (releases/latest, releases/tags/{tag},
+# releases/download/..., releases/assets/...). Mirrors GetReleasesBaseURL in
+# internal/config/env.go — overridable via the same APP_VERSION_RELEASES_BASE_URL
+# environment variable. Defaults to the public github.com host; if REPO is
+# private and LITELENS_ACCESS_TOKEN is required to access it, set this to
+# https://api.github.com/repos/${REPO} instead (the public github.com host
+# rejects Bearer tokens on private-repo release URLs).
+RELEASES_BASE_URL="${APP_VERSION_RELEASES_BASE_URL:-https://github.com/${REPO}}"
+
 # ── colours ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()    { echo -e "${GREEN}→${NC} $*"; }
 warn()    { echo -e "${YELLOW}⚠${NC}  $*"; }
 error()   { echo -e "${RED}✗${NC}  $*" >&2; exit 1; }
 success() { echo -e "${GREEN}✓${NC} $*"; }
+
+# ── jq availability check ────────────────────────────────────────────────────
+command -v jq &>/dev/null || error "jq is required but not installed. Install it and re-run."
 
 # ── detect OS + arch ─────────────────────────────────────────────────────────
 OS="$(uname -s)"
@@ -20,14 +32,14 @@ ARCH="$(uname -m)"
 case "$OS" in
   Linux)
     case "$ARCH" in
-      x86_64)  ARTIFACT="litelens-linux-amd64.tar.gz" ;;
+      x86_64)  PLATFORM_OS="linux"; PLATFORM_ARCH="amd64" ;;
       *)        error "Unsupported Linux architecture: $ARCH" ;;
     esac
     ;;
   Darwin)
     case "$ARCH" in
-      arm64)   ARTIFACT="litelens-darwin-arm64.zip" ;;
-      x86_64)  ARTIFACT="litelens-darwin-amd64.zip" ;;
+      arm64)   PLATFORM_OS="darwin"; PLATFORM_ARCH="arm64" ;;
+      x86_64)  PLATFORM_OS="darwin"; PLATFORM_ARCH="amd64" ;;
       *)        error "Unsupported macOS architecture: $ARCH" ;;
     esac
     ;;
@@ -37,8 +49,11 @@ case "$OS" in
 esac
 
 # ── auth ─────────────────────────────────────────────────────────────────────
-# For private repos, export LITELENS_ACCESS_TOKEN in ~/.bashrc or ~/.zshrc:
+# For private repos, export LITELENS_ACCESS_TOKEN and also point
+# RELEASES_BASE_URL at the API host (see its definition above) in
+# ~/.bashrc or ~/.zshrc:
 #   export LITELENS_ACCESS_TOKEN=ghp_xxx
+#   export APP_VERSION_RELEASES_BASE_URL=https://api.github.com/repos/litelensapp/litelens
 LITELENS_ACCESS_TOKEN="${LITELENS_ACCESS_TOKEN:-}"
 
 # HTTP/2 has stream teardown issues on some Linux curl builds; force HTTP/1.1
@@ -68,7 +83,7 @@ gh_curl() {
     fi
   elif [[ "$http_code" == "404" ]]; then
     if [[ -z "$LITELENS_ACCESS_TOKEN" ]]; then
-      error "GitHub API returned 404 — check the repo name or that the release/tag exists.\nIf this is a private repo, export a token and re-run:\n  export LITELENS_ACCESS_TOKEN=ghp_xxx"
+      error "GitHub API returned 404 — check the repo name or that the release/tag exists.\nIf this is a private repo, export a token and the API base URL, then re-run:\n  export LITELENS_ACCESS_TOKEN=ghp_xxx\n  export APP_VERSION_RELEASES_BASE_URL=https://api.github.com/repos/${REPO}"
     else
       error "GitHub API returned 404 — check the repo name or that the release/tag exists."
     fi
@@ -79,6 +94,10 @@ gh_curl() {
   echo "$body"
 }
 
+# ── setup temp directory ────────────────────────────────────────────────────
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
 # ── resolve version ───────────────────────────────────────────────────────────
 # Priority: positional arg > VERSION env var > latest release
 VERSION="${1:-${VERSION:-}}"
@@ -88,7 +107,7 @@ if [[ -n "$VERSION" ]]; then
   info "Installing version: $TAG"
 elif [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   info "Fetching latest release..."
-  TAG=$(gh_curl "https://api.github.com/repos/${REPO}/releases/latest" \
+  TAG=$(gh_curl "${RELEASES_BASE_URL}/releases/latest" \
     | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
   [[ -z "$TAG" ]] && error "Could not resolve latest release."
   info "Latest version: $TAG"
@@ -101,25 +120,63 @@ else
   # identical to a bad token. The releases page redirect isn't rate-limited.
   info "Fetching latest release..."
   FINAL_URL=$(curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" -o /dev/null -w '%{url_effective}' \
-    "https://github.com/${REPO}/releases/latest") \
-    || error "Could not reach https://github.com/${REPO}/releases/latest"
+    "${RELEASES_BASE_URL}/releases/latest") \
+    || error "Could not reach ${RELEASES_BASE_URL}/releases/latest"
   TAG="${FINAL_URL##*/tag/}"
   [[ -z "$TAG" || "$TAG" == "$FINAL_URL" ]] && error "Could not resolve latest release for ${REPO}."
   info "Latest version: $TAG"
 fi
 
+# ── resolve release metadata + manifest ───────────────────────────────────────
+# manifest.json is the single source of truth for the artifact filename and
+# SHA256 checksum for each platform — generated from the actual build matrix
+# output, avoiding hardcoded per-platform guesses drifting from what was built.
+RELEASE_JSON=""
+ASSET_ID=""
+if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
+  info "Resolving release..."
+  RELEASE_JSON=$(gh_curl "${RELEASES_BASE_URL}/releases/tags/${TAG}")
+
+  # Extract asset id — tracks last seen "id" value, stops at matching "name"
+  MANIFEST_ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="manifest.json" '
+    /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
+    /"name":/ && index($0, art) { print last_id; exit }
+  ')
+  [[ -z "$MANIFEST_ASSET_ID" ]] && error "manifest.json not found in release ${TAG}. Check the tag name and repo."
+
+  curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
+    -H "Authorization: Bearer ${LITELENS_ACCESS_TOKEN}" \
+    -H "Accept: application/octet-stream" \
+    "${RELEASES_BASE_URL}/releases/assets/${MANIFEST_ASSET_ID}" \
+    -o "$TMP_DIR/manifest.json" \
+    || error "Could not download manifest for release ${TAG}."
+else
+  info "Resolving asset from manifest..."
+  curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
+    "${RELEASES_BASE_URL}/releases/download/${TAG}/manifest.json" \
+    -o "$TMP_DIR/manifest.json" \
+    || error "Could not download manifest for release ${TAG}."
+fi
+
+# Use --arg to pass PLATFORM_OS/PLATFORM_ARCH as JSON strings to jq, preventing
+# injection if these values were ever derived from untrusted sources.
+ARTIFACT=$(jq -r --arg os "$PLATFORM_OS" --arg arch "$PLATFORM_ARCH" \
+  '.artifacts[] | select(.os == $os and .arch == $arch) | .filename' \
+  "$TMP_DIR/manifest.json")
+[[ -z "$ARTIFACT" || "$ARTIFACT" == "null" ]] && \
+  error "Platform ${PLATFORM_OS}/${PLATFORM_ARCH} not found in release manifest for ${TAG}."
+
+EXPECTED_SHA256=$(jq -r --arg os "$PLATFORM_OS" --arg arch "$PLATFORM_ARCH" \
+  '.artifacts[] | select(.os == $os and .arch == $arch) | .sha256' \
+  "$TMP_DIR/manifest.json")
+[[ -z "$EXPECTED_SHA256" || "$EXPECTED_SHA256" == "null" ]] && \
+  error "No SHA256 checksum in release manifest for ${PLATFORM_OS}/${PLATFORM_ARCH}; refusing to install an unverified binary."
+
 # ── resolve asset ID (required for private repo downloads only) ──────────────
 # Public downloads use direct github.com/.../releases/download URLs below and
 # never need the API, so skip this (and its share of the rate limit) entirely
 # when there's no token.
-RELEASE_JSON=""
-ASSET_ID=""
-CHECKSUM_ASSET_ID=""
 if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
-  info "Resolving asset..."
-  RELEASE_JSON=$(gh_curl "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
-
-  # Extract asset id — tracks last seen "id" value, stops at matching "name"
   ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="$ARTIFACT" '
     /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
     /"name":/ && index($0, art) { print last_id; exit }
@@ -129,51 +186,27 @@ if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
 fi
 
 # ── download ─────────────────────────────────────────────────────────────────
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR"' EXIT
-
 info "Downloading $ARTIFACT..."
 if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
   # Private repo: use the GitHub API assets endpoint with Accept: application/octet-stream
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" --progress-bar \
     -H "Authorization: Bearer ${LITELENS_ACCESS_TOKEN}" \
     -H "Accept: application/octet-stream" \
-    "https://api.github.com/repos/${REPO}/releases/assets/${ASSET_ID}" \
+    "${RELEASES_BASE_URL}/releases/assets/${ASSET_ID}" \
     -o "$TMP_DIR/$ARTIFACT"
 else
   # Public repo: direct download URL
   curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" --progress-bar \
-    "https://github.com/${REPO}/releases/download/${TAG}/${ARTIFACT}" \
+    "${RELEASES_BASE_URL}/releases/download/${TAG}/${ARTIFACT}" \
     -o "$TMP_DIR/$ARTIFACT" \
     || error "Could not download ${ARTIFACT} for release ${TAG}. Check the tag name and repo."
 fi
 
 # ── verify checksum ──────────────────────────────────────────────────────────
-# Fail closed: if no checksum asset is published for this release, refuse to
-# install rather than run an unverified binary.
+# Verified against the SHA256 already resolved from manifest.json above —
+# fail-closed behavior (refusing to install without a checksum) is enforced
+# where EXPECTED_SHA256 is read from the manifest.
 info "Verifying checksum..."
-if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
-  CHECKSUM_ASSET_ID=$(echo "$RELEASE_JSON" | awk -v art="${ARTIFACT}.sha256" '
-    /"id":/ { id=$0; gsub(/[^0-9]/, "", id); last_id=id }
-    /"name":/ && index($0, art) { print last_id; exit }
-  ')
-  [[ -z "$CHECKSUM_ASSET_ID" ]] && error "No SHA256 checksum published for '${ARTIFACT}' in release ${TAG}; refusing to install an unverified binary."
-fi
-
-if [[ -n "$LITELENS_ACCESS_TOKEN" ]]; then
-  curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
-    -H "Authorization: Bearer ${LITELENS_ACCESS_TOKEN}" \
-    -H "Accept: application/octet-stream" \
-    "https://api.github.com/repos/${REPO}/releases/assets/${CHECKSUM_ASSET_ID}" \
-    -o "$TMP_DIR/$ARTIFACT.sha256"
-else
-  curl -fsSL "${CURL_OPTS[@]+"${CURL_OPTS[@]}"}" \
-    "https://github.com/${REPO}/releases/download/${TAG}/${ARTIFACT}.sha256" \
-    -o "$TMP_DIR/$ARTIFACT.sha256" \
-    || error "No SHA256 checksum published for '${ARTIFACT}' in release ${TAG}; refusing to install an unverified binary."
-fi
-
-EXPECTED_SHA256=$(tr -d '[:space:]' < "$TMP_DIR/$ARTIFACT.sha256")
 ACTUAL_SHA256=$(shasum -a 256 "$TMP_DIR/$ARTIFACT" | awk '{print $1}')
 [[ "$EXPECTED_SHA256" == "$ACTUAL_SHA256" ]] || error "Checksum mismatch for ${ARTIFACT}: expected ${EXPECTED_SHA256}, got ${ACTUAL_SHA256}"
 success "Checksum verified"

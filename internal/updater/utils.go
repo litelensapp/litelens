@@ -33,3 +33,12 @@ func getUnauthenticatedReleaseTagsUrl(tag string) string {
 func getUnauthenticatedReleaseAssetUrl(tag, name string) string {
 	return fmt.Sprintf("%s/releases/download/%s/%s", config.GetReleasesBaseURL(), tag, name)
 }
+
+// getManifestUrl returns the github.com direct download URL for the
+// manifest.json release asset for the given tag, used by the no-token
+// (unauthenticated) path as the single source of truth for asset names,
+// checksums, and sizes — avoiding per-consumer hardcoded GOOS/GOARCH→filename
+// guesses that can drift from the actual build matrix.
+func getManifestUrl(tag string) string {
+	return fmt.Sprintf("%s/releases/download/%s/manifest.json", config.GetReleasesBaseURL(), tag)
+}

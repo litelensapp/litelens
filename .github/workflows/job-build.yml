@@ -99,10 +99,81 @@ jobs:
             build/bin/${{ matrix.artifact }}.sha256
           retention-days: 1
 
+      - name: Upload checksum artifact
+        # Only consumed by publish-manifest below (to populate manifest.json's
+        # sha256 field) — kept as a small dedicated artifact rather than
+        # re-downloading the full build artifact just to read the checksum.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checksum-${{ matrix.artifact }}
+          path: build/bin/${{ matrix.artifact }}.sha256
+          retention-days: 1
+
       - name: Upload to release
         if: ${{ inputs.version != 'dev' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ inputs.version }}" build/bin/${{ matrix.artifact }} --repo "${{ github.repository }}" --clobber
-          gh release upload "${{ inputs.version }}" build/bin/${{ matrix.artifact }}.sha256 --repo "${{ github.repository }}" --clobber
+
+  publish-manifest:
+    needs: run
+    if: ${{ inputs.version != 'dev' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Download checksum artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: checksum-*
+          path: checksums
+          merge-multiple: true
+
+      - name: Build manifest.json from published release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.version }}"
+          REPO="${{ github.repository }}"
+
+          echo '{"version": "'"$TAG"'", "release_tag": "'"$TAG"'", "generated_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'", "artifacts": []}' > manifest.json
+
+          # List all assets in the release (checksums are no longer published
+          # as release assets — they're read from the checksum-* build
+          # artifacts downloaded above instead).
+          assets=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name')
+
+          for artifact in $assets; do
+            # Parse os/arch from filename: litelens-<os>-<arch>.<ext>
+            # Regex: ^litelens-([a-z0-9]+)-([a-z0-9]+)\.
+            if [[ $artifact =~ ^litelens-([a-z0-9]+)-([a-z0-9]+)\. ]]; then
+              os="${BASH_REMATCH[1]}"
+              arch="${BASH_REMATCH[2]}"
+            else
+              echo "::warning::skipping ${artifact}: does not match litelens-<os>-<arch>.<ext> pattern"
+              continue
+            fi
+
+            sha256=""
+            [[ -f "checksums/${artifact}.sha256" ]] && sha256=$(tr -d '[:space:]' < "checksums/${artifact}.sha256")
+            size=$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq ".assets[] | select(.name == \"${artifact}\") | .size")
+            if [[ -z "$sha256" || -z "$size" ]]; then
+              echo "::warning::skipping ${artifact}: could not fetch checksum or size"
+              continue
+            fi
+            manifest=$(jq --arg os "$os" --arg arch "$arch" --arg filename "$artifact" --arg sha256 "$sha256" --argjson size "$size" \
+              '.artifacts += [{"os": $os, "arch": $arch, "filename": $filename, "sha256": $sha256, "size": $size}]' manifest.json)
+            echo "$manifest" > manifest.json
+          done
+
+          cat manifest.json
+
+      - name: Upload manifest to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ inputs.version }}" manifest.json --repo "${{ github.repository }}" --clobber

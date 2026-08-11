@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	goruntime "runtime"
+	"strings"
 	"testing"
 )
 
@@ -13,11 +13,6 @@ import (
 // redirect/download convention and never touches an api.github.com-shaped
 // endpoint (mirrors scripts/install.sh's unauthenticated path).
 func TestCheck_NoToken_UnauthenticatedPath(t *testing.T) {
-	assetName, err := assetFileName(goruntime.GOOS, goruntime.GOARCH)
-	if err != nil {
-		t.Skipf("unsupported platform for this test: %v", err)
-	}
-
 	tests := []struct {
 		name        string
 		current     string
@@ -43,8 +38,23 @@ func TestCheck_NoToken_UnauthenticatedPath(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 			mux.HandleFunc("/releases/download/", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Length", "2048")
-				w.WriteHeader(http.StatusOK)
+				// Serve manifest.json for this test
+				if strings.Contains(r.URL.Path, "manifest.json") {
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{
+						"version": "%s",
+						"release_tag": "%s",
+						"generated_at": "2026-08-11T00:00:00Z",
+						"artifacts": [
+							{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 2048},
+							{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 2048},
+							{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 2048}
+						]
+					}`, tt.latestTag, tt.latestTag)
+				} else {
+					w.Header().Set("Content-Length", "2048")
+					w.WriteHeader(http.StatusOK)
+				}
 			})
 			server := httptest.NewServer(mux)
 			defer server.Close()
@@ -62,15 +72,12 @@ func TestCheck_NoToken_UnauthenticatedPath(t *testing.T) {
 				t.Fatalf("Check(): got release=%v, want release=%v", got != nil, tt.wantRelease)
 			}
 			if got != nil {
-				wantAssetURL := fmt.Sprintf("%s/releases/download/%s/%s", server.URL, tt.latestTag, assetName)
-				if got.AssetURL != wantAssetURL {
-					t.Errorf("Check() AssetURL = %q, want %q", got.AssetURL, wantAssetURL)
+				expectedSize := int64(2048)
+				if got.DownloadSize != expectedSize {
+					t.Errorf("Check() DownloadSize = %d, want %d", got.DownloadSize, expectedSize)
 				}
 				if got.TagName != tt.latestTag {
 					t.Errorf("Check() TagName = %q, want %q", got.TagName, tt.latestTag)
-				}
-				if got.DownloadSize != 2048 {
-					t.Errorf("Check() DownloadSize = %d, want 2048", got.DownloadSize)
 				}
 			}
 		})
@@ -81,11 +88,6 @@ func TestCheck_NoToken_UnauthenticatedPath(t *testing.T) {
 // empty token builds the Release entirely from public URLs for the given
 // tag, without any api.github.com-shaped request.
 func TestFetchRelease_NoToken_UnauthenticatedPath(t *testing.T) {
-	assetName, err := assetFileName(goruntime.GOOS, goruntime.GOARCH)
-	if err != nil {
-		t.Skipf("unsupported platform for this test: %v", err)
-	}
-
 	var apiHit bool
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/", func(w http.ResponseWriter, r *http.Request) {
@@ -93,8 +95,23 @@ func TestFetchRelease_NoToken_UnauthenticatedPath(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 	mux.HandleFunc("/releases/download/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Length", "4096")
-		w.WriteHeader(http.StatusOK)
+		// Serve manifest.json for this test
+		if strings.Contains(r.URL.Path, "manifest.json") {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{
+				"version": "v3.4.5",
+				"release_tag": "v3.4.5",
+				"generated_at": "2026-08-11T00:00:00Z",
+				"artifacts": [
+					{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 4096},
+					{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 4096},
+					{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 4096}
+				]
+			}`)
+		} else {
+			w.Header().Set("Content-Length", "4096")
+			w.WriteHeader(http.StatusOK)
+		}
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -114,39 +131,149 @@ func TestFetchRelease_NoToken_UnauthenticatedPath(t *testing.T) {
 	if got.TagName != "v3.4.5" {
 		t.Errorf("FetchRelease() TagName = %q, want v3.4.5", got.TagName)
 	}
-	wantAssetURL := fmt.Sprintf("%s/releases/download/v3.4.5/%s", server.URL, assetName)
-	if got.AssetURL != wantAssetURL {
-		t.Errorf("FetchRelease() AssetURL = %q, want %q", got.AssetURL, wantAssetURL)
-	}
 	if got.DownloadSize != 4096 {
 		t.Errorf("FetchRelease() DownloadSize = %d, want 4096", got.DownloadSize)
 	}
 }
 
-func TestAssetFileName(t *testing.T) {
+func TestFetchManifest_Success(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/releases/download/v1.2.3/manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{
+			"version": "v1.2.3",
+			"release_tag": "v1.2.3",
+			"generated_at": "2026-08-11T00:00:00Z",
+			"artifacts": [
+				{"os": "darwin", "arch": "arm64", "filename": "litelens-darwin-arm64.zip", "sha256": "abc123", "size": 1024},
+				{"os": "linux", "arch": "amd64", "filename": "litelens-linux-amd64.tar.gz", "sha256": "def456", "size": 2048},
+				{"os": "windows", "arch": "amd64", "filename": "litelens-windows-amd64.exe", "sha256": "ghi789", "size": 3072}
+			]
+		}`)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	got, err := fetchManifest("v1.2.3")
+	if err != nil {
+		t.Fatalf("fetchManifest() returned err=%v, want nil", err)
+	}
+	if got == nil {
+		t.Fatalf("fetchManifest() returned nil, want Manifest")
+	}
+	if got.Version != "v1.2.3" {
+		t.Errorf("fetchManifest() Version = %q, want v1.2.3", got.Version)
+	}
+	if len(got.Artifacts) != 3 {
+		t.Errorf("fetchManifest() Artifacts length = %d, want 3", len(got.Artifacts))
+	}
+}
+
+func TestFetchManifest_404(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := fetchManifest("v1.2.3")
+	if err == nil {
+		t.Fatal("fetchManifest() expected error for 404, got nil")
+	}
+	if !strings.Contains(err.Error(), "HTTP 404") {
+		t.Errorf("fetchManifest() error = %q, want HTTP 404", err.Error())
+	}
+}
+
+func TestFetchManifest_MalformedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{invalid json`)
+	}))
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := fetchManifest("v1.2.3")
+	if err == nil {
+		t.Fatal("fetchManifest() expected error for malformed JSON, got nil")
+	}
+	if !strings.Contains(err.Error(), "decode manifest") {
+		t.Errorf("fetchManifest() error = %q, want decode manifest error", err.Error())
+	}
+}
+
+func TestManifest_FindArtifact_Found(t *testing.T) {
+	m := &Manifest{
+		Artifacts: []ManifestArtifact{
+			{OS: "darwin", Arch: "arm64", Filename: "litelens-darwin-arm64.zip"},
+			{OS: "linux", Arch: "amd64", Filename: "litelens-linux-amd64.tar.gz"},
+			{OS: "windows", Arch: "amd64", Filename: "litelens-windows-amd64.exe"},
+		},
+	}
+
 	tests := []struct {
-		goos, goarch string
-		want         string
-		wantErr      bool
+		goos, goarch, wantFilename string
 	}{
-		{"darwin", "arm64", "litelens-darwin-arm64.zip", false},
-		{"darwin", "amd64", "litelens-darwin-amd64.zip", false},
-		{"linux", "amd64", "litelens-linux-amd64.tar.gz", false},
-		{"windows", "amd64", "litelens-windows-amd64.exe", false},
-		{"linux", "arm64", "", true},
-		{"freebsd", "amd64", "", true},
+		{"darwin", "arm64", "litelens-darwin-arm64.zip"},
+		{"linux", "amd64", "litelens-linux-amd64.tar.gz"},
+		{"windows", "amd64", "litelens-windows-amd64.exe"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.goos+"/"+tt.goarch, func(t *testing.T) {
-			got, err := assetFileName(tt.goos, tt.goarch)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("assetFileName(%q, %q) err=%v, wantErr=%v", tt.goos, tt.goarch, err, tt.wantErr)
+			got := m.FindArtifact(tt.goos, tt.goarch)
+			if got == nil {
+				t.Fatalf("FindArtifact(%q, %q) returned nil, want artifact", tt.goos, tt.goarch)
 			}
-			if got != tt.want {
-				t.Errorf("assetFileName(%q, %q) = %q, want %q", tt.goos, tt.goarch, got, tt.want)
+			if got.Filename != tt.wantFilename {
+				t.Errorf("FindArtifact(%q, %q) Filename = %q, want %q", tt.goos, tt.goarch, got.Filename, tt.wantFilename)
 			}
 		})
+	}
+}
+
+func TestManifest_FindArtifact_NotFound(t *testing.T) {
+	m := &Manifest{
+		Artifacts: []ManifestArtifact{
+			{OS: "darwin", Arch: "arm64", Filename: "litelens-darwin-arm64.zip"},
+		},
+	}
+
+	got := m.FindArtifact("linux", "arm64")
+	if got != nil {
+		t.Errorf("FindArtifact(linux, arm64) returned %v, want nil", got)
+	}
+}
+
+func TestUnauthenticatedRelease_PlatformNotFound(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/releases/download/v1.2.3/manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Manifest with no matching platform for the test
+		fmt.Fprint(w, `{
+			"version": "v1.2.3",
+			"release_tag": "v1.2.3",
+			"generated_at": "2026-08-11T00:00:00Z",
+			"artifacts": [
+				{"os": "freebsd", "arch": "amd64", "filename": "litelens-freebsd-amd64.tar.gz", "sha256": "xyz", "size": 1024}
+			]
+		}`)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	t.Setenv("APP_VERSION_RELEASES_BASE_URL", server.URL)
+
+	_, err := unauthenticatedRelease("v1.2.3")
+	if err == nil {
+		t.Fatalf("unauthenticatedRelease() expected error when platform not found, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found in release manifest") {
+		t.Errorf("unauthenticatedRelease() error = %q, want platform not found message", err.Error())
 	}
 }
 
