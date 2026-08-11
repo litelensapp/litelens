@@ -4,6 +4,7 @@ import { FC } from "react";
 function conditionVariant(condition: string) {
   switch (condition.toLowerCase()) {
     case "complete":
+    case "successcriteriamet":
       return "success";
     case "failed":
     case "failuretarget":

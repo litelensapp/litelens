@@ -27,6 +27,15 @@ func humanDuration(d time.Duration) string {
 	}
 }
 
+func isJobStatusConditionType(t batchv1.JobConditionType) bool {
+	switch t {
+	case batchv1.JobComplete, batchv1.JobFailed, batchv1.JobSuspended:
+		return true
+	default:
+		return false
+	}
+}
+
 func toJob(j *batchv1.Job) dto.Job {
 	var desired int32 = 1
 	if j.Spec.Completions != nil {
@@ -43,7 +52,7 @@ func toJob(j *batchv1.Job) dto.Job {
 	for _, c := range j.Status.Conditions {
 		if c.Status == corev1.ConditionTrue {
 			conditions = append(conditions, string(c.Type))
-			if status == "Unknown" {
+			if status == "Unknown" && isJobStatusConditionType(c.Type) {
 				status = string(c.Type)
 			}
 		}

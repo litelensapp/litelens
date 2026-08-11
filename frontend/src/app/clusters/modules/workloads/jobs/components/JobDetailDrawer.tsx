@@ -24,18 +24,18 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { Job } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
-import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
-import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
+import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
+import type { Job } from "../api/resources";
+import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
+import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { JobConditionBadge } from "./JobConditionBadge";
 import { JobDeleteConfirmationModal } from "./JobDeleteConfirmationModal";
 
