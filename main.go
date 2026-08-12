@@ -6,6 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/litelensapp/litelens/internal/app"
+	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/storage"
 	"github.com/litelensapp/litelens/internal/version"
@@ -27,6 +28,7 @@ func main() {
 
 	// Enable dev mode storage if running a development build.
 	storage.SetDevMode(Version == version.Dev)
+	storage.SetRootDirOverride(config.GetRootDirOverride())
 
 	a := app.NewApp(Version)
 

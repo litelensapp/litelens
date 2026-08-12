@@ -78,10 +78,11 @@ func TestDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				devMode = false
+				rootDirOverride = ""
 			})
 
 			if tt.envOverride != "" {
-				t.Setenv("LITELENS_ROOT_DIR", tt.envOverride)
+				SetRootDirOverride(tt.envOverride)
 			}
 
 			SetDevMode(tt.devMode)

@@ -1,8 +1,9 @@
 // Package storage resolves the on-disk directory LiteLens uses for persistent
 // app data (settings, installed plugins). In development mode (when SetDevMode(true)
 // is called), it returns build/storage relative to the current working directory.
-// Otherwise it defaults to ~/.litelens, which can be overridden via the LITELENS_ROOT_DIR
-// environment variable in production mode.
+// Otherwise it defaults to ~/.litelens, which can be overridden in production
+// mode via SetRootDirOverride (wired at startup from the LITELENS_ROOT_DIR
+// environment variable, see config.GetRootDirOverride).
 package storage
 
 import (
@@ -11,12 +12,23 @@ import (
 	"path/filepath"
 )
 
-var devMode bool
+var (
+	devMode         bool
+	rootDirOverride string
+)
 
 // SetDevMode enables or disables development mode. When enabled, Dir() resolves
 // to build/storage relative to the current working directory instead of ~/.litelens.
 func SetDevMode(mode bool) {
 	devMode = mode
+}
+
+// SetRootDirOverride sets the directory used in place of ~/.litelens in
+// production mode. Callers pass the value of the LITELENS_ROOT_DIR
+// environment variable (see config.GetRootDirOverride); an empty string
+// clears the override.
+func SetRootDirOverride(dir string) {
+	rootDirOverride = dir
 }
 
 // Dir returns the LiteLens storage directory. In development mode, this is
@@ -40,9 +52,9 @@ func devBuildDir(elem ...string) string {
 }
 
 func homeDir(elem ...string) string {
-	// Check for LITELENS_ROOT_DIR override in production mode
-	if override := os.Getenv("LITELENS_ROOT_DIR"); override != "" {
-		return filepath.Join(append([]string{override}, elem...)...)
+	// Use the LITELENS_ROOT_DIR override in production mode, if set (see SetRootDirOverride).
+	if rootDirOverride != "" {
+		return filepath.Join(append([]string{rootDirOverride}, elem...)...)
 	}
 
 	home, err := os.UserHomeDir()
