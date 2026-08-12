@@ -11,6 +11,7 @@ design-system/dist/
 design-system/pkg/
 
 build/bin/
+build/storage/
 /litelens
 
 coverage/
