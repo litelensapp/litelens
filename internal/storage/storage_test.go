@@ -9,34 +9,68 @@ import (
 
 func TestDir(t *testing.T) {
 	tests := []struct {
-		name       string
-		devMode    bool
-		elem       []string
-		wantSuffix string
+		name           string
+		devMode        bool
+		elem           []string
+		envOverride    string
+		wantSuffix     string
+		wantStartsWith string
 	}{
 		{
-			name:       "production mode returns .litelens path",
-			devMode:    false,
-			elem:       []string{},
-			wantSuffix: ".litelens",
+			name:           "production mode returns .litelens path",
+			devMode:        false,
+			elem:           []string{},
+			envOverride:    "",
+			wantSuffix:     ".litelens",
+			wantStartsWith: "",
 		},
 		{
-			name:       "production mode with elem appends correctly",
-			devMode:    false,
-			elem:       []string{"config", "settings.json"},
-			wantSuffix: filepath.Join(".litelens", "config", "settings.json"),
+			name:           "production mode with elem appends correctly",
+			devMode:        false,
+			elem:           []string{"config", "settings.json"},
+			envOverride:    "",
+			wantSuffix:     filepath.Join(".litelens", "config", "settings.json"),
+			wantStartsWith: "",
 		},
 		{
-			name:       "dev mode returns build/storage path",
-			devMode:    true,
-			elem:       []string{},
-			wantSuffix: filepath.Join("build", "storage"),
+			name:           "dev mode returns build/storage path",
+			devMode:        true,
+			elem:           []string{},
+			envOverride:    "",
+			wantSuffix:     filepath.Join("build", "storage"),
+			wantStartsWith: "",
 		},
 		{
-			name:       "dev mode with elem appends correctly",
-			devMode:    true,
-			elem:       []string{"plugins", "list.json"},
-			wantSuffix: filepath.Join("build", "storage", "plugins", "list.json"),
+			name:           "dev mode with elem appends correctly",
+			devMode:        true,
+			elem:           []string{"plugins", "list.json"},
+			envOverride:    "",
+			wantSuffix:     filepath.Join("build", "storage", "plugins", "list.json"),
+			wantStartsWith: "",
+		},
+		{
+			name:           "production mode with LITELENS_ROOT_DIR override",
+			devMode:        false,
+			elem:           []string{},
+			envOverride:    "/custom/path",
+			wantSuffix:     "/custom/path",
+			wantStartsWith: "/custom/path",
+		},
+		{
+			name:           "production mode with LITELENS_ROOT_DIR override and elem",
+			devMode:        false,
+			elem:           []string{"config", "settings.json"},
+			envOverride:    "/custom/path",
+			wantSuffix:     filepath.Join("/custom/path", "config", "settings.json"),
+			wantStartsWith: "/custom/path",
+		},
+		{
+			name:           "dev mode ignores LITELENS_ROOT_DIR override",
+			devMode:        true,
+			elem:           []string{},
+			envOverride:    "/custom/path",
+			wantSuffix:     filepath.Join("build", "storage"),
+			wantStartsWith: "",
 		},
 	}
 
@@ -45,6 +79,10 @@ func TestDir(t *testing.T) {
 			t.Cleanup(func() {
 				devMode = false
 			})
+
+			if tt.envOverride != "" {
+				t.Setenv("LITELENS_ROOT_DIR", tt.envOverride)
+			}
 
 			SetDevMode(tt.devMode)
 			got := Dir(tt.elem...)
@@ -64,8 +102,15 @@ func TestDir(t *testing.T) {
 				}
 			}
 
-			// For production mode, verify it contains home directory
-			if !tt.devMode {
+			// For production mode with override, verify it uses the override
+			if !tt.devMode && tt.envOverride != "" {
+				if tt.wantStartsWith != "" && !strings.HasPrefix(got, tt.wantStartsWith) {
+					t.Errorf("Production mode with override Dir() = %q, want to start with %q", got, tt.wantStartsWith)
+				}
+			}
+
+			// For production mode without override, verify it contains home directory
+			if !tt.devMode && tt.envOverride == "" {
 				home, err := os.UserHomeDir()
 				if err != nil {
 					home = os.ExpandEnv("$HOME")

@@ -1,7 +1,8 @@
 // Package storage resolves the on-disk directory LiteLens uses for persistent
 // app data (settings, installed plugins). In development mode (when SetDevMode(true)
 // is called), it returns build/storage relative to the current working directory.
-// Otherwise it defaults to ~/.litelens.
+// Otherwise it defaults to ~/.litelens, which can be overridden via the LITELENS_ROOT_DIR
+// environment variable in production mode.
 package storage
 
 import (
@@ -20,7 +21,8 @@ func SetDevMode(mode bool) {
 
 // Dir returns the LiteLens storage directory. In development mode, this is
 // build/storage relative to the current working directory; otherwise it is
-// ~/.litelens. Both are joined with any additional path elements.
+// ~/.litelens (or the path specified in LITELENS_ROOT_DIR if set in production mode).
+// All results are joined with any additional path elements.
 func Dir(elem ...string) string {
 	if devMode {
 		return devBuildDir(elem...)
@@ -38,6 +40,11 @@ func devBuildDir(elem ...string) string {
 }
 
 func homeDir(elem ...string) string {
+	// Check for LITELENS_ROOT_DIR override in production mode
+	if override := os.Getenv("LITELENS_ROOT_DIR"); override != "" {
+		return filepath.Join(append([]string{override}, elem...)...)
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = os.ExpandEnv("$HOME")
