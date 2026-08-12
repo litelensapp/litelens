@@ -8,6 +8,8 @@ export const GetClusterProxy = (): Promise<unknown> => Promise.resolve(null);
 export const SaveClusterProxy = (_proxy: unknown): Promise<void> => Promise.resolve();
 export const ClipboardGetText = (): Promise<string> => Promise.resolve("");
 export const GetDefaultShell = (): Promise<string> => Promise.resolve("");
+export const GetAppDir = (): Promise<string> => Promise.resolve("");
+export const OpenAppDir = (): Promise<void> => Promise.resolve();
 export const IsResourceForbidden = (_resource: string): Promise<boolean> => Promise.resolve(false);
 export const CheckForUpdate = (): Promise<void> => Promise.resolve(undefined);
 export const PerformUpdate = (): Promise<void> => Promise.resolve();
