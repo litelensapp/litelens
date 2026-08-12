@@ -1,3 +1,4 @@
+import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   GetNetworkPolicyByName,
   GetNetworkPolicyYAML,
@@ -18,7 +19,7 @@ export interface NetworkPolicyDetail {
   CreatedAt: string;
   Labels: Record<string, string>;
   Annotations: Record<string, string>;
-  ManagedFields: string[];
+  ManagedFields: ManagedField[];
   PodSelector: Record<string, string>;
   IngressRules: NetworkPolicyIngressRule[];
   EgressRules: NetworkPolicyEgressRule[];

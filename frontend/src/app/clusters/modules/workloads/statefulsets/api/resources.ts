@@ -1,3 +1,4 @@
+import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   GetStatefulSetByName,
   GetStatefulSetYAML,
@@ -14,7 +15,7 @@ export interface StatefulSet {
   CreatedAt: string;
   Labels: Record<string, string>;
   Annotations: Record<string, string>;
-  ManagedFields: string[];
+  ManagedFields: ManagedField[];
   Selector: string;
   Images: string[];
   Affinities: number;

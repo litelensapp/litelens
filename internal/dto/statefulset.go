@@ -14,7 +14,7 @@ type StatefulSet struct {
 	CreatedAt     string
 	Labels        map[string]string
 	Annotations   map[string]string
-	ManagedFields []string
+	ManagedFields []ManagedField
 	Selector      string
 	Images        []string
 	Affinities    int

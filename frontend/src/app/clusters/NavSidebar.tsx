@@ -96,7 +96,7 @@ export const NavSidebar: FC<NavSidebarProps> = ({
   }
 
   return (
-    <aside className="w-68 flex shrink-0 flex-col overflow-y-auto border-r">
+    <aside className="w-62 flex shrink-0 flex-col overflow-y-auto border-r">
       <div className="flex flex-col gap-0.5 p-2">
         {NAV_CORE.map(renderEntry)}
         {pluginNavEntries.length > 0 && <Separator className="my-2" />}

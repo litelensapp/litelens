@@ -100,7 +100,7 @@ export const NAV_CORE: NavEntry<CoreViewType>[] = [
         { id: "leases", label: "Leases", view: "leases" },
         {
           id: "validatingwebhookconfigs",
-          label: "Validating WebhookIcon Configs",
+          label: "Validating Webhook Configs",
           view: "validatingwebhookconfigs",
         },
       ],
@@ -118,7 +118,7 @@ export const NAV_CORE: NavEntry<CoreViewType>[] = [
         { id: "endpoints", label: "Endpoints", view: "endpoints" },
         { id: "ingresses", label: "Ingresses", view: "ingresses" },
         { id: "ingressclasses", label: "Ingress Classes", view: "ingressclasses" },
-        { id: "networkpolicies", label: "NetworkIcon Policies", view: "networkpolicies" },
+        { id: "networkpolicies", label: "Network Policies", view: "networkpolicies" },
         { id: "portforwarding", label: "Port Forwarding", view: "portforwarding" },
       ],
     },
