@@ -25,17 +25,19 @@ export const NodeCordonButton: FC<NodeCordonButtonProps> = ({
   if (mode === "icon-button") {
     return (
       <Tooltip>
-        <TooltipTrigger>
-          <Button
-            aria-label={ariaLabel}
-            variant="ghost"
-            size="icon-sm"
-            disabled={disabled}
-            onClick={onClick}
-          >
-            <PauseIcon />
-          </Button>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={ariaLabel}
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled}
+              onClick={onClick}
+            >
+              <PauseIcon />
+            </Button>
+          }
+        />
         <TooltipContent side="bottom">Cordon</TooltipContent>
       </Tooltip>
     );

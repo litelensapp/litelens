@@ -14,10 +14,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
@@ -167,17 +164,12 @@ const ResourceQuotaDrawerCtaButtons: FC<ResourceQuotaDrawerCtaButtonsProps> = ({
               })
             }
           />
-          <Tooltip>
-            <TooltipTrigger>
-              <ResourceDeletionButton
-                mode="icon-button"
-                ariaLabel="Delete ResourceQuota"
-                disabled={isDeletePending}
-                onClick={() => setShowDeleteModal(true)}
-              />
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Delete</TooltipContent>
-          </Tooltip>
+          <ResourceDeletionButton
+            mode="icon-button"
+            ariaLabel="Delete ResourceQuota"
+            disabled={isDeletePending}
+            onClick={() => setShowDeleteModal(true)}
+          />
         </TooltipProvider>
       </ButtonGroup>
 
