@@ -8,6 +8,8 @@ import (
 	goruntime "runtime"
 	"strings"
 	"time"
+
+	"github.com/litelensapp/litelens/internal/storage"
 )
 
 // GetDefaultShell returns the shell that will be used when ShellPath is not
@@ -17,6 +19,27 @@ func (a *App) GetDefaultShell() string {
 		return s
 	}
 	return "/bin/zsh"
+}
+
+// GetAppDir returns the app's data directory (~/.litelens).
+func (a *App) GetAppDir() string {
+	return storage.Dir()
+}
+
+// OpenAppDir opens the app's data directory in the OS file manager
+// (Finder on macOS, Explorer on Windows, xdg-open elsewhere).
+func (a *App) OpenAppDir() error {
+	dir := storage.Dir()
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	case "windows":
+		cmd = exec.Command("explorer", dir)
+	default:
+		cmd = exec.Command("xdg-open", dir)
+	}
+	return cmd.Start()
 }
 
 // resolveLoginShellPATH queries the user's login shell for its full PATH and

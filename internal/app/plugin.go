@@ -227,6 +227,12 @@ func (a *App) GetInstalledPlugins() []dto.InstalledPlugin {
 	return result
 }
 
+// IsMarketplaceEnabled reports to the frontend whether the plugin
+// marketplace feature is enabled, per the MARKETPLACE_ENABLED env var.
+func (a *App) IsMarketplaceEnabled() bool {
+	return config.IsMarketplaceEnabled()
+}
+
 // GetInstalledPlugin returns the status of a plugin by ID.
 func (a *App) GetInstalledPlugin(pluginID string) dto.InstalledPlugin {
 	// Validate pluginID to prevent path traversal
@@ -314,6 +320,11 @@ func (a *App) getInstalledPluginInfo(pluginID string) dto.InstalledPlugin {
 // active cluster context. Actual plugin feature usage (e.g., helmPluginClient for Helm)
 // gates on active context separately, which is correct.
 func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
+	// Gate marketplace feature if disabled before acquiring mutex, so disabled calls are clean no-ops.
+	if !config.IsMarketplaceEnabled() {
+		return fmt.Errorf("marketplace feature is disabled")
+	}
+
 	// Validate pluginID to prevent path traversal
 	if !plugin.ValidPluginID(pluginID) {
 		return fmt.Errorf("invalid plugin ID: %q", pluginID)
@@ -596,6 +607,11 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 // is currently installing. If the plugin is on disk but not in the loaders map
 // (orphaned), it is still removed.
 func (a *App) RemovePlugin(pluginID string) error {
+	// Gate marketplace feature if disabled before acquiring mutex, so disabled calls are clean no-ops.
+	if !config.IsMarketplaceEnabled() {
+		return fmt.Errorf("marketplace feature is disabled")
+	}
+
 	// Validate pluginID to prevent path traversal
 	if !plugin.ValidPluginID(pluginID) {
 		return fmt.Errorf("invalid plugin ID: %q", pluginID)
@@ -673,6 +689,16 @@ func (a *App) RemovePlugin(pluginID string) error {
 // with SourceURL set appropriately (empty string for default, repository URL for user-added).
 // Errors from individual sources are aggregated in the Errors map, keyed by source identifier.
 func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
+	// Gate marketplace feature if disabled
+	if !config.IsMarketplaceEnabled() {
+		// "marketplace" key is reserved for this global feature-gate error; per-source/per-plugin errors use other keys.
+		return &dto.MarketplaceResult{
+			Errors: map[string]string{
+				"marketplace": "marketplace feature is disabled",
+			},
+		}
+	}
+
 	a.mu.RLock()
 	repositories := make([]config.MarketplaceRepository, len(a.settings.MarketplaceRepositories))
 	copy(repositories, a.settings.MarketplaceRepositories)

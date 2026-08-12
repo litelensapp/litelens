@@ -16,6 +16,7 @@ vi.mock("../hooks/data-access/useGetSettings", () => ({
 
 vi.mock("@wailsjs/go/app/App", () => ({
   SaveSettings: saveSettingsMock,
+  IsMarketplaceEnabled: () => Promise.resolve(true),
 }));
 
 vi.mock("@litelens/design-system", async (importOriginal) => {
@@ -167,9 +168,11 @@ describe("SettingsView", () => {
       renderSettings("sandbox");
       expect(screen.getByTestId("sandbox-content")).toBeInTheDocument();
 
-      // Switch to Marketplace
-      fireEvent.click(screen.getByText("Marketplace"));
-      expect(screen.getByTestId("marketplace-content")).toBeInTheDocument();
+      // Switch to Marketplace (await button to appear as the query resolves)
+      const marketplaceButton = await screen.findByText("Marketplace");
+      fireEvent.click(marketplaceButton);
+      const marketplaceContent = await screen.findByTestId("marketplace-content");
+      expect(marketplaceContent).toBeInTheDocument();
 
       // Switch to Kubernetes
       fireEvent.click(screen.getByText("Kubernetes"));
@@ -218,7 +221,7 @@ describe("SettingsView", () => {
   });
 
   describe("marketplace and sandbox sections", () => {
-    it("renders marketplace content when marketplace section is active", () => {
+    it("renders marketplace content when marketplace section is active", async () => {
       useGetSettingsMock.mockReturnValue({
         data: {
           accessToken: "",
@@ -236,10 +239,11 @@ describe("SettingsView", () => {
         },
       });
       renderSettings("marketplace");
-      expect(screen.getByTestId("marketplace-content")).toBeInTheDocument();
+      const content = await screen.findByTestId("marketplace-content");
+      expect(content).toBeInTheDocument();
     });
 
-    it("renders sandbox content when sandbox section is active", () => {
+    it("renders sandbox content when sandbox section is active", async () => {
       useGetSettingsMock.mockReturnValue({
         data: {
           accessToken: "test_token",
@@ -249,10 +253,11 @@ describe("SettingsView", () => {
         },
       });
       renderSettings("sandbox");
-      expect(screen.getByTestId("sandbox-content")).toBeInTheDocument();
+      const content = await screen.findByTestId("sandbox-content");
+      expect(content).toBeInTheDocument();
     });
 
-    it("marketplace content component is self-contained and manages its own state", () => {
+    it("marketplace content component is self-contained and manages its own state", async () => {
       useGetSettingsMock.mockReturnValue({
         data: {
           accessToken: "",
@@ -270,7 +275,7 @@ describe("SettingsView", () => {
         },
       });
       renderSettings("marketplace");
-      const content = screen.getByTestId("marketplace-content");
+      const content = await screen.findByTestId("marketplace-content");
       expect(content).toBeInTheDocument();
       // Each content component now manages its own state via useState/useEffect
     });

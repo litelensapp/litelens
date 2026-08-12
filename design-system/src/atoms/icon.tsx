@@ -27,6 +27,7 @@ export {
   EyeIcon,
   EyeOffIcon,
   FileTextIcon,
+  FolderOpenIcon,
   FolderSyncIcon,
   FrownIcon,
   GaugeIcon,

@@ -8,6 +8,8 @@ export const GetClusterProxy = (): Promise<unknown> => Promise.resolve(null);
 export const SaveClusterProxy = (_proxy: unknown): Promise<void> => Promise.resolve();
 export const ClipboardGetText = (): Promise<string> => Promise.resolve("");
 export const GetDefaultShell = (): Promise<string> => Promise.resolve("");
+export const GetAppDir = (): Promise<string> => Promise.resolve("");
+export const OpenAppDir = (): Promise<void> => Promise.resolve();
 export const IsResourceForbidden = (_resource: string): Promise<boolean> => Promise.resolve(false);
 export const CheckForUpdate = (): Promise<void> => Promise.resolve(undefined);
 export const PerformUpdate = (): Promise<void> => Promise.resolve();
@@ -33,4 +35,5 @@ export const DeleteNodes = (_names: string[]): Promise<void> => Promise.resolve(
 export const GetNamespaceYAML = (_name: string): Promise<string> => Promise.resolve("");
 export const UpdateNamespaceYAML = (_yamlString: string): Promise<void> => Promise.resolve();
 export const GetPluginsFromMarketplace = (): Promise<unknown[]> => Promise.resolve([]);
+export const IsMarketplaceEnabled = (): Promise<boolean> => Promise.resolve(true);
 export const IsPrivateRepoAccess = (): Promise<boolean> => Promise.resolve(true);

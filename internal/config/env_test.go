@@ -158,3 +158,31 @@ func Test_GetReleasesBaseURL_SpecialCharactersInURL(t *testing.T) {
 		t.Errorf("expected special characters to be preserved, got %s", result)
 	}
 }
+
+// Test_IsMarketplaceEnabled_DefaultAndOverride verifies default (true) vs. override behavior.
+func Test_IsMarketplaceEnabled_DefaultAndOverride(t *testing.T) {
+	t.Run("default when unset", func(t *testing.T) {
+		result := IsMarketplaceEnabled()
+		if result != true {
+			t.Errorf("expected default true for unset MARKETPLACE_ENABLED, got %v", result)
+		}
+	})
+
+	t.Run("override to false when set", func(t *testing.T) {
+		t.Setenv("MARKETPLACE_ENABLED", "false")
+
+		result := IsMarketplaceEnabled()
+		if result != false {
+			t.Errorf("expected false when MARKETPLACE_ENABLED is set to false, got %v", result)
+		}
+	})
+
+	t.Run("override to true when explicitly set", func(t *testing.T) {
+		t.Setenv("MARKETPLACE_ENABLED", "true")
+
+		result := IsMarketplaceEnabled()
+		if result != true {
+			t.Errorf("expected true when MARKETPLACE_ENABLED is set to true, got %v", result)
+		}
+	})
+}

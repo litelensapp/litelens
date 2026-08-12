@@ -7,6 +7,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/litelensapp/litelens/internal/app"
 	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/storage"
+	"github.com/litelensapp/litelens/internal/version"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
@@ -22,6 +24,9 @@ func main() {
 	// Load .env if present — silently ignored when absent (e.g. production binary).
 	// Existing environment variables are never overwritten.
 	_ = godotenv.Load()
+
+	// Enable dev mode storage if running a development build.
+	storage.SetDevMode(Version == version.Dev)
 
 	a := app.NewApp(Version)
 
