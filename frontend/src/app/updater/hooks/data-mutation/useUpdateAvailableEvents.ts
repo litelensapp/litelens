@@ -17,24 +17,6 @@ export interface UseUpdateAvailableEventsResult {
   dismissUpdate: () => void;
 }
 
-// Helper to apply update info and check dismissal status
-function applyUpdateInfo(
-  payload: { latestVersion: string; releaseURL: string; downloadSize?: string },
-  setUpdateInfo: (info: UpdateInfo | null) => void,
-  setUpdateModalOpen: (open: boolean) => void
-) {
-  const info: UpdateInfo = {
-    latestVersion: payload.latestVersion,
-    releaseURL: payload.releaseURL,
-    downloadSize: payload.downloadSize ?? "",
-  };
-  setUpdateInfo(info);
-  const dismissed = localStorage.getItem(DISMISSED_UPDATE_KEY);
-  if (dismissed !== info.latestVersion) {
-    setUpdateModalOpen(true);
-  }
-}
-
 export function useUpdateAvailableEvents(): UseUpdateAvailableEventsResult {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -42,9 +24,7 @@ export function useUpdateAvailableEvents(): UseUpdateAvailableEventsResult {
   // Mount-time hydration: recover cached update state after Ctrl+R reload
   useEffect(() => {
     GetLastUpdateCheckResult().then((cached) => {
-      if (cached && cached.latestVersion) {
-        applyUpdateInfo(cached, setUpdateInfo, setUpdateModalOpen);
-      }
+      if (cached?.latestVersion) applyUpdateInfo(cached, setUpdateInfo, setUpdateModalOpen);
     });
   }, []);
 
@@ -60,10 +40,26 @@ export function useUpdateAvailableEvents(): UseUpdateAvailableEventsResult {
 
   const dismissUpdate = () => {
     setUpdateModalOpen(false);
-    if (updateInfo) {
-      localStorage.setItem(DISMISSED_UPDATE_KEY, updateInfo.latestVersion);
-    }
+    if (updateInfo) localStorage.setItem(DISMISSED_UPDATE_KEY, updateInfo.latestVersion);
   };
 
   return { updateInfo, updateModalOpen, setUpdateModalOpen, dismissUpdate };
+}
+
+// Helper to apply update info and check dismissal status
+function applyUpdateInfo(
+  payload: { latestVersion: string; releaseURL: string; downloadSize?: string },
+  setUpdateInfo: (info: UpdateInfo | null) => void,
+  setUpdateModalOpen: (open: boolean) => void
+) {
+  const info: UpdateInfo = {
+    latestVersion: payload.latestVersion,
+    releaseURL: payload.releaseURL,
+    downloadSize: payload.downloadSize ?? "",
+  };
+
+  setUpdateInfo(info);
+
+  const dismissed = localStorage.getItem(DISMISSED_UPDATE_KEY);
+  if (dismissed !== info.latestVersion) setUpdateModalOpen(true);
 }
