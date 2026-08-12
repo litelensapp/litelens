@@ -177,3 +177,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ inputs.version }}" manifest.json --repo "${{ github.repository }}" --clobber
+
+  finalize-release:
+    needs: [run, publish-manifest]
+    if: ${{ inputs.version != 'dev' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Finalize release by flipping draft to published
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ inputs.version }}" --repo "${{ github.repository }}" --draft=false

@@ -25,17 +25,19 @@ export const NodeDrainButton: FC<NodeDrainButtonProps> = ({
   if (mode === "icon-button") {
     return (
       <Tooltip>
-        <TooltipTrigger>
-          <Button
-            aria-label={ariaLabel}
-            variant="ghost"
-            size="icon-sm"
-            disabled={disabled}
-            onClick={onClick}
-          >
-            <DropletIcon />
-          </Button>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={ariaLabel}
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled}
+              onClick={onClick}
+            >
+              <DropletIcon />
+            </Button>
+          }
+        />
         <TooltipContent side="bottom">Drain</TooltipContent>
       </Tooltip>
     );

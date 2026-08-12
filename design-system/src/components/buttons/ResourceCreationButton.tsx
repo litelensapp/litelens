@@ -15,11 +15,13 @@ export const ResourceCreationButton: FC<ResourceCreationButtonProps> = ({
   onClick,
 }) => (
   <Tooltip>
-    <TooltipTrigger>
-      <Button size="icon-sm" className="rounded-full" aria-label={ariaLabel} onClick={onClick}>
-        <PlusIcon className="size-3.5" />
-      </Button>
-    </TooltipTrigger>
+    <TooltipTrigger
+      render={
+        <Button size="icon-sm" className="rounded-full" aria-label={ariaLabel} onClick={onClick}>
+          <PlusIcon className="size-3.5" />
+        </Button>
+      }
+    />
     <TooltipContent>{tooltip}</TooltipContent>
   </Tooltip>
 );

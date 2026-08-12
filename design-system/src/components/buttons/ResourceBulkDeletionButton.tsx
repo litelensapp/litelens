@@ -17,23 +17,25 @@ export const ResourceBulkDeletionButton: FC<ResourceBulkDeletionButtonProps> = (
   onClick,
 }) => (
   <Tooltip>
-    <TooltipTrigger>
-      <Button
-        size="icon-sm"
-        variant="destructive"
-        className="relative rounded-full"
-        disabled={count === 0}
-        aria-label={ariaLabel}
-        onClick={onClick}
-      >
-        <MinusIcon className="size-3.5" />
-        {count > 0 && (
-          <span className="bg-destructive absolute -right-2.5 -top-2.5 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white">
-            {count}
-          </span>
-        )}
-      </Button>
-    </TooltipTrigger>
+    <TooltipTrigger
+      render={
+        <Button
+          size="icon-sm"
+          variant="destructive"
+          className="relative rounded-full"
+          disabled={count === 0}
+          aria-label={ariaLabel}
+          onClick={onClick}
+        >
+          <MinusIcon className="size-3.5" />
+          {count > 0 && (
+            <span className="bg-destructive absolute -right-2.5 -top-2.5 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white">
+              {count}
+            </span>
+          )}
+        </Button>
+      }
+    />
     <TooltipContent>{tooltip}</TooltipContent>
   </Tooltip>
 );

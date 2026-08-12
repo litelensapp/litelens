@@ -41,17 +41,19 @@ export const ResourceScaleButton: FC<ResourceScaleButtonProps> = ({
 
     return (
       <Tooltip>
-        <TooltipTrigger>
-          <Button
-            aria-label={ariaLabel}
-            variant="ghost"
-            size="icon-sm"
-            disabled={disabled}
-            onClick={onClick}
-          >
-            <ScalingIcon />
-          </Button>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={ariaLabel}
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled}
+              onClick={onClick}
+            >
+              <ScalingIcon />
+            </Button>
+          }
+        />
         <TooltipContent side="bottom">Scale</TooltipContent>
       </Tooltip>
     );

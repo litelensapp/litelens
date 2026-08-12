@@ -20,17 +20,19 @@ export const ResourceRestartButton: FC<ResourceRestartButtonProps> = ({
   if (mode === "icon-button") {
     return (
       <Tooltip>
-        <TooltipTrigger>
-          <Button
-            aria-label={ariaLabel}
-            variant="ghost"
-            size="icon-sm"
-            disabled={disabled}
-            onClick={onClick}
-          >
-            <RefreshCwIcon />
-          </Button>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={ariaLabel}
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled}
+              onClick={onClick}
+            >
+              <RefreshCwIcon />
+            </Button>
+          }
+        />
         <TooltipContent side="bottom">Restart</TooltipContent>
       </Tooltip>
     );

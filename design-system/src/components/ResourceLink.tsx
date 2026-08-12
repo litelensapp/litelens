@@ -65,7 +65,7 @@ export const ResourceLink: FC<ResourceLinkProps> = ({
 
   return (
     <Tooltip>
-      <TooltipTrigger>{inner}</TooltipTrigger>
+      <TooltipTrigger render={inner} />
       <TooltipContent>
         <span className="break-all font-mono">{children}</span>
       </TooltipContent>

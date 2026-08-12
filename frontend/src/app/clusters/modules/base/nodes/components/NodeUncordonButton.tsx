@@ -25,17 +25,19 @@ export const NodeUncordonButton: FC<NodeUncordonButtonProps> = ({
   if (mode === "icon-button") {
     return (
       <Tooltip>
-        <TooltipTrigger>
-          <Button
-            aria-label={ariaLabel}
-            variant="ghost"
-            size="icon-sm"
-            disabled={disabled}
-            onClick={onClick}
-          >
-            <PlayIcon />
-          </Button>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={ariaLabel}
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled}
+              onClick={onClick}
+            >
+              <PlayIcon />
+            </Button>
+          }
+        />
         <TooltipContent side="bottom">Uncordon</TooltipContent>
       </Tooltip>
     );
