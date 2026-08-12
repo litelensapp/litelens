@@ -152,9 +152,10 @@ jobs:
                   tag_name: next,
                   name: next,
                   target_commitish: context.sha,
-                  generate_release_notes: true
+                  generate_release_notes: true,
+                  draft: true
                 });
-                core.info(`Released ${next} (${bump} bump from ${latestTag})`);
+                core.info(`Created draft release ${next} (${bump} bump from ${latestTag})`);
                 core.setOutput('tag_name', next);
                 break;
               } catch (e) {
