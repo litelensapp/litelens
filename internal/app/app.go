@@ -34,25 +34,26 @@ const apiMutationTimeout = 30 * time.Second
 
 // App struct
 type App struct {
-	ctx               context.Context
-	version           string
-	settings          config.Settings
-	clients           map[string]*kubernetes.Clientset
-	factories         map[string]*kube.FactoryHandle
-	metricsClients    map[string]*metricsclient.Clientset
-	activeContext     string
-	mu                sync.RWMutex
-	portForwards      map[string]dto.PortForward
-	pfMu              sync.RWMutex
-	restConfigs       map[string]*rest.Config
-	pfCancels         map[string]context.CancelFunc
-	logCancels        map[string]context.CancelFunc
-	logSeqs           map[string]uint64
-	execCancels       map[string]context.CancelFunc
-	execResizeChans   map[string]chan remotecommand.TerminalSize
-	streamMu          sync.Mutex
-	pluginLoaders     map[string]*plugin.PluginLoader
-	removingPluginIDs map[string]bool // tracks plugins being removed to prevent concurrent installs
+	ctx                     context.Context
+	version                 string
+	settings                config.Settings
+	clients                 map[string]*kubernetes.Clientset
+	factories               map[string]*kube.FactoryHandle
+	metricsClients          map[string]*metricsclient.Clientset
+	activeContext           string
+	mu                      sync.RWMutex
+	lastUpdateCheckResult   *UpdateCheckResult // guarded by mu; caches the last successful update check
+	portForwards            map[string]dto.PortForward
+	pfMu                    sync.RWMutex
+	restConfigs             map[string]*rest.Config
+	pfCancels               map[string]context.CancelFunc
+	logCancels              map[string]context.CancelFunc
+	logSeqs                 map[string]uint64
+	execCancels             map[string]context.CancelFunc
+	execResizeChans         map[string]chan remotecommand.TerminalSize
+	streamMu                sync.Mutex
+	pluginLoaders           map[string]*plugin.PluginLoader
+	removingPluginIDs       map[string]bool // tracks plugins being removed to prevent concurrent installs
 	// pluginsMu guards pluginLoaders and removingPluginIDs. Lock ordering: never
 	// hold pluginsMu while acquiring mu (mu may be taken first and released, then
 	// pluginsMu taken separately, but not nested) — mu-guarded helpers like

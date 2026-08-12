@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"log"
 	goruntime "runtime"
 
 	"github.com/joho/godotenv"
@@ -114,6 +115,22 @@ func buildMenu(a *app.App) *menu.Menu {
 	viewSub.AddText("Reload", keys.CmdOrCtrl("r"), func(_ *menu.CallbackData) {
 		a.ExecJS("location.reload()")
 	})
+	// Unlike Reload (webview-only), Full Reload restarts the whole Go process —
+	// needed to recover state that only resets on a fresh process (e.g. the
+	// one-shot startup update check).
+	viewSub.AddText("Full Reload", keys.Combo("r", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
+		go func() {
+			if err := a.RestartApp(); err != nil {
+				log.Printf("main: restart app: %v", err)
+			}
+		}()
+	})
+	// macOS uses the native green button for fullscreen; F11 is Windows/Linux convention.
+	if goruntime.GOOS != "darwin" {
+		viewSub.AddText("Toggle Fullscreen", keys.Key("f11"), func(_ *menu.CallbackData) {
+			go a.ToggleFullscreen()
+		})
+	}
 
 	return m
 }

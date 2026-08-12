@@ -1,6 +1,5 @@
 import { ErrorBoundary, Toaster, TooltipProvider } from "@litelens/design-system";
 import { useQueryClient } from "@tanstack/react-query";
-import { ToggleFullscreen } from "@wailsjs/go/app/App";
 import { FC, useEffect, useReducer, useRef } from "react";
 import { AboutModal } from "./about/AboutModal";
 import { useMenuOpenAboutEvents } from "./about/hooks/async-events/useMenuOpenAboutEvents";
@@ -241,18 +240,6 @@ export const App: FC = () => {
     }
     prevContextRef.current = activeContext;
   }, [activeContext, queryClient]);
-
-  // F11 toggles fullscreen on Windows and Linux (macOS uses the native green button)
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "F11") {
-        e.preventDefault();
-        ToggleFullscreen();
-      }
-    }
-    globalThis.addEventListener("keydown", handleKeyDown);
-    return () => globalThis.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   function connectTo(ctx: string) {
     const attempt = ++connectAttemptRef.current;
