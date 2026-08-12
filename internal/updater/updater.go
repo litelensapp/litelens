@@ -58,16 +58,17 @@ func Check(current, token string) (*Release, error) {
 // FetchRelease returns the named release (adding a leading "v" if the tag
 // omits one) with its platform asset resolved, regardless of whether it is
 // newer than any particular current version. Used when the caller already
-// knows which version to install.
+// knows which version to install. Retries transient failures up to 3 times
+// with exponential backoff, but short-circuits on rate-limit errors.
 func FetchRelease(tag, token string) (*Release, error) {
 	if !strings.HasPrefix(tag, "v") {
 		tag = "v" + tag
 	}
 
 	if token != "" {
-		return fetchReleaseAuthenticated(tag, token)
+		return retryRelease(func() (*Release, error) { return fetchReleaseAuthenticated(tag, token) })
 	}
 
-	return unauthenticatedRelease(tag)
+	return retryRelease(func() (*Release, error) { return unauthenticatedRelease(tag) })
 
 }

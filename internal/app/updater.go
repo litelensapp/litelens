@@ -34,16 +34,16 @@ type UpdateCheckResult struct {
 	DownloadSize  string `json:"downloadSize"`
 }
 
-func (a *App) checkForUpdate() error {
+func (a *App) checkForUpdate(maxAttempts int) error {
 	a.mu.RLock()
 	token := a.settings.AccessToken
 	a.mu.RUnlock()
 
-	// Retry with bounded backoff: 3 attempts total, sleeping 5s then 10s between attempts
+	// Retry with bounded backoff: maxAttempts total, sleeping 5s then 10s between attempts
 	var rel *updater.Release
 	var err error
 	sleeps := []time.Duration{5 * time.Second, 10 * time.Second}
-	for attempt := range 3 {
+	for attempt := range maxAttempts {
 		rel, err = updater.Check(a.version, token)
 		if err == nil {
 			// Success (either update available or no update needed)
@@ -56,7 +56,7 @@ func (a *App) checkForUpdate() error {
 		}
 		// Non-rate-limit failure; log and retry if we have attempts left
 		log.Printf("app: checkForUpdate: attempt %d: %v", attempt+1, err)
-		if attempt < len(sleeps) {
+		if attempt < len(sleeps) && attempt < maxAttempts-1 {
 			time.Sleep(sleeps[attempt])
 		}
 	}
@@ -66,7 +66,7 @@ func (a *App) checkForUpdate() error {
 		if _, isRateLimitErr := err.(*ratelimiter.RateLimitError); isRateLimitErr {
 			log.Printf("app: checkForUpdate: giving up due to rate limit")
 		} else {
-			log.Printf("app: checkForUpdate: giving up after 3 attempts")
+			log.Printf("app: checkForUpdate: giving up after %d attempts", maxAttempts)
 		}
 		return err
 	}
@@ -105,10 +105,11 @@ func (a *App) checkForUpdate() error {
 }
 
 // CheckForUpdate manually triggers a check for app updates. It runs synchronously
-// and emits the update:available event if a new version is found. Returns an error
-// if the check fails after all retries.
+// with a single attempt (no retries) and emits the update:available event if a new
+// version is found. Returns an error if the check fails; the user can click the button
+// again to retry manually.
 func (a *App) CheckForUpdate() error {
-	return a.checkForUpdate()
+	return a.checkForUpdate(1)
 }
 
 // GetLastUpdateCheckResult returns the most recently cached update-check result,

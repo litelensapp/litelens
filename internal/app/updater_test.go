@@ -836,7 +836,7 @@ func TestCheckForUpdate_RateLimitNoRetry(t *testing.T) {
 		settings: config.Settings{AccessToken: "test-token"},
 	}
 
-	err := app.checkForUpdate()
+	err := app.checkForUpdate(3)
 
 	// Verify we got an error
 	if err == nil {
@@ -875,7 +875,7 @@ func TestCheckForUpdate_NonRateLimitRetryExhaustion(t *testing.T) {
 		settings: config.Settings{AccessToken: "test-token"},
 	}
 
-	err := app.checkForUpdate()
+	err := app.checkForUpdate(3)
 
 	if err == nil {
 		t.Fatalf("checkForUpdate() should return an error after retries are exhausted, got nil")
