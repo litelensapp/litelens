@@ -18,7 +18,7 @@ import { useGetContextsGrouped } from "./shared/hooks/data-access/useGetContexts
 import { useConnect } from "./shared/hooks/useConnect";
 import { useIsMarketplaceEnabled } from "./shared/hooks/useIsMarketplaceEnabled";
 import { useGetVersion } from "./updater/hooks/data-access/useGetVersion";
-import { useUpdateAvailableEvents } from "./updater/hooks/data-mutation/useUpdateAvailableEvents";
+import { useUpdateAvailableEvents } from "./updater/hooks/async-events/useUpdateAvailableEvents";
 import { UpdateModal } from "./updater/UpdateModal";
 
 type AboutPayload = {

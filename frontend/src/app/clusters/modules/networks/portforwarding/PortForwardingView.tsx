@@ -22,62 +22,65 @@ import {
   Trash2Icon,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
-import type { PortForward } from "./api/resources";
-import { RemovePortForward, StartPortForward, StopPortForward } from "./api/resources";
-import { useGetPortForwards } from "./hooks/data-access/useGetPortForwards";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
+import type { PortForward } from "./api/resources";
+import { RemovePortForward, StartPortForward, StopPortForward } from "./api/resources";
 import { PortForwardDetailDrawer } from "./components/PortForwardDetailDrawer";
 import { PortForwardOperationDialog } from "./components/PortForwardOperationDialog";
 import { PortForwardStatusBadge } from "./components/PortForwardStatusBadge";
+import { useGetPortForwards } from "./hooks/data-access/useGetPortForwards";
 
 interface PortForwardingTableCtaButtonsProps {
   pf: PortForward;
   onEdit: (pf: PortForward) => void;
 }
 
-const PortForwardingTableCtaButtons: FC<PortForwardingTableCtaButtonsProps> = ({ pf, onEdit }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger
-      aria-label="Actions"
-      className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
-    >
-      <MoreVerticalIcon className="size-3.5" />
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem
-        disabled={pf.Status !== "Active"}
-        onClick={() => BrowserOpenURL(`${pf.Scheme}://${pf.Address}:${pf.LocalPort}`)}
+const PortForwardingTableCtaButtons: FC<PortForwardingTableCtaButtonsProps> = ({ pf, onEdit }) => {
+  const openBrowserURL = useOpenBrowserURL();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label="Actions"
+        className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
       >
-        <ExternalLinkIcon className="mr-2 size-3.5" />
-        Open
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => onEdit(pf)}>
-        <PencilIcon className="mr-2 size-3.5" />
-        Edit
-      </DropdownMenuItem>
-      {pf.Status === "Stopped" ? (
-        <DropdownMenuItem onClick={() => handleActivate(pf).catch(console.error)}>
-          <PlayIcon className="mr-2 size-3.5" />
-          Active
+        <MoreVerticalIcon className="size-3.5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          disabled={pf.Status !== "Active"}
+          onClick={() => openBrowserURL(`${pf.Scheme}://${pf.Address}:${pf.LocalPort}`)}
+        >
+          <ExternalLinkIcon className="mr-2 size-3.5" />
+          Open
         </DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem onClick={() => StopPortForward(pf.ID).catch(console.error)}>
-          <SquareIcon className="mr-2 size-3.5" />
-          Stop
+        <DropdownMenuItem onClick={() => onEdit(pf)}>
+          <PencilIcon className="mr-2 size-3.5" />
+          Edit
         </DropdownMenuItem>
-      )}
-      <DropdownMenuItem
-        className="text-destructive focus:text-destructive"
-        onClick={() => RemovePortForward(pf.ID).catch(console.error)}
-      >
-        <Trash2Icon className="mr-2 size-3.5" />
-        Delete
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+        {pf.Status === "Stopped" ? (
+          <DropdownMenuItem onClick={() => handleActivate(pf).catch(console.error)}>
+            <PlayIcon className="mr-2 size-3.5" />
+            Active
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={() => StopPortForward(pf.ID).catch(console.error)}>
+            <SquareIcon className="mr-2 size-3.5" />
+            Stop
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => RemovePortForward(pf.ID).catch(console.error)}
+        >
+          <Trash2Icon className="mr-2 size-3.5" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 async function handleActivate(pf: PortForward) {
   await RemovePortForward(pf.ID);
@@ -94,11 +97,12 @@ async function handleActivate(pf: PortForward) {
 }
 
 export const PortForwardingView: FC = () => {
+  const { activeContext } = useMainLayoutContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingPf, setEditingPf] = useState<PortForward | null>(null);
-  const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
   const { data: raw = [], isLoading } = useGetPortForwards({ context: activeContext });
 

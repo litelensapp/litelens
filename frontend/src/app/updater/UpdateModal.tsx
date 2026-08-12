@@ -9,9 +9,9 @@ import {
   ExternalLinkIcon,
   Loader2Icon,
 } from "@litelens/design-system";
-import { PerformUpdate } from "@wailsjs/go/app/App";
-import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
-import { FC, useState } from "react";
+import { FC } from "react";
+import { useOpenBrowserURL } from "../shared/hooks/useOpenBrowserURL";
+import { usePerformUpdateApp } from "./hooks/data-mutation/usePerformUpdateApp";
 
 interface UpdateModalProps {
   open: boolean;
@@ -30,24 +30,16 @@ export const UpdateModal: FC<UpdateModalProps> = ({
   releaseURL,
   downloadSize,
 }) => {
-  const [updating, setUpdating] = useState(false);
-  const [error, setError] = useState("");
+  const { mutate: performUpdateApp, isPending: updating, error, reset } = usePerformUpdateApp();
+  const openBrowserURL = useOpenBrowserURL();
 
   function handleClose() {
-    setError("");
-    setUpdating(false);
+    reset();
     onClose();
   }
 
-  async function handleUpdate() {
-    setUpdating(true);
-    setError("");
-    try {
-      await PerformUpdate(latestVersion);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setUpdating(false);
-    }
+  function handleUpdate() {
+    performUpdateApp(latestVersion);
   }
 
   return (
@@ -75,14 +67,14 @@ export const UpdateModal: FC<UpdateModalProps> = ({
 
         <Button
           variant="link"
-          onClick={() => BrowserOpenURL(releaseURL)}
+          onClick={() => openBrowserURL(releaseURL)}
           className="h-auto w-fit gap-1.5 p-0 text-sm"
         >
           <ExternalLinkIcon className="size-3.5" />
           What&apos;s new
         </Button>
 
-        {error && <p className="text-destructive text-xs">{error}</p>}
+        {error && <p className="text-destructive text-xs">{error.message}</p>}
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={updating}>
