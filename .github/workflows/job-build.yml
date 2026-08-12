@@ -143,10 +143,18 @@ jobs:
 
           echo '{"version": "'"$TAG"'", "release_tag": "'"$TAG"'", "generated_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'", "artifacts": []}' > manifest.json
 
+          # The release is still in draft state at this point in the pipeline
+          # (finalize-release flips it to published later), and GitHub's
+          # "get release by tag" endpoint only returns published releases —
+          # so `gh release view`/`gh api releases/tags/<tag>` 404 on it.
+          # List all releases instead (which does include drafts) and filter
+          # by tag locally.
+          release=$(gh api "repos/${REPO}/releases" --paginate --jq ".[] | select(.tag_name == \"${TAG}\")")
+
           # List all assets in the release (checksums are no longer published
           # as release assets — they're read from the checksum-* build
           # artifacts downloaded above instead).
-          assets=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name')
+          assets=$(echo "$release" | jq -r '.assets[].name')
 
           for artifact in $assets; do
             # Parse os/arch from filename: litelens-<os>-<arch>.<ext>
@@ -161,7 +169,7 @@ jobs:
 
             sha256=""
             [[ -f "checksums/${artifact}.sha256" ]] && sha256=$(tr -d '[:space:]' < "checksums/${artifact}.sha256")
-            size=$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq ".assets[] | select(.name == \"${artifact}\") | .size")
+            size=$(echo "$release" | jq --arg name "$artifact" '.assets[] | select(.name == $name) | .size')
             if [[ -z "$sha256" || -z "$size" ]]; then
               echo "::warning::skipping ${artifact}: could not fetch checksum or size"
               continue
