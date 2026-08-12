@@ -522,12 +522,15 @@ func TestGetSyncedChanMultipleResourcesInSequence(t *testing.T) {
 		channels[resource] = h.GetSyncedChan(resource)
 	}
 
-	// All channels should close (real resources) or already be closed (due to async sync)
+	// All channels should close (real resources) or already be closed (due to async sync).
+	// Informer starts are staggered by resource index (see kube.NewFactoryHandle) to avoid
+	// synchronized resyncs, so later resources in informerList take longer to begin syncing —
+	// the timeout here must clear the worst-case stagger delay, not just sync time.
 	for _, resource := range resources {
 		select {
 		case <-channels[resource]:
 			// Expected: channel is closed
-		case <-time.After(1 * time.Second):
+		case <-time.After(5 * time.Second):
 			t.Fatalf("GetSyncedChan(%q) did not close within timeout", resource)
 		}
 	}

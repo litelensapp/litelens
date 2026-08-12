@@ -219,7 +219,12 @@ func buildContainerDetails(containers []corev1.Container, statuses []corev1.Cont
 	return out
 }
 
-func toPod(pod *corev1.Pod) dto.Pod {
+// toPod converts a Pod to its DTO. When detail is false (list views), the
+// Affinities YAML and ManagedFields YAML conversions are skipped — both are
+// expensive (full YAML marshaling per pod) and only ever rendered in the
+// detail drawer, so computing them for every pod in a cluster-wide list/emit
+// is wasted work that scales with cluster size.
+func toPod(pod *corev1.Pod, detail bool) dto.Pod {
 	status := string(pod.Status.Phase)
 	if pod.DeletionTimestamp != nil {
 		status = "Terminating"
@@ -358,7 +363,7 @@ func toPod(pod *corev1.Pod) dto.Pod {
 			return n
 		}(),
 		Affinities: func() string {
-			if pod.Spec.Affinity == nil {
+			if !detail || pod.Spec.Affinity == nil {
 				return ""
 			}
 			b, err := sigsyaml.Marshal(pod.Spec.Affinity)
@@ -380,6 +385,9 @@ func toPod(pod *corev1.Pod) dto.Pod {
 			return pod.Annotations
 		}(),
 		ManagedFields: func() []dto.ManagedField {
+			if !detail {
+				return nil
+			}
 			out := make([]dto.ManagedField, 0, len(pod.ManagedFields))
 			for _, mf := range pod.ManagedFields {
 				fieldsYAML := ""
@@ -536,7 +544,7 @@ func GetPodByName(lister listerscorev1.PodLister, namespace, name string) (dto.P
 	if err != nil {
 		return dto.Pod{}, err
 	}
-	return toPod(pod), nil
+	return toPod(pod, true), nil
 }
 
 func ListPods(lister listerscorev1.PodLister, namespace string) ([]dto.Pod, error) {
@@ -552,7 +560,7 @@ func ListPods(lister listerscorev1.PodLister, namespace string) ([]dto.Pod, erro
 	}
 	result := make([]dto.Pod, len(pods))
 	for i, p := range pods {
-		result[i] = toPod(p)
+		result[i] = toPod(p, false)
 	}
 	return result, nil
 }

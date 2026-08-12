@@ -125,11 +125,26 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		infToResource[e.inf] = resource
 	}
 
-	// Start each informer on its own stop channel.
-	for _, e := range informerList {
+	// Start each informer on its own stop channel, staggering start times so the
+	// informers' 30s resync tickers (which start when Run() is called and persist
+	// for the informer's lifetime) don't all land on the same instant — otherwise
+	// every resource's UPDATE events burst through the frontend's event handlers
+	// simultaneously every 30s, which can stall the UI on large clusters.
+	const resyncStagger = 300 * time.Millisecond
+	for i, e := range informerList {
 		inf := e.inf
 		ch := h.stopChannels[e.resource].ch
-		go inf.Run(ch)
+		delay := time.Duration(i) * resyncStagger
+		go func() {
+			if delay > 0 {
+				select {
+				case <-time.After(delay):
+				case <-ch:
+					return
+				}
+			}
+			inf.Run(ch)
+		}()
 	}
 
 	// Start async per-resource sync goroutines. Each waits for its own resource's

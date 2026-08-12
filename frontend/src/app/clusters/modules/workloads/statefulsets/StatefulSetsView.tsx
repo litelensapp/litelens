@@ -20,7 +20,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useGetStatefulSets } from "./hooks/data-access/useGetStatefulSets";
 import { useDeleteStatefulSet } from "./hooks/data-mutation/useDeleteStatefulSet";
 import { useDeleteStatefulSets } from "./hooks/data-mutation/useDeleteStatefulSets";
@@ -90,9 +90,13 @@ export const StatefulSetsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetStatefulSets({ context: activeContext, namespace });
 
-  const statefulsets = raw
-    .filter((ss) => !search || ss.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const statefulsets = useMemo(
+    () =>
+      raw
+        .filter((ss) => !search || ss.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">

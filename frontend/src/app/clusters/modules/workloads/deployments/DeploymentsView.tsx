@@ -22,7 +22,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useGetDeployments } from "./hooks/data-access/useGetDeployments";
 import { useDeleteDeployment } from "./hooks/data-mutation/useDeleteDeployment";
 import { useDeleteDeployments } from "./hooks/data-mutation/useDeleteDeployments";
@@ -139,9 +139,13 @@ export const DeploymentsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetDeployments({ context: activeContext, namespace });
 
-  const deployments = raw
-    .filter((dep) => !search || dep.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const deployments = useMemo(
+    () =>
+      raw
+        .filter((dep) => !search || dep.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">

@@ -21,7 +21,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useGetReplicaSets } from "./hooks/data-access/useGetReplicaSets";
 import { useDeleteReplicaSet } from "./hooks/data-mutation/useDeleteReplicaSet";
 import { useDeleteReplicaSets } from "./hooks/data-mutation/useDeleteReplicaSets";
@@ -126,9 +126,13 @@ export const ReplicaSetsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetReplicaSets({ context: activeContext, namespace });
 
-  const replicasets = raw
-    .filter((rs) => !search || rs.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const replicasets = useMemo(
+    () =>
+      raw
+        .filter((rs) => !search || rs.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">

@@ -189,10 +189,12 @@ func (a *App) emitDeployments(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "deployments:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListDeployments(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitDeployments ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.Deployment, 0)
+		for _, d := range allData {
+			if d.Namespace == namespace {
+				nsData = append(nsData, d)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "deployments:"+namespace+":update", nsData)
 	}

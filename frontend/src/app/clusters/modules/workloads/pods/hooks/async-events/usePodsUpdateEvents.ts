@@ -1,5 +1,5 @@
 import { EventsOn } from "@wailsjs/runtime/runtime";
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import type { Pod } from "../../api/resources";
 
 // Data-only event hook: tracks the latest pushed pods in local state.
@@ -19,7 +19,11 @@ export function usePodsUpdateEvents(namespace = ""): Pod[] {
 
   useEffect(() => {
     const eventName = namespace ? `pods:${namespace}:update` : "pods:update";
-    return EventsOn(eventName, (data: Pod[]) => setLatestPods(data));
+    return EventsOn(eventName, (data: Pod[]) => {
+      startTransition(() => {
+        setLatestPods(data);
+      });
+    });
   }, [namespace]);
 
   return latestPods;

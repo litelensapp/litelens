@@ -158,10 +158,12 @@ func (a *App) emitReplicaSets(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "replicasets:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListReplicaSets(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitReplicaSets ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.ReplicaSet, 0)
+		for _, rs := range allData {
+			if rs.Namespace == namespace {
+				nsData = append(nsData, rs)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "replicasets:"+namespace+":update", nsData)
 	}

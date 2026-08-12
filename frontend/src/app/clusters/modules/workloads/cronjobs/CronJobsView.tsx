@@ -19,7 +19,7 @@ import {
   TableSkeletonLoader,
   TimerIcon,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useGetCronJobs } from "./hooks/data-access/useGetCronJobs";
 import { useDeleteCronJob } from "./hooks/data-mutation/useDeleteCronJob";
 import { useDeleteCronJobs } from "./hooks/data-mutation/useDeleteCronJobs";
@@ -90,9 +90,13 @@ export const CronJobsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetCronJobs({ context: activeContext, namespace });
 
-  const cronjobs = raw
-    .filter((cj) => !search || cj.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const cronjobs = useMemo(
+    () =>
+      raw
+        .filter((cj) => !search || cj.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">

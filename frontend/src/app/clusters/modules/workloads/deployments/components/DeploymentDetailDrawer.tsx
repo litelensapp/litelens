@@ -30,7 +30,7 @@ import {
   Textarea,
   TooltipProvider,
 } from "@litelens/design-system";
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useState, useMemo } from "react";
 import type { Deployment } from "../api/resources";
 import { useGetDeploymentDetail } from "../hooks/data-access/useGetDeploymentDetail";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
@@ -62,8 +62,12 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
     context: activeContext,
     namespace: deployment.Namespace,
   });
-  const replicaSets = allRS.filter(
-    (rs) => rs.OwnerName === deployment.Name && rs.Namespace === deployment.Namespace
+  const replicaSets = useMemo(
+    () =>
+      allRS.filter(
+        (rs) => rs.OwnerName === deployment.Name && rs.Namespace === deployment.Namespace
+      ),
+    [allRS, deployment.Name, deployment.Namespace]
   );
 
   return (
@@ -287,21 +291,30 @@ const DeploymentPodsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
     context: activeContext,
     namespace: deployment.Namespace,
   });
-  const rsNames = allRS.reduce((acc, rs) => {
-    if (rs.OwnerName === deployment.Name && rs.Namespace === deployment.Namespace) acc.add(rs.Name);
-    return acc;
-  }, new Set<string>());
+  const rsNames = useMemo(
+    () =>
+      allRS.reduce((acc, rs) => {
+        if (rs.OwnerName === deployment.Name && rs.Namespace === deployment.Namespace)
+          acc.add(rs.Name);
+        return acc;
+      }, new Set<string>()),
+    [allRS, deployment.Name, deployment.Namespace]
+  );
 
   const { data: allPods = [] } = useGetPods({
     context: activeContext,
     namespace: deployment.Namespace,
   });
-  const pods = allPods
-    .filter(
-      (p) =>
-        p.ControlledBy === "ReplicaSet" && p.ControlledByName && rsNames.has(p.ControlledByName)
-    )
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const pods = useMemo(
+    () =>
+      allPods
+        .filter(
+          (p) =>
+            p.ControlledBy === "ReplicaSet" && p.ControlledByName && rsNames.has(p.ControlledByName)
+        )
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [allPods, rsNames]
+  );
 
   return (
     <ScrollArea className="h-full">

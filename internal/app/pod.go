@@ -16,19 +16,6 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-// filterPodMetricsByNamespace filters a cluster-wide metrics map to only include
-// entries from the specified namespace. Metrics are keyed as "namespace/podname".
-func filterPodMetricsByNamespace(allMetrics map[string]dto.PodUsage, namespace string) map[string]dto.PodUsage {
-	filtered := make(map[string]dto.PodUsage)
-	prefix := namespace + "/"
-	for key, usage := range allMetrics {
-		if strings.HasPrefix(key, prefix) {
-			filtered[key] = usage
-		}
-	}
-	return filtered
-}
-
 func (a *App) ListPods(namespace string) ([]dto.Pod, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
@@ -85,7 +72,7 @@ func (a *App) emitPods(namespace string) {
 }
 
 // emitPodsWithMetrics emits pod updates with optional pre-fetched cluster-wide metrics.
-// If allMetrics is nil, metrics are fetched; otherwise they are used as-is.
+// If allMetrics is nil, metrics are fetched asynchronously to avoid blocking the initial emit.
 // This variant avoids redundant metric fetches when emitting updates for multiple namespaces.
 func (a *App) emitPodsWithMetrics(namespace string, allMetrics map[string]dto.PodUsage) {
 	a.mu.RLock()
@@ -105,28 +92,47 @@ func (a *App) emitPodsWithMetrics(namespace string, allMetrics map[string]dto.Po
 		log.Printf("app: emitPods: %v", err)
 		return
 	}
-	if allMetrics == nil && mc != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), metricsFetchTimeout)
-		defer cancel()
-		allMetrics = kube.FetchPodMetrics(ctx, mc, "")
-	}
+
+	// Emit pods immediately without waiting for metrics
 	if allMetrics != nil {
 		allPods = kubeResources.ApplyPodMetrics(allPods, allMetrics)
 	}
 	runtime.EventsEmit(a.ctx, "pods:update", allPods)
 
 	if namespace != "" {
-		nsPods, err := kubeResources.ListPods(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitPods ns=%s: %v", namespace, err)
-			return
-		}
-		if allMetrics != nil {
-			// Filter cluster-wide metrics to just this namespace instead of making another HTTP call
-			nsMetrics := filterPodMetricsByNamespace(allMetrics, namespace)
-			nsPods = kubeResources.ApplyPodMetrics(nsPods, nsMetrics)
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsPods := make([]dto.Pod, 0)
+		for _, p := range allPods {
+			if p.Namespace == namespace {
+				nsPods = append(nsPods, p)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "pods:"+namespace+":update", nsPods)
+	}
+
+	// Fetch metrics asynchronously if needed to avoid blocking the emit
+	if allMetrics == nil && mc != nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), metricsFetchTimeout)
+			defer cancel()
+			fetchedMetrics := kube.FetchPodMetrics(ctx, mc, "")
+			if fetchedMetrics != nil {
+				// Apply metrics to the already-fetched pod list and re-emit; avoids a redundant relist.
+				allPodsWithMetrics := kubeResources.ApplyPodMetrics(allPods, fetchedMetrics)
+				runtime.EventsEmit(a.ctx, "pods:update", allPodsWithMetrics)
+
+				if namespace != "" {
+					// Filter to namespace and emit namespaced update with metrics
+					nsPods := make([]dto.Pod, 0)
+					for _, p := range allPodsWithMetrics {
+						if p.Namespace == namespace {
+							nsPods = append(nsPods, p)
+						}
+					}
+					runtime.EventsEmit(a.ctx, "pods:"+namespace+":update", nsPods)
+				}
+			}
+		}()
 	}
 }
 

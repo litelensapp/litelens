@@ -22,7 +22,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useGetDaemonSets } from "./hooks/data-access/useGetDaemonSets";
 import { useDeleteDaemonSet } from "./hooks/data-mutation/useDeleteDaemonSet";
 import { useDeleteDaemonSets } from "./hooks/data-mutation/useDeleteDaemonSets";
@@ -107,9 +107,13 @@ export const DaemonSetsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetDaemonSets({ context: activeContext, namespace });
 
-  const daemonsets = raw
-    .filter((ds) => !search || ds.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const daemonsets = useMemo(
+    () =>
+      raw
+        .filter((ds) => !search || ds.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">
