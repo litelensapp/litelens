@@ -1,10 +1,12 @@
-import { LineIcon, Loader2Icon, cn } from "@litelens/design-system";
+import { Button, LineIcon, Loader2Icon, cn } from "@litelens/design-system";
 import { FC, useEffect, useRef } from "react";
 import { useConnectStatusEvents } from "./shared/hooks/async-events/useConnectStatusEvents";
 
 interface ConnectingViewProps {
   contextName: string;
   failed: boolean;
+  onReconnect?: () => void;
+  onOpenClusterSettings?: () => void;
 }
 
 const PALETTE = [
@@ -31,7 +33,12 @@ function clusterInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export const ConnectingView: FC<ConnectingViewProps> = ({ contextName, failed }) => {
+export const ConnectingView: FC<ConnectingViewProps> = ({
+  contextName,
+  failed,
+  onReconnect,
+  onOpenClusterSettings,
+}) => {
   const lines = useConnectStatusEvents(contextName);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -56,7 +63,7 @@ export const ConnectingView: FC<ConnectingViewProps> = ({ contextName, failed })
         </div>
       </div>
 
-      <div className="bg-muted/30 border-border w-full max-w-md rounded-lg border p-4 font-mono text-sm">
+      <div className="bg-muted/30 border-border w-full max-w-lg rounded-lg border p-4 font-mono text-sm">
         {lines.length === 0 && (
           <div className="text-muted-foreground flex items-center gap-2">
             <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
@@ -82,6 +89,15 @@ export const ConnectingView: FC<ConnectingViewProps> = ({ contextName, failed })
         })}
         <div ref={bottomRef} />
       </div>
+
+      {failed && (
+        <div className="flex flex-col items-center gap-2">
+          <Button onClick={onReconnect}>Reconnect</Button>
+          <Button variant="link" className="text-muted-foreground" onClick={onOpenClusterSettings}>
+            Open Cluster Settings
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

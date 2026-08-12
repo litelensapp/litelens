@@ -132,6 +132,8 @@ const AppContent: FC<{
   connectAttempt: number;
   onOpenMarketplace: () => void;
   onGoToMarketplaceSettings: () => void;
+  onReconnect: () => void;
+  onOpenClusterSettings: () => void;
 }> = ({
   settingsOpen,
   settingsSection,
@@ -142,6 +144,8 @@ const AppContent: FC<{
   connectAttempt,
   onOpenMarketplace,
   onGoToMarketplaceSettings,
+  onReconnect,
+  onOpenClusterSettings,
 }) => {
   const isMarketplaceEnabled = useIsMarketplaceEnabled();
   if (marketplaceOpen && isMarketplaceEnabled) {
@@ -165,6 +169,8 @@ const AppContent: FC<{
         key={`${connectFailedCtx}-${connectAttempt}`}
         contextName={connectFailedCtx}
         failed={true}
+        onReconnect={onReconnect}
+        onOpenClusterSettings={onOpenClusterSettings}
       />
     );
   }
@@ -302,6 +308,13 @@ export const App: FC = () => {
                   onGoToMarketplaceSettings={() =>
                     dispatch({ type: "SET_SETTINGS_OPEN", open: true, section: "marketplace" })
                   }
+                  onReconnect={() => {
+                    if (connectFailedCtx) connectTo(connectFailedCtx);
+                  }}
+                  onOpenClusterSettings={() => {
+                    if (connectFailedCtx)
+                      dispatch({ type: "OPEN_CLUSTER_SETTINGS", ctx: connectFailedCtx });
+                  }}
                 />
               </ErrorBoundary>
             </>
