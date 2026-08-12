@@ -152,10 +152,12 @@ func (a *App) emitConfigMaps(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "configmaps:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListConfigMaps(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitConfigMaps ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.ConfigMap, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "configmaps:"+namespace+":update", nsData)
 	}

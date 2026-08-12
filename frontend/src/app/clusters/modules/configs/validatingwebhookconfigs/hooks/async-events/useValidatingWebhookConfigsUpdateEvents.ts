@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { ValidatingWebhookConfig } from "../../api/resources";
 
@@ -7,9 +7,11 @@ export function useValidatingWebhookConfigsUpdateEvents(): ValidatingWebhookConf
     ValidatingWebhookConfig[]
   >([]);
   useEffect(() => {
-    return EventsOn("validatingwebhookconfigs:update", (data: ValidatingWebhookConfig[]) =>
-      setLatestValidatingWebhookConfigs(data)
-    );
+    return EventsOn("validatingwebhookconfigs:update", (data: ValidatingWebhookConfig[]) => {
+      startTransition(() => {
+        setLatestValidatingWebhookConfigs(data);
+      });
+    });
   }, []);
   return latestValidatingWebhookConfigs;
 }

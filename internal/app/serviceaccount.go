@@ -141,10 +141,12 @@ func (a *App) emitServiceAccounts(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "serviceaccounts:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListServiceAccounts(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitServiceAccounts ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.ServiceAccount, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "serviceaccounts:"+namespace+":update", nsData)
 	}

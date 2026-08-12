@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { PodDisruptionBudget } from "../../api/resources";
 
@@ -20,9 +20,11 @@ export function usePodDisruptionBudgetsUpdateEvents(namespace = ""): PodDisrupti
 
   useEffect(() => {
     const eventName = namespace ? `pdbs:${namespace}:update` : "pdbs:update";
-    return EventsOn(eventName, (data: PodDisruptionBudget[]) =>
-      setLatestPodDisruptionBudgets(data)
-    );
+    return EventsOn(eventName, (data: PodDisruptionBudget[]) => {
+      startTransition(() => {
+        setLatestPodDisruptionBudgets(data);
+      });
+    });
   }, [namespace]);
   return latestPodDisruptionBudgets;
 }

@@ -41,9 +41,21 @@ jobs:
             exit 0
           fi
 
-          mapfile -t pathspecs <<< "$PATHS"
-          if git diff --quiet "$BEFORE" HEAD -- "${pathspecs[@]}"; then
+          pathspecs=()
+          while IFS= read -r line; do
+            [[ -n "$line" ]] && pathspecs+=("$line")
+          done <<< "$PATHS"
+
+          set +e
+          git diff --quiet "$BEFORE" HEAD -- "${pathspecs[@]}"
+          status=$?
+          set -e
+
+          if [[ $status -eq 0 ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
+          elif [[ $status -eq 1 ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::git diff failed unexpectedly (exit $status) — cannot determine changed paths" >&2
+            exit "$status"
           fi

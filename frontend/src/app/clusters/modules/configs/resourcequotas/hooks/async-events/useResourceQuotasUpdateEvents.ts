@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { ResourceQuota } from "../../api/resources";
 
@@ -18,7 +18,11 @@ export function useResourceQuotasUpdateEvents(namespace = ""): ResourceQuota[] {
 
   useEffect(() => {
     const eventName = namespace ? `resourcequotas:${namespace}:update` : "resourcequotas:update";
-    return EventsOn(eventName, (data: ResourceQuota[]) => setLatestResourceQuotas(data));
+    return EventsOn(eventName, (data: ResourceQuota[]) => {
+      startTransition(() => {
+        setLatestResourceQuotas(data);
+      });
+    });
   }, [namespace]);
   return latestResourceQuotas;
 }

@@ -19,7 +19,7 @@ import {
   TableRow,
   TableSkeletonLoader,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -91,9 +91,13 @@ export const JobsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetJobs({ context: activeContext, namespace });
 
-  const jobs = raw
-    .filter((j) => !search || j.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const jobs = useMemo(
+    () =>
+      raw
+        .filter((j) => !search || j.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">

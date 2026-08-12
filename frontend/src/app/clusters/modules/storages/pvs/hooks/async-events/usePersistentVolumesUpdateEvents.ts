@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { PersistentVolume } from "../../api/resources";
 
@@ -8,7 +8,11 @@ import type { PersistentVolume } from "../../api/resources";
 export function usePersistentVolumesUpdateEvents(): PersistentVolume[] {
   const [latestPersistentVolumes, setLatestPersistentVolumes] = useState<PersistentVolume[]>([]);
   useEffect(() => {
-    return EventsOn("pvs:update", (data: PersistentVolume[]) => setLatestPersistentVolumes(data));
+    return EventsOn("pvs:update", (data: PersistentVolume[]) => {
+      startTransition(() => {
+        setLatestPersistentVolumes(data);
+      });
+    });
   }, []);
   return latestPersistentVolumes;
 }

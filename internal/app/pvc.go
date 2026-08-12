@@ -91,10 +91,12 @@ func (a *App) emitPersistentVolumeClaims(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "pvcs:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListPersistentVolumeClaims(pvcLister, podLister, namespace)
-		if err != nil {
-			log.Printf("app: emitPersistentVolumeClaims ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.PersistentVolumeClaim, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "pvcs:"+namespace+":update", nsData)
 	}

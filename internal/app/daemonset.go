@@ -167,10 +167,12 @@ func (a *App) emitDaemonSets(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "daemonsets:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListDaemonSets(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitDaemonSets ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.DaemonSet, 0)
+		for _, ds := range allData {
+			if ds.Namespace == namespace {
+				nsData = append(nsData, ds)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "daemonsets:"+namespace+":update", nsData)
 	}

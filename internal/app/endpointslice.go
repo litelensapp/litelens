@@ -136,10 +136,12 @@ func (a *App) emitEndpointSlices(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "endpointslices:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListEndpointSlices(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitEndpointSlices ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.EndpointSlice, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "endpointslices:"+namespace+":update", nsData)
 	}

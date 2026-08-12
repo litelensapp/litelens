@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Namespace } from "../../api/resources";
 
@@ -8,7 +8,11 @@ import type { Namespace } from "../../api/resources";
 export function useNamespacesUpdateEvents(): Namespace[] {
   const [latestNamespaces, setLatestNamespaces] = useState<Namespace[]>([]);
   useEffect(() => {
-    return EventsOn("namespaces:update", (data: Namespace[]) => setLatestNamespaces(data));
+    return EventsOn("namespaces:update", (data: Namespace[]) => {
+      startTransition(() => {
+        setLatestNamespaces(data);
+      });
+    });
   }, []);
   return latestNamespaces;
 }

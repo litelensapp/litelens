@@ -125,7 +125,7 @@ func TestToPod_StatusTerminating(t *testing.T) {
 	p := makePod("p", "default")
 	p.DeletionTimestamp = &now
 	p.Status.Phase = corev1.PodRunning
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Status != "Terminating" {
 		t.Errorf("Status = %q; want %q", got.Status, "Terminating")
 	}
@@ -135,7 +135,7 @@ func TestToPod_StatusTerminating(t *testing.T) {
 func TestToPod_StatusFromPhase(t *testing.T) {
 	p := makePod("p", "default")
 	p.Status.Phase = corev1.PodPending
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Status != "Pending" {
 		t.Errorf("Status = %q; want %q", got.Status, "Pending")
 	}
@@ -152,7 +152,7 @@ func TestToPod_ReadyCount(t *testing.T) {
 		{Name: "c2", Ready: false, RestartCount: 2},
 		{Name: "c3", Ready: true, RestartCount: 0},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Ready != "2/3" {
 		t.Errorf("Ready = %q; want %q", got.Ready, "2/3")
 	}
@@ -167,7 +167,7 @@ func TestToPod_ControlledBy(t *testing.T) {
 	p.OwnerReferences = []metav1.OwnerReference{
 		{Kind: "ReplicaSet", Name: "my-rs"},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.ControlledBy != "ReplicaSet" {
 		t.Errorf("ControlledBy = %q; want %q", got.ControlledBy, "ReplicaSet")
 	}
@@ -179,7 +179,7 @@ func TestToPod_ControlledBy(t *testing.T) {
 // TestToPod_NoOwner verifies empty ControlledBy when no OwnerReferences.
 func TestToPod_NoOwner(t *testing.T) {
 	p := makePod("p", "default")
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.ControlledBy != "" {
 		t.Errorf("ControlledBy = %q; want empty", got.ControlledBy)
 	}
@@ -221,7 +221,7 @@ func TestToPod_ResourceAggregation(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.CPUReqMilli != 150 {
 		t.Errorf("CPUReqMilli = %d; want 150", got.CPUReqMilli)
 	}
@@ -247,7 +247,7 @@ func TestToPod_IPFields(t *testing.T) {
 	p := makePod("p", "default")
 	p.Status.HostIPs = []corev1.HostIP{{IP: "192.168.1.1"}, {IP: "192.168.1.2"}}
 	p.Status.PodIPs = []corev1.PodIP{{IP: "10.0.0.1"}}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.HostIPs) != 2 || got.HostIPs[0] != "192.168.1.1" {
 		t.Errorf("HostIPs = %v; want [192.168.1.1 192.168.1.2]", got.HostIPs)
 	}
@@ -261,7 +261,7 @@ func TestToPod_IPFieldsFallback(t *testing.T) {
 	p := makePod("p", "default")
 	p.Status.HostIP = "10.1.1.1"
 	p.Status.PodIP = "172.16.0.5"
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.HostIPs) != 1 || got.HostIPs[0] != "10.1.1.1" {
 		t.Errorf("HostIPs fallback = %v; want [10.1.1.1]", got.HostIPs)
 	}
@@ -278,7 +278,7 @@ func TestToPod_Tolerations(t *testing.T) {
 		{Key: "node-role", Operator: corev1.TolerationOpEqual, Value: "master", Effect: corev1.TaintEffectNoSchedule},
 		{Key: "spot", Operator: corev1.TolerationOpExists, TolerationSeconds: &secs},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Tolerations != 2 {
 		t.Errorf("Tolerations = %d; want 2", got.Tolerations)
 	}
@@ -300,7 +300,7 @@ func TestToPod_AffinityCount(t *testing.T) {
 		NodeAffinity:    &corev1.NodeAffinity{},
 		PodAntiAffinity: &corev1.PodAntiAffinity{},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.AffinityCount != 2 {
 		t.Errorf("AffinityCount = %d; want 2", got.AffinityCount)
 	}
@@ -313,7 +313,7 @@ func TestToPod_Conditions(t *testing.T) {
 		{Type: corev1.PodReady, Status: corev1.ConditionTrue, Message: "ready"},
 		{Type: corev1.PodScheduled, Status: corev1.ConditionFalse, Message: "unschedulable"},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.Conditions) != 2 {
 		t.Fatalf("Conditions len = %d; want 2", len(got.Conditions))
 	}
@@ -337,7 +337,7 @@ func TestToPod_ContainerDetails_StateStrings(t *testing.T) {
 		{Name: "c-terminated", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}}},
 		// c-unknown has no state set
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.ContainerDetails) != 4 {
 		t.Fatalf("ContainerDetails len = %d; want 4", len(got.ContainerDetails))
 	}
@@ -377,7 +377,7 @@ func TestToPod_ContainerDetails_LastStatus(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.ContainerDetails) != 1 {
 		t.Fatalf("ContainerDetails len = %d; want 1", len(got.ContainerDetails))
 	}
@@ -410,7 +410,7 @@ func TestToPod_ContainerDetails_EnvVars(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.ContainerDetails) != 1 {
 		t.Fatalf("ContainerDetails len = %d; want 1", len(got.ContainerDetails))
 	}
@@ -437,7 +437,7 @@ func TestToPod_ContainerDetails_Ports(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.ContainerDetails[0].Ports) != 1 {
 		t.Fatalf("Ports len = %d; want 1", len(got.ContainerDetails[0].Ports))
 	}
@@ -460,7 +460,7 @@ func TestToPod_Volumes_KindDetection(t *testing.T) {
 		{Name: "nfs", VolumeSource: corev1.VolumeSource{NFS: &corev1.NFSVolumeSource{}}},
 		{Name: "dapi", VolumeSource: corev1.VolumeSource{DownwardAPI: &corev1.DownwardAPIVolumeSource{}}},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.Volumes) != 7 {
 		t.Fatalf("Volumes len = %d; want 7", len(got.Volumes))
 	}
@@ -532,7 +532,7 @@ func TestToPod_Volumes_Projected(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.Volumes) != 1 {
 		t.Fatalf("Volumes len = %d; want 1", len(got.Volumes))
 	}
@@ -579,7 +579,7 @@ func TestToPod_Volumes_Projected(t *testing.T) {
 func TestToPod_Labels(t *testing.T) {
 	p := makePod("p", "default")
 	p.Labels = map[string]string{"app": "web"}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Labels["app"] != "web" {
 		t.Errorf("Labels[app] = %q; want web", got.Labels["app"])
 	}
@@ -746,13 +746,13 @@ func TestToPod_TerminationGracePeriod(t *testing.T) {
 	p := makePod("p", "default")
 	grace := int64(30)
 	p.Spec.TerminationGracePeriodSeconds = &grace
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.TerminationGracePeriod != "30s" {
 		t.Errorf("TerminationGracePeriod = %q; want 30s", got.TerminationGracePeriod)
 	}
 
 	p2 := makePod("p2", "default")
-	got2 := toPod(p2)
+	got2 := toPod(p2, true)
 	if got2.TerminationGracePeriod != "" {
 		t.Errorf("TerminationGracePeriod = %q; want empty when nil", got2.TerminationGracePeriod)
 	}
@@ -789,7 +789,7 @@ func TestListPods_ErrorPropagation_NamespacedScope(t *testing.T) {
 func TestToPod_ZeroContainers_ReadyString(t *testing.T) {
 	p := makePod("p", "default")
 	// No Spec.Containers, no ContainerStatuses
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Ready != "0/0" {
 		t.Errorf("Ready = %q; want \"0/0\"", got.Ready)
 	}
@@ -802,7 +802,7 @@ func TestToPod_ZeroContainers_ReadyString(t *testing.T) {
 func TestToPod_NilLabels_ReturnsEmptyMap(t *testing.T) {
 	p := makePod("p", "default")
 	p.Labels = nil
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Labels == nil {
 		t.Error("Labels must not be nil when pod.Labels is nil; want empty map")
 	}
@@ -815,7 +815,7 @@ func TestToPod_NilLabels_ReturnsEmptyMap(t *testing.T) {
 func TestToPod_NilAnnotations_ReturnsEmptyMap(t *testing.T) {
 	p := makePod("p", "default")
 	p.Annotations = nil
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Annotations == nil {
 		t.Error("Annotations must not be nil when pod.Annotations is nil; want empty map")
 	}
@@ -827,7 +827,7 @@ func TestToPod_NilAnnotations_ReturnsEmptyMap(t *testing.T) {
 // TestToPod_ManagedFields_EmptyInput_NonNilSlice verifies ManagedFields is always a non-nil slice.
 func TestToPod_ManagedFields_EmptyInput_NonNilSlice(t *testing.T) {
 	p := makePod("p", "default")
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.ManagedFields == nil {
 		t.Error("ManagedFields must not be nil when pod has no managed fields; want empty slice")
 	}
@@ -844,7 +844,7 @@ func TestToPod_AllAffinities_CountThree(t *testing.T) {
 		PodAffinity:     &corev1.PodAffinity{},
 		PodAntiAffinity: &corev1.PodAntiAffinity{},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.AffinityCount != 3 {
 		t.Errorf("AffinityCount = %d; want 3", got.AffinityCount)
 	}
@@ -855,7 +855,7 @@ func TestToPod_NilDeletionTimestamp_NotTerminating(t *testing.T) {
 	p := makePod("p", "default")
 	p.DeletionTimestamp = nil
 	p.Status.Phase = corev1.PodRunning
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.Status == "Terminating" {
 		t.Errorf("Status = %q; want non-Terminating when DeletionTimestamp is nil", got.Status)
 	}
@@ -908,7 +908,7 @@ func TestToPod_Volume_Unknown(t *testing.T) {
 	p.Spec.Volumes = []corev1.Volume{
 		{Name: "mystery", VolumeSource: corev1.VolumeSource{}},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.Volumes) != 1 {
 		t.Fatalf("Volumes len = %d; want 1", len(got.Volumes))
 	}
@@ -929,7 +929,7 @@ func TestToPod_ReadyDenominator_FromContainerStatuses(t *testing.T) {
 		{Name: "c1", Ready: true},
 		{Name: "c2", Ready: true},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	// Denominator is ContainerStatuses count (2), not Spec.Containers count (3).
 	if got.Ready != "2/2" {
 		t.Errorf("Ready = %q; want \"2/2\" (denominator from ContainerStatuses len)", got.Ready)
@@ -953,7 +953,7 @@ func TestToPod_Volumes_Projected_NilDefaultMode(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.Volumes) != 1 {
 		t.Fatalf("Volumes len = %d; want 1", len(got.Volumes))
 	}
@@ -1033,7 +1033,7 @@ func TestToPod_Volumes_Projected_DownwardAPI_ResourceFieldRef(t *testing.T) {
 			},
 		},
 	}
-	got := toPod(p)
+	got := toPod(p, true)
 	if len(got.Volumes) != 1 {
 		t.Fatalf("Volumes len = %d; want 1", len(got.Volumes))
 	}
@@ -1050,7 +1050,7 @@ func TestToPod_Volumes_Projected_DownwardAPI_ResourceFieldRef(t *testing.T) {
 func TestToPod_EmptyIPFields_ReturnsNil(t *testing.T) {
 	p := makePod("p", "default")
 	// HostIPs, HostIP, PodIPs, PodIP all at zero values.
-	got := toPod(p)
+	got := toPod(p, true)
 	if got.HostIPs != nil {
 		t.Errorf("HostIPs = %v; want nil when no IP info present", got.HostIPs)
 	}

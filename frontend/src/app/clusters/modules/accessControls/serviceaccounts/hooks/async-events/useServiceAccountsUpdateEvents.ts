@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { ServiceAccount } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function useServiceAccountsUpdateEvents(namespace = ""): ServiceAccount[]
 
   useEffect(() => {
     const eventName = namespace ? `serviceaccounts:${namespace}:update` : "serviceaccounts:update";
-    return EventsOn(eventName, (data: ServiceAccount[]) => setLatestServiceAccounts(data));
+    return EventsOn(eventName, (data: ServiceAccount[]) => {
+      startTransition(() => {
+        setLatestServiceAccounts(data);
+      });
+    });
   }, [namespace]);
   return latestServiceAccounts;
 }

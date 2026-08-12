@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { PersistentVolumeClaim } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function usePersistentVolumeClaimsUpdateEvents(namespace = ""): Persisten
 
   useEffect(() => {
     const eventName = namespace ? `pvcs:${namespace}:update` : "persistentvolumeclaims:update";
-    return EventsOn(eventName, (data: PersistentVolumeClaim[]) => setLatestPVCs(data));
+    return EventsOn(eventName, (data: PersistentVolumeClaim[]) => {
+      startTransition(() => {
+        setLatestPVCs(data);
+      });
+    });
   }, [namespace]);
   return latestPVCs;
 }

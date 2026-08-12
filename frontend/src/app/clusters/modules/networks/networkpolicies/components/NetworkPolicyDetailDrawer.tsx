@@ -23,6 +23,7 @@ import { useDeleteNetworkPolicy } from "../hooks/data-mutation/useDeleteNetworkP
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
+import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { NetworkPolicyDeleteConfirmationModal } from "./NetworkPolicyDeleteConfirmationModal";
@@ -107,11 +108,9 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
         {(np.ManagedFields ?? []).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
-            <div className="flex flex-col gap-2">
-              {np.ManagedFields.map((manager, i) => (
-                <div key={`${manager}/${i}`} className="text-caption text-muted-foreground">
-                  {manager}
-                </div>
+            <div className="flex min-w-0 flex-col gap-2">
+              {np.ManagedFields.map((mf) => (
+                <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
               ))}
             </div>
           </>

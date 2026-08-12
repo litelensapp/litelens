@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
+	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
@@ -36,10 +37,20 @@ func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 			}
 			return ss.Annotations
 		}(),
-		ManagedFields: func() []string {
-			out := make([]string, 0, len(ss.ManagedFields))
+		ManagedFields: func() []dto.ManagedField {
+			out := make([]dto.ManagedField, 0, len(ss.ManagedFields))
 			for _, mf := range ss.ManagedFields {
-				out = append(out, mf.Manager+"/"+string(mf.Operation))
+				fieldsYAML := ""
+				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
+					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
+						fieldsYAML = string(yamlBytes)
+					}
+				}
+				out = append(out, dto.ManagedField{
+					Manager:    mf.Manager,
+					Operation:  string(mf.Operation),
+					FieldsYAML: fieldsYAML,
+				})
 			}
 			return out
 		}(),

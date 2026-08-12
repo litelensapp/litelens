@@ -18,7 +18,7 @@ type NetworkPolicyDetail struct {
 	CreatedAt     string
 	Labels        map[string]string
 	Annotations   map[string]string
-	ManagedFields []string
+	ManagedFields []ManagedField
 	PodSelector   map[string]string
 	IngressRules  []NetworkPolicyIngressRule
 	EgressRules   []NetworkPolicyEgressRule

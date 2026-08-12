@@ -8,6 +8,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersnetworkingv1 "k8s.io/client-go/listers/networking/v1"
+	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toNetworkPolicy(np *networkingv1.NetworkPolicy) dto.NetworkPolicy {
@@ -53,11 +54,19 @@ func GetNetworkPolicyByName(lister listersnetworkingv1.NetworkPolicyLister, name
 	}
 
 	// Extract managed fields
-	managedFields := make([]string, len(np.ManagedFields))
-	for i, mf := range np.ManagedFields {
-		if mf.Manager != "" {
-			managedFields[i] = mf.Manager
+	managedFields := make([]dto.ManagedField, 0, len(np.ManagedFields))
+	for _, mf := range np.ManagedFields {
+		fieldsYAML := ""
+		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
+			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
+				fieldsYAML = string(yamlBytes)
+			}
 		}
+		managedFields = append(managedFields, dto.ManagedField{
+			Manager:    mf.Manager,
+			Operation:  string(mf.Operation),
+			FieldsYAML: fieldsYAML,
+		})
 	}
 
 	// Extract pod selector

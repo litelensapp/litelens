@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { ConfigMap } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function useConfigMapsUpdateEvents(namespace = ""): ConfigMap[] {
 
   useEffect(() => {
     const eventName = namespace ? `configmaps:${namespace}:update` : "configmaps:update";
-    return EventsOn(eventName, (data: ConfigMap[]) => setLatestConfigMaps(data));
+    return EventsOn(eventName, (data: ConfigMap[]) => {
+      startTransition(() => {
+        setLatestConfigMaps(data);
+      });
+    });
   }, [namespace]);
   return latestConfigMaps;
 }

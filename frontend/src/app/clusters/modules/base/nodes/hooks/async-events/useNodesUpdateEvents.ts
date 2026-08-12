@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Node } from "../../api/resources";
 
@@ -8,7 +8,11 @@ import type { Node } from "../../api/resources";
 export function useNodesUpdateEvents(): Node[] {
   const [latestNodes, setLatestNodes] = useState<Node[]>([]);
   useEffect(() => {
-    return EventsOn("nodes:update", (data: Node[]) => setLatestNodes(data));
+    return EventsOn("nodes:update", (data: Node[]) => {
+      startTransition(() => {
+        setLatestNodes(data);
+      });
+    });
   }, []);
   return latestNodes;
 }

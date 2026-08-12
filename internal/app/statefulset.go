@@ -135,10 +135,12 @@ func (a *App) emitStatefulSets(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "statefulsets:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListStatefulSets(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitStatefulSets ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.StatefulSet, 0)
+		for _, ss := range allData {
+			if ss.Namespace == namespace {
+				nsData = append(nsData, ss)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "statefulsets:"+namespace+":update", nsData)
 	}

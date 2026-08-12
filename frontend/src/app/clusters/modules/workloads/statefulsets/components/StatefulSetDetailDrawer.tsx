@@ -1,6 +1,5 @@
 import {
   AnnotationBadge,
-  Button,
   ButtonGroup,
   LoadingSpinner,
   ResourceCell,
@@ -28,6 +27,7 @@ import { FC, useEffect, useState } from "react";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
+import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
@@ -40,7 +40,6 @@ import { StatefulSetDeleteConfirmationModal } from "./StatefulSetDeleteConfirmat
 
 const StatefulSetOverviewTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
-  const [showManagedFields, setShowManagedFields] = useState(false);
 
   return (
     <ScrollArea className="h-full">
@@ -82,23 +81,11 @@ const StatefulSetOverviewTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
 
         {(ss.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground">Managed Fields</span>
-            <div className="flex flex-col gap-0.5">
-              <Button
-                variant="link"
-                size="xs"
-                className="text-info h-auto w-fit p-0"
-                aria-expanded={showManagedFields}
-                onClick={() => setShowManagedFields((v) => !v)}
-              >
-                {showManagedFields ? "Hide" : "Show"}
-              </Button>
-              {showManagedFields &&
-                ss.ManagedFields.map((mf, i) => (
-                  <span key={`${mf}-${i}`} className="text-body font-mono">
-                    {mf}
-                  </span>
-                ))}
+            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <div className="flex min-w-0 flex-col gap-2">
+              {ss.ManagedFields.map((mf) => (
+                <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
+              ))}
             </div>
           </>
         )}

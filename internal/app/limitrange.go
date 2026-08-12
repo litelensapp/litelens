@@ -226,10 +226,12 @@ func (a *App) emitLimitRanges(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "limitranges:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListLimitRanges(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitLimitRanges ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.LimitRange, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "limitranges:"+namespace+":update", nsData)
 	}

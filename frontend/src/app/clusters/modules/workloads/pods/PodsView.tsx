@@ -25,7 +25,7 @@ import {
   TruncatedText,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -125,9 +125,13 @@ export const PodsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetPods({ context: activeContext, namespace });
 
-  const pods = raw
-    .filter((pod) => !search || pod.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const pods = useMemo(
+    () =>
+      raw
+        .filter((pod) => !search || pod.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">
