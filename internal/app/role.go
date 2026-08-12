@@ -88,10 +88,12 @@ func (a *App) emitRoles(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "roles:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListRoles(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitRoles ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.Role, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "roles:"+namespace+":update", nsData)
 	}

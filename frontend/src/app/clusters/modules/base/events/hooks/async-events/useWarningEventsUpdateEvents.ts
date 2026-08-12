@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 
 export function useWarningEventsUpdateEvents(namespace = ""): boolean {
@@ -13,7 +13,11 @@ export function useWarningEventsUpdateEvents(namespace = ""): boolean {
 
   useEffect(() => {
     const eventName = namespace ? `events:${namespace}:warning:update` : "events:warning:update";
-    return EventsOn(eventName, () => setTriggerRefresh((prev) => !prev));
+    return EventsOn(eventName, () => {
+      startTransition(() => {
+        setTriggerRefresh((prev) => !prev);
+      });
+    });
   }, [namespace]);
   return triggerRefresh;
 }

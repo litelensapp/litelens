@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Lease } from "../../api/resources";
 
@@ -18,7 +18,11 @@ export function useLeasesUpdateEvents(namespace = ""): Lease[] {
 
   useEffect(() => {
     const eventName = namespace ? `leases:${namespace}:update` : "leases:update";
-    return EventsOn(eventName, (data: Lease[]) => setLatestLeases(data));
+    return EventsOn(eventName, (data: Lease[]) => {
+      startTransition(() => {
+        setLatestLeases(data);
+      });
+    });
   }, [namespace]);
   return latestLeases;
 }

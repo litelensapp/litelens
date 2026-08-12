@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Role } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function useRolesUpdateEvents(namespace = ""): Role[] {
 
   useEffect(() => {
     const eventName = namespace ? `roles:${namespace}:update` : "roles:update";
-    return EventsOn(eventName, (data: Role[]) => setLatestRoles(data));
+    return EventsOn(eventName, (data: Role[]) => {
+      startTransition(() => {
+        setLatestRoles(data);
+      });
+    });
   }, [namespace]);
   return latestRoles;
 }

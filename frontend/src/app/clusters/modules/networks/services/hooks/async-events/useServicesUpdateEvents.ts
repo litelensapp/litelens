@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Service } from "../../api/resources";
 
@@ -8,7 +8,11 @@ import type { Service } from "../../api/resources";
 export function useServicesUpdateEvents(): Service[] {
   const [latestServices, setLatestServices] = useState<Service[]>([]);
   useEffect(() => {
-    return EventsOn("services:update", (data: Service[]) => setLatestServices(data));
+    return EventsOn("services:update", (data: Service[]) => {
+      startTransition(() => {
+        setLatestServices(data);
+      });
+    });
   }, []);
   return latestServices;
 }

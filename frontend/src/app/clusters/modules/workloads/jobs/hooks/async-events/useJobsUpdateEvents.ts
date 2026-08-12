@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Job } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function useJobsUpdateEvents(namespace = ""): Job[] {
 
   useEffect(() => {
     const eventName = namespace ? `jobs:${namespace}:update` : "jobs:update";
-    return EventsOn(eventName, (data: Job[]) => setLatestJobs(data));
+    return EventsOn(eventName, (data: Job[]) => {
+      startTransition(() => {
+        setLatestJobs(data);
+      });
+    });
   }, [namespace]);
   return latestJobs;
 }

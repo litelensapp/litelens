@@ -88,10 +88,12 @@ func (a *App) emitRoleBindings(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "rolebindings:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListRoleBindings(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitRoleBindings ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.RoleBinding, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "rolebindings:"+namespace+":update", nsData)
 	}

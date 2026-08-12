@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Ingress } from "../../api/resources";
 
@@ -8,7 +8,11 @@ import type { Ingress } from "../../api/resources";
 export function useIngressesUpdateEvents(): Ingress[] {
   const [latestIngresses, setLatestIngresses] = useState<Ingress[]>([]);
   useEffect(() => {
-    return EventsOn("ingresses:update", (data: Ingress[]) => setLatestIngresses(data));
+    return EventsOn("ingresses:update", (data: Ingress[]) => {
+      startTransition(() => {
+        setLatestIngresses(data);
+      });
+    });
   }, []);
   return latestIngresses;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { HPA } from "../../api/resources";
 
@@ -18,7 +18,11 @@ export function useHPAsUpdateEvents(namespace = ""): HPA[] {
 
   useEffect(() => {
     const eventName = namespace ? `hpas:${namespace}:update` : "hpas:update";
-    return EventsOn(eventName, (data: HPA[]) => setLatestHPAs(data));
+    return EventsOn(eventName, (data: HPA[]) => {
+      startTransition(() => {
+        setLatestHPAs(data);
+      });
+    });
   }, [namespace]);
   return latestHPAs;
 }

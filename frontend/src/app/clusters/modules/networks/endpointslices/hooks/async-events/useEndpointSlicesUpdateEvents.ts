@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { EndpointSlice } from "../../api/resources";
 
@@ -8,9 +8,11 @@ import type { EndpointSlice } from "../../api/resources";
 export function useEndpointSlicesUpdateEvents(): EndpointSlice[] {
   const [latestEndpointSlices, setLatestEndpointSlices] = useState<EndpointSlice[]>([]);
   useEffect(() => {
-    return EventsOn("endpointslices:update", (data: EndpointSlice[]) =>
-      setLatestEndpointSlices(data)
-    );
+    return EventsOn("endpointslices:update", (data: EndpointSlice[]) => {
+      startTransition(() => {
+        setLatestEndpointSlices(data);
+      });
+    });
   }, []);
   return latestEndpointSlices;
 }

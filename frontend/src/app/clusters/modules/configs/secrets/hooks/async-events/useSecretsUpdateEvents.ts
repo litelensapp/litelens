@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Secret } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function useSecretsUpdateEvents(namespace = ""): Secret[] {
 
   useEffect(() => {
     const eventName = namespace ? `secrets:${namespace}:update` : "secrets:update";
-    return EventsOn(eventName, (data: Secret[]) => setLatestSecrets(data));
+    return EventsOn(eventName, (data: Secret[]) => {
+      startTransition(() => {
+        setLatestSecrets(data);
+      });
+    });
   }, [namespace]);
   return latestSecrets;
 }

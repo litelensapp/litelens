@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { PriorityClass } from "../../api/resources";
 
@@ -8,9 +8,11 @@ import type { PriorityClass } from "../../api/resources";
 export function usePriorityClassesUpdateEvents(): PriorityClass[] {
   const [latestPriorityClasses, setLatestPriorityClasses] = useState<PriorityClass[]>([]);
   useEffect(() => {
-    return EventsOn("priorityclasses:update", (data: PriorityClass[]) =>
-      setLatestPriorityClasses(data)
-    );
+    return EventsOn("priorityclasses:update", (data: PriorityClass[]) => {
+      startTransition(() => {
+        setLatestPriorityClasses(data);
+      });
+    });
   }, []);
   return latestPriorityClasses;
 }

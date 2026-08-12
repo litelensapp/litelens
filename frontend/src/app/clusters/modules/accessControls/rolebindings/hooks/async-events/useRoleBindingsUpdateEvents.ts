@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { RoleBinding } from "../../api/resources";
 
@@ -19,7 +19,11 @@ export function useRoleBindingsUpdateEvents(namespace = ""): RoleBinding[] {
 
   useEffect(() => {
     const eventName = namespace ? `rolebindings:${namespace}:update` : "rolebindings:update";
-    return EventsOn(eventName, (data: RoleBinding[]) => setLatestRoleBindings(data));
+    return EventsOn(eventName, (data: RoleBinding[]) => {
+      startTransition(() => {
+        setLatestRoleBindings(data);
+      });
+    });
   }, [namespace]);
   return latestRoleBindings;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { StorageClass } from "../../api/resources";
 
@@ -8,9 +8,11 @@ import type { StorageClass } from "../../api/resources";
 export function useStorageClassesUpdateEvents(): StorageClass[] {
   const [latestStorageClasses, setLatestStorageClasses] = useState<StorageClass[]>([]);
   useEffect(() => {
-    return EventsOn("storageclasses:update", (data: StorageClass[]) =>
-      setLatestStorageClasses(data)
-    );
+    return EventsOn("storageclasses:update", (data: StorageClass[]) => {
+      startTransition(() => {
+        setLatestStorageClasses(data);
+      });
+    });
   }, []);
   return latestStorageClasses;
 }

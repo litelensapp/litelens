@@ -122,12 +122,13 @@ func (a *App) emitEvents(namespace string) {
 	runtime.EventsEmit(a.ctx, "events:update", allData)
 	runtime.EventsEmit(a.ctx, "events:warning:update", warningEvents(allData))
 	if namespace != "" {
-		nsData, err := kubeResources.ListEvents(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitEvents ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.Event, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
-		sortEventsDesc(nsData)
 		runtime.EventsEmit(a.ctx, "events:"+namespace+":update", nsData)
 		runtime.EventsEmit(a.ctx, "events:"+namespace+":warning:update", warningEvents(nsData))
 	}

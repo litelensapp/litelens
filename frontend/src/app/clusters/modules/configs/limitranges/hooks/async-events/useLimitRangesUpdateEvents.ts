@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { LimitRange } from "../../api/resources";
 
@@ -18,7 +18,11 @@ export function useLimitRangesUpdateEvents(namespace = ""): LimitRange[] {
 
   useEffect(() => {
     const eventName = namespace ? `limitranges:${namespace}:update` : "limitranges:update";
-    return EventsOn(eventName, (data: LimitRange[]) => setLatestLimitRanges(data));
+    return EventsOn(eventName, (data: LimitRange[]) => {
+      startTransition(() => {
+        setLatestLimitRanges(data);
+      });
+    });
   }, [namespace]);
   return latestLimitRanges;
 }

@@ -136,10 +136,12 @@ func (a *App) emitNetworkPolicies(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "networkpolicies:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListNetworkPolicies(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitNetworkPolicies ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.NetworkPolicy, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "networkpolicies:"+namespace+":update", nsData)
 	}

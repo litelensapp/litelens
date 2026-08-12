@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { ClusterRoleBinding } from "../../api/resources";
 
@@ -7,9 +7,11 @@ export function useClusterRoleBindingsUpdateEvents(): ClusterRoleBinding[] {
     []
   );
   useEffect(() => {
-    return EventsOn("clusterrolebindings:update", (data: ClusterRoleBinding[]) =>
-      setLatestClusterRoleBindings(data)
-    );
+    return EventsOn("clusterrolebindings:update", (data: ClusterRoleBinding[]) => {
+      startTransition(() => {
+        setLatestClusterRoleBindings(data);
+      });
+    });
   }, []);
   return latestClusterRoleBindings;
 }

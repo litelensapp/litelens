@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Event } from "../../api/resources";
 
@@ -18,7 +18,11 @@ export function useEventsUpdateEvents(namespace = ""): Event[] {
 
   useEffect(() => {
     const eventName = namespace ? `events:${namespace}:update` : "events:update";
-    return EventsOn(eventName, (data: Event[]) => setLatestEvents(data));
+    return EventsOn(eventName, (data: Event[]) => {
+      startTransition(() => {
+        setLatestEvents(data);
+      });
+    });
   }, [namespace]);
   return latestEvents;
 }

@@ -133,10 +133,12 @@ func (a *App) emitLeases(namespace string) {
 	}
 	runtime.EventsEmit(a.ctx, "leases:update", allData)
 	if namespace != "" {
-		nsData, err := kubeResources.ListLeases(lister, namespace)
-		if err != nil {
-			log.Printf("app: emitLeases ns=%s: %v", namespace, err)
-			return
+		// Filter already-fetched cluster-wide data instead of re-listing
+		nsData := make([]dto.Lease, 0)
+		for _, item := range allData {
+			if item.Namespace == namespace {
+				nsData = append(nsData, item)
+			}
 		}
 		runtime.EventsEmit(a.ctx, "leases:"+namespace+":update", nsData)
 	}
