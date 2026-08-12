@@ -95,7 +95,7 @@ func NewApp(version string) *App {
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.restoreInstalledPlugins()
-	go a.checkForUpdate()
+	go a.checkForUpdate(3)
 }
 
 // DomReady is called once the frontend DOM is loaded and the native window is visible.

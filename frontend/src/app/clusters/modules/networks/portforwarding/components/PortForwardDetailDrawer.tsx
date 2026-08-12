@@ -20,11 +20,11 @@ import {
   useCopyToClipboard,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
+import { useOpenBrowserURL } from "../../../../../shared/hooks/useOpenBrowserURL";
+import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
+import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import type { PortForward } from "../api/resources";
 import { RemovePortForward, StartPortForward, StopPortForward } from "../api/resources";
-import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
-import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { PortForwardOperationDialog } from "./PortForwardOperationDialog";
 import { PortForwardStatusBadge } from "./PortForwardStatusBadge";
 
@@ -52,88 +52,91 @@ const PortForwardDrawerCtaButtons: FC<PortForwardDrawerCtaButtonsProps> = ({
   pf,
   onClose,
   onEdit,
-}) => (
-  <ButtonGroup>
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              aria-label="Open in browser"
-              variant="ghost"
-              size="icon-sm"
-              disabled={pf.Status !== "Active"}
-              onClick={() => BrowserOpenURL(`${pf.Scheme}://${pf.Address}:${pf.LocalPort}`)}
-            >
-              <ExternalLinkIcon />
-            </Button>
-          }
-        />
-        <TooltipContent side="bottom">Open in browser</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button aria-label="Edit" variant="ghost" size="icon-sm" onClick={onEdit}>
-              <PencilIcon />
-            </Button>
-          }
-        />
-        <TooltipContent side="bottom">Edit</TooltipContent>
-      </Tooltip>
-      {pf.Status === "Stopped" ? (
+}) => {
+  const openBrowserURL = useOpenBrowserURL();
+  return (
+    <ButtonGroup>
+      <TooltipProvider>
         <Tooltip>
           <TooltipTrigger
             render={
               <Button
-                aria-label="Activate"
+                aria-label="Open in browser"
                 variant="ghost"
                 size="icon-sm"
-                onClick={() => handleActivate(pf).catch(console.error)}
+                disabled={pf.Status !== "Active"}
+                onClick={() => openBrowserURL(`${pf.Scheme}://${pf.Address}:${pf.LocalPort}`)}
               >
-                <PlayIcon />
+                <ExternalLinkIcon />
               </Button>
             }
           />
-          <TooltipContent side="bottom">Activate</TooltipContent>
+          <TooltipContent side="bottom">Open in browser</TooltipContent>
         </Tooltip>
-      ) : (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button aria-label="Edit" variant="ghost" size="icon-sm" onClick={onEdit}>
+                <PencilIcon />
+              </Button>
+            }
+          />
+          <TooltipContent side="bottom">Edit</TooltipContent>
+        </Tooltip>
+        {pf.Status === "Stopped" ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label="Activate"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => handleActivate(pf).catch(console.error)}
+                >
+                  <PlayIcon />
+                </Button>
+              }
+            />
+            <TooltipContent side="bottom">Activate</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label="Stop"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={pf.Status === "Stopped"}
+                  onClick={() => StopPortForward(pf.ID).catch(console.error)}
+                >
+                  <SquareIcon />
+                </Button>
+              }
+            />
+            <TooltipContent side="bottom">Stop</TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger
             render={
               <Button
-                aria-label="Stop"
+                aria-label="Delete"
                 variant="ghost"
                 size="icon-sm"
-                disabled={pf.Status === "Stopped"}
-                onClick={() => StopPortForward(pf.ID).catch(console.error)}
+                className="hover:text-destructive"
+                onClick={() => RemovePortForward(pf.ID).finally(() => onClose())}
               >
-                <SquareIcon />
+                <Trash2Icon />
               </Button>
             }
           />
-          <TooltipContent side="bottom">Stop</TooltipContent>
+          <TooltipContent side="bottom">Delete</TooltipContent>
         </Tooltip>
-      )}
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              aria-label="Delete"
-              variant="ghost"
-              size="icon-sm"
-              className="hover:text-destructive"
-              onClick={() => RemovePortForward(pf.ID).finally(() => onClose())}
-            >
-              <Trash2Icon />
-            </Button>
-          }
-        />
-        <TooltipContent side="bottom">Delete</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  </ButtonGroup>
-);
+      </TooltipProvider>
+    </ButtonGroup>
+  );
+};
 
 interface PortForwardDetailDrawerProps {
   open: boolean;

@@ -8,11 +8,10 @@ import {
   DialogTitle,
   Input,
 } from "@litelens/design-system";
-
 import { FC, useReducer } from "react";
+import { useOpenBrowserURL } from "../../../../../shared/hooks/useOpenBrowserURL";
 import type { PortForward } from "../api/resources";
 import { RemovePortForward, StartPortForward } from "../api/resources";
-import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
 import { toastPortForwardStarted, toastPortForwardUpdated } from "./PortForwardConfirmationToast";
 
 interface PfDialogState {
@@ -77,6 +76,7 @@ export const PortForwardOperationDialog: FC<PortForwardOperationDialogProps> = (
   onNavigateToPortForwarding,
   editingPf,
 }) => {
+  const openBrowserURL = useOpenBrowserURL();
   const [state, dispatch] = useReducer(pfDialogReducer, {
     address: editingPf?.Address ?? "127.0.0.1",
     localPort: editingPf?.LocalPort ?? "",
@@ -118,7 +118,7 @@ export const PortForwardOperationDialog: FC<PortForwardOperationDialogProps> = (
         // has a small startup lag. Adjust if ERR_CONNECTION_REFUSED reappears on slow machines.
         const BROWSER_OPEN_DELAY_MS = 300;
         await new Promise((r) => setTimeout(r, BROWSER_OPEN_DELAY_MS));
-        BrowserOpenURL(`http${useHttps ? "s" : ""}://${address}:${result.LocalPort}`);
+        openBrowserURL(`http${useHttps ? "s" : ""}://${address}:${result.LocalPort}`);
       }
     } catch (err) {
       dispatch({ type: "error", message: String(err) });

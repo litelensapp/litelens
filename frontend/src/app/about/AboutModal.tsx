@@ -1,10 +1,10 @@
 import { Button, Dialog, DialogContent, Divider, Loader2Icon } from "@litelens/design-system";
-import { BrowserOpenURL } from "@wailsjs/runtime/runtime";
 import { FC } from "react";
 import pkg from "../../../package.json";
 import logo from "../../assets/images/logo-universal.png";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
 import { formatBytes } from "../marketplace/utils/formatBytes";
+import { useOpenBrowserURL } from "../shared/hooks/useOpenBrowserURL";
 import { useCheckForUpdate } from "../updater/hooks/data-mutation/useCheckForUpdate";
 
 // Strip leading non-numeric characters (^, ~, v, "go", etc.)
@@ -33,6 +33,7 @@ interface Props {
 
 export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) => {
   const { checkingForUpdate, checkForUpdate } = useCheckForUpdate(onUpdateAvailable);
+  const openBrowserURL = useOpenBrowserURL();
 
   const runtimeTech = [
     { label: "Go", version: clean(payload.go) },
@@ -93,7 +94,7 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
             {import.meta.env.VITE_AUTHOR_URL ? (
               <Button
                 variant="link"
-                onClick={() => BrowserOpenURL(import.meta.env.VITE_AUTHOR_URL)}
+                onClick={() => openBrowserURL(import.meta.env.VITE_AUTHOR_URL)}
                 className="text-muted-foreground hover:text-foreground mt-0.5 h-auto p-0 font-mono text-xs underline-offset-2"
               >
                 {import.meta.env.VITE_AUTHOR_URL.replace(/^https?:\/\//, "")}
