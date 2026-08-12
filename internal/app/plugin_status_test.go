@@ -22,6 +22,7 @@ func TestGetInstalledPluginNotInstalled(t *testing.T) {
 // Plugin installation is a metadata-level operation (download binary, verify checksum).
 // Actual plugin feature usage (helmPluginClient) gates on active context separately.
 func TestInstallPluginHelmNoActiveContext(t *testing.T) {
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 	// activeContext defaults to "", simulating no connected cluster
 
@@ -61,6 +62,7 @@ func TestInstallPluginHelmNoActiveContext(t *testing.T) {
 // We can't test the full async install without a real binary/cluster,
 // but we verify the synchronous checks pass and a loader is created.
 func TestInstallPluginHelmWithActiveContext(t *testing.T) {
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 	// Simulate a connected cluster by setting activeContext
 	app.mu.Lock()
@@ -102,6 +104,7 @@ func TestInstallPluginHelmWithActiveContext(t *testing.T) {
 // and create a loader in INSTALLING status, confirming non-Helm plugins
 // were never cluster-gated and still aren't.
 func TestInstallPluginNonHelmNotGated(t *testing.T) {
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 	// activeContext is "", simulating no connected cluster
 	// Non-Helm plugins should install successfully regardless
@@ -137,6 +140,7 @@ func TestInstallPluginNonHelmNotGated(t *testing.T) {
 // TestInstallPluginConcurrentAccess verifies thread safety:
 // Multiple goroutines calling InstallPlugin concurrently should not race.
 func TestInstallPluginConcurrentAccess(t *testing.T) {
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 	app.mu.Lock()
 	app.activeContext = "test-cluster"
