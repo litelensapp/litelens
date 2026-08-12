@@ -20,10 +20,22 @@ jobs:
     with:
       version: ${{ needs.release-version.outputs.tag_name }}
 
+  detect-design-system-changes:
+    name: Detect Design System Changes
+    uses: ./.github/workflows/job-detect-changes.yml
+    with:
+      paths: |
+        design-system/**
+        pnpm-lock.yaml
+        package.json
+        pnpm-workspace.yaml
+        .github/workflows/job-publish-design-system.yml
+        .github/actions/setup-node-pnpm/**
+
   publish-design-system:
     name: Publish Design System
-    needs: [release-version]
-    if: ${{ needs.release-version.result == 'success' && vars.DESIGN_SYSTEM_RELEASED == 'true' }}
+    needs: [release-version, detect-design-system-changes]
+    if: ${{ needs.release-version.result == 'success' && vars.DESIGN_SYSTEM_RELEASED == 'true' && needs.detect-design-system-changes.outputs.changed == 'true' }}
     uses: ./.github/workflows/job-publish-design-system.yml
     secrets: inherit
     with:

@@ -78,10 +78,11 @@ func TestDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				devMode = false
+				rootDirOverride = ""
 			})
 
 			if tt.envOverride != "" {
-				t.Setenv("LITELENS_ROOT_DIR", tt.envOverride)
+				SetRootDirOverride(tt.envOverride)
 			}
 
 			SetDevMode(tt.devMode)
@@ -151,5 +152,86 @@ func TestDevModeIsIsolated(t *testing.T) {
 	// Verify they're different
 	if path1 == path2 {
 		t.Errorf("Dev mode and production mode paths should differ, but both are %q", path1)
+	}
+}
+
+// TestSetRootDirOverride verifies that SetRootDirOverride correctly redirects Dir()
+// in production mode, and that an empty string clears the override back to ~/.litelens.
+func TestSetRootDirOverride(t *testing.T) {
+	t.Cleanup(func() {
+		devMode = false
+		rootDirOverride = ""
+	})
+
+	SetDevMode(false)
+
+	// Initially, Dir() should return ~/.litelens
+	initialPath := Dir()
+	home, _ := os.UserHomeDir()
+	if !strings.Contains(initialPath, ".litelens") {
+		t.Fatalf("Expected initial Dir() to contain .litelens, got %q", initialPath)
+	}
+
+	// Set an override
+	customPath := "/custom/litelens"
+	SetRootDirOverride(customPath)
+	overriddenPath := Dir()
+	if overriddenPath != customPath {
+		t.Errorf("After SetRootDirOverride(%q), expected Dir()=%q, got %q", customPath, customPath, overriddenPath)
+	}
+
+	// Clear the override with empty string
+	SetRootDirOverride("")
+	clearedPath := Dir()
+	if !strings.Contains(clearedPath, ".litelens") {
+		t.Errorf("After SetRootDirOverride(\"\"), expected Dir() to contain .litelens, got %q", clearedPath)
+	}
+	if !strings.HasPrefix(clearedPath, home) {
+		t.Errorf("After clearing override, expected Dir() to start with home %q, got %q", home, clearedPath)
+	}
+}
+
+// TestSetRootDirOverride_IgnoredInDevMode verifies that SetRootDirOverride is ignored
+// when dev mode is enabled.
+func TestSetRootDirOverride_IgnoredInDevMode(t *testing.T) {
+	t.Cleanup(func() {
+		devMode = false
+		rootDirOverride = ""
+	})
+
+	SetDevMode(true)
+	customPath := "/custom/litelens"
+	SetRootDirOverride(customPath)
+
+	devPath := Dir()
+	if !strings.Contains(devPath, filepath.Join("build", "storage")) {
+		t.Errorf("In dev mode, Dir() should still use build/storage, got %q", devPath)
+	}
+
+	// Also verify it's an absolute path starting with cwd
+	cwd, _ := os.Getwd()
+	if !strings.HasPrefix(devPath, cwd) {
+		t.Errorf("In dev mode, Dir() should start with cwd %q, got %q", cwd, devPath)
+	}
+}
+
+// TestSetRootDirOverride_WithPathElements verifies that SetRootDirOverride works
+// correctly when Dir() is called with additional path elements.
+func TestSetRootDirOverride_WithPathElements(t *testing.T) {
+	t.Cleanup(func() {
+		devMode = false
+		rootDirOverride = ""
+	})
+
+	SetDevMode(false)
+
+	customPath := "/custom/litelens"
+	SetRootDirOverride(customPath)
+
+	pathWithElems := Dir("config", "settings.json")
+	expected := filepath.Join(customPath, "config", "settings.json")
+	if pathWithElems != expected {
+		t.Errorf("Dir(\"config\", \"settings.json\") with override=%q: expected %q, got %q",
+			customPath, expected, pathWithElems)
 	}
 }

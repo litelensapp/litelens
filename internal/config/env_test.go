@@ -159,12 +159,12 @@ func Test_GetReleasesBaseURL_SpecialCharactersInURL(t *testing.T) {
 	}
 }
 
-// Test_IsMarketplaceEnabled_DefaultAndOverride verifies default (true) vs. override behavior.
+// Test_IsMarketplaceEnabled_DefaultAndOverride verifies default (false) vs. override behavior.
 func Test_IsMarketplaceEnabled_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := IsMarketplaceEnabled()
-		if result != true {
-			t.Errorf("expected default true for unset MARKETPLACE_ENABLED, got %v", result)
+		if result != false {
+			t.Errorf("expected default false for unset MARKETPLACE_ENABLED, got %v", result)
 		}
 	})
 
@@ -185,4 +185,124 @@ func Test_IsMarketplaceEnabled_DefaultAndOverride(t *testing.T) {
 			t.Errorf("expected true when MARKETPLACE_ENABLED is set to true, got %v", result)
 		}
 	})
+}
+
+// Test_IsPrivateRepoAccess_DefaultAndOverride verifies default (false) vs. override behavior.
+func Test_IsPrivateRepoAccess_DefaultAndOverride(t *testing.T) {
+	t.Run("default when unset", func(t *testing.T) {
+		result := IsPrivateRepoAccess()
+		if result != false {
+			t.Errorf("expected default false for unset PRIVATE_REPO_ACCESS, got %v", result)
+		}
+	})
+
+	t.Run("override to true when set", func(t *testing.T) {
+		t.Setenv("PRIVATE_REPO_ACCESS", "true")
+
+		result := IsPrivateRepoAccess()
+		if result != true {
+			t.Errorf("expected true when PRIVATE_REPO_ACCESS is set to true, got %v", result)
+		}
+	})
+
+	t.Run("override to false when explicitly set", func(t *testing.T) {
+		t.Setenv("PRIVATE_REPO_ACCESS", "false")
+
+		result := IsPrivateRepoAccess()
+		if result != false {
+			t.Errorf("expected false when PRIVATE_REPO_ACCESS is set to false, got %v", result)
+		}
+	})
+}
+
+// Test_GetRootDirOverride_DefaultAndOverride verifies default (empty) vs. override behavior.
+func Test_GetRootDirOverride_DefaultAndOverride(t *testing.T) {
+	t.Run("default empty when unset", func(t *testing.T) {
+		result := GetRootDirOverride()
+		if result != "" {
+			t.Errorf("expected default empty string for unset LITELENS_ROOT_DIR, got %q", result)
+		}
+	})
+
+	t.Run("override when set", func(t *testing.T) {
+		customPath := "/custom/litelens/dir"
+		t.Setenv("LITELENS_ROOT_DIR", customPath)
+
+		result := GetRootDirOverride()
+		if result != customPath {
+			t.Errorf("expected custom path %q, got %q", customPath, result)
+		}
+	})
+
+	t.Run("preserves empty string when explicitly set", func(t *testing.T) {
+		t.Setenv("LITELENS_ROOT_DIR", "")
+
+		result := GetRootDirOverride()
+		if result != "" {
+			t.Errorf("expected empty string when LITELENS_ROOT_DIR is set to empty, got %q", result)
+		}
+	})
+}
+
+// Test_getBoolEnvOrDefault_MalformedValueFallsBackToDefault verifies that invalid
+// bool values (e.g., "notabool") are rejected and the default is returned instead.
+func Test_getBoolEnvOrDefault_MalformedValueFallsBackToDefault(t *testing.T) {
+	tests := []struct {
+		name         string
+		envValue     string
+		defaultVal   bool
+		expectedBool bool
+	}{
+		{"invalid string with true default", "notabool", true, true},
+		{"invalid string with false default", "notabool", false, false},
+		{"random text with true default", "random123", true, true},
+		{"random text with false default", "random123", false, false},
+		{"empty string with true default", "", true, true},
+		{"empty string with false default", "", false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TEST_BOOL_VAR", tt.envValue)
+
+			result := getBoolEnvOrDefault("TEST_BOOL_VAR", tt.defaultVal)
+			if result != tt.expectedBool {
+				t.Errorf("getBoolEnvOrDefault with env=%q, default=%v: expected %v, got %v",
+					tt.envValue, tt.defaultVal, tt.expectedBool, result)
+			}
+		})
+	}
+}
+
+// Test_getBoolEnvOrDefault_ValidValues verifies that valid bool strings
+// (true/false case-insensitive, 1/0) parse correctly.
+func Test_getBoolEnvOrDefault_ValidValues(t *testing.T) {
+	tests := []struct {
+		name         string
+		envValue     string
+		expectedBool bool
+	}{
+		{"lowercase true", "true", true},
+		{"lowercase false", "false", false},
+		{"uppercase TRUE", "TRUE", true},
+		{"uppercase FALSE", "FALSE", false},
+		{"mixedcase True", "True", true},
+		{"mixedcase False", "False", false},
+		{"1 as true", "1", true},
+		{"0 as false", "0", false},
+		{"t as true", "t", true},
+		{"f as false", "f", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TEST_BOOL_VAR", tt.envValue)
+
+			result := getBoolEnvOrDefault("TEST_BOOL_VAR", false)
+			if result != tt.expectedBool {
+				t.Errorf("getBoolEnvOrDefault with env=%q: expected %v, got %v",
+					tt.envValue, tt.expectedBool, result)
+			}
+		})
+	}
 }

@@ -17,6 +17,7 @@ import (
 // (neither in loader map nor on disk)
 func TestRemovePluginNotInstalled(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	err := app.RemovePlugin("unknown-plugin")
@@ -31,6 +32,7 @@ func TestRemovePluginNotInstalled(t *testing.T) {
 // TestRemovePluginInvalidID verifies error on path traversal attempts
 func TestRemovePluginInvalidID(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	tests := []string{
@@ -52,6 +54,7 @@ func TestRemovePluginInvalidID(t *testing.T) {
 func TestRemovePluginWhileInstalling(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	// Manually create a loader in INSTALLING state
@@ -84,6 +87,7 @@ func TestRemovePluginWhileInstalling(t *testing.T) {
 func TestRemovePluginSuccess(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	// Create plugin directory with files
@@ -138,6 +142,7 @@ func TestRemovePluginSuccess(t *testing.T) {
 func TestRemovePluginCrashed(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	pluginID := "crashed-plugin"
@@ -197,6 +202,7 @@ func TestRemovePluginStatusConvention(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tempHome := t.TempDir()
 			t.Setenv("HOME", tempHome)
+			t.Setenv("MARKETPLACE_ENABLED", "true")
 			app := NewApp("test")
 
 			pluginID := "test-plugin"
@@ -233,6 +239,7 @@ func TestRemovePluginStatusConvention(t *testing.T) {
 func TestRemovePluginOrphanedDirectory(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	pluginID := "orphaned-plugin"
@@ -287,6 +294,7 @@ func TestRemovePluginOrphanedDirectory(t *testing.T) {
 func TestRemovePluginBlocksInstallDuringRemoval(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	pluginID := "concurrent-plugin"
@@ -335,6 +343,7 @@ func TestRemovePluginBlocksInstallDuringRemoval(t *testing.T) {
 func TestInstallPluginConcurrentWithRemove(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	pluginID := "install-then-remove"
@@ -399,6 +408,7 @@ func TestInstallPluginConcurrentWithRemove(t *testing.T) {
 func TestRemovePluginNotInstalledDoesNotBlockFutureInstall(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 	pluginID := "test-plugin"
 

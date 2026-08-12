@@ -72,5 +72,14 @@ func IsPrivateRepoAccess() bool {
 // MARKETPLACE_ENABLED environment variable. Defaults to true (marketplace
 // ships enabled).
 func IsMarketplaceEnabled() bool {
-	return getBoolEnvOrDefault("MARKETPLACE_ENABLED", true)
+	return getBoolEnvOrDefault("MARKETPLACE_ENABLED", false)
+}
+
+// GetRootDirOverride returns the LITELENS_ROOT_DIR environment variable, which
+// overrides the default ~/.litelens storage directory in production mode.
+// Empty when unset. Wired into internal/storage via storage.SetRootDirOverride
+// at startup (main.go) — internal/storage cannot import internal/config
+// directly since config already depends on storage.
+func GetRootDirOverride() string {
+	return getEnvOrDefault("LITELENS_ROOT_DIR", "")
 }
