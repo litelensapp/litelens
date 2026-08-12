@@ -24,6 +24,16 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// UpdateCheckResult caches the most recent update-check result. This is
+// internal app state (not exported as a DTO) and lives only in memory.
+type UpdateCheckResult struct {
+	LatestVersion string `json:"latestVersion"`
+	ReleaseURL    string `json:"releaseURL"`
+	ReleaseNotes  string `json:"releaseNotes"`
+	AssetURL      string `json:"assetURL"`
+	DownloadSize  string `json:"downloadSize"`
+}
+
 func (a *App) checkForUpdate() error {
 	a.mu.RLock()
 	token := a.settings.AccessToken
@@ -63,20 +73,33 @@ func (a *App) checkForUpdate() error {
 
 	if rel == nil {
 		// No update available (expected case when already up-to-date)
+		a.mu.Lock()
+		a.lastUpdateCheckResult = nil
+		a.mu.Unlock()
 		runtime.EventsEmit(a.ctx, "update:check-complete", map[string]any{
 			"updateAvailable": false,
 		})
 		return nil
 	}
 
-	// Update available; emit the event
+	// Update available; cache and emit the event
 	log.Printf("app: checkForUpdate: update available: %s", rel.TagName)
+	result := &UpdateCheckResult{
+		LatestVersion: rel.TagName,
+		ReleaseURL:    rel.HTMLURL,
+		ReleaseNotes:  rel.Body,
+		AssetURL:      rel.AssetURL,
+		DownloadSize:  config.FormatBytes(rel.DownloadSize),
+	}
+	a.mu.Lock()
+	a.lastUpdateCheckResult = result
+	a.mu.Unlock()
 	runtime.EventsEmit(a.ctx, "update:available", map[string]any{
-		"latestVersion": rel.TagName,
-		"releaseURL":    rel.HTMLURL,
-		"releaseNotes":  rel.Body,
-		"assetURL":      rel.AssetURL,
-		"downloadSize":  config.FormatBytes(rel.DownloadSize),
+		"latestVersion": result.LatestVersion,
+		"releaseURL":    result.ReleaseURL,
+		"releaseNotes":  result.ReleaseNotes,
+		"assetURL":      result.AssetURL,
+		"downloadSize":  result.DownloadSize,
 	})
 	return nil
 }
@@ -86,6 +109,17 @@ func (a *App) checkForUpdate() error {
 // if the check fails after all retries.
 func (a *App) CheckForUpdate() error {
 	return a.checkForUpdate()
+}
+
+// GetLastUpdateCheckResult returns the most recently cached update-check result,
+// or nil if no update is currently known to be available. The frontend calls this
+// on mount to recover update state after a Ctrl+R webview reload, since Startup
+// (and its one-shot checkForUpdate) only runs once per Go process and won't
+// re-fire the "update:available" event for a reloaded frontend.
+func (a *App) GetLastUpdateCheckResult() *UpdateCheckResult {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.lastUpdateCheckResult
 }
 
 // selectUpdateStrategy returns the update strategy name for a given OS.
