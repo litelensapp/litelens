@@ -125,6 +125,12 @@ func buildMenu(a *app.App) *menu.Menu {
 			}
 		}()
 	})
+	// macOS uses the native green button for fullscreen; F11 is Windows/Linux convention.
+	if goruntime.GOOS != "darwin" {
+		viewSub.AddText("Toggle Fullscreen", keys.Key("f11"), func(_ *menu.CallbackData) {
+			go a.ToggleFullscreen()
+		})
+	}
 
 	return m
 }
