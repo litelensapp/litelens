@@ -104,9 +104,15 @@ jobs:
 
           # Copy control file and substitute version and libwebkit package.
           # dpkg's Version field must start with a digit — strip the leading
-          # "v" from the release tag (e.g. v1.4.1 -> 1.4.1).
+          # "v" from the release tag (e.g. v1.4.1 -> 1.4.1). Append a
+          # codename suffix (e.g. ~noble) so the three per-codename builds
+          # don't collide in the APT repo's shared pool: reprepro rejects
+          # re-including "litelens_<version>_amd64.deb" under a different
+          # codename once the same Package+Version+Architecture has already
+          # been pooled with different bytes (they differ by Depends only,
+          # since each build pins a different libwebkit package).
           DEB_VERSION="${{ inputs.version }}"
-          DEB_VERSION="${DEB_VERSION#v}"
+          DEB_VERSION="${DEB_VERSION#v}~${{ matrix.codename }}"
 
           cp "$DEBIAN_DIR/DEBIAN/control" "$DEBIAN_DIR/DEBIAN/control.tmp"
           sed -e "s/0\.0\.0/${DEB_VERSION}/g" \
