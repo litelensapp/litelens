@@ -1,0 +1,8 @@
+Package: litelens
+Version: 0.0.0
+Architecture: amd64
+Maintainer: LiteLens Team <packages@litelens.io>
+Depends: ${LIBWEBKIT_PKG}, libgtk-3-0, libc6 (>= 2.31)
+Homepage: https://github.com/litelensapp/litelens
+Description: Desktop Kubernetes dashboard
+ LiteLens is a lightweight, native desktop Kubernetes dashboard built with Wails.

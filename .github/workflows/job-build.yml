@@ -8,6 +8,9 @@ on:
         required: false
         default: "dev"
 
+env:
+  DEBIAN_DIR: build/linux/debian
+
 jobs:
   run:
     permissions:
@@ -27,6 +30,24 @@ jobs:
             platform: linux/amd64
             artifact: litelens-linux-amd64.tar.gz
             build_flags: -tags webkit2_41
+          - os: ubuntu-latest
+            platform: linux/amd64/deb
+            artifact: litelens-linux-amd64-noble.deb
+            build_flags: -tags webkit2_41
+            codename: noble
+            libwebkit_version: libwebkit2gtk-4.1-0
+          - os: ubuntu-latest
+            platform: linux/amd64/deb
+            artifact: litelens-linux-amd64-jammy.deb
+            build_flags: -tags webkit2_41
+            codename: jammy
+            libwebkit_version: libwebkit2gtk-4.0-37
+          - os: ubuntu-latest
+            platform: linux/amd64/deb
+            artifact: litelens-linux-amd64-focal.deb
+            build_flags: -tags webkit2_41
+            codename: focal
+            libwebkit_version: libwebkit2gtk-4.0-37
 
     runs-on: ${{ matrix.os }}
 
@@ -65,10 +86,66 @@ jobs:
         run: cd build/bin && zip -r ${{ matrix.artifact }} litelens.app
 
       - name: Package (Linux)
-        if: ${{ runner.os == 'Linux' }}
+        if: ${{ runner.os == 'Linux' && matrix.platform != 'linux/amd64/deb' }}
         run: |
           cp build/appicon.png build/bin/
           cd build/bin && tar -czf ${{ matrix.artifact }} litelens litelens-install-helper appicon.png
+
+      - name: Package (Linux .deb)
+        if: ${{ matrix.platform == 'linux/amd64/deb' }}
+        run: |
+          set -euo pipefail
+
+          # Create debian package structure
+          mkdir -p "$DEBIAN_DIR/DEBIAN" "$DEBIAN_DIR/usr/bin" "$DEBIAN_DIR/usr/share/applications" "$DEBIAN_DIR/usr/share/icons/hicolor/256x256/apps"
+
+          # Copy control file and substitute version and libwebkit package
+          cp "$DEBIAN_DIR/DEBIAN/control" "$DEBIAN_DIR/DEBIAN/control.tmp"
+          sed -e "s/0\.0\.0/${{ inputs.version }}/g" \
+              -e "s/\${LIBWEBKIT_PKG}/${{ matrix.libwebkit_version }}/g" \
+              "$DEBIAN_DIR/DEBIAN/control.tmp" > "$DEBIAN_DIR/DEBIAN/control"
+          rm "$DEBIAN_DIR/DEBIAN/control.tmp"
+
+          # postinst/postrm already live at $DEBIAN_DIR/DEBIAN/ in the scaffold
+          chmod 755 "$DEBIAN_DIR/DEBIAN/postinst" "$DEBIAN_DIR/DEBIAN/postrm"
+
+          # Copy binary
+          cp build/bin/litelens "$DEBIAN_DIR/usr/bin/litelens"
+          chmod 755 "$DEBIAN_DIR/usr/bin/litelens"
+
+          # Copy icon and desktop file
+          cp build/appicon.png "$DEBIAN_DIR/usr/share/icons/hicolor/256x256/apps/litelens.png"
+          cp "$DEBIAN_DIR/litelens.desktop" "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
+
+          # Remove the source .desktop template from the packaging root —
+          # dpkg-deb packages everything under $DEBIAN_DIR (except
+          # $DEBIAN_DIR/DEBIAN/) as the payload, so leaving it here
+          # would install it to /litelens.desktop.
+          rm -f "$DEBIAN_DIR/litelens.desktop"
+
+          # Build the .deb package
+          dpkg-deb --build "$DEBIAN_DIR" build/bin/${{ matrix.artifact }}
+
+      - name: Validate .deb package (lintian)
+        if: ${{ matrix.platform == 'linux/amd64/deb' }}
+        run: |
+          set +e
+          lintian --display-info build/bin/${{ matrix.artifact }} || true
+
+      - name: Validate .desktop file
+        if: ${{ matrix.platform == 'linux/amd64/deb' }}
+        run: desktop-file-validate "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
+
+      - name: Smoke test .deb (container)
+        if: ${{ matrix.platform == 'linux/amd64/deb' }}
+        run: |
+          set -euo pipefail
+          docker run --rm -v ${{ github.workspace }}/build/bin:/artifacts ubuntu:${{ matrix.codename }} bash -c "
+            apt-get update
+            apt-get install -y /artifacts/${{ matrix.artifact }}
+            litelens --version
+            test -f /usr/share/applications/litelens.desktop
+          "
 
       - name: Rename binary (Windows)
         if: ${{ runner.os == 'Windows' }}
@@ -157,6 +234,9 @@ jobs:
           assets=$(echo "$release" | jq -r '.assets[].name')
 
           for artifact in $assets; do
+            # Skip .deb artifacts (excluded from manifest.json)
+            if [[ "$artifact" =~ \.deb$ ]]; then continue; fi
+
             # Parse os/arch from filename: litelens-<os>-<arch>.<ext>
             # Regex: ^litelens-([a-z0-9]+)-([a-z0-9]+)\.
             if [[ $artifact =~ ^litelens-([a-z0-9]+)-([a-z0-9]+)\. ]]; then
@@ -203,6 +283,15 @@ jobs:
     needs: [finalize-release]
     if: ${{ inputs.version != 'dev' }}
     uses: ./.github/workflows/job-publish-homebrew.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+
+  publish-apt:
+    name: Publish to APT
+    needs: [finalize-release]
+    if: ${{ inputs.version != 'dev' }}
+    uses: ./.github/workflows/job-publish-apt.yml
     secrets: inherit
     with:
       version: ${{ inputs.version }}
