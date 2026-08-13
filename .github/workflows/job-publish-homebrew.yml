@@ -151,7 +151,7 @@ jobs:
           git add Casks/litelens.rb
           if ! git diff --cached --quiet; then
             git commit -m "chore: publish litelens ${{ inputs.version }} to Homebrew"
-            git push origin main
+            git push origin HEAD
           else
             echo "No cask changes to publish."
           fi
