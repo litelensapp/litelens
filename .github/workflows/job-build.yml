@@ -102,9 +102,14 @@ jobs:
           # Create debian package structure
           mkdir -p "$DEBIAN_DIR/DEBIAN" "$DEBIAN_DIR/usr/bin" "$DEBIAN_DIR/usr/share/applications" "$DEBIAN_DIR/usr/share/icons/hicolor/256x256/apps"
 
-          # Copy control file and substitute version and libwebkit package
+          # Copy control file and substitute version and libwebkit package.
+          # dpkg's Version field must start with a digit — strip the leading
+          # "v" from the release tag (e.g. v1.4.1 -> 1.4.1).
+          DEB_VERSION="${{ inputs.version }}"
+          DEB_VERSION="${DEB_VERSION#v}"
+
           cp "$DEBIAN_DIR/DEBIAN/control" "$DEBIAN_DIR/DEBIAN/control.tmp"
-          sed -e "s/0\.0\.0/${{ inputs.version }}/g" \
+          sed -e "s/0\.0\.0/${DEB_VERSION}/g" \
               -e "s/\${LIBWEBKIT_PKG}/${{ matrix.libwebkit_version }}/g" \
               "$DEBIAN_DIR/DEBIAN/control.tmp" > "$DEBIAN_DIR/DEBIAN/control"
           rm "$DEBIAN_DIR/DEBIAN/control.tmp"
