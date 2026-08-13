@@ -48,7 +48,7 @@ func toCronJob(cj *batchv1.CronJob) dto.CronJob {
 		jobParallelism = int(*cj.Spec.JobTemplate.Spec.Parallelism)
 	}
 
-	jobCompletions := "—"
+	jobCompletions := "0"
 	if cj.Spec.JobTemplate.Spec.Completions != nil {
 		jobCompletions = fmt.Sprintf("%d", *cj.Spec.JobTemplate.Spec.Completions)
 	}
