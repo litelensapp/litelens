@@ -144,7 +144,7 @@ jobs:
           git add -f keys/litelens-keyring.gpg pool dists
           if ! git diff --cached --quiet; then
             git commit -m "chore: publish litelens ${{ inputs.version }} to apt repository"
-            git push origin main
+            git push origin HEAD
           else
             echo "No apt repository changes to publish."
           fi
