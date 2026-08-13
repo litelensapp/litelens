@@ -26,6 +26,19 @@ curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/
 curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh" | bash -s v1.2.0
 ```
 
+#### Homebrew (macOS, Apple Silicon)
+
+LiteLens is distributed via a custom Homebrew tap (not `homebrew-core`), so
+`brew search litelens` won't find it — tap it explicitly first:
+
+```sh
+brew tap litelensapp/homebrew-litelens
+brew install litelens
+```
+
+If you install via Homebrew, prefer `brew upgrade litelens` over the
+in-app updater to keep versions in sync.
+
 ### Uninstall
 
 ```sh
