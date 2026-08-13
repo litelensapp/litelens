@@ -197,3 +197,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release edit "${{ inputs.version }}" --repo "${{ github.repository }}" --draft=false
+
+  publish-homebrew:
+    name: Publish to Homebrew
+    needs: [finalize-release]
+    if: ${{ inputs.version != 'dev' }}
+    uses: ./.github/workflows/job-publish-homebrew.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
