@@ -271,7 +271,7 @@ jobs:
 
   finalize-release:
     needs: [run, publish-manifest]
-    if: ${{ inputs.version != 'dev' }}
+    if: ${{ always() && needs.run.result != 'cancelled' && inputs.version != 'dev' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
