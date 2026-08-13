@@ -21,3 +21,8 @@ type DaemonSet struct {
 	Tolerations   int
 	PodStatus     string
 }
+
+type DaemonSetSummary struct {
+	Running int
+	Pending int
+}

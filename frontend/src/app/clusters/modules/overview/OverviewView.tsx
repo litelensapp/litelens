@@ -4,18 +4,13 @@ import { useMainLayoutContext } from "../../MainLayoutContext";
 import { ViewType } from "../../navConfig";
 import { EventsTable } from "../base/events/components/EventsTable";
 import { useGetWarningEvents } from "../base/events/hooks/data-access/useGetWarningEvents";
-import { useGetCronJobs } from "../workloads/cronjobs/hooks/data-access/useGetCronJobs";
-import { useGetDaemonSets } from "../workloads/daemonsets/hooks/data-access/useGetDaemonSets";
-import { useGetDeployments } from "../workloads/deployments/hooks/data-access/useGetDeployments";
-import { useGetJobs } from "../workloads/jobs/hooks/data-access/useGetJobs";
-import { useGetPods } from "../workloads/pods/hooks/data-access/useGetPods";
-import { useGetReplicaSets } from "../workloads/replicasets/hooks/data-access/useGetReplicaSets";
-import { useGetStatefulSets } from "../workloads/statefulsets/hooks/data-access/useGetStatefulSets";
-
-function parsePodsStr(str: string): { ready: number; desired: number } {
-  const [r, d] = str.split("/").map(Number);
-  return { ready: r ?? 0, desired: d ?? 0 };
-}
+import { useGetCronJobsSummary } from "../workloads/cronjobs/hooks/data-access/useGetCronJobsSummary";
+import { useGetDaemonSetsSummary } from "../workloads/daemonsets/hooks/data-access/useGetDaemonSetsSummary";
+import { useGetDeploymentsSummary } from "../workloads/deployments/hooks/data-access/useGetDeploymentsSummary";
+import { useGetJobsSummary } from "../workloads/jobs/hooks/data-access/useGetJobsSummary";
+import { useGetPodsSummary } from "../workloads/pods/hooks/data-access/useGetPodsSummary";
+import { useGetReplicaSetsSummary } from "../workloads/replicasets/hooks/data-access/useGetReplicaSetsSummary";
+import { useGetStatefulSetsSummary } from "../workloads/statefulsets/hooks/data-access/useGetStatefulSetsSummary";
 
 interface OverviewViewProps {
   onNavigateToView?: (view: ViewType) => void;
@@ -24,146 +19,129 @@ interface OverviewViewProps {
 export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
   const { activeContext, namespace } = useMainLayoutContext();
 
-  const { data: pods = [] } = useGetPods({ context: activeContext, namespace });
-  const { data: deployments = [] } = useGetDeployments({ context: activeContext, namespace });
-  const { data: daemonSets = [] } = useGetDaemonSets({ context: activeContext, namespace });
-  const { data: statefulSets = [] } = useGetStatefulSets({ context: activeContext, namespace });
-  const { data: replicaSets = [] } = useGetReplicaSets({ context: activeContext, namespace });
-  const { data: jobs = [] } = useGetJobs({ context: activeContext, namespace });
-  const { data: cronJobs = [] } = useGetCronJobs({ context: activeContext, namespace });
+  const { data: podsSummary = { Running: 0, Pending: 0, Failed: 0, Succeeded: 0, Evicted: 0 } } =
+    useGetPodsSummary({ context: activeContext, namespace });
+  const { data: deploymentsSummary = { Running: 0, Pending: 0 } } = useGetDeploymentsSummary({
+    context: activeContext,
+    namespace,
+  });
+  const { data: daemonSetsSummary = { Running: 0, Pending: 0 } } = useGetDaemonSetsSummary({
+    context: activeContext,
+    namespace,
+  });
+  const { data: statefulSetsSummary = { Running: 0, Pending: 0 } } = useGetStatefulSetsSummary({
+    context: activeContext,
+    namespace,
+  });
+  const { data: replicaSetsSummary = { Running: 0, Pending: 0 } } = useGetReplicaSetsSummary({
+    context: activeContext,
+    namespace,
+  });
+  const { data: jobsSummary = { Succeeded: 0, Failed: 0, Pending: 0 } } = useGetJobsSummary({
+    context: activeContext,
+    namespace,
+  });
+  const { data: cronJobsSummary = { Scheduled: 0, Suspended: 0 } } = useGetCronJobsSummary({
+    context: activeContext,
+    namespace,
+  });
   const { data: warningEvents = [] } = useGetWarningEvents({ context: activeContext, namespace });
 
-  // Pods
-  const podCounts = pods.reduce<Record<string, number>>((acc, p) => {
-    acc[p.Status.toLowerCase()] = (acc[p.Status.toLowerCase()] ?? 0) + 1;
-    return acc;
-  }, {});
-  const runningPods = podCounts["running"] ?? 0;
-  const failedPods = podCounts["failed"] ?? 0;
-  const succeededPods = podCounts["succeeded"] ?? 0;
-  const pendingPods = podCounts["pending"] ?? 0;
-  const evictedPods = podCounts["evicted"] ?? 0;
-
-  // Deployments
-  const runningDeployments = deployments.filter((d) => {
-    const { ready, desired } = parsePodsStr(d.Pods);
-    return desired > 0 && ready >= desired;
-  }).length;
-  const pendingDeployments = deployments.length - runningDeployments;
-
-  // DaemonSets
-  const runningDaemonSets = daemonSets.filter((d) => {
-    const { ready, desired } = parsePodsStr(d.Pods);
-    return desired > 0 && ready >= desired;
-  }).length;
-  const pendingDaemonSets = daemonSets.length - runningDaemonSets;
-
-  // StatefulSets
-  const runningStatefulSets = statefulSets.filter((s) => {
-    const { ready, desired } = parsePodsStr(s.Pods);
-    return desired > 0 && ready >= desired;
-  }).length;
-  const pendingStatefulSets = statefulSets.length - runningStatefulSets;
-
-  // ReplicaSets — "running" when Ready >= Desired (includes 0/0 inactive RS)
-  const runningReplicaSets = replicaSets.filter((r) => r.Ready >= r.Desired).length;
-  const pendingReplicaSets = replicaSets.length - runningReplicaSets;
-
-  // Jobs
-  const succeededJobs = jobs.filter((j) =>
-    j.Conditions?.map((c) => c.Type.toLowerCase()).includes("complete")
-  ).length;
-  const failedJobs = jobs.filter((j) =>
-    j.Conditions?.map((c) => c.Type.toLowerCase()).includes("failed")
-  ).length;
-  const pendingJobs = jobs.length - succeededJobs - failedJobs;
-
-  // CronJobs
-  const scheduledCronJobs = cronJobs.filter((c) => !c.Suspend).length;
-  const suspendedCronJobs = cronJobs.filter((c) => c.Suspend).length;
+  const totalPods =
+    podsSummary.Running +
+    podsSummary.Pending +
+    podsSummary.Failed +
+    podsSummary.Succeeded +
+    podsSummary.Evicted;
+  const totalDeployments = deploymentsSummary.Running + deploymentsSummary.Pending;
+  const totalDaemonSets = daemonSetsSummary.Running + daemonSetsSummary.Pending;
+  const totalStatefulSets = statefulSetsSummary.Running + statefulSetsSummary.Pending;
+  const totalReplicaSets = replicaSetsSummary.Running + replicaSetsSummary.Pending;
+  const totalJobs = jobsSummary.Succeeded + jobsSummary.Failed + jobsSummary.Pending;
+  const totalCronJobs = cronJobsSummary.Scheduled + cronJobsSummary.Suspended;
 
   return (
     <div className="flex h-full flex-col gap-6">
       <div className="flex flex-wrap gap-8">
         <DonutChart
           label="Pods"
-          total={pods.length}
-          running={runningPods}
-          pending={pendingPods}
-          failed={failedPods}
+          total={totalPods}
+          running={podsSummary.Running}
+          pending={podsSummary.Pending}
+          failed={podsSummary.Failed}
           items={[
-            { label: "Succeeded", color: "green", count: succeededPods },
-            { label: "Running", color: "green", count: runningPods },
-            { label: "Pending", color: "amber", count: pendingPods },
-            { label: "Failed", color: "red", count: failedPods },
-            { label: "Evicted", color: "red", count: evictedPods },
+            { label: "Succeeded", color: "green", count: podsSummary.Succeeded },
+            { label: "Running", color: "green", count: podsSummary.Running },
+            { label: "Pending", color: "amber", count: podsSummary.Pending },
+            { label: "Failed", color: "red", count: podsSummary.Failed },
+            { label: "Evicted", color: "red", count: podsSummary.Evicted },
           ]}
           onNavigate={() => onNavigateToView?.("pods")}
         />
         <DonutChart
           label="Deployments"
-          total={deployments.length}
-          running={runningDeployments}
-          pending={pendingDeployments}
+          total={totalDeployments}
+          running={deploymentsSummary.Running}
+          pending={deploymentsSummary.Pending}
           items={[
-            { label: "Running", color: "green", count: runningDeployments },
-            { label: "Pending", color: "amber", count: pendingDeployments },
+            { label: "Running", color: "green", count: deploymentsSummary.Running },
+            { label: "Pending", color: "amber", count: deploymentsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("deployments")}
         />
         <DonutChart
           label="Daemon Sets"
-          total={daemonSets.length}
-          running={runningDaemonSets}
-          pending={pendingDaemonSets}
+          total={totalDaemonSets}
+          running={daemonSetsSummary.Running}
+          pending={daemonSetsSummary.Pending}
           items={[
-            { label: "Running", color: "green", count: runningDaemonSets },
-            { label: "Pending", color: "amber", count: pendingDaemonSets },
+            { label: "Running", color: "green", count: daemonSetsSummary.Running },
+            { label: "Pending", color: "amber", count: daemonSetsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("daemonsets")}
         />
         <DonutChart
           label="Stateful Sets"
-          total={statefulSets.length}
-          running={runningStatefulSets}
-          pending={pendingStatefulSets}
+          total={totalStatefulSets}
+          running={statefulSetsSummary.Running}
+          pending={statefulSetsSummary.Pending}
           items={[
-            { label: "Running", color: "green", count: runningStatefulSets },
-            { label: "Pending", color: "amber", count: pendingStatefulSets },
+            { label: "Running", color: "green", count: statefulSetsSummary.Running },
+            { label: "Pending", color: "amber", count: statefulSetsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("statefulsets")}
         />
         <DonutChart
           label="Replica Sets"
-          total={replicaSets.length}
-          running={runningReplicaSets}
-          pending={pendingReplicaSets}
+          total={totalReplicaSets}
+          running={replicaSetsSummary.Running}
+          pending={replicaSetsSummary.Pending}
           items={[
-            { label: "Running", color: "green", count: runningReplicaSets },
-            { label: "Pending", color: "amber", count: pendingReplicaSets },
+            { label: "Running", color: "green", count: replicaSetsSummary.Running },
+            { label: "Pending", color: "amber", count: replicaSetsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("replicasets")}
         />
         <DonutChart
           label="Jobs"
-          total={jobs.length}
-          running={succeededJobs}
-          pending={pendingJobs}
-          failed={failedJobs}
+          total={totalJobs}
+          running={jobsSummary.Succeeded}
+          pending={jobsSummary.Pending}
+          failed={jobsSummary.Failed}
           items={[
-            { label: "Succeeded", color: "green", count: succeededJobs },
-            { label: "Failed", color: "red", count: failedJobs },
-            { label: "Pending", color: "amber", count: pendingJobs },
+            { label: "Succeeded", color: "green", count: jobsSummary.Succeeded },
+            { label: "Failed", color: "red", count: jobsSummary.Failed },
+            { label: "Pending", color: "amber", count: jobsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("jobs")}
         />
         <DonutChart
           label="Cron Jobs"
-          total={cronJobs.length}
-          running={scheduledCronJobs}
+          total={totalCronJobs}
+          running={cronJobsSummary.Scheduled}
           items={[
-            { label: "Scheduled", color: "green", count: scheduledCronJobs },
-            { label: "Suspended", color: "amber", count: suspendedCronJobs },
+            { label: "Scheduled", color: "green", count: cronJobsSummary.Scheduled },
+            { label: "Suspended", color: "amber", count: cronJobsSummary.Suspended },
           ]}
           onNavigate={() => onNavigateToView?.("cronjobs")}
         />

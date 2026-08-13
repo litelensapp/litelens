@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	sigsyaml "sigs.k8s.io/yaml"
 )
@@ -59,6 +60,35 @@ func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error
 		return dto.ReplicaSet{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetReplicaSetsSummary(namespace string) (dto.ReplicaSetSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.ReplicaSetSummary{}, nil
+	}
+	if h.IsForbidden("replicasets") {
+		return dto.ReplicaSetSummary{}, nil
+	}
+	<-h.GetSyncedChan("replicasets")
+	if h.IsForbidden("replicasets") {
+		return dto.ReplicaSetSummary{}, nil
+	}
+	var rss []*appsv1.ReplicaSet
+	var err error
+	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
+	if namespace == "" {
+		rss, err = lister.List(labels.Everything())
+	} else {
+		rss, err = lister.ReplicaSets(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetReplicaSetsSummary: %v", err)
+		return dto.ReplicaSetSummary{}, nil
+	}
+	return kubeResources.SummarizeReplicaSets(rss), nil
 }
 
 func (a *App) ScaleReplicaSet(namespace, name string, replicas int32) error {

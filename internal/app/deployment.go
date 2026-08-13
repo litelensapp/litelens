@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	sigsyaml "sigs.k8s.io/yaml"
 )
@@ -60,6 +61,35 @@ func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error
 		return dto.Deployment{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetDeploymentsSummary(namespace string) (dto.DeploymentSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.DeploymentSummary{}, nil
+	}
+	if h.IsForbidden("deployments") {
+		return dto.DeploymentSummary{}, nil
+	}
+	<-h.GetSyncedChan("deployments")
+	if h.IsForbidden("deployments") {
+		return dto.DeploymentSummary{}, nil
+	}
+	var deps []*appsv1.Deployment
+	var err error
+	lister := h.Factory.Apps().V1().Deployments().Lister()
+	if namespace == "" {
+		deps, err = lister.List(labels.Everything())
+	} else {
+		deps, err = lister.Deployments(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetDeploymentsSummary: %v", err)
+		return dto.DeploymentSummary{}, nil
+	}
+	return kubeResources.SummarizeDeployments(deps), nil
 }
 
 func (a *App) RestartDeployment(namespace, name string) error {

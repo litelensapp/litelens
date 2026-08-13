@@ -2,6 +2,7 @@ import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   ExecInPod,
   GetPodByName,
+  GetPodsSummary,
   GetPodYAML,
   ListPods,
   ResizeExecTerminal,
@@ -126,4 +127,12 @@ export interface Pod {
   ContainerDetails: PodContainerDetail[];
   InitContainerDetails: PodContainerDetail[];
   Volumes: PodVolume[];
+}
+
+export interface PodSummary {
+  Running: number;
+  Pending: number;
+  Failed: number;
+  Succeeded: number;
+  Evicted: number;
 }

@@ -141,3 +141,11 @@ type PodUsage struct {
 	CPUMilliCores int64
 	MemoryBytes   int64
 }
+
+type PodSummary struct {
+	Running   int
+	Pending   int
+	Failed    int
+	Succeeded int
+	Evicted   int
+}

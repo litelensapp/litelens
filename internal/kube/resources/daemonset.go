@@ -117,3 +117,17 @@ func ListDaemonSets(lister listersappsv1.DaemonSetLister, namespace string) ([]d
 	}
 	return result, nil
 }
+
+func SummarizeDaemonSets(dss []*appsv1.DaemonSet) dto.DaemonSetSummary {
+	summary := dto.DaemonSetSummary{}
+	for _, ds := range dss {
+		desired := ds.Status.DesiredNumberScheduled
+		ready := ds.Status.NumberReady
+		if desired > 0 && ready >= desired {
+			summary.Running++
+		} else {
+			summary.Pending++
+		}
+	}
+	return summary
+}

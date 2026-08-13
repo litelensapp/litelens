@@ -143,3 +143,15 @@ func ListReplicaSets(lister listersappsv1.ReplicaSetLister, namespace string) ([
 	}
 	return result, nil
 }
+
+func SummarizeReplicaSets(rss []*appsv1.ReplicaSet) dto.ReplicaSetSummary {
+	summary := dto.ReplicaSetSummary{}
+	for _, rs := range rss {
+		if rs.Status.ReadyReplicas >= rs.Status.Replicas {
+			summary.Running++
+		} else {
+			summary.Pending++
+		}
+	}
+	return summary
+}

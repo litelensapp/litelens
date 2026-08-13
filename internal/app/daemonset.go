@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	sigsyaml "sigs.k8s.io/yaml"
 )
@@ -60,6 +61,35 @@ func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) 
 		return dto.DaemonSet{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetDaemonSetsSummary(namespace string) (dto.DaemonSetSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.DaemonSetSummary{}, nil
+	}
+	if h.IsForbidden("daemonsets") {
+		return dto.DaemonSetSummary{}, nil
+	}
+	<-h.GetSyncedChan("daemonsets")
+	if h.IsForbidden("daemonsets") {
+		return dto.DaemonSetSummary{}, nil
+	}
+	var dss []*appsv1.DaemonSet
+	var err error
+	lister := h.Factory.Apps().V1().DaemonSets().Lister()
+	if namespace == "" {
+		dss, err = lister.List(labels.Everything())
+	} else {
+		dss, err = lister.DaemonSets(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetDaemonSetsSummary: %v", err)
+		return dto.DaemonSetSummary{}, nil
+	}
+	return kubeResources.SummarizeDaemonSets(dss), nil
 }
 
 func (a *App) RestartDaemonSet(namespace, name string) error {

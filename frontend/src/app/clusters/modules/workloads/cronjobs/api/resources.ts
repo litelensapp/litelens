@@ -1,6 +1,7 @@
 import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   GetCronJobByName,
+  GetCronJobsSummary,
   GetCronJobYAML,
   ListCronJobs,
   UpdateCronJobYAML,
@@ -28,4 +29,9 @@ export interface CronJob {
   JobCompletions: string;
   JobSuspend: boolean;
   JobTTLSecondsAfterFinished: number;
+}
+
+export interface CronJobSummary {
+  Scheduled: number;
+  Suspended: number;
 }

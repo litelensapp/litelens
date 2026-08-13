@@ -26,3 +26,8 @@ type ReplicaSet struct {
 	Affinities     int
 	PodStatus      string
 }
+
+type ReplicaSetSummary struct {
+	Running int
+	Pending int
+}

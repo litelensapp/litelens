@@ -1,6 +1,7 @@
 import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   GetDaemonSetByName,
+  GetDaemonSetsSummary,
   GetDaemonSetYAML,
   ListDaemonSets,
   UpdateDaemonSetYAML,
@@ -21,4 +22,9 @@ export interface DaemonSet {
   StrategyType: string;
   Tolerations: number;
   PodStatus: string;
+}
+
+export interface DaemonSetSummary {
+  Running: number;
+  Pending: number;
 }
