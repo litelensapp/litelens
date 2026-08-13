@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Exec=/usr/bin/litelens
+Name=LiteLens
+Icon=litelens
+Categories=Utility;Development;System;
+Comment=Desktop Kubernetes dashboard

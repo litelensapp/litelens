@@ -180,6 +180,47 @@ Files under `internal/` follow:
 - Detail reads use `GetXxxByName(namespace, name)` → `lister.Xxxs(ns).Get(name)`, never `ListXxx().find(...)`
 - DTO fields use `string` for timestamps, never `time.Time` (Wails TS bindings limitation)
 
+## Maintainer: APT Repository Bootstrap
+
+One-time setup for the self-hosted APT repository (`litelensapp/litelens-apt`), only needed once per signing-key rotation or on initial setup — not part of the regular release flow.
+
+1. **Generate the GPG signing key** (RSA 4096, no passphrase protection so CI can sign headlessly):
+
+   ```sh
+   gpg --batch --full-generate-key <<EOF
+   %no-protection
+   Key-Type: RSA
+   Key-Length: 4096
+   Name-Real: LiteLens Packages
+   Name-Email: packages@litelens.io
+   Expire-Date: 0
+   %commit
+   EOF
+   ```
+
+2. **Export the private key** (for the `GPG_PRIVATE_KEY` secret) and the **public key** (committed to the apt repo):
+
+   ```sh
+   gpg --batch --armor --export-secret-keys packages@litelens.io > litelens-private.key
+   gpg --batch --armor --export packages@litelens.io > litelens-keyring.gpg
+   ```
+
+   `litelens-private.key` must never be committed anywhere — copy its contents into the `GPG_PRIVATE_KEY` secret (below), then delete the local file.
+
+3. **Create `litelensapp/litelens-apt`** and commit:
+   - `conf/distributions` (see `.claude/plans/apt-distribution.md`'s Key Decisions section for the noble/jammy/focal stanzas)
+   - `.gitignore` with `/pool/`, `/dists/`, `*.gpg`, `*.sig`
+   - `keys/litelens-keyring.gpg` (force-added past the `*.gpg` ignore rule — `git add -f keys/litelens-keyring.gpg`)
+   - Run `reprepro -b . export` locally to generate the initial (empty) `dists/` tree, commit, push
+   - Enable **GitHub Pages** on the repo, serving from `main` (root) — this is what `https://litelensapp.github.io/litelens-apt` serves
+
+4. **Add GitHub secrets** to `litelensapp/litelens` (Settings → Secrets and variables → Actions):
+   - `GPG_PRIVATE_KEY` — contents of `litelens-private.key` from step 2
+   - `GPG_PASSPHRASE` — empty string (the key has `%no-protection`, not unset)
+   - `APT_REPO_GITHUB_TOKEN` — a fine-grained PAT scoped to **write-only access on `litelens-apt` alone**, used by `job-publish-apt.yml` to checkout-and-push
+
+Once these are in place, every tagged release automatically builds, signs, and publishes `.deb`s via `job-publish-apt.yml` — no further manual steps.
+
 ## Reporting Issues
 
 - **Bugs:** Use GitHub Issues with details about reproduction, expected vs. actual behavior, and your environment (OS, K8s version)

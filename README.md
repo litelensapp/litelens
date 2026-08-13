@@ -12,21 +12,7 @@ https://github.com/user-attachments/assets/7afe5c08-fb14-4ca1-ac33-4a2cbe8d2849
 
 ## Installation
 
-### Linux / macOS
-
-#### Latest release
-
-```sh
-curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh" | bash
-```
-
-#### Specific version
-
-```sh
-curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh" | bash -s v1.2.0
-```
-
-#### Homebrew (macOS, Apple Silicon)
+### Homebrew (macOS)
 
 LiteLens is distributed via a custom Homebrew tap (not `homebrew-core`), so
 `brew search litelens` won't find it — tap it explicitly first:
@@ -37,22 +23,76 @@ brew trust litelensapp/litelens/litelens
 brew install litelensapp/litelens/litelens
 ```
 
-Homebrew 6+ blocks Ruby code from third-party taps until you explicitly
-trust them ("Tap Trust"). If you skip the `brew trust` step, `brew install`
-will fail with `Error: Refusing to load cask ... from untrusted tap ...` —
-run `brew trust litelensapp/litelens` (or `brew trust --cask
-litelensapp/litelens/litelens` to trust just the cask) and re-run install.
-
 If you install via Homebrew, prefer `brew upgrade litelens` over the
 in-app updater to keep versions in sync.
 
-### Uninstall
+### APT (Debian/Ubuntu)
+
+LiteLens publishes `.deb` packages to a self-hosted APT repository, signed
+with a dedicated GPG key. Pick the command block matching your Ubuntu
+release:
+
+**Ubuntu 24.04 (noble)**
+
+```sh
+curl -fsSL https://litelensapp.github.io/litelens-apt/keys/litelens-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/litelens-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://litelensapp.github.io/litelens-apt noble main" | sudo tee /etc/apt/sources.list.d/litelens.list
+sudo apt-get update && sudo apt-get install litelens
+```
+
+**Ubuntu 22.04 (jammy)**
+
+```sh
+curl -fsSL https://litelensapp.github.io/litelens-apt/keys/litelens-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/litelens-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://litelensapp.github.io/litelens-apt jammy main" | sudo tee /etc/apt/sources.list.d/litelens.list
+sudo apt-get update && sudo apt-get install litelens
+```
+
+**Ubuntu 20.04 (focal)**
+
+```sh
+curl -fsSL https://litelensapp.github.io/litelens-apt/keys/litelens-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/litelens-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://litelensapp.github.io/litelens-apt focal main" | sudo tee /etc/apt/sources.list.d/litelens.list
+sudo apt-get update && sudo apt-get install litelens
+```
+
+If you install via `apt`, prefer `apt upgrade` over the in-app updater — the
+in-app updater detects apt-managed installs and silently defers to `apt`
+rather than prompting.
+
+### Manual (Linux + MacOS)
+
+```sh
+curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh" | bash
+```
+
+## Uninstallation
+
+### Homebrew (macOS)
+
+```sh
+brew uninstall litelensapp/litelens/litelens
+```
+
+### APT (Debian/Ubuntu)
+
+```sh
+sudo apt remove litelens
+```
+
+This preserves `~/.litelens` (settings, installed plugins). To wipe it too:
+
+```sh
+sudo apt remove --purge litelens
+```
+
+### Manual (Linux + MacOS)
 
 ```sh
 curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/uninstall.sh" | bash
 ```
 
-#### With cleanup mode to wire all data
+This preserves `~/.litelens` (settings, installed plugins). To wipe it too:
 
 ```sh
 curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/uninstall.sh" | bash -s -- cleanup
