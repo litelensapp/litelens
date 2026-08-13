@@ -119,7 +119,7 @@ jobs:
               exit 1
             fi
 
-            reprepro --batch --passphrase-file "${{ env.passphrase_file }}" -Vb . includedeb "$codename" "$deb"
+            reprepro -Vb . includedeb "$codename" "$deb"
           done
 
       - name: Verify signed Release files
