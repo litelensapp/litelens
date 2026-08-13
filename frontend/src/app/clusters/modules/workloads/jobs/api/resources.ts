@@ -1,5 +1,11 @@
 import type { ManagedField } from "../../../../../shared/api/resources";
-export { GetJobByName, GetJobYAML, ListJobs, UpdateJobYAML } from "@wailsjs/go/app/App";
+export {
+  GetJobByName,
+  GetJobsSummary,
+  GetJobYAML,
+  ListJobs,
+  UpdateJobYAML,
+} from "@wailsjs/go/app/App";
 
 export interface JobCondition {
   Type: string;
@@ -33,4 +39,10 @@ export interface Job {
   CompletedAtAge: string;
   PodsStatuses: string;
   PodStatus: string;
+}
+
+export interface JobSummary {
+  Succeeded: number;
+  Failed: number;
+  Pending: number;
 }

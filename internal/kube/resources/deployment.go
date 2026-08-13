@@ -178,3 +178,17 @@ func ListDeployments(lister listersappsv1.DeploymentLister, namespace string) ([
 	}
 	return result, nil
 }
+
+func SummarizeDeployments(deps []*appsv1.Deployment) dto.DeploymentSummary {
+	summary := dto.DeploymentSummary{}
+	for _, d := range deps {
+		desired := d.Status.Replicas
+		ready := d.Status.ReadyReplicas
+		if desired > 0 && ready >= desired {
+			summary.Running++
+		} else {
+			summary.Pending++
+		}
+	}
+	return summary
+}

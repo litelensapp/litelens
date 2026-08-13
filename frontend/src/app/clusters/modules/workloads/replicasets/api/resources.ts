@@ -1,6 +1,7 @@
 import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   GetReplicaSetByName,
+  GetReplicaSetsSummary,
   GetReplicaSetYAML,
   ListReplicaSets,
   UpdateReplicaSetYAML,
@@ -26,4 +27,9 @@ export interface ReplicaSet {
   Tolerations: number;
   Affinities: number;
   PodStatus: string;
+}
+
+export interface ReplicaSetSummary {
+  Running: number;
+  Pending: number;
 }

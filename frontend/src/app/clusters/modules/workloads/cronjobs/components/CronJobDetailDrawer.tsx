@@ -37,14 +37,16 @@ import { useGetJobs } from "../../jobs/hooks/data-access/useGetJobs";
 import type { CronJob } from "../api/resources";
 import { useGetCronJobDetail } from "../hooks/data-access/useGetCronJobDetail";
 import { useDeleteCronJob } from "../hooks/data-mutation/useDeleteCronJob";
+import { getCronDescription } from "../utils/cronDescription";
 import { CronJobDeleteConfirmationModal } from "./CronJobDeleteConfirmationModal";
 import { CronJobResumedBadge } from "./CronJobResumedBadge";
 
 const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const cronDescription = cj.Schedule ? getCronDescription(cj.Schedule) : null;
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_1fr] items-start gap-x-4 gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {cj.Age} ago ({cj.CreatedAt})
@@ -81,7 +83,12 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
         )}
 
         <span className="text-h3 text-muted-foreground">Schedule</span>
-        <span className="text-body font-mono">{cj.Schedule}</span>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+          <span className="text-body font-mono">{cj.Schedule}</span>
+          {cronDescription && (
+            <span className="text-body text-muted-foreground/70">({cronDescription})</span>
+          )}
+        </div>
 
         <span className="text-h3 text-muted-foreground">Timezone</span>
         <span className="text-body font-mono">{cj.Timezone || "—"}</span>
@@ -132,9 +139,7 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
         <JobResumedBadge resumed={!cj.JobSuspend} />
 
         <span className="text-h3 text-muted-foreground">TTL Seconds After Finished</span>
-        <span className="text-body font-mono">
-          {cj.JobTTLSecondsAfterFinished === 0 ? "—" : `${cj.JobTTLSecondsAfterFinished}s`}
-        </span>
+        <span className="text-body font-mono">{cj.JobTTLSecondsAfterFinished}s</span>
       </div>
     </ScrollArea>
   );

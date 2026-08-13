@@ -123,3 +123,115 @@ func TestToDeployment_AffinityNil_CountZeroAndEmptyString(t *testing.T) {
 		t.Errorf("Affinities = %q; want empty string", got.Affinities)
 	}
 }
+
+// — SummarizeDeployments tests —
+
+// TestSummarizeDeployments_EmptyList verifies zero summary for empty deployment list.
+func TestSummarizeDeployments_EmptyList(t *testing.T) {
+	summary := SummarizeDeployments([]*appsv1.Deployment{})
+	if summary.Running != 0 || summary.Pending != 0 {
+		t.Errorf("empty list returned non-zero summary: %+v", summary)
+	}
+}
+
+// TestSummarizeDeployments_AllRunning verifies deployments with ready >= desired count as running.
+func TestSummarizeDeployments_AllRunning(t *testing.T) {
+	replicas := int32(3)
+	deps := []*appsv1.Deployment{
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+			Status: appsv1.DeploymentStatus{Replicas: 3, ReadyReplicas: 3},
+		},
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+			Status: appsv1.DeploymentStatus{Replicas: 3, ReadyReplicas: 3},
+		},
+	}
+	summary := SummarizeDeployments(deps)
+	if summary.Running != 2 {
+		t.Errorf("Running = %d; want 2", summary.Running)
+	}
+	if summary.Pending != 0 {
+		t.Errorf("Pending = %d; want 0", summary.Pending)
+	}
+}
+
+// TestSummarizeDeployments_PartiallyReady verifies deployments with ready < desired count as pending.
+func TestSummarizeDeployments_PartiallyReady(t *testing.T) {
+	replicas := int32(3)
+	deps := []*appsv1.Deployment{
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+			Status: appsv1.DeploymentStatus{Replicas: 3, ReadyReplicas: 2},
+		},
+	}
+	summary := SummarizeDeployments(deps)
+	if summary.Running != 0 {
+		t.Errorf("Running = %d; want 0", summary.Running)
+	}
+	if summary.Pending != 1 {
+		t.Errorf("Pending = %d; want 1", summary.Pending)
+	}
+}
+
+// TestSummarizeDeployments_DesiredZero_CountsAsPending verifies scaled-to-zero deployments
+// are counted as pending (and included in the total), matching pre-refactor behavior.
+func TestSummarizeDeployments_DesiredZero_CountsAsPending(t *testing.T) {
+	zero := int32(0)
+	deps := []*appsv1.Deployment{
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &zero},
+			Status: appsv1.DeploymentStatus{Replicas: 0, ReadyReplicas: 0},
+		},
+	}
+	summary := SummarizeDeployments(deps)
+	if summary.Running != 0 {
+		t.Errorf("Running = %d; want 0", summary.Running)
+	}
+	if summary.Pending != 1 {
+		t.Errorf("Pending = %d; want 1 (desired=0 deployment counts as pending)", summary.Pending)
+	}
+}
+
+// TestSummarizeDeployments_NoReplicas_MixedReadiness verifies a deployment with missing spec.Replicas defaults to 1.
+func TestSummarizeDeployments_NoReplicas_DefaultsTo1(t *testing.T) {
+	deps := []*appsv1.Deployment{
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: nil},
+			Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
+		},
+	}
+	summary := SummarizeDeployments(deps)
+	if summary.Running != 1 {
+		t.Errorf("Running = %d; want 1 (nil Replicas defaults to 1)", summary.Running)
+	}
+	if summary.Pending != 0 {
+		t.Errorf("Pending = %d; want 0", summary.Pending)
+	}
+}
+
+// TestSummarizeDeployments_Mixed verifies a mix of running and pending deployments.
+func TestSummarizeDeployments_Mixed(t *testing.T) {
+	replicas := int32(2)
+	deps := []*appsv1.Deployment{
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+			Status: appsv1.DeploymentStatus{Replicas: 2, ReadyReplicas: 2},
+		},
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+			Status: appsv1.DeploymentStatus{Replicas: 2, ReadyReplicas: 1},
+		},
+		{
+			Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+			Status: appsv1.DeploymentStatus{Replicas: 2, ReadyReplicas: 0},
+		},
+	}
+	summary := SummarizeDeployments(deps)
+	if summary.Running != 1 {
+		t.Errorf("Running = %d; want 1", summary.Running)
+	}
+	if summary.Pending != 2 {
+		t.Errorf("Pending = %d; want 2", summary.Pending)
+	}
+}

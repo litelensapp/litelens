@@ -39,3 +39,9 @@ type Job struct {
 	PodsStatuses   string
 	PodStatus      string
 }
+
+type JobSummary struct {
+	Succeeded int
+	Failed    int
+	Pending   int
+}

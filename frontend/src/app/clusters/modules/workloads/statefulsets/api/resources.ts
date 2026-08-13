@@ -1,6 +1,7 @@
 import type { ManagedField } from "../../../../../shared/api/resources";
 export {
   GetStatefulSetByName,
+  GetStatefulSetsSummary,
   GetStatefulSetYAML,
   ListStatefulSets,
   UpdateStatefulSetYAML,
@@ -20,4 +21,9 @@ export interface StatefulSet {
   Images: string[];
   Affinities: number;
   PodStatus: string;
+}
+
+export interface StatefulSetSummary {
+  Running: number;
+  Pending: number;
 }

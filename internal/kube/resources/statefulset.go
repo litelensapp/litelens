@@ -104,6 +104,20 @@ func ListStatefulSets(lister listersappsv1.StatefulSetLister, namespace string) 
 	return result, nil
 }
 
+func SummarizeStatefulSets(sss []*appsv1.StatefulSet) dto.StatefulSetSummary {
+	summary := dto.StatefulSetSummary{}
+	for _, ss := range sss {
+		desired := ss.Status.Replicas
+		ready := ss.Status.ReadyReplicas
+		if desired > 0 && ready >= desired {
+			summary.Running++
+		} else {
+			summary.Pending++
+		}
+	}
+	return summary
+}
+
 func GetStatefulSetByName(lister listersappsv1.StatefulSetLister, namespace, name string) (dto.StatefulSet, error) {
 	ss, err := lister.StatefulSets(namespace).Get(name)
 	if err != nil {

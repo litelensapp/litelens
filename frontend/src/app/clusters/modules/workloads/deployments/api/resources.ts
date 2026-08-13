@@ -2,6 +2,7 @@ import type { ManagedField } from "../../../../../shared/api/resources";
 import type { TolerationDetail } from "../../pods/api/resources";
 export {
   GetDeploymentByName,
+  GetDeploymentsSummary,
   GetDeploymentYAML,
   ListDeployments,
   UpdateDeploymentYAML,
@@ -35,4 +36,9 @@ export interface Deployment {
   TolerationDetails: TolerationDetail[];
   AffinityCount: number;
   Affinities: string;
+}
+
+export interface DeploymentSummary {
+  Running: number;
+  Pending: number;
 }

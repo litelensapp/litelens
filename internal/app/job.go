@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -57,6 +58,35 @@ func (a *App) ListJobs(namespace string) ([]dto.Job, error) {
 		return []dto.Job{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetJobsSummary(namespace string) (dto.JobSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.JobSummary{}, nil
+	}
+	if h.IsForbidden("jobs") {
+		return dto.JobSummary{}, nil
+	}
+	<-h.GetSyncedChan("jobs")
+	if h.IsForbidden("jobs") {
+		return dto.JobSummary{}, nil
+	}
+	var jobs []*batchv1.Job
+	var err error
+	lister := h.Factory.Batch().V1().Jobs().Lister()
+	if namespace == "" {
+		jobs, err = lister.List(labels.Everything())
+	} else {
+		jobs, err = lister.Jobs(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetJobsSummary: %v", err)
+		return dto.JobSummary{}, nil
+	}
+	return kubeResources.SummarizeJobs(jobs), nil
 }
 
 func (a *App) emitJobs(namespace string) {

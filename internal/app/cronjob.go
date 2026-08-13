@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -57,6 +58,35 @@ func (a *App) ListCronJobs(namespace string) ([]dto.CronJob, error) {
 		return []dto.CronJob{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetCronJobsSummary(namespace string) (dto.CronJobSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.CronJobSummary{}, nil
+	}
+	if h.IsForbidden("cronjobs") {
+		return dto.CronJobSummary{}, nil
+	}
+	<-h.GetSyncedChan("cronjobs")
+	if h.IsForbidden("cronjobs") {
+		return dto.CronJobSummary{}, nil
+	}
+	var cjs []*batchv1.CronJob
+	var err error
+	lister := h.Factory.Batch().V1().CronJobs().Lister()
+	if namespace == "" {
+		cjs, err = lister.List(labels.Everything())
+	} else {
+		cjs, err = lister.CronJobs(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetCronJobsSummary: %v", err)
+		return dto.CronJobSummary{}, nil
+	}
+	return kubeResources.SummarizeCronJobs(cjs), nil
 }
 
 func (a *App) emitCronJobs(namespace string) {

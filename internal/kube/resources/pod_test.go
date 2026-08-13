@@ -1230,3 +1230,115 @@ func TestBuildContainerDetails_TerminatedContainerNegativeExitCode_Captured(t *t
 		t.Errorf("ExitCode = %d; want -1", *result[0].ExitCode)
 	}
 }
+
+// — SummarizePods tests —
+
+// TestSummarizePods_EmptyList verifies zero summary is returned for empty pod list.
+func TestSummarizePods_EmptyList(t *testing.T) {
+	summary := SummarizePods([]*corev1.Pod{})
+	if summary.Running != 0 || summary.Pending != 0 || summary.Failed != 0 || summary.Succeeded != 0 || summary.Evicted != 0 {
+		t.Errorf("empty list returned non-zero summary: %+v", summary)
+	}
+}
+
+// TestSummarizePods_BasicStatuses verifies phase-based classification without eviction.
+func TestSummarizePods_BasicStatuses(t *testing.T) {
+	pods := []*corev1.Pod{
+		{Status: corev1.PodStatus{Phase: corev1.PodRunning}},
+		{Status: corev1.PodStatus{Phase: corev1.PodRunning}},
+		{Status: corev1.PodStatus{Phase: corev1.PodPending}},
+		{Status: corev1.PodStatus{Phase: corev1.PodFailed}},
+		{Status: corev1.PodStatus{Phase: corev1.PodSucceeded}},
+	}
+	summary := SummarizePods(pods)
+	if summary.Running != 2 {
+		t.Errorf("Running = %d; want 2", summary.Running)
+	}
+	if summary.Pending != 1 {
+		t.Errorf("Pending = %d; want 1", summary.Pending)
+	}
+	if summary.Failed != 1 {
+		t.Errorf("Failed = %d; want 1", summary.Failed)
+	}
+	if summary.Succeeded != 1 {
+		t.Errorf("Succeeded = %d; want 1", summary.Succeeded)
+	}
+	if summary.Evicted != 0 {
+		t.Errorf("Evicted = %d; want 0", summary.Evicted)
+	}
+}
+
+// TestSummarizePods_EvictedPods verifies evicted pods are counted separately and subtracted from phase counts.
+func TestSummarizePods_EvictedPods(t *testing.T) {
+	pods := []*corev1.Pod{
+		// Normal running pod
+		{Status: corev1.PodStatus{Phase: corev1.PodRunning}},
+		// Evicted pod with Failed phase
+		{Status: corev1.PodStatus{Phase: corev1.PodFailed, Reason: "Evicted"}},
+		// Evicted pod with Pending phase
+		{Status: corev1.PodStatus{Phase: corev1.PodPending, Reason: "Evicted"}},
+	}
+	summary := SummarizePods(pods)
+	if summary.Running != 1 {
+		t.Errorf("Running = %d; want 1", summary.Running)
+	}
+	if summary.Pending != 0 {
+		t.Errorf("Pending = %d; want 0 (evicted pod's phase not counted)", summary.Pending)
+	}
+	if summary.Failed != 0 {
+		t.Errorf("Failed = %d; want 0 (evicted pod's phase not counted)", summary.Failed)
+	}
+	if summary.Evicted != 2 {
+		t.Errorf("Evicted = %d; want 2", summary.Evicted)
+	}
+}
+
+// TestSummarizePods_EvictedRunningPod verifies evicted pod with Running phase is counted as evicted.
+func TestSummarizePods_EvictedRunningPod(t *testing.T) {
+	pods := []*corev1.Pod{
+		{Status: corev1.PodStatus{Phase: corev1.PodRunning, Reason: "Evicted"}},
+	}
+	summary := SummarizePods(pods)
+	if summary.Running != 0 {
+		t.Errorf("Running = %d; want 0 (evicted pod not counted as running)", summary.Running)
+	}
+	if summary.Evicted != 1 {
+		t.Errorf("Evicted = %d; want 1", summary.Evicted)
+	}
+}
+
+// TestSummarizePods_EvictedSucceededPod verifies evicted pod with Succeeded phase is counted as evicted.
+func TestSummarizePods_EvictedSucceededPod(t *testing.T) {
+	pods := []*corev1.Pod{
+		{Status: corev1.PodStatus{Phase: corev1.PodSucceeded, Reason: "Evicted"}},
+	}
+	summary := SummarizePods(pods)
+	if summary.Succeeded != 0 {
+		t.Errorf("Succeeded = %d; want 0 (evicted pod not counted as succeeded)", summary.Succeeded)
+	}
+	if summary.Evicted != 1 {
+		t.Errorf("Evicted = %d; want 1", summary.Evicted)
+	}
+}
+
+// TestSummarizePods_DeletionTimestamp_TerminatingIsNotCounted verifies that DeletionTimestamp
+// sets status to "Terminating", which has no case in the switch statement and thus is not counted
+// in any status bucket (similar to unknown/unsupported phases).
+func TestSummarizePods_DeletionTimestamp_TerminatingIsNotCounted(t *testing.T) {
+	now := metav1.Now()
+	pods := []*corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &now},
+			Status:     corev1.PodStatus{Phase: corev1.PodRunning, Reason: ""},
+		},
+	}
+	summary := SummarizePods(pods)
+	// DeletionTimestamp overrides Phase to "Terminating", and "Terminating" has no case
+	// in the switch statement, so the pod is not counted in Running/Pending/Failed/Succeeded.
+	if summary.Running != 0 {
+		t.Errorf("Running = %d; want 0 (DeletionTimestamp sets status to Terminating, which is not counted)", summary.Running)
+	}
+	if summary.Evicted != 0 {
+		t.Errorf("Evicted = %d; want 0", summary.Evicted)
+	}
+}

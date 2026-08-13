@@ -213,3 +213,27 @@ func ListJobs(lister listersbatchv1.JobLister, namespace string) ([]dto.Job, err
 	}
 	return result, nil
 }
+
+func SummarizeJobs(jobs []*batchv1.Job) dto.JobSummary {
+	summary := dto.JobSummary{}
+	for _, j := range jobs {
+		succeeded := false
+		failed := false
+		for _, c := range j.Status.Conditions {
+			if c.Type == batchv1.JobComplete {
+				succeeded = true
+			}
+			if c.Type == batchv1.JobFailed {
+				failed = true
+			}
+		}
+		if succeeded {
+			summary.Succeeded++
+		} else if failed {
+			summary.Failed++
+		} else {
+			summary.Pending++
+		}
+	}
+	return summary
+}

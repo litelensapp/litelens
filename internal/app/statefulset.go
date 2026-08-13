@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -56,6 +57,35 @@ func (a *App) ListStatefulSets(namespace string) ([]dto.StatefulSet, error) {
 		return []dto.StatefulSet{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetStatefulSetsSummary(namespace string) (dto.StatefulSetSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.StatefulSetSummary{}, nil
+	}
+	if h.IsForbidden("statefulsets") {
+		return dto.StatefulSetSummary{}, nil
+	}
+	<-h.GetSyncedChan("statefulsets")
+	if h.IsForbidden("statefulsets") {
+		return dto.StatefulSetSummary{}, nil
+	}
+	var sss []*appsv1.StatefulSet
+	var err error
+	lister := h.Factory.Apps().V1().StatefulSets().Lister()
+	if namespace == "" {
+		sss, err = lister.List(labels.Everything())
+	} else {
+		sss, err = lister.StatefulSets(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetStatefulSetsSummary: %v", err)
+		return dto.StatefulSetSummary{}, nil
+	}
+	return kubeResources.SummarizeStatefulSets(sss), nil
 }
 
 // DeleteStatefulSet deletes a StatefulSet from the specified namespace.

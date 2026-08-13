@@ -48,7 +48,7 @@ func toCronJob(cj *batchv1.CronJob) dto.CronJob {
 		jobParallelism = int(*cj.Spec.JobTemplate.Spec.Parallelism)
 	}
 
-	jobCompletions := "—"
+	jobCompletions := "0"
 	if cj.Spec.JobTemplate.Spec.Completions != nil {
 		jobCompletions = fmt.Sprintf("%d", *cj.Spec.JobTemplate.Spec.Completions)
 	}
@@ -133,4 +133,16 @@ func ListCronJobs(lister listersbatchv1.CronJobLister, namespace string) ([]dto.
 		result[i] = toCronJob(cj)
 	}
 	return result, nil
+}
+
+func SummarizeCronJobs(cjs []*batchv1.CronJob) dto.CronJobSummary {
+	summary := dto.CronJobSummary{}
+	for _, cj := range cjs {
+		if cj.Spec.Suspend != nil && *cj.Spec.Suspend {
+			summary.Suspended++
+		} else {
+			summary.Scheduled++
+		}
+	}
+	return summary
 }

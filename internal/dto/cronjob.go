@@ -29,3 +29,8 @@ type CronJob struct {
 	JobSuspend                 bool
 	JobTTLSecondsAfterFinished int32
 }
+
+type CronJobSummary struct {
+	Scheduled int
+	Suspended int
+}

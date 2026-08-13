@@ -4,6 +4,45 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@testing-library/jest-dom':
+      specifier: ^6.9.1
+      version: 6.9.1
+    '@testing-library/react':
+      specifier: ^16.3.2
+      version: 16.3.2
+    '@types/node':
+      specifier: ^26.1.2
+      version: 26.1.2
+    '@types/react':
+      specifier: ^19.2.18
+      version: 19.2.18
+    '@types/react-dom':
+      specifier: ^19.2.4
+      version: 19.2.4
+    '@vitejs/plugin-react':
+      specifier: ^6.0.5
+      version: 6.0.5
+    '@vitest/coverage-v8':
+      specifier: ^4.1.10
+      version: 4.1.10
+    cross-env:
+      specifier: ^10.1.0
+      version: 10.1.0
+    esbuild-visualizer:
+      specifier: ^0.7.0
+      version: 0.7.0
+    jsdom:
+      specifier: ^29.1.1
+      version: 29.1.1
+    typescript:
+      specifier: ^6.0.3
+      version: 6.0.3
+    vitest:
+      specifier: ^4.1.10
+      version: 4.1.10
+
 importers:
 
   .:
@@ -147,6 +186,9 @@ importers:
       '@xterm/xterm':
         specifier: ^6.0.0
         version: 6.0.0
+      cronstrue:
+        specifier: ^3.24.0
+        version: 3.24.0
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -1632,6 +1674,10 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  cronstrue@3.24.0:
+    resolution: {integrity: sha512-t/Ji3Ur2c/pzhIAWNwC0ftl3JAE4dLfCjAdZoTZXmPDZwcispnS1PaMcMS4OmIIXyIVouAz+yw+mfQiE3hz5OQ==}
+    hasBin: true
 
   cross-env@10.1.0:
     resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
@@ -5110,6 +5156,8 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 6.0.3
+
+  cronstrue@3.24.0: {}
 
   cross-env@10.1.0:
     dependencies:

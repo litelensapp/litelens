@@ -564,3 +564,42 @@ func ListPods(lister listerscorev1.PodLister, namespace string) ([]dto.Pod, erro
 	}
 	return result, nil
 }
+
+func SummarizePods(pods []*corev1.Pod) dto.PodSummary {
+	summary := dto.PodSummary{}
+	for _, p := range pods {
+		status := string(p.Status.Phase)
+		if p.DeletionTimestamp != nil {
+			status = "Terminating"
+		}
+		switch status {
+		case "Running":
+			summary.Running++
+		case "Pending":
+			summary.Pending++
+		case "Failed":
+			summary.Failed++
+		case "Succeeded":
+			summary.Succeeded++
+		}
+	}
+	// Count evicted pods by checking for eviction reason in pod status
+	for _, p := range pods {
+		if p.Status.Reason == "Evicted" {
+			summary.Evicted++
+			// Subtract from other counts since Evicted is a special case
+			status := string(p.Status.Phase)
+			switch status {
+			case "Running":
+				summary.Running--
+			case "Pending":
+				summary.Pending--
+			case "Failed":
+				summary.Failed--
+			case "Succeeded":
+				summary.Succeeded--
+			}
+		}
+	}
+	return summary
+}

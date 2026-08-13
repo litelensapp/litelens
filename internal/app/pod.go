@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -65,6 +66,35 @@ func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 		return dto.Pod{}, nil
 	}
 	return result, nil
+}
+
+func (a *App) GetPodsSummary(namespace string) (dto.PodSummary, error) {
+	a.mu.RLock()
+	h := a.factories[a.activeContext]
+	a.mu.RUnlock()
+	if h == nil {
+		return dto.PodSummary{}, nil
+	}
+	if h.IsForbidden("pods") {
+		return dto.PodSummary{}, nil
+	}
+	<-h.GetSyncedChan("pods")
+	if h.IsForbidden("pods") {
+		return dto.PodSummary{}, nil
+	}
+	var pods []*corev1.Pod
+	var err error
+	lister := h.Factory.Core().V1().Pods().Lister()
+	if namespace == "" {
+		pods, err = lister.List(labels.Everything())
+	} else {
+		pods, err = lister.Pods(namespace).List(labels.Everything())
+	}
+	if err != nil {
+		log.Printf("app: GetPodsSummary: %v", err)
+		return dto.PodSummary{}, nil
+	}
+	return kubeResources.SummarizePods(pods), nil
 }
 
 func (a *App) emitPods(namespace string) {

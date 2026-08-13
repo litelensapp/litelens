@@ -20,3 +20,8 @@ type StatefulSet struct {
 	Affinities    int
 	PodStatus     string
 }
+
+type StatefulSetSummary struct {
+	Running int
+	Pending int
+}

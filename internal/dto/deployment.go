@@ -34,3 +34,8 @@ type Deployment struct {
 	AffinityCount     int
 	Affinities        string
 }
+
+type DeploymentSummary struct {
+	Running int
+	Pending int
+}

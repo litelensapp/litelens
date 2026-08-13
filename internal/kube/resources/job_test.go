@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersbatchv1 "k8s.io/client-go/listers/batch/v1"
@@ -183,5 +184,162 @@ func TestToJob_NoCompletions(t *testing.T) {
 	got := toJob(job)
 	if got.Completions != 1 {
 		t.Errorf("Completions = %d; want 1 (default)", got.Completions)
+	}
+}
+
+// — SummarizeJobs tests —
+
+// TestSummarizeJobs_EmptyList verifies zero summary for empty job list.
+func TestSummarizeJobs_EmptyList(t *testing.T) {
+	summary := SummarizeJobs([]*batchv1.Job{})
+	if summary.Succeeded != 0 || summary.Failed != 0 || summary.Pending != 0 {
+		t.Errorf("empty list returned non-zero summary: %+v", summary)
+	}
+}
+
+// TestSummarizeJobs_AllComplete verifies jobs with Complete condition count as succeeded.
+func TestSummarizeJobs_AllComplete(t *testing.T) {
+	jobs := []*batchv1.Job{
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+	}
+	summary := SummarizeJobs(jobs)
+	if summary.Succeeded != 2 {
+		t.Errorf("Succeeded = %d; want 2", summary.Succeeded)
+	}
+	if summary.Failed != 0 {
+		t.Errorf("Failed = %d; want 0", summary.Failed)
+	}
+	if summary.Pending != 0 {
+		t.Errorf("Pending = %d; want 0", summary.Pending)
+	}
+}
+
+// TestSummarizeJobs_AllFailed verifies jobs with Failed condition count as failed.
+func TestSummarizeJobs_AllFailed(t *testing.T) {
+	jobs := []*batchv1.Job{
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+	}
+	summary := SummarizeJobs(jobs)
+	if summary.Succeeded != 0 {
+		t.Errorf("Succeeded = %d; want 0", summary.Succeeded)
+	}
+	if summary.Failed != 2 {
+		t.Errorf("Failed = %d; want 2", summary.Failed)
+	}
+	if summary.Pending != 0 {
+		t.Errorf("Pending = %d; want 0", summary.Pending)
+	}
+}
+
+// TestSummarizeJobs_NeitherCompleteNorFailed_CountAsPending verifies jobs without Complete/Failed count as pending.
+func TestSummarizeJobs_NeitherCompleteNorFailed_CountAsPending(t *testing.T) {
+	jobs := []*batchv1.Job{
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobSuspended, Status: corev1.ConditionFalse},
+				},
+			},
+		},
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{},
+			},
+		},
+	}
+	summary := SummarizeJobs(jobs)
+	if summary.Succeeded != 0 {
+		t.Errorf("Succeeded = %d; want 0", summary.Succeeded)
+	}
+	if summary.Failed != 0 {
+		t.Errorf("Failed = %d; want 0", summary.Failed)
+	}
+	if summary.Pending != 2 {
+		t.Errorf("Pending = %d; want 2 (jobs without Complete/Failed)", summary.Pending)
+	}
+}
+
+// TestSummarizeJobs_Mixed verifies a mix of complete, failed, and pending jobs.
+func TestSummarizeJobs_Mixed(t *testing.T) {
+	jobs := []*batchv1.Job{
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{},
+			},
+		},
+	}
+	summary := SummarizeJobs(jobs)
+	if summary.Succeeded != 1 {
+		t.Errorf("Succeeded = %d; want 1", summary.Succeeded)
+	}
+	if summary.Failed != 1 {
+		t.Errorf("Failed = %d; want 1", summary.Failed)
+	}
+	if summary.Pending != 1 {
+		t.Errorf("Pending = %d; want 1", summary.Pending)
+	}
+}
+
+// TestSummarizeJobs_BothCompleteAndFailed_CompleteTakesPriority verifies if both Complete and Failed are present, Succeeded is incremented.
+func TestSummarizeJobs_BothCompleteAndFailed_CompleteTakesPriority(t *testing.T) {
+	jobs := []*batchv1.Job{
+		{
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+	}
+	summary := SummarizeJobs(jobs)
+	if summary.Succeeded != 1 {
+		t.Errorf("Succeeded = %d; want 1 (Complete takes priority)", summary.Succeeded)
+	}
+	if summary.Failed != 0 {
+		t.Errorf("Failed = %d; want 0", summary.Failed)
+	}
+	if summary.Pending != 0 {
+		t.Errorf("Pending = %d; want 0", summary.Pending)
 	}
 }
