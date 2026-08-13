@@ -121,7 +121,11 @@ jobs:
             NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           fi
-          brew audit --strict tap_repo/Casks/litelens.rb
+
+          # `brew audit <path>` is disabled (arbitrary Ruby execution risk); audit
+          # by name instead, via a local tap pointed at the checked-out tap repo.
+          brew tap litelensapp/litelens "$PWD/tap_repo"
+          brew audit --cask --strict litelensapp/litelens/litelens
 
       - name: Commit and push to tap repository
         working-directory: tap_repo
