@@ -33,8 +33,15 @@ LiteLens is distributed via a custom Homebrew tap (not `homebrew-core`), so
 
 ```sh
 brew tap litelensapp/homebrew-litelens
-brew install litelens
+brew trust litelensapp/litelens/litelens
+brew install litelensapp/litelens/litelens
 ```
+
+Homebrew 6+ blocks Ruby code from third-party taps until you explicitly
+trust them ("Tap Trust"). If you skip the `brew trust` step, `brew install`
+will fail with `Error: Refusing to load cask ... from untrusted tap ...` —
+run `brew trust litelensapp/litelens` (or `brew trust --cask
+litelensapp/litelens/litelens` to trust just the cask) and re-run install.
 
 If you install via Homebrew, prefer `brew upgrade litelens` over the
 in-app updater to keep versions in sync.
