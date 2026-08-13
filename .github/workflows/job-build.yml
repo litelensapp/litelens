@@ -32,18 +32,21 @@ jobs:
             build_flags: -tags webkit2_41
           - os: ubuntu-latest
             platform: linux/amd64/deb
+            wails_platform: linux/amd64
             artifact: litelens-linux-amd64-noble.deb
             build_flags: -tags webkit2_41
             codename: noble
             libwebkit_version: libwebkit2gtk-4.1-0
           - os: ubuntu-latest
             platform: linux/amd64/deb
+            wails_platform: linux/amd64
             artifact: litelens-linux-amd64-jammy.deb
             build_flags: -tags webkit2_41
             codename: jammy
             libwebkit_version: libwebkit2gtk-4.0-37
           - os: ubuntu-latest
             platform: linux/amd64/deb
+            wails_platform: linux/amd64
             artifact: litelens-linux-amd64-focal.deb
             build_flags: -tags webkit2_41
             codename: focal
@@ -77,7 +80,7 @@ jobs:
         shell: bash
         run: >
           pnpm build:app --
-          -platform ${{ matrix.platform }}
+          -platform ${{ matrix.wails_platform || matrix.platform }}
           ${{ matrix.build_flags }}
           -ldflags "-s -w -X main.Version=${{ inputs.version }}"
 
