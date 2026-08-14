@@ -16,19 +16,26 @@ import (
 
 // GetInstallSource reports which channel the running install came from
 // (homebrew, apt, winget, or manual), for display in the updater UI.
-// Install source is cached at startup; it will not reflect a mid-session uninstall via package manager (rare, acceptable tradeoff).
+// Install source is detected in a background goroutine at startup (mu-guarded)
+// so a slow `brew` subprocess never delays app launch; it will not reflect a
+// mid-session uninstall via package manager (rare, acceptable tradeoff).
 func (a *App) GetInstallSource() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	return a.installSource
 }
 
 // OpenAbout emits an event so the frontend opens the About modal.
 func (a *App) OpenAbout() {
+	a.mu.RLock()
+	installSource := a.installSource
+	a.mu.RUnlock()
 	runtime.EventsEmit(a.ctx, "menu:open-about", map[string]string{
 		"version":       a.version,
 		"go":            goruntime.Version(),
 		"wails":         config.WailsModuleVersion(),
 		"appSizeBytes":  strconv.FormatInt(a.appSizeBytes, 10),
-		"installSource": a.installSource,
+		"installSource": installSource,
 	})
 }
 

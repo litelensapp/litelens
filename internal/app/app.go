@@ -35,28 +35,28 @@ const apiMutationTimeout = 30 * time.Second
 
 // App struct
 type App struct {
-	ctx                     context.Context
-	version                 string
-	appSizeBytes            int64  // cached at startup, read-only afterward
-	installSource           string // cached at startup, read-only afterward
-	settings                config.Settings
-	clients                 map[string]*kubernetes.Clientset
-	factories               map[string]*kube.FactoryHandle
-	metricsClients          map[string]*metricsclient.Clientset
-	activeContext           string
-	mu                      sync.RWMutex
-	lastUpdateCheckResult   *UpdateCheckResult // guarded by mu; caches the last successful update check
-	portForwards            map[string]dto.PortForward
-	pfMu                    sync.RWMutex
-	restConfigs             map[string]*rest.Config
-	pfCancels               map[string]context.CancelFunc
-	logCancels              map[string]context.CancelFunc
-	logSeqs                 map[string]uint64
-	execCancels             map[string]context.CancelFunc
-	execResizeChans         map[string]chan remotecommand.TerminalSize
-	streamMu                sync.Mutex
-	pluginLoaders           map[string]*plugin.PluginLoader
-	removingPluginIDs       map[string]bool // tracks plugins being removed to prevent concurrent installs
+	ctx                   context.Context
+	version               string
+	appSizeBytes          int64  // cached at startup, read-only afterward
+	installSource         string // set once by a background goroutine started in Startup; guarded by mu
+	settings              config.Settings
+	clients               map[string]*kubernetes.Clientset
+	factories             map[string]*kube.FactoryHandle
+	metricsClients        map[string]*metricsclient.Clientset
+	activeContext         string
+	mu                    sync.RWMutex
+	lastUpdateCheckResult *UpdateCheckResult // guarded by mu; caches the last successful update check
+	portForwards          map[string]dto.PortForward
+	pfMu                  sync.RWMutex
+	restConfigs           map[string]*rest.Config
+	pfCancels             map[string]context.CancelFunc
+	logCancels            map[string]context.CancelFunc
+	logSeqs               map[string]uint64
+	execCancels           map[string]context.CancelFunc
+	execResizeChans       map[string]chan remotecommand.TerminalSize
+	streamMu              sync.Mutex
+	pluginLoaders         map[string]*plugin.PluginLoader
+	removingPluginIDs     map[string]bool // tracks plugins being removed to prevent concurrent installs
 	// pluginsMu guards pluginLoaders and removingPluginIDs. Lock ordering: never
 	// hold pluginsMu while acquiring mu (mu may be taken first and released, then
 	// pluginsMu taken separately, but not nested) — mu-guarded helpers like
@@ -70,7 +70,14 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp(version string) *App {
 	s, _ := config.Load()
-	resolveLoginShellPATH(s.ShellPath)
+	// resolveLoginShellPATH shells out to the user's login shell (up to a 5s
+	// timeout on macOS) and NewApp runs before wails.Run even starts, so doing
+	// this synchronously blocks the whole process before a window can appear.
+	// It's best-effort — Setenv is skipped on failure/timeout and the app keeps
+	// the original PATH — and only affects exec-credential-plugin lookups
+	// (aws/gcloud) during a later Connect(), which needs user interaction and
+	// so has ample time for this to finish first.
+	go resolveLoginShellPATH(s.ShellPath)
 	return &App{
 		version:           version,
 		settings:          s,
@@ -98,7 +105,17 @@ func NewApp(version string) *App {
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.appSizeBytes = getAppSizeBytes()
-	a.installSource = updater.DetectInstallSource()
+	// DetectInstallSource can shell out to brew (up to a 2s timeout) on Homebrew
+	// installs; run it off the startup path so it never delays app launch. The
+	// About modal isn't reachable until well after DomReady, so installSource
+	// (mu-guarded) is populated long before anyone reads it in practice; if read
+	// before it's ready, GetInstallSource/OpenAbout just see the zero-value "".
+	go func() {
+		source := updater.DetectInstallSource()
+		a.mu.Lock()
+		a.installSource = source
+		a.mu.Unlock()
+	}()
 	a.restoreInstalledPlugins()
 	go a.checkForUpdate(3)
 }
