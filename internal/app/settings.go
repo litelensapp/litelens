@@ -15,6 +15,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// GetInstallSource reports which channel the running install came from
+// (homebrew, apt, winget, or manual), for display in the updater UI.
+func (a *App) GetInstallSource() string {
+	return updater.DetectInstallSource()
+}
+
 // OpenAbout emits an event so the frontend opens the About modal.
 func (a *App) OpenAbout() {
 	runtime.EventsEmit(a.ctx, "menu:open-about", map[string]string{
