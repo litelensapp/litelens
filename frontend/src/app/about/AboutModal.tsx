@@ -23,6 +23,7 @@ interface Payload {
   go: string;
   wails: string;
   appSizeBytes: string;
+  installSource: string;
 }
 
 interface Props {
@@ -64,7 +65,10 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
           <img src={logo} alt="LiteLens" className="mb-4 h-16 w-16 rounded-2xl" />
 
           <h1 className="text-lg font-semibold">LiteLens</h1>
-          <p className="text-muted-foreground mt-0.5 font-mono text-xs">{payload.version}</p>
+          <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+            {payload.version}
+            {payload.installSource && <> · {payload.installSource}</>}
+          </p>
 
           <Divider className="my-5" />
 
