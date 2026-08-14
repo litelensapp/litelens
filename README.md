@@ -23,9 +23,6 @@ brew trust litelensapp/litelens/litelens
 brew install litelens
 ```
 
-If you install via Homebrew, prefer `brew upgrade litelens` over the
-in-app updater to keep versions in sync.
-
 ### APT (Debian/Ubuntu)
 
 LiteLens publishes `.deb` packages to a self-hosted APT repository, signed
