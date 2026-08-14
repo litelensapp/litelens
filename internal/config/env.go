@@ -69,8 +69,8 @@ func IsPrivateRepoAccess() bool {
 // IsMarketplaceEnabled reports whether the plugin marketplace feature is
 // enabled — gating both marketplace discovery/install/remove on the backend
 // and the marketplace UI on the frontend. Overridable via the
-// MARKETPLACE_ENABLED environment variable. Defaults to true (marketplace
-// ships enabled).
+// MARKETPLACE_ENABLED environment variable. Defaults to false (marketplace
+// ships disabled).
 func IsMarketplaceEnabled() bool {
 	return getBoolEnvOrDefault("MARKETPLACE_ENABLED", false)
 }

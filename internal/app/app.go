@@ -77,7 +77,12 @@ func NewApp(version string) *App {
 	// the original PATH — and only affects exec-credential-plugin lookups
 	// (aws/gcloud) during a later Connect(), which needs user interaction and
 	// so has ample time for this to finish first.
-	go resolveLoginShellPATH(s.ShellPath)
+	// Skipped in tests ("test" is the sentinel version every unit test passes
+	// to NewApp) — otherwise every test constructing an App piles up real
+	// subprocess spawns with no benefit, which is slow and flaky under load.
+	if version != "test" {
+		go resolveLoginShellPATH(s.ShellPath)
+	}
 	return &App{
 		version:           version,
 		settings:          s,

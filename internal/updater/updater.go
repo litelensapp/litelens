@@ -38,6 +38,17 @@ type Release struct {
 // updater_test.go.
 var checkHomebrewManaged = IsHomebrewCaskroomPath
 
+// SetCheckHomebrewManagedForTest overrides the Homebrew-managed-install probe
+// used by Check, for tests in other packages (e.g. internal/app) that call
+// Check indirectly and would otherwise be coupled to the real test machine's
+// actual Homebrew/Caskroom state — see the checkHomebrewManaged doc comment.
+// Returns a restore func that puts back the previous probe.
+func SetCheckHomebrewManagedForTest(fn func() bool) (restore func()) {
+	prev := checkHomebrewManaged
+	checkHomebrewManaged = fn
+	return func() { checkHomebrewManaged = prev }
+}
+
 // Check returns the latest release if it is newer than current, or (nil, nil)
 // if current is up-to-date, a dev build, or no update is needed.
 // Returns (nil, error) if a transient failure occurs (network error, rate limit, etc.).
