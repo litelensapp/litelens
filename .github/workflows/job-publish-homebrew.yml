@@ -116,8 +116,12 @@ jobs:
                 first launch, open System Settings > Privacy & Security and
                 click "Open Anyway" next to LiteLens.
 
-                LiteLens has a built-in self-updater that Homebrew is not aware of. If you
-                installed via Homebrew, prefer `brew upgrade litelens` to keep versions in sync.
+                LiteLens's built-in self-updater is disabled for Homebrew installs.
+                To upgrade, run:
+                  brew update && brew upgrade litelens
+
+                `brew update` refreshes Homebrew's local tap cache; `brew upgrade` alone
+                may report "already installed" if that cache is stale.
               EOS
             end
 

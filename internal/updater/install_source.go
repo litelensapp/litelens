@@ -30,7 +30,7 @@ func DetectInstallSource() string {
 			return InstallSourceApt
 		}
 	case "darwin":
-		if realPath, err := filepath.EvalSymlinks(exe); err == nil && isHomebrewCaskroomPath(realPath) {
+		if realPath, err := filepath.EvalSymlinks(exe); err == nil && IsHomebrewCaskroomPath(realPath) {
 			return InstallSourceHomebrew
 		}
 	case "windows":
@@ -42,11 +42,11 @@ func DetectInstallSource() string {
 	return InstallSourceManual
 }
 
-// isHomebrewCaskroomPath reports whether realPath (the symlink-resolved
+// IsHomebrewCaskroomPath reports whether realPath (the symlink-resolved
 // executable path) lives inside a Homebrew Caskroom, i.e. /Applications/*.app
 // was installed as a Homebrew cask symlink rather than a real copy (which is
 // what scripts/install.sh and the cask's own postflight-signed copy produce).
-func isHomebrewCaskroomPath(realPath string) bool {
+func IsHomebrewCaskroomPath(realPath string) bool {
 	return strings.Contains(realPath, "/Caskroom/")
 }
 
