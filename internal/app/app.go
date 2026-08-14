@@ -11,6 +11,7 @@ import (
 	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/updater"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -36,6 +37,8 @@ const apiMutationTimeout = 30 * time.Second
 type App struct {
 	ctx                     context.Context
 	version                 string
+	appSizeBytes            int64  // cached at startup, read-only afterward
+	installSource           string // cached at startup, read-only afterward
 	settings                config.Settings
 	clients                 map[string]*kubernetes.Clientset
 	factories               map[string]*kube.FactoryHandle
@@ -94,6 +97,8 @@ func NewApp(version string) *App {
 // see NOT_INSTALLED for an already-installed plugin.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	a.appSizeBytes = getAppSizeBytes()
+	a.installSource = updater.DetectInstallSource()
 	a.restoreInstalledPlugins()
 	go a.checkForUpdate(3)
 }

@@ -10,15 +10,15 @@ import (
 
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/kube"
-	"github.com/litelensapp/litelens/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // GetInstallSource reports which channel the running install came from
 // (homebrew, apt, winget, or manual), for display in the updater UI.
+// Install source is cached at startup; it will not reflect a mid-session uninstall via package manager (rare, acceptable tradeoff).
 func (a *App) GetInstallSource() string {
-	return updater.DetectInstallSource()
+	return a.installSource
 }
 
 // OpenAbout emits an event so the frontend opens the About modal.
@@ -27,8 +27,8 @@ func (a *App) OpenAbout() {
 		"version":       a.version,
 		"go":            goruntime.Version(),
 		"wails":         config.WailsModuleVersion(),
-		"appSizeBytes":  strconv.FormatInt(getAppSizeBytes(), 10),
-		"installSource": updater.DetectInstallSource(),
+		"appSizeBytes":  strconv.FormatInt(a.appSizeBytes, 10),
+		"installSource": a.installSource,
 	})
 }
 
