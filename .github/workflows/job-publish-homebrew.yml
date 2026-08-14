@@ -120,7 +120,7 @@ jobs:
                 To upgrade, run:
                   brew update && brew upgrade litelens
 
-                `brew update` refreshes Homebrew's local tap cache; `brew upgrade` alone
+                \`brew update\` refreshes Homebrew's local tap cache; \`brew upgrade\` alone
                 may report "already installed" if that cache is stale.
               EOS
             end

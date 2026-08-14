@@ -3,7 +3,6 @@ package updater
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -30,6 +29,15 @@ type Release struct {
 	SHA256 string `json:"-"`
 }
 
+// checkHomebrewManaged is overridable in tests. Unlike the apt check (which
+// is keyed off os.Executable()'s path and so never false-positives when run
+// as a `go test` binary), IsHomebrewCaskroomPath probes the real machine's
+// filesystem/brew state unconditionally — on a dev machine that actually has
+// litelens installed via Homebrew, leaving this wired to the real function
+// would make Check() short-circuit in every test. See TestMain in
+// updater_test.go.
+var checkHomebrewManaged = IsHomebrewCaskroomPath
+
 // Check returns the latest release if it is newer than current, or (nil, nil)
 // if current is up-to-date, a dev build, or no update is needed.
 // Returns (nil, error) if a transient failure occurs (network error, rate limit, etc.).
@@ -47,11 +55,9 @@ func Check(current, token string) (*Release, error) {
 	}
 
 	// Check if this is a Homebrew-managed installation; if so, defer to brew upgrade
-	if exe, err := os.Executable(); err == nil {
-		if realPath, err := filepath.EvalSymlinks(exe); err == nil && IsHomebrewCaskroomPath(realPath) {
-			log.Printf("updater: Homebrew-managed install detected; use 'brew upgrade' to update")
-			return nil, nil
-		}
+	if checkHomebrewManaged() {
+		log.Printf("updater: Homebrew-managed install detected; use 'brew upgrade' to update")
+		return nil, nil
 	}
 
 	if token != "" {
