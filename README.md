@@ -20,7 +20,7 @@ LiteLens is distributed via a custom Homebrew tap (not `homebrew-core`), so
 ```sh
 brew tap litelensapp/homebrew-litelens
 brew trust litelensapp/litelens/litelens
-brew install litelensapp/litelens/litelens
+brew install litelens
 ```
 
 If you install via Homebrew, prefer `brew upgrade litelens` over the

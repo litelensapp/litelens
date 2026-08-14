@@ -42,12 +42,31 @@ func DetectInstallSource() string {
 	return InstallSourceManual
 }
 
-// IsHomebrewCaskroomPath reports whether realPath (the symlink-resolved
-// executable path) lives inside a Homebrew Caskroom, i.e. /Applications/*.app
-// was installed as a Homebrew cask symlink rather than a real copy (which is
-// what scripts/install.sh and the cask's own postflight-signed copy produce).
+// IsHomebrewCaskroomPath reports whether the running executable was installed
+// via Homebrew Cask by checking for the existence of the known Homebrew
+// Caskroom directory for the litelens cask. The executable itself may live in
+// /Applications (a real copy, not a symlink), so we check for the Caskroom
+// directory independently. Works on both Apple Silicon and Intel macOS.
+// The realPath parameter is kept for API compatibility but not used;
+// detection is based on filesystem checks.
 func IsHomebrewCaskroomPath(realPath string) bool {
-	return strings.Contains(realPath, "/Caskroom/")
+	return isHomebrewCaskroomPathChecked(os.Stat)
+}
+
+// isHomebrewCaskroomPathChecked is a testable variant that accepts a stat
+// function, allowing tests to mock filesystem checks without requiring actual
+// Homebrew installation.
+func isHomebrewCaskroomPathChecked(statFn func(string) (os.FileInfo, error)) bool {
+	// Check for both known Homebrew Caskroom paths on macOS.
+	// Apple Silicon: /opt/homebrew/Caskroom/litelens
+	// Intel: /usr/local/Caskroom/litelens
+	armPath := "/opt/homebrew/Caskroom/litelens"
+	intelPath := "/usr/local/Caskroom/litelens"
+
+	_, errARM := statFn(armPath)
+	_, errIntel := statFn(intelPath)
+
+	return errARM == nil || errIntel == nil
 }
 
 // isWingetManagedPath reports whether path looks like a winget-managed

@@ -1,33 +1,61 @@
 package updater
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestIsHomebrewCaskroomPath(t *testing.T) {
 	tests := []struct {
-		name string
-		path string
-		want bool
+		name   string
+		statFn func(string) (os.FileInfo, error)
+		want   bool
 	}{
 		{
-			name: "apple silicon caskroom",
-			path: "/opt/homebrew/Caskroom/litelens/1.2.3/litelens.app/Contents/MacOS/litelens",
+			name: "apple silicon caskroom exists",
+			statFn: func(path string) (os.FileInfo, error) {
+				if path == "/opt/homebrew/Caskroom/litelens" {
+					// Simulate directory exists
+					return nil, nil
+				}
+				return nil, os.ErrNotExist
+			},
 			want: true,
 		},
 		{
-			name: "intel caskroom",
-			path: "/usr/local/Caskroom/litelens/1.2.3/litelens.app/Contents/MacOS/litelens",
+			name: "intel caskroom exists",
+			statFn: func(path string) (os.FileInfo, error) {
+				if path == "/usr/local/Caskroom/litelens" {
+					// Simulate directory exists
+					return nil, nil
+				}
+				return nil, os.ErrNotExist
+			},
 			want: true,
 		},
 		{
-			name: "manual install.sh copy",
-			path: "/Applications/LiteLens.app/Contents/MacOS/litelens",
+			name: "both caskroom directories exist",
+			statFn: func(path string) (os.FileInfo, error) {
+				// Simulate both exist (shouldn't happen normally, but test the OR logic)
+				return nil, nil
+			},
+			want: true,
+		},
+		{
+			name: "no homebrew installed (manual install)",
+			statFn: func(path string) (os.FileInfo, error) {
+				// Simulate neither directory exists
+				return nil, os.ErrNotExist
+			},
 			want: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsHomebrewCaskroomPath(tt.path); got != tt.want {
-				t.Errorf("IsHomebrewCaskroomPath(%q) = %v, want %v", tt.path, got, tt.want)
+			got := isHomebrewCaskroomPathChecked(tt.statFn)
+			if got != tt.want {
+				t.Errorf("isHomebrewCaskroomPathChecked() = %v, want %v", got, tt.want)
 			}
 		})
 	}
