@@ -6,6 +6,7 @@ export interface MenuOpenAboutPayload {
   go: string;
   wails: string;
   appSizeBytes: string;
+  installSource: string;
 }
 
 export function useMenuOpenAboutEvents(onOpenAbout: (payload: MenuOpenAboutPayload) => void): void {
@@ -17,7 +18,9 @@ export function useMenuOpenAboutEvents(onOpenAbout: (payload: MenuOpenAboutPaylo
 
   useEffect(() => {
     return EventsOn("menu:open-about", (payload?: MenuOpenAboutPayload) => {
-      callbackRef.current(payload ?? { version: "", go: "", wails: "", appSizeBytes: "" });
+      callbackRef.current(
+        payload ?? { version: "", go: "", wails: "", appSizeBytes: "", installSource: "" }
+      );
     });
   }, []);
 }

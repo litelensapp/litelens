@@ -8,10 +8,27 @@ import {
   DialogTitle,
   ExternalLinkIcon,
   Loader2Icon,
+  Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@litelens/design-system";
 import { FC } from "react";
 import { useOpenBrowserURL } from "../shared/hooks/useOpenBrowserURL";
+import { useGetInstallSource } from "./hooks/data-access/useGetInstallSource";
 import { usePerformUpdateApp } from "./hooks/data-mutation/usePerformUpdateApp";
+
+const INSTALL_SOURCE_LABELS: Record<string, string> = {
+  homebrew: "Homebrew",
+  apt: "APT",
+  winget: "winget",
+};
+
+const UPGRADE_COMMANDS: Record<string, string> = {
+  homebrew: "brew upgrade litelens",
+  apt: "apt upgrade",
+  winget: "winget upgrade litelensapp.LiteLens",
+};
 
 interface UpdateModalProps {
   open: boolean;
@@ -32,6 +49,8 @@ export const UpdateModal: FC<UpdateModalProps> = ({
 }) => {
   const { mutate: performUpdateApp, isPending: updating, error, reset } = usePerformUpdateApp();
   const openBrowserURL = useOpenBrowserURL();
+  const { data: installSource = "manual" } = useGetInstallSource();
+  const isPackageManagerInstalled = installSource !== "manual";
 
   function handleClose() {
     reset();
@@ -44,7 +63,7 @@ export const UpdateModal: FC<UpdateModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !updating && handleClose()}>
-      <DialogContent showCloseButton={false} className="sm:max-w-sm">
+      <DialogContent showCloseButton={false} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowUpCircleIcon className="text-primary size-4 shrink-0" />
@@ -65,6 +84,16 @@ export const UpdateModal: FC<UpdateModalProps> = ({
           )}
         </div>
 
+        {isPackageManagerInstalled && (
+          <div className="bg-muted/30 border-border rounded-lg border p-3 text-xs">
+            <p className="mb-1 font-medium">
+              Installed via {INSTALL_SOURCE_LABELS[installSource] ?? installSource}
+            </p>
+            <p className="text-muted-foreground mb-1">Run the following to upgrade:</p>
+            <Textarea variant="code" value={UPGRADE_COMMANDS[installSource]} disabled />
+          </div>
+        )}
+
         <Button
           variant="link"
           onClick={() => openBrowserURL(releaseURL)}
@@ -80,19 +109,37 @@ export const UpdateModal: FC<UpdateModalProps> = ({
           <Button variant="outline" onClick={handleClose} disabled={updating}>
             Cancel
           </Button>
-          <Button onClick={handleUpdate} disabled={updating}>
-            {updating ? (
-              <>
-                <Loader2Icon className="size-4 animate-spin" />
-                Updating…
-              </>
-            ) : (
-              <>
-                <ArrowUpCircleIcon className="size-4" />
-                Update Now
-              </>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="inline-flex">
+                  <Button
+                    onClick={handleUpdate}
+                    disabled={updating || isPackageManagerInstalled}
+                    className="w-full"
+                  >
+                    {updating ? (
+                      <>
+                        <Loader2Icon className="size-4 animate-spin" />
+                        Updating…
+                      </>
+                    ) : (
+                      <>
+                        <ArrowUpCircleIcon className="size-4" />
+                        Update Now
+                      </>
+                    )}
+                  </Button>
+                </span>
+              }
+            />
+            {isPackageManagerInstalled && (
+              <TooltipContent side="bottom">
+                Auto-update is unavailable for package-manager installs. See the upgrade
+                instructions above.
+              </TooltipContent>
             )}
-          </Button>
+          </Tooltip>
         </DialogFooter>
       </DialogContent>
     </Dialog>

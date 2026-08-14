@@ -26,6 +26,7 @@ type AboutPayload = {
   go: string;
   wails: string;
   appSizeBytes: string;
+  installSource: string;
 };
 
 type AppState = {

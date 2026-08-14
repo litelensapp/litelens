@@ -10,17 +10,25 @@ import (
 
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/kube"
+	"github.com/litelensapp/litelens/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// GetInstallSource reports which channel the running install came from
+// (homebrew, apt, winget, or manual), for display in the updater UI.
+func (a *App) GetInstallSource() string {
+	return updater.DetectInstallSource()
+}
+
 // OpenAbout emits an event so the frontend opens the About modal.
 func (a *App) OpenAbout() {
 	runtime.EventsEmit(a.ctx, "menu:open-about", map[string]string{
-		"version":      a.version,
-		"go":           goruntime.Version(),
-		"wails":        config.WailsModuleVersion(),
-		"appSizeBytes": strconv.FormatInt(getAppSizeBytes(), 10),
+		"version":       a.version,
+		"go":            goruntime.Version(),
+		"wails":         config.WailsModuleVersion(),
+		"appSizeBytes":  strconv.FormatInt(getAppSizeBytes(), 10),
+		"installSource": updater.DetectInstallSource(),
 	})
 }
 
