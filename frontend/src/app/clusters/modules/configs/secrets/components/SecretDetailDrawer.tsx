@@ -497,7 +497,7 @@ const SecretDrawerCtaButtons: FC<SecretDrawerCtaButtonsProps> = ({
 const SecretEventsTab: FC<{ secret: SecretDetail }> = ({ secret }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const secretEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "secret" && e.InvolvedObjectName === secret.Name
   );

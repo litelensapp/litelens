@@ -235,7 +235,10 @@ const EndpointDrawerCtaButtons: FC<EndpointDrawerCtaButtonsProps> = ({
 const EndpointEventsTab: FC<{ ep: Endpoint }> = ({ ep }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: ep.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [ep.Namespace],
+  });
   const epEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "endpoints" &&

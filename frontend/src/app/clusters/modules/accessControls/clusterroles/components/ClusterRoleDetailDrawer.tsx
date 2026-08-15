@@ -221,7 +221,7 @@ const ClusterRoleDrawerCtaButtons: FC<ClusterRoleDrawerCtaButtonsProps> = ({
 const ClusterRoleEventsTab: FC<{ cr: ClusterRole }> = ({ cr }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const crEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "clusterrole" && e.InvolvedObjectName === cr.Name
   );

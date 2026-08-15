@@ -21,10 +21,10 @@ import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
 interface PluginViewProps {
   activeResource: string;
   activeContext: string;
-  namespace: string;
+  namespaces: string[];
   onNavigateToView: (view: string) => void;
   onToggleNamespaceDetail: (name?: string) => void;
-  namespaces: SharedNamespaceContext[];
+  namespacesData: SharedNamespaceContext[];
   unifiedTray: SharedUnifiedTrayContext | null;
   getResourceLinks: (resource: {
     kind: string;
@@ -38,7 +38,7 @@ interface PluginResourceViewProps {
   pluginName: string;
   viewType: string;
   activeContext: string;
-  namespace: string;
+  namespaces: string[];
   onNavigateToView: (view: string) => void;
   onGoToMarketplace: () => void;
 }
@@ -48,14 +48,14 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
   pluginName,
   viewType,
   activeContext,
-  namespace,
+  namespaces,
   onNavigateToView,
   onGoToMarketplace,
 }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
   const unifiedTray = useUnifiedTray();
   const resourceLinksMap = useResourceLinks();
-  const { data: namespaces = [] } = useGetNamespaces(activeContext);
+  const { data: namespacesData = [] } = useGetNamespaces(activeContext);
 
   // This view is only reached for a plugin the user has already navigated to,
   // so the real CRASHED/INCOMPATIBLE status must always surface (never masked
@@ -119,10 +119,10 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
         <PluginViewDynamic
           activeResource={viewType}
           activeContext={activeContext}
-          namespace={namespace}
+          namespaces={namespaces}
           onNavigateToView={onNavigateToView}
           onToggleNamespaceDetail={onToggleNamespaceDetail}
-          namespaces={namespaces}
+          namespacesData={namespacesData}
           unifiedTray={unifiedTray}
           getResourceLinks={getResourceLinks}
         />

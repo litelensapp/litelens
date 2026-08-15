@@ -77,7 +77,7 @@ beforeEach(() => {
   useGetEventsMock.mockReturnValue({ data: [] });
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onToggleEventDetail: onToggleEventDetailMock,
     onTogglePodDetail: onTogglePodDetailMock,
@@ -86,7 +86,7 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onToggleEventDetail: onToggleEventDetailMock,
     onTogglePodDetail: onTogglePodDetailMock,

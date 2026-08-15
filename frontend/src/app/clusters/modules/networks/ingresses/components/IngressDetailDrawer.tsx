@@ -152,7 +152,7 @@ const IngressEventsTab: FC<{ ingress: IngressDetail }> = ({ ingress }) => {
   const { activeContext } = useMainLayoutContext();
   const { data: events = [] } = useGetEvents({
     context: activeContext,
-    namespace: ingress.Namespace,
+    namespaces: [ingress.Namespace],
   });
   const ingressEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "ingress" && e.InvolvedObjectName === ingress.Name

@@ -87,13 +87,16 @@ export const EndpointSlicesView: FC = () => {
   const [selectedSliceIds, setSelectedSliceIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleEndpointSliceDetail } = useDetailDrawerContext();
 
   const { mutate: deleteEndpointSlices, isPending: isBulkDeletePending } =
     useDeleteEndpointSlices();
 
-  const { data: raw = [], isLoading } = useGetEndpointSlices({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetEndpointSlices({
+    context: activeContext,
+    namespaces,
+  });
 
   const slices = raw
     .filter((s) => !search || s.Name.toLowerCase().includes(search.toLowerCase()))
@@ -155,7 +158,7 @@ export const EndpointSlicesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Address Type</TableHead>
             <TableHead>Ports</TableHead>
             <TableHead>Endpoints</TableHead>
@@ -167,7 +170,7 @@ export const EndpointSlicesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 4 : 5}
+              columns={namespaces.length !== 1 ? 5 : 4}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[45%]", "w-[50%]"]}
             />
@@ -202,7 +205,7 @@ export const EndpointSlicesView: FC = () => {
                     <TableCell className="max-w-60">
                       <TruncatedText text={slice.Name} />
                     </TableCell>
-                    {!namespace && (
+                    {namespaces.length !== 1 && (
                       <TableCell className="text-xs">
                         <ResourceLink
                           onClick={(e) => {
@@ -226,7 +229,7 @@ export const EndpointSlicesView: FC = () => {
               })}
               {slices.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={namespace ? 7 : 8} className="px-0 py-0">
+                  <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                     <EmptyState
                       icon={<NetworkIcon className="size-8" />}
                       title="No EndpointSlices"

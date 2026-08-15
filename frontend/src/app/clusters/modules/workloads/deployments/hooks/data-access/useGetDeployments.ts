@@ -6,32 +6,33 @@ import { QUERY_KEY_DEPLOYMENTS } from "../../api/api.const";
 import type { Deployment } from "../../api/resources";
 import { ListDeployments } from "../../api/resources";
 import { useDeploymentsUpdateEvents } from "../async-events/useDeploymentsUpdateEvents";
+import {
+  getEffectiveNamespace,
+  filterByNamespaces,
+} from "../../../../../shared/utils/namespaceFiltering";
 
 export const useGetDeployments = (
-  input: { context: string; namespace: string },
+  input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<Deployment[]>
 ) => {
-  const { context, namespace } = input;
+  const { context, namespaces } = input;
+  const effectiveNamespace = getEffectiveNamespace(namespaces);
   const latestDeployments = useDeploymentsUpdateEvents();
 
   const query = useQuery<Deployment[], Error>({
-    queryKey: [QUERY_KEY_DEPLOYMENTS, { context, namespace }],
-    queryFn: () => ListDeployments(namespace),
+    queryKey: [QUERY_KEY_DEPLOYMENTS, { context, namespaces }],
+    queryFn: () => ListDeployments(effectiveNamespace),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
   // Merge event-driven data locally: prefer event-filtered deployments over fetched data if available.
-  // Filter cluster-wide event list to this hook's namespace (or include all if namespace === "").
+  // Filter cluster-wide event list by namespace membership.
   const mergedData = useMemo(() => {
     let baseData = query.data;
-    if (latestDeployments.length)
-      baseData =
-        namespace === ""
-          ? latestDeployments
-          : latestDeployments.filter((dep) => dep.Namespace === namespace);
+    if (latestDeployments.length) baseData = filterByNamespaces(latestDeployments, namespaces);
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestDeployments, query.data, namespace, callback]);
+  }, [latestDeployments, query.data, namespaces, callback]);
 
   return {
     ...query,

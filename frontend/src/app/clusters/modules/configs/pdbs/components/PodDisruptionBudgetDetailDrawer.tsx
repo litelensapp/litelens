@@ -164,7 +164,10 @@ const PDBOverviewTab: FC<{ pdb: PodDisruptionBudgetDetail }> = ({ pdb }) => {
 const PDBEventsTab: FC<{ pdb: PodDisruptionBudgetDetail }> = ({ pdb }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: pdb.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [pdb.Namespace],
+  });
   const pdbEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "poddisruptionbudget" &&

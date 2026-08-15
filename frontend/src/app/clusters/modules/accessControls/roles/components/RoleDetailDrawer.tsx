@@ -171,7 +171,10 @@ const RoleOverviewTab: FC<{ role: Role }> = ({ role }) => {
 const RoleEventsTab: FC<{ role: Role }> = ({ role }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: role.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [role.Namespace],
+  });
   const roleEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "role" &&

@@ -16,7 +16,7 @@ export const AnnotationBadge: FC<Props> = ({ label }) => {
   }, [label]);
 
   const badge = (
-    <Badge variant="secondary" className="max-w-xs cursor-default font-mono text-xs">
+    <Badge variant="secondary" className="max-w-2xs cursor-default font-mono text-xs">
       <span ref={spanRef} className="block truncate">
         {label}
       </span>

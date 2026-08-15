@@ -227,7 +227,7 @@ const ClusterRoleBindingDrawerCtaButtons: FC<ClusterRoleBindingDrawerCtaButtonsP
 
 const ClusterRoleBindingEventsTab: FC<{ crb: ClusterRoleBinding }> = ({ crb }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const crbEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "clusterrolebinding" &&

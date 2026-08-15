@@ -208,7 +208,10 @@ const PVCOverviewTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
 const PVCEventsTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: pvc.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [pvc.Namespace],
+  });
   const pvcEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "persistentvolumeclaim" &&

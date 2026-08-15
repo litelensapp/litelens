@@ -212,7 +212,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetEvents", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetEvents({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -221,7 +221,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -232,9 +232,12 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetWarningEvents", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetWarningEvents({ context: "", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetWarningEvents({ context: "", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       expect(result.current.fetchStatus).toBe("idle");
       expect(listWarningEventsMock).not.toHaveBeenCalled();
     });
@@ -242,7 +245,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "ns1" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["ns1"] }),
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -258,7 +261,7 @@ describe("Namespace-scoped list hooks", () => {
       listWarningEventsMock.mockResolvedValue(events);
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "ns1" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["ns1"] }),
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -274,7 +277,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetPods", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetPods({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetPods({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -283,7 +286,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetPods({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetPods({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -292,16 +295,16 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetPods({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetPods({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_PODS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([QUERY_KEY_PODS, { context: "ctx", namespaces: ["ns1"] }]);
     });
   });
 
   describe("useGetDeployments", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetDeployments({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetDeployments({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -310,20 +313,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetDeployments({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetDeployments({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listDeploymentsMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetDeployments({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetDeployments({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_DEPLOYMENTS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -331,9 +337,12 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetStatefulSets", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetStatefulSets({ context: "", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetStatefulSets({ context: "", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       expect(result.current.fetchStatus).toBe("idle");
       expect(listStatefulSetsMock).not.toHaveBeenCalled();
     });
@@ -341,7 +350,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetStatefulSets({ context: "ctx", namespace: "ns1" }),
+        () => useGetStatefulSets({ context: "ctx", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -352,11 +361,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetStatefulSets({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetStatefulSets({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_STATEFULSETS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -364,7 +373,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetDaemonSets", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetDaemonSets({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetDaemonSets({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -373,20 +382,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetDaemonSets({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetDaemonSets({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listDaemonSetsMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetDaemonSets({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetDaemonSets({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_DAEMONSETS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -394,7 +406,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetReplicaSets", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetReplicaSets({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetReplicaSets({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -403,20 +415,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetReplicaSets({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetReplicaSets({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listReplicaSetsMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetReplicaSets({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetReplicaSets({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_REPLICASETS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -424,7 +439,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetJobs", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetJobs({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetJobs({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -433,7 +448,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetJobs({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetJobs({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -442,16 +457,16 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetJobs({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetJobs({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_JOBS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([QUERY_KEY_JOBS, { context: "ctx", namespaces: ["ns1"] }]);
     });
   });
 
   describe("useGetConfigMaps", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetConfigMaps({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetConfigMaps({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -460,20 +475,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetConfigMaps({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetConfigMaps({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listConfigMapsMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetConfigMaps({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetConfigMaps({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_CONFIGMAPS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -481,7 +499,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetSecrets", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetSecrets({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetSecrets({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -490,7 +508,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetSecrets({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetSecrets({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -499,9 +517,12 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetSecrets({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetSecrets({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_SECRETS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([
+        QUERY_KEY_SECRETS,
+        { context: "ctx", namespaces: ["ns1"] },
+      ]);
     });
   });
 
@@ -509,7 +530,7 @@ describe("Namespace-scoped list hooks", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetPersistentVolumeClaims({ context: "", namespace: "ns1" }),
+        () => useGetPersistentVolumeClaims({ context: "", namespaces: ["ns1"] }),
         { wrapper }
       );
       expect(result.current.fetchStatus).toBe("idle");
@@ -519,7 +540,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetPersistentVolumeClaims({ context: "ctx", namespace: "ns1" }),
+        () => useGetPersistentVolumeClaims({ context: "ctx", namespaces: ["ns1"] }),
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -528,20 +549,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetPersistentVolumeClaims({ context: "ctx", namespace: "ns1" }), {
+      renderHook(() => useGetPersistentVolumeClaims({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_PVCS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([QUERY_KEY_PVCS, { context: "ctx", namespaces: ["ns1"] }]);
     });
   });
 
   describe("useGetResourceQuotas", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetResourceQuotas({ context: "", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetResourceQuotas({ context: "", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       expect(result.current.fetchStatus).toBe("idle");
       expect(listResourceQuotasMock).not.toHaveBeenCalled();
     });
@@ -549,7 +573,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetResourceQuotas({ context: "ctx", namespace: "ns1" }),
+        () => useGetResourceQuotas({ context: "ctx", namespaces: ["ns1"] }),
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -558,11 +582,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetResourceQuotas({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetResourceQuotas({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_RESOURCE_QUOTAS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -570,7 +594,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetLimitRanges", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetLimitRanges({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetLimitRanges({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -579,20 +603,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetLimitRanges({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetLimitRanges({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listLimitRangesMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetLimitRanges({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetLimitRanges({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_LIMIT_RANGES,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -600,7 +627,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetCronJobs", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetCronJobs({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetCronJobs({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -609,7 +636,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetCronJobs({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetCronJobs({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -618,9 +645,12 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetCronJobs({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetCronJobs({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_CRONJOBS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([
+        QUERY_KEY_CRONJOBS,
+        { context: "ctx", namespaces: ["ns1"] },
+      ]);
     });
   });
 
@@ -629,7 +659,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetServices", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetServices({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetServices({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -638,7 +668,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetServices({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetServices({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -647,16 +677,19 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetServices({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetServices({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_SERVICES, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([
+        QUERY_KEY_SERVICES,
+        { context: "ctx", namespaces: ["ns1"] },
+      ]);
     });
   });
 
   describe("useGetIngresses", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetIngresses({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetIngresses({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -665,20 +698,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetIngresses({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetIngresses({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listIngressesMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetIngresses({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetIngresses({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_INGRESSES,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -686,7 +722,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetEndpoints", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEndpoints({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetEndpoints({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -695,20 +731,23 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEndpoints({ context: "ctx", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEndpoints({ context: "ctx", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(listEndpointsMock).toHaveBeenCalledWith("ns1");
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetEndpoints({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetEndpoints({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_ENDPOINTS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -716,9 +755,12 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetEndpointSlices", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEndpointSlices({ context: "", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEndpointSlices({ context: "", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       expect(result.current.fetchStatus).toBe("idle");
       expect(listEndpointSlicesMock).not.toHaveBeenCalled();
     });
@@ -726,7 +768,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetEndpointSlices({ context: "ctx", namespace: "ns1" }),
+        () => useGetEndpointSlices({ context: "ctx", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -737,11 +779,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetEndpointSlices({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetEndpointSlices({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_ENDPOINT_SLICES,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -750,7 +792,7 @@ describe("Namespace-scoped list hooks", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetNetworkPolicies({ context: "", namespace: "ns1" }),
+        () => useGetNetworkPolicies({ context: "", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -762,7 +804,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetNetworkPolicies({ context: "ctx", namespace: "ns1" }),
+        () => useGetNetworkPolicies({ context: "ctx", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -773,11 +815,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetNetworkPolicies({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetNetworkPolicies({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_NETWORK_POLICIES,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -786,7 +828,7 @@ describe("Namespace-scoped list hooks", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetServiceAccounts({ context: "", namespace: "ns1" }),
+        () => useGetServiceAccounts({ context: "", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -798,7 +840,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetServiceAccounts({ context: "ctx", namespace: "ns1" }),
+        () => useGetServiceAccounts({ context: "ctx", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -809,11 +851,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetServiceAccounts({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetServiceAccounts({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_SERVICE_ACCOUNTS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -823,7 +865,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetLeases", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetLeases({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetLeases({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -832,7 +874,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetLeases({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetLeases({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -841,16 +883,19 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetLeases({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetLeases({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_LEASES, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([
+        QUERY_KEY_LEASES,
+        { context: "ctx", namespaces: ["ns1"] },
+      ]);
     });
   });
 
   describe("useGetRoles", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetRoles({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetRoles({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -859,7 +904,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetRoles({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetRoles({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -868,18 +913,21 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetRoles({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetRoles({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_ROLES, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([QUERY_KEY_ROLES, { context: "ctx", namespaces: ["ns1"] }]);
     });
   });
 
   describe("useGetRoleBindings", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetRoleBindings({ context: "", namespace: "ns1" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetRoleBindings({ context: "", namespaces: ["ns1"] }),
+        {
+          wrapper,
+        }
+      );
       expect(result.current.fetchStatus).toBe("idle");
       expect(listRoleBindingsMock).not.toHaveBeenCalled();
     });
@@ -887,7 +935,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetRoleBindings({ context: "ctx", namespace: "ns1" }),
+        () => useGetRoleBindings({ context: "ctx", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -898,11 +946,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetRoleBindings({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetRoleBindings({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
       expect(cache[0].queryKey).toEqual([
         QUERY_KEY_ROLE_BINDINGS,
-        { context: "ctx", namespace: "ns1" },
+        { context: "ctx", namespaces: ["ns1"] },
       ]);
     });
   });
@@ -910,7 +958,7 @@ describe("Namespace-scoped list hooks", () => {
   describe("useGetHPAs", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetHPAs({ context: "", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetHPAs({ context: "", namespaces: ["ns1"] }), {
         wrapper,
       });
       expect(result.current.fetchStatus).toBe("idle");
@@ -919,7 +967,7 @@ describe("Namespace-scoped list hooks", () => {
 
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetHPAs({ context: "ctx", namespace: "ns1" }), {
+      const { result } = renderHook(() => useGetHPAs({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -928,9 +976,9 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetHPAs({ context: "ctx", namespace: "ns1" }), { wrapper });
+      renderHook(() => useGetHPAs({ context: "ctx", namespaces: ["ns1"] }), { wrapper });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_HPAS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([QUERY_KEY_HPAS, { context: "ctx", namespaces: ["ns1"] }]);
     });
   });
 
@@ -938,7 +986,7 @@ describe("Namespace-scoped list hooks", () => {
     it("is disabled when context is empty", () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetPodDisruptionBudgets({ context: "", namespace: "ns1" }),
+        () => useGetPodDisruptionBudgets({ context: "", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -950,7 +998,7 @@ describe("Namespace-scoped list hooks", () => {
     it("fetches when context is provided", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetPodDisruptionBudgets({ context: "ctx", namespace: "ns1" }),
+        () => useGetPodDisruptionBudgets({ context: "ctx", namespaces: ["ns1"] }),
         {
           wrapper,
         }
@@ -961,11 +1009,11 @@ describe("Namespace-scoped list hooks", () => {
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetPodDisruptionBudgets({ context: "ctx", namespace: "ns1" }), {
+      renderHook(() => useGetPodDisruptionBudgets({ context: "ctx", namespaces: ["ns1"] }), {
         wrapper,
       });
       const cache = client.getQueryCache().findAll();
-      expect(cache[0].queryKey).toEqual([QUERY_KEY_PDBS, { context: "ctx", namespace: "ns1" }]);
+      expect(cache[0].queryKey).toEqual([QUERY_KEY_PDBS, { context: "ctx", namespaces: ["ns1"] }]);
     });
   });
 });

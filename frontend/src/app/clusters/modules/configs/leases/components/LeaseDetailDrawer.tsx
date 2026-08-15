@@ -139,7 +139,7 @@ const LeaseEventsTab: FC<{ lease: Lease }> = ({ lease }) => {
 
   const { data: events = [] } = useGetEvents({
     context: activeContext,
-    namespace: lease.Namespace,
+    namespaces: [lease.Namespace],
   });
   const leaseEvents = events.filter(
     (e) =>

@@ -132,7 +132,7 @@ const NamespaceDrawerCtaButtons: FC<NamespaceDrawerCtaButtonsProps> = ({ name, o
 const NamespaceEventsTab: FC<{ ns: Namespace }> = ({ ns }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const nsEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "namespace" && e.InvolvedObjectName === ns.Name
   );

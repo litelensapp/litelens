@@ -37,8 +37,8 @@ import type { Job } from "../api/resources";
 import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
 import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { JobConditionBadge } from "./JobConditionBadge";
-import { JobResumedBadge } from "./JobResumedBadge";
 import { JobDeleteConfirmationModal } from "./JobDeleteConfirmationModal";
+import { JobResumedBadge } from "./JobResumedBadge";
 
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
@@ -168,7 +168,7 @@ const JobPodsTab: FC<{ j: Job }> = ({ j }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
-  const { data: allPods = [] } = useGetPods({ context: activeContext, namespace: j.Namespace });
+  const { data: allPods = [] } = useGetPods({ context: activeContext, namespaces: [j.Namespace] });
   const pods = allPods
     .filter(
       (p) =>
@@ -291,7 +291,7 @@ const JobDrawerCtaButtons: FC<JobDrawerCtaButtonsProps> = ({ jobName, jobNamespa
 const JobEventsTab: FC<{ j: Job }> = ({ j }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: j.Namespace });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [j.Namespace] });
   const jobEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "job" &&

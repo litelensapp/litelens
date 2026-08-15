@@ -279,7 +279,7 @@ const EndpointSliceEventsTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
 
   const { data: events = [] } = useGetEvents({
     context: activeContext,
-    namespace: slice.Namespace,
+    namespaces: [slice.Namespace],
   });
   const sliceEvents = events.filter(
     (e) =>

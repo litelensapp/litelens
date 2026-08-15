@@ -173,7 +173,7 @@ const NodeInfoTab: FC<{ node: Node }> = ({ node }) => {
 const NodeEventsTab: FC<{ node: Node }> = ({ node }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const nodeEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "node" && e.InvolvedObjectName === node.Name
   );
@@ -189,7 +189,7 @@ const NodePodsTab: FC<{ node: Node }> = ({ node }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
-  const { data: pods = [] } = useGetPods({ context: activeContext, namespace: "" });
+  const { data: pods = [] } = useGetPods({ context: activeContext, namespaces: [] });
   const nodePods = pods
     .filter((p) => p.NodeName === node.Name)
     .toSorted((a, b) => a.Name.localeCompare(b.Name));

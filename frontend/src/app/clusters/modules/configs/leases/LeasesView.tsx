@@ -78,11 +78,11 @@ export const LeasesView: FC = () => {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleLease } = useDetailDrawerContext();
   const { mutate: deleteBulk, isPending: isDeleteBulkPending } = useDeleteLeases();
 
-  const { data: raw = [], isLoading } = useGetLeases({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetLeases({ context: activeContext, namespaces });
 
   const leases = raw
     .filter((l) => !search || l.Name.toLowerCase().includes(search.toLowerCase()))
@@ -166,7 +166,7 @@ export const LeasesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Holder</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
@@ -176,13 +176,13 @@ export const LeasesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 3 : 4}
+              columns={namespaces.length !== 1 ? 4 : 3}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[45%]", "w-[30%]"]}
             />
           ) : leases.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 5 : 6} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 6 : 5} className="px-0 py-0">
                 <EmptyState
                   icon={<ClockIcon className="size-8" />}
                   title="No Leases"
@@ -209,7 +209,7 @@ export const LeasesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{lease.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell>
                       <span className="text-xs">
                         <ResourceLink

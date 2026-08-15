@@ -70,18 +70,24 @@ describe("List hook edge cases", () => {
     it("initialises a new query entry when context changes", async () => {
       const { client, wrapper } = makeWrapper();
       const { rerender } = renderHook(
-        ({ ctx }: { ctx: string }) => useGetDeployments({ context: ctx, namespace: "ns" }),
+        ({ ctx }: { ctx: string }) => useGetDeployments({ context: ctx, namespaces: ["ns"] }),
         { wrapper, initialProps: { ctx: "cluster-a" } }
       );
       await waitFor(() => {
         expect(
-          client.getQueryState([QUERY_KEY_DEPLOYMENTS, { context: "cluster-a", namespace: "ns" }])
+          client.getQueryState([
+            QUERY_KEY_DEPLOYMENTS,
+            { context: "cluster-a", namespaces: ["ns"] },
+          ])
         ).toBeDefined();
       });
       rerender({ ctx: "cluster-b" });
       await waitFor(() => {
         expect(
-          client.getQueryState([QUERY_KEY_DEPLOYMENTS, { context: "cluster-b", namespace: "ns" }])
+          client.getQueryState([
+            QUERY_KEY_DEPLOYMENTS,
+            { context: "cluster-b", namespaces: ["ns"] },
+          ])
         ).toBeDefined();
       });
     });
@@ -90,7 +96,7 @@ describe("List hook edge cases", () => {
   describe("5. Disabled state — queryFn not called when context is empty", () => {
     it("does not invoke ListDeployments when context is empty string", async () => {
       const { wrapper } = makeWrapper();
-      renderHook(() => useGetDeployments({ context: "", namespace: "ns" }), { wrapper });
+      renderHook(() => useGetDeployments({ context: "", namespaces: ["ns"] }), { wrapper });
       await new Promise((r) => setTimeout(r, 20));
       expect(listDeploymentsMock).not.toHaveBeenCalled();
     });
@@ -110,7 +116,7 @@ describe("List hook edge cases", () => {
       const { result } = renderHook(
         () =>
           useGetDeployments(
-            { context: "ctx", namespace: "" },
+            { context: "ctx", namespaces: [] },
             { select: (data) => (data ?? []).slice(0, 1) }
           ),
         { wrapper }

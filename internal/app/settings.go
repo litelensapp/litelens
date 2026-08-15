@@ -215,6 +215,24 @@ func (a *App) SaveClusterProxy(contextName string, proxy config.ClusterProxy) er
 	return config.Save(a.settings)
 }
 
+// GetDefaultNamespaces returns the persisted default namespace filter for a specific cluster context.
+func (a *App) GetDefaultNamespaces(contextName string) []string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.settings.ClusterDefaultNamespaces[contextName]
+}
+
+// SaveDefaultNamespaces persists the default namespace filter for a specific cluster context.
+func (a *App) SaveDefaultNamespaces(contextName string, namespaces []string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.settings.ClusterDefaultNamespaces == nil {
+		a.settings.ClusterDefaultNamespaces = make(map[string][]string)
+	}
+	a.settings.ClusterDefaultNamespaces[contextName] = namespaces
+	return config.Save(a.settings)
+}
+
 // GetSettings returns the persisted application settings. The first time the
 // app runs (MarketplaceRepositories has never been persisted, i.e. still nil),
 // the default marketplace source (config.GetMarketplaceBaseURL(), normally the

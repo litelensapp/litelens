@@ -83,12 +83,12 @@ export const HPAView: FC = () => {
   const [selectedHPAIds, setSelectedHPAIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleHPADetail } = useDetailDrawerContext();
 
   const { mutate: deleteHPAs, isPending: isBulkDeletePending } = useDeleteHPAs();
 
-  const { data: raw = [], isLoading } = useGetHPAs({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetHPAs({ context: activeContext, namespaces });
 
   const hpas = raw
     .filter((h) => !search || h.Name.toLowerCase().includes(search.toLowerCase()))
@@ -144,7 +144,7 @@ export const HPAView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Metrics</TableHead>
             <TableHead>Min Pods</TableHead>
             <TableHead>Max Pods</TableHead>
@@ -158,7 +158,7 @@ export const HPAView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 6 : 7}
+              columns={namespaces.length !== 1 ? 7 : 6}
               includeCheckbox={true}
               columnWidths={[
                 "w-[65%]",
@@ -172,7 +172,7 @@ export const HPAView: FC = () => {
             />
           ) : hpas.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 9 : 10} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 10 : 9} className="px-0 py-0">
                 <EmptyState
                   icon={<ScalingIcon className="size-8" />}
                   title="No HorizontalPodAutoscalers"
@@ -201,7 +201,7 @@ export const HPAView: FC = () => {
                   />
                 </TableCell>
                 <TableCell className="font-mono text-xs">{h.Name}</TableCell>
-                {!namespace && (
+                {namespaces.length !== 1 && (
                   <TableCell className="text-xs">
                     <ResourceLink
                       onClick={(e) => {

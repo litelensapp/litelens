@@ -119,12 +119,12 @@ export const ReplicaSetsView: FC = () => {
   const [selectedReplicaSetIds, setSelectedReplicaSetIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext();
 
   const { mutate: deleteReplicaSets, isPending: isBulkDeletePending } = useDeleteReplicaSets();
 
-  const { data: raw = [], isLoading } = useGetReplicaSets({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetReplicaSets({ context: activeContext, namespaces });
 
   const replicasets = useMemo(
     () =>
@@ -189,7 +189,7 @@ export const ReplicaSetsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Desired</TableHead>
             <TableHead>Current</TableHead>
             <TableHead>Ready</TableHead>
@@ -201,13 +201,13 @@ export const ReplicaSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 4 : 5}
+              columns={namespaces.length !== 1 ? 5 : 4}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[30%]", "w-[30%]"]}
             />
           ) : replicasets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 7 : 8} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
                   icon={<CopyIcon className="size-8" />}
                   title="No ReplicaSets"
@@ -238,7 +238,7 @@ export const ReplicaSetsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{rs.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

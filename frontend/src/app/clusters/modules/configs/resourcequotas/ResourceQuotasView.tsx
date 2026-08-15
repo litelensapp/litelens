@@ -29,6 +29,7 @@ import { useDeleteResourceQuotas } from "./hooks/data-mutation/useDeleteResource
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { getEffectiveNamespace } from "../../../shared/utils/namespaceFiltering";
 import { ResourceQuotaCreationModal } from "./components/ResourceQuotaCreationModal";
 import { ResourceQuotaDeleteConfirmationModal } from "./components/ResourceQuotaDeleteConfirmationModal";
 
@@ -90,13 +91,16 @@ export const ResourceQuotasView: FC = () => {
   const [selectedResourceQuotaIds, setSelectedResourceQuotaIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleResourceQuotaDetail } = useDetailDrawerContext();
 
   const { mutate: deleteResourceQuotas, isPending: isBulkDeletePending } =
     useDeleteResourceQuotas();
 
-  const { data: raw = [], isLoading } = useGetResourceQuotas({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetResourceQuotas({
+    context: activeContext,
+    namespaces,
+  });
 
   const quotas = raw
     .filter((rq) => !search || rq.Name.toLowerCase().includes(search.toLowerCase()))
@@ -158,7 +162,7 @@ export const ResourceQuotasView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -167,13 +171,13 @@ export const ResourceQuotasView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 2 : 3}
+              columns={namespaces.length !== 1 ? 3 : 2}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
           ) : quotas.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 4 : 5} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
                   icon={<GaugeIcon className="size-8" />}
                   title="No Resource Quotas"
@@ -209,7 +213,7 @@ export const ResourceQuotasView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{rq.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {
@@ -263,7 +267,7 @@ export const ResourceQuotasView: FC = () => {
       <ResourceQuotaCreationModal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        activeNamespace={namespace ?? ""}
+        activeNamespace={getEffectiveNamespace(namespaces)}
         activeContext={activeContext}
       />
     </div>

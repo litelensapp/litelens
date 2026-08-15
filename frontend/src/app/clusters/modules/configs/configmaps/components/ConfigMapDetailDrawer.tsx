@@ -444,7 +444,10 @@ const ConfigMapDrawerCtaButtons: FC<ConfigMapDrawerCtaButtonsProps> = ({
 const ConfigMapEventsTab: FC<{ cm: ConfigMap }> = ({ cm }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: cm.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [cm.Namespace],
+  });
   const cmEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "configmap" &&

@@ -79,12 +79,12 @@ export const RolesView: FC = () => {
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleRoleDetail } = useDetailDrawerContext();
 
   const { mutate: deleteRoles, isPending: isBulkDeletePending } = useDeleteRoles();
 
-  const { data: raw = [], isLoading } = useGetRoles({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetRoles({ context: activeContext, namespaces });
 
   const roles = raw
     .filter((r) => !search || r.Name.toLowerCase().includes(search.toLowerCase()))
@@ -141,7 +141,7 @@ export const RolesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -150,13 +150,13 @@ export const RolesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 2 : 3}
+              columns={namespaces.length !== 1 ? 3 : 2}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
           ) : roles.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 4 : 5} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
                   icon={<ShieldIcon className="size-8" />}
                   title="No Roles"
@@ -187,7 +187,7 @@ export const RolesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{r.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

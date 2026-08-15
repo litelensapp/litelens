@@ -127,7 +127,7 @@ const DeploymentTableCtaButtons: FC<DeploymentTableCtaButtonsProps> = ({
 };
 
 export const DeploymentsView: FC = () => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleDeploymentDetail } = useDetailDrawerContext();
 
   const [search, setSearch] = useState("");
@@ -137,7 +137,7 @@ export const DeploymentsView: FC = () => {
 
   const { mutate: deleteDeployments, isPending: isBulkDeletePending } = useDeleteDeployments();
 
-  const { data: raw = [], isLoading } = useGetDeployments({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetDeployments({ context: activeContext, namespaces });
 
   const deployments = useMemo(
     () =>
@@ -198,7 +198,7 @@ export const DeploymentsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Pods</TableHead>
             <TableHead>Replicas</TableHead>
             <TableHead>Age</TableHead>
@@ -210,13 +210,13 @@ export const DeploymentsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 5 : 6}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]", "w-[45%]"]}
             />
           ) : deployments.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 7 : 8} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
                   icon={<PackageIcon className="size-8" />}
                   title="No Deployments"
@@ -247,7 +247,7 @@ export const DeploymentsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{dep.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

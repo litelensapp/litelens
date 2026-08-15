@@ -171,7 +171,7 @@ const ValidatingWebhookConfigOverviewTab: FC<{ vwc: ValidatingWebhookConfigDetai
 
 const ValidatingWebhookConfigEventsTab: FC<{ vwc: ValidatingWebhookConfigDetail }> = ({ vwc }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "default" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const vwcEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "validatingwebhookconfiguration" &&

@@ -756,7 +756,10 @@ const PodOverviewTab: FC<{
 const PodEventsTab: FC<{ pod: Pod }> = ({ pod }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: pod.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [pod.Namespace],
+  });
   const podEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "pod" &&

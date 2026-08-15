@@ -5,17 +5,23 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_RESOURCE_QUOTAS } from "../../api/api.const";
 import type { ResourceQuota } from "../../api/resources";
 import { ListResourceQuotas } from "../../api/resources";
+import {
+  getEffectiveNamespace,
+  filterByNamespaces,
+} from "../../../../../shared/utils/namespaceFiltering";
 import { useResourceQuotasUpdateEvents } from "../async-events/useResourceQuotasUpdateEvents";
 
 export const useGetResourceQuotas = (
-  input: { context: string; namespace: string },
+  input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<ResourceQuota[]>
 ) => {
-  const { context, namespace } = input;
-  const latestResourceQuotas = useResourceQuotasUpdateEvents(namespace);
+  const { context, namespaces } = input;
+  const effectiveNamespace = getEffectiveNamespace(namespaces);
+  const latestResourceQuotas = useResourceQuotasUpdateEvents(effectiveNamespace);
+
   const query = useQuery<ResourceQuota[], Error>({
-    queryKey: [QUERY_KEY_RESOURCE_QUOTAS, { context, namespace }],
-    queryFn: () => ListResourceQuotas(namespace),
+    queryKey: [QUERY_KEY_RESOURCE_QUOTAS, { context, namespaces }],
+    queryFn: () => ListResourceQuotas(effectiveNamespace),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
@@ -23,12 +29,9 @@ export const useGetResourceQuotas = (
   const mergedData = useMemo(() => {
     let baseData = query.data;
     if (latestResourceQuotas.length)
-      baseData =
-        namespace === ""
-          ? latestResourceQuotas
-          : latestResourceQuotas.filter((rq) => rq.Namespace === namespace);
+      baseData = filterByNamespaces(latestResourceQuotas, namespaces);
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestResourceQuotas, query.data, namespace, callback]);
+  }, [latestResourceQuotas, query.data, namespaces, callback]);
 
   return { ...query, data: mergedData };
 };

@@ -85,12 +85,12 @@ export const ServicesView: FC = () => {
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleServiceDetail } = useDetailDrawerContext();
 
   const { mutate: deleteServices, isPending: isBulkDeletePending } = useDeleteServices();
 
-  const { data: raw = [], isLoading } = useGetServices({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetServices({ context: activeContext, namespaces });
 
   const services = raw
     .filter((svc) => !search || svc.Name.toLowerCase().includes(search.toLowerCase()))
@@ -147,7 +147,7 @@ export const ServicesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Type</TableHead>
             <TableHead>Cluster IP</TableHead>
             <TableHead>Ports</TableHead>
@@ -162,7 +162,7 @@ export const ServicesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 8 : 9}
+              columns={namespaces.length !== 1 ? 9 : 8}
               includeCheckbox={true}
               columnWidths={[
                 "w-[65%]",
@@ -199,7 +199,7 @@ export const ServicesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{svc.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell>
                       <ResourceLink
                         onClick={(e) => {
@@ -239,7 +239,7 @@ export const ServicesView: FC = () => {
           )}
           {services.length === 0 && !isLoading && (
             <TableRow>
-              <TableCell colSpan={namespace ? 10 : 11} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 11 : 10} className="px-0 py-0">
                 <EmptyState
                   icon={<NetworkIcon className="size-8" />}
                   title="No Services"

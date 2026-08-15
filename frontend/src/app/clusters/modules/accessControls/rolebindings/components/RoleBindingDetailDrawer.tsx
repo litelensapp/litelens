@@ -175,7 +175,10 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
 const RoleBindingEventsTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: rb.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [rb.Namespace],
+  });
   const rbEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "rolebinding" &&

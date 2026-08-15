@@ -84,7 +84,7 @@ const PodDisruptionBudgetTableCtaButtons: FC<PodDisruptionBudgetTableCtaButtonsP
 };
 
 export const PodDisruptionBudgetsView: FC = () => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDisruptionBudgetDetail } = useDetailDrawerContext();
 
   const [search, setSearch] = useState("");
@@ -96,7 +96,7 @@ export const PodDisruptionBudgetsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetPodDisruptionBudgets({
     context: activeContext,
-    namespace,
+    namespaces,
   });
 
   const pdbs = raw
@@ -153,7 +153,7 @@ export const PodDisruptionBudgetsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Min Available</TableHead>
             <TableHead>Max Unavailable</TableHead>
             <TableHead>Current Healthy</TableHead>
@@ -166,13 +166,13 @@ export const PodDisruptionBudgetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 5 : 6}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[35%]", "w-[35%]", "w-[35%]"]}
             />
           ) : pdbs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 8 : 9} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
                   icon={<ShieldAlertIcon className="size-8" />}
                   title="No PodDisruptionBudgets"
@@ -201,7 +201,7 @@ export const PodDisruptionBudgetsView: FC = () => {
                   />
                 </TableCell>
                 <TableCell className="font-mono text-xs">{p.Name}</TableCell>
-                {!namespace && (
+                {namespaces.length !== 1 && (
                   <TableCell className="text-xs">
                     <ResourceLink
                       onClick={(e) => {

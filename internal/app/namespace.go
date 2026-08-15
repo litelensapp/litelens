@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -90,6 +91,31 @@ func (a *App) GetNamespaces() ([]string, error) {
 	names := make([]string, len(nsDTOs))
 	for i, ns := range nsDTOs {
 		names[i] = ns.Name
+	}
+	return names, nil
+}
+
+// GetNamespacesForContext returns namespace names for an arbitrary context via a
+// direct (non-cached) API call, independent of whether that context is currently
+// connected — unlike GetNamespaces, which only serves the active connected context
+// from its informer cache.
+func (a *App) GetNamespacesForContext(contextName string) ([]string, error) {
+	a.mu.RLock()
+	proxy := a.settings.ClusterProxies[contextName]
+	kubeconfigPaths := a.settings.KubeconfigPaths
+	a.mu.RUnlock()
+
+	cs, _, err := kube.NewClientset(contextName, proxy.HttpProxy, proxy.HttpsProxy, kubeconfigPaths)
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(list.Items))
+	for _, ns := range list.Items {
+		names = append(names, ns.Name)
 	}
 	return names, nil
 }

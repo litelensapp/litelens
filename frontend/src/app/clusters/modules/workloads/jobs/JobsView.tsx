@@ -80,7 +80,7 @@ const JobTableCtaButtons: FC<JobTableCtaButtonsProps> = ({ namespace, name }) =>
 };
 
 export const JobsView: FC = () => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleJobDetail } = useDetailDrawerContext();
 
   const [search, setSearch] = useState("");
@@ -89,7 +89,7 @@ export const JobsView: FC = () => {
 
   const { mutate: deleteJobs, isPending: isBulkDeletePending } = useDeleteJobs();
 
-  const { data: raw = [], isLoading } = useGetJobs({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetJobs({ context: activeContext, namespaces });
 
   const jobs = useMemo(
     () =>
@@ -149,7 +149,7 @@ export const JobsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Resumed</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Succeeded</TableHead>
@@ -164,7 +164,7 @@ export const JobsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 7 : 8}
+              columns={namespaces.length !== 1 ? 8 : 7}
               includeCheckbox={true}
               columnWidths={[
                 "w-[65%]",
@@ -179,7 +179,7 @@ export const JobsView: FC = () => {
             />
           ) : jobs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 10 : 11} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 11 : 10} className="px-0 py-0">
                 <EmptyState
                   icon={<ListChecksIcon className="size-8" />}
                   title="No Jobs"
@@ -209,7 +209,7 @@ export const JobsView: FC = () => {
                   />
                 </TableCell>
                 <TableCell className="font-mono text-xs">{j.Name}</TableCell>
-                {!namespace && (
+                {namespaces.length !== 1 && (
                   <TableCell className="text-xs">
                     <ResourceLink
                       onClick={(e) => {

@@ -83,7 +83,7 @@ const PriorityClassOverviewTab: FC<{ pc: PriorityClass }> = ({ pc }) => {
 const PriorityClassEventsTab: FC<{ pc: PriorityClass }> = ({ pc }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const pcEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "priorityclass" && e.InvolvedObjectName === pc.Name

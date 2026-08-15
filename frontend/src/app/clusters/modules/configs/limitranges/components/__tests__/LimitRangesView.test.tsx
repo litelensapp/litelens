@@ -63,12 +63,12 @@ beforeEach(() => {
   useGetLimitRangesMock.mockReturnValue({ data: [] });
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
   } as unknown as ReturnType<typeof useDetailDrawerContext>);
 });

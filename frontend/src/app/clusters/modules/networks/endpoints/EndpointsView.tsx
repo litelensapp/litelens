@@ -83,12 +83,12 @@ export const EndpointsView: FC = () => {
   const [selectedEndpointIds, setSelectedEndpointIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleEndpointDetail } = useDetailDrawerContext();
 
   const { mutate: deleteEndpoints, isPending: isBulkDeletePending } = useDeleteEndpoints();
 
-  const { data: raw = [], isLoading } = useGetEndpoints({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetEndpoints({ context: activeContext, namespaces });
 
   const endpoints = raw
     .filter((ep) => !search || ep.Name.toLowerCase().includes(search.toLowerCase()))
@@ -145,7 +145,7 @@ export const EndpointsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Endpoints</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
@@ -155,7 +155,7 @@ export const EndpointsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 3 : 4}
+              columns={namespaces.length !== 1 ? 4 : 3}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[60%]", "w-[30%]"]}
             />
@@ -163,7 +163,7 @@ export const EndpointsView: FC = () => {
             <>
               {endpoints.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={namespace ? 5 : 6} className="px-0 py-0">
+                  <TableCell colSpan={namespaces.length !== 1 ? 6 : 5} className="px-0 py-0">
                     <EmptyState
                       icon={<RouteIcon className="size-8" />}
                       title="No Endpoints"
@@ -194,7 +194,7 @@ export const EndpointsView: FC = () => {
                       />
                     </TableCell>
                     <TableCell className="font-mono text-xs">{ep.Name}</TableCell>
-                    {!namespace && (
+                    {namespaces.length !== 1 && (
                       <TableCell className="text-xs">
                         <ResourceLink
                           onClick={(e) => {

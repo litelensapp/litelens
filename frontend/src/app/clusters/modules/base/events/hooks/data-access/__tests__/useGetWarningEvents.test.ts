@@ -74,7 +74,7 @@ describe("useGetWarningEvents", () => {
   it("is disabled when context is empty", () => {
     const { wrapper } = makeWrapper();
     const { result } = renderHook(
-      () => useGetWarningEvents({ context: "", namespace: "default" }),
+      () => useGetWarningEvents({ context: "", namespaces: ["default"] }),
       { wrapper }
     );
     expect(result.current.fetchStatus).toBe("idle");
@@ -84,7 +84,7 @@ describe("useGetWarningEvents", () => {
   it("fetches when context is provided", async () => {
     const { wrapper } = makeWrapper();
     const { result } = renderHook(
-      () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+      () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -93,13 +93,13 @@ describe("useGetWarningEvents", () => {
 
   it("uses correct queryKey with context, namespace, and triggerRefresh", async () => {
     const { wrapper, client } = makeWrapper();
-    renderHook(() => useGetWarningEvents({ context: "ctx", namespace: "default" }), { wrapper });
+    renderHook(() => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }), { wrapper });
 
     await waitFor(() => {
       const cache = client.getQueryCache().findAll();
       const queryKey = cache[0].queryKey;
       expect(queryKey[0]).toBe(QUERY_KEY_WARNING_EVENTS);
-      expect(queryKey[1]).toEqual({ context: "ctx", namespace: "default" });
+      expect(queryKey[1]).toEqual({ context: "ctx", namespaces: ["default"] });
       expect(typeof queryKey[2]).toBe("boolean");
     });
   });
@@ -114,7 +114,7 @@ describe("useGetWarningEvents", () => {
     listWarningEventsMock.mockResolvedValue(events);
 
     const { result } = renderHook(
-      () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+      () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -131,7 +131,7 @@ describe("useGetWarningEvents", () => {
     listWarningEventsMock.mockResolvedValueOnce(initialEvents);
 
     const { result, rerender } = renderHook(
-      () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+      () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -155,7 +155,7 @@ describe("useGetWarningEvents", () => {
 
   it("queryKey changes when triggerRefresh toggles", async () => {
     const { wrapper, client } = makeWrapper();
-    renderHook(() => useGetWarningEvents({ context: "ctx", namespace: "default" }), { wrapper });
+    renderHook(() => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }), { wrapper });
 
     const initialCache = client.getQueryCache().findAll();
     const initialKey = initialCache[0].queryKey;
@@ -167,7 +167,7 @@ describe("useGetWarningEvents", () => {
       const cache = client.getQueryCache().findAll();
       const newKey = cache[cache.length - 1].queryKey;
       expect(newKey[0]).toBe(QUERY_KEY_WARNING_EVENTS);
-      expect(newKey[1]).toEqual({ context: "ctx", namespace: "default" });
+      expect(newKey[1]).toEqual({ context: "ctx", namespaces: ["default"] });
       expect(newKey[2]).not.toBe(initialTrigger);
     });
   });
@@ -175,7 +175,7 @@ describe("useGetWarningEvents", () => {
   it("fetches namespace-scoped warning events", async () => {
     const { wrapper } = makeWrapper();
     const { result } = renderHook(
-      () => useGetWarningEvents({ context: "ctx", namespace: "kube-system" }),
+      () => useGetWarningEvents({ context: "ctx", namespaces: ["kube-system"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -187,7 +187,7 @@ describe("useGetWarningEvents", () => {
     listWarningEventsMock.mockResolvedValue([]);
 
     const { result } = renderHook(
-      () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+      () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));

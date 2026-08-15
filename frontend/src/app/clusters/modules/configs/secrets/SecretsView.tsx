@@ -84,12 +84,12 @@ export const SecretsView: FC = () => {
   const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext();
 
   const { mutate: deleteSecrets, isPending: isBulkDeletePending } = useDeleteSecrets();
 
-  const { data: raw = [], isLoading } = useGetSecrets({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetSecrets({ context: activeContext, namespaces });
 
   const secrets = raw
     .filter((s) => !search || s.Name.toLowerCase().includes(search.toLowerCase()))
@@ -146,7 +146,7 @@ export const SecretsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Labels</TableHead>
             <TableHead>Keys</TableHead>
             <TableHead>Type</TableHead>
@@ -158,13 +158,13 @@ export const SecretsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 5 : 6}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[35%]", "w-[30%]", "w-[30%]"]}
             />
           ) : secrets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 7 : 8} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
                   icon={<LockIcon className="size-8" />}
                   title="No Secrets"
@@ -195,7 +195,7 @@ export const SecretsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{s.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

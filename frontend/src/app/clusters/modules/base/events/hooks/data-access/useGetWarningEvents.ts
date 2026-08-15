@@ -1,18 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
+import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_WARNING_EVENTS } from "../../api/api.const";
 import type { Event } from "../../api/resources";
 import { ListWarningEvents } from "../../api/resources";
+import { getEffectiveNamespace } from "../../../../../shared/utils/namespaceFiltering";
 import { useWarningEventsUpdateEvents } from "../async-events/useWarningEventsUpdateEvents";
 
-export const useGetWarningEvents = (input: { context: string; namespace: string }) => {
-  const { context, namespace } = input;
-  const triggerRefresh = useWarningEventsUpdateEvents(namespace);
+export const useGetWarningEvents = (input: { context: string; namespaces: string[] }) => {
+  const { context, namespaces } = input;
+  const effectiveNamespace = getEffectiveNamespace(namespaces);
+  const triggerRefresh = useWarningEventsUpdateEvents(effectiveNamespace);
 
   return useQuery<Event[], Error>({
-    queryKey: [QUERY_KEY_WARNING_EVENTS, { context, namespace }, triggerRefresh],
+    queryKey: [QUERY_KEY_WARNING_EVENTS, { context, namespaces }, triggerRefresh],
     queryFn: () =>
-      ListWarningEvents(namespace).then((events) =>
+      ListWarningEvents(effectiveNamespace).then((events) =>
         events.toSorted((a, b) => b.CreatedAt - a.CreatedAt)
       ),
     ...DEFAULT_QUERY_OPTIONS,

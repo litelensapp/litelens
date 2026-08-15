@@ -99,7 +99,7 @@ const PodTableCtaButtons: FC<PodTableCtaButtonsProps> = ({ name, namespace, onLo
 };
 
 export const PodsView: FC = () => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
   const resourceLinks = useResourceLinks();
@@ -123,7 +123,7 @@ export const PodsView: FC = () => {
     });
   };
 
-  const { data: raw = [], isLoading } = useGetPods({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetPods({ context: activeContext, namespaces });
 
   const pods = useMemo(
     () =>
@@ -184,7 +184,7 @@ export const PodsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Containers</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Restarts</TableHead>
@@ -201,7 +201,7 @@ export const PodsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={!namespace ? 11 : 10}
+              columns={namespaces.length !== 1 ? 11 : 10}
               includeCheckbox={true}
               columnWidths={[
                 "w-[65%]",
@@ -219,7 +219,7 @@ export const PodsView: FC = () => {
             />
           ) : pods.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={!namespace ? 13 : 12} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 13 : 12} className="px-0 py-0">
                 <EmptyState
                   icon={<ContainerIcon className="size-8" />}
                   title="No Pods"
@@ -252,7 +252,7 @@ export const PodsView: FC = () => {
                   <TableCell>
                     <TruncatedText text={pod.Name} />
                   </TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

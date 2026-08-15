@@ -103,7 +103,7 @@ export const ServiceAccountsView: FC = () => {
     open: false,
   });
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
   const { mutate: deleteServiceAccounts, isPending: isBulkDeletePending } =
@@ -111,7 +111,7 @@ export const ServiceAccountsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetServiceAccounts({
     context: activeContext,
-    namespace,
+    namespaces,
   });
 
   const serviceAccounts = raw
@@ -171,7 +171,7 @@ export const ServiceAccountsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -180,13 +180,13 @@ export const ServiceAccountsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 2 : 3}
+              columns={namespaces.length !== 1 ? 3 : 2}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
           ) : serviceAccounts.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 4 : 5} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
                   icon={<UserRoundIcon className="size-8" />}
                   title="No ServiceAccounts"
@@ -219,7 +219,7 @@ export const ServiceAccountsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{sa.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

@@ -5,28 +5,33 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_PVCS } from "../../api/api.const";
 import type { PersistentVolumeClaim } from "../../api/resources";
 import { ListPersistentVolumeClaims } from "../../api/resources";
+import {
+  getEffectiveNamespace,
+  filterByNamespaces,
+} from "../../../../../shared/utils/namespaceFiltering";
 import { usePersistentVolumeClaimsUpdateEvents } from "../async-events/usePersistentVolumeClaimsUpdateEvents";
 
 export const useGetPersistentVolumeClaims = (
-  input: { context: string; namespace: string },
+  input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<PersistentVolumeClaim[]>
 ) => {
-  const { context, namespace } = input;
-  const latestPVCs = usePersistentVolumeClaimsUpdateEvents(namespace);
+  const { context, namespaces } = input;
+  const effectiveNamespace = getEffectiveNamespace(namespaces);
+  const latestPersistentVolumeClaims = usePersistentVolumeClaimsUpdateEvents(effectiveNamespace);
+
   const query = useQuery<PersistentVolumeClaim[], Error>({
-    queryKey: [QUERY_KEY_PVCS, { context, namespace }],
-    queryFn: () => ListPersistentVolumeClaims(namespace),
+    queryKey: [QUERY_KEY_PVCS, { context, namespaces }],
+    queryFn: () => ListPersistentVolumeClaims(effectiveNamespace),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
   const mergedData = useMemo(() => {
     let baseData = query.data;
-    if (latestPVCs.length)
-      baseData =
-        namespace === "" ? latestPVCs : latestPVCs.filter((pvc) => pvc.Namespace === namespace);
+    if (latestPersistentVolumeClaims.length)
+      baseData = filterByNamespaces(latestPersistentVolumeClaims, namespaces);
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestPVCs, query.data, namespace, callback]);
+  }, [latestPersistentVolumeClaims, query.data, namespaces, callback]);
 
   return { ...query, data: mergedData };
 };

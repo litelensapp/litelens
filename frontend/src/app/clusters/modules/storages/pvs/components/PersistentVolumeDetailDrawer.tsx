@@ -117,7 +117,7 @@ const PersistentVolumeOverviewTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv })
 
 const PersistentVolumeEventsTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const pvEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "persistentvolume" && e.InvolvedObjectName === pv.Name

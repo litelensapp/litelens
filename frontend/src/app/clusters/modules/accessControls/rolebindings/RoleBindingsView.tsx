@@ -83,13 +83,13 @@ export const RoleBindingsView: FC = () => {
   const [selectedRoleBindingIds, setSelectedRoleBindingIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleRoleDetail, onToggleRoleBindingDetail } =
     useDetailDrawerContext();
 
   const { mutate: deleteRoleBindings, isPending: isBulkDeletePending } = useDeleteRoleBindings();
 
-  const { data: raw = [], isLoading } = useGetRoleBindings({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetRoleBindings({ context: activeContext, namespaces });
 
   const roleBindings = raw
     .filter((rb) => !search || rb.Name.toLowerCase().includes(search.toLowerCase()))
@@ -152,7 +152,7 @@ export const RoleBindingsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Role</TableHead>
             <TableHead>Types</TableHead>
             <TableHead>Bindings</TableHead>
@@ -164,13 +164,13 @@ export const RoleBindingsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 5 : 6}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[45%]", "w-[35%]", "w-[45%]", "w-[30%]"]}
             />
           ) : roleBindings.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 7 : 8} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
                   icon={<Link2Icon className="size-8" />}
                   title="No RoleBindings"
@@ -201,7 +201,7 @@ export const RoleBindingsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{rb.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="font-mono text-xs">
                       <ResourceLink
                         onClick={(e) => {

@@ -57,15 +57,15 @@ afterEach(() => {
   cleanup();
 });
 
-function renderView(context = "ctx", namespace = "") {
+function renderView(context = "ctx") {
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: context,
-    namespace,
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: context,
-    namespace,
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
   } as unknown as ReturnType<typeof useDetailDrawerContext>);
   return render(<IngressesView />, { wrapper: makeWrapper() });
@@ -76,12 +76,12 @@ beforeEach(() => {
   (useGetIngresses as ReturnType<typeof vi.fn>).mockReturnValue({ data: [] });
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "ctx",
-    namespace: "",
+    namespaces: "",
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: "ctx",
-    namespace: "",
+    namespaces: "",
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
   } as unknown as ReturnType<typeof useDetailDrawerContext>);
 });
@@ -247,7 +247,7 @@ describe("IngressesView — edge cases", () => {
     ];
     (useGetIngresses as ReturnType<typeof vi.fn>).mockReturnValue({ data: ingresses });
 
-    renderView("ctx", "");
+    renderView("ctx");
 
     // Both rows must appear — two cells with the shared name
     expect(screen.getAllByText("shared-ingress").length).toBeGreaterThanOrEqual(2);

@@ -28,6 +28,7 @@ import { useDeleteLimitRange } from "./hooks/data-mutation/useDeleteLimitRange";
 import { useDeleteLimitRanges } from "./hooks/data-mutation/useDeleteLimitRanges";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
+import { getEffectiveNamespace } from "../../../shared/utils/namespaceFiltering";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { LimitRangeCreationModal } from "./components/LimitRangeCreationModal";
 import { LimitRangeDeleteConfirmationModal } from "./components/LimitRangeDeleteConfirmationModal";
@@ -87,12 +88,12 @@ export const LimitRangesView: FC = () => {
   const [selectedLimitRangeIds, setSelectedLimitRangeIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleLimitRangeDetail } = useDetailDrawerContext();
 
   const { mutate: deleteLimitRanges, isPending: isBulkDeletePending } = useDeleteLimitRanges();
 
-  const { data: raw = [], isLoading } = useGetLimitRanges({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetLimitRanges({ context: activeContext, namespaces });
 
   const limitranges = raw
     .filter((lr) => !search || lr.Name.toLowerCase().includes(search.toLowerCase()))
@@ -158,7 +159,7 @@ export const LimitRangesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -167,13 +168,13 @@ export const LimitRangesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 2 : 3}
+              columns={namespaces.length !== 1 ? 3 : 2}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
           ) : limitranges.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 4 : 5} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
                   icon={<SlidersHorizontalIcon className="size-8" />}
                   title="No Limit Ranges"
@@ -209,7 +210,7 @@ export const LimitRangesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{lr.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {
@@ -263,7 +264,7 @@ export const LimitRangesView: FC = () => {
       <LimitRangeCreationModal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        activeNamespace={namespace ?? ""}
+        activeNamespace={getEffectiveNamespace(namespaces)}
         activeContext={activeContext}
       />
     </div>

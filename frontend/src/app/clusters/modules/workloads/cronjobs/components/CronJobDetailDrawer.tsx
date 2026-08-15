@@ -212,7 +212,7 @@ const CronJobDrawerCtaButtons: FC<CronJobDrawerCtaButtonsProps> = ({
 const CronJobJobsTab: FC<{ cj: CronJob }> = ({ cj }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleJobDetail } = useDetailDrawerContext();
-  const { data: allJobs = [] } = useGetJobs({ context: activeContext, namespace: cj.Namespace });
+  const { data: allJobs = [] } = useGetJobs({ context: activeContext, namespaces: [cj.Namespace] });
   const jobs = allJobs
     .filter((j) => {
       if (!j.Name.startsWith(cj.Name + "-") || j.Namespace !== cj.Namespace) return false;
@@ -269,7 +269,10 @@ const CronJobJobsTab: FC<{ cj: CronJob }> = ({ cj }) => {
 
 const CronJobEventsTab: FC<{ cj: CronJob }> = ({ cj }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: cj.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [cj.Namespace],
+  });
   const cronJobEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "cronjob" &&

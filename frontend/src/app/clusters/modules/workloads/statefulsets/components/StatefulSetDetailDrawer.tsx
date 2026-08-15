@@ -128,7 +128,7 @@ const StatefulSetPodsTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
-  const { data: allPods = [] } = useGetPods({ context: activeContext, namespace: ss.Namespace });
+  const { data: allPods = [] } = useGetPods({ context: activeContext, namespaces: [ss.Namespace] });
   const pods = allPods
     .filter(
       (p) =>
@@ -197,7 +197,10 @@ const StatefulSetPodsTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
 const StatefulSetEventsTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: ss.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [ss.Namespace],
+  });
   const ssEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "statefulset" &&

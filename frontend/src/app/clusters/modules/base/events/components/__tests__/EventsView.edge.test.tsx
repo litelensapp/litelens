@@ -73,7 +73,7 @@ beforeEach(() => {
   useGetEventsMock.mockReturnValue({ data: [] });
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onTogglePodDetail: onTogglePodDetailMock,
     onToggleDeploymentDetail: onToggleDeploymentDetailMock,
@@ -82,7 +82,7 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onTogglePodDetail: onTogglePodDetailMock,
     onToggleDeploymentDetail: onToggleDeploymentDetailMock,
@@ -187,8 +187,8 @@ describe("EventsView — edge cases and boundary conditions", () => {
     expect(secondRowText).toContain("old-pod");
   });
 
-  // 6. Row click on an event calls onToggleEventDetail(namespace, name) exactly once
-  it("Row click → calls onToggleEventDetail(namespace, name) exactly once", () => {
+  // 6. Row click on an event calls onToggleEventDetail(namespaces: [], name) exactly once
+  it("Row click → calls onToggleEventDetail(namespaces: [], name) exactly once", () => {
     useGetEventsMock.mockReturnValue({
       data: [makeEvent({ Namespace: "kube-system", Name: "click-event" })],
     });
@@ -216,7 +216,7 @@ describe("EventsView — edge cases and boundary conditions", () => {
   });
 
   // 8. Clicking a Pod ResourceLink calls onTogglePodDetail and NOT onToggleEventDetail
-  it("Pod ResourceLink click → calls onTogglePodDetail(namespace, involvedObjectName), NOT onToggleEventDetail", () => {
+  it("Pod ResourceLink click → calls onTogglePodDetail(namespaces: [], involvedObjectName), NOT onToggleEventDetail", () => {
     useGetEventsMock.mockReturnValue({
       data: [
         makeEvent({
@@ -302,7 +302,7 @@ describe("EventsView — edge cases and boundary conditions", () => {
   - Search clear/reset behavior restoring all items
   - Rapid successive search input changes (final state correctness)
   - Sort by CreatedAt descending: newer event row precedes older in DOM order
-  - Row click dispatches onToggleEventDetail(namespace, name) exactly once
+  - Row click dispatches onToggleEventDetail(namespaces: [], name) exactly once
   - Namespace ResourceLink click: onToggleNamespaceDetail called, onToggleEventDetail not called (stopPropagation verified)
   - Pod ResourceLink click: onTogglePodDetail called, onToggleEventDetail not called (stopPropagation verified)
   - InvolvedObjectKind not in RESOURCE_LINKS ("ConfigMap") → InvolvedObjectName as plain text (no button)

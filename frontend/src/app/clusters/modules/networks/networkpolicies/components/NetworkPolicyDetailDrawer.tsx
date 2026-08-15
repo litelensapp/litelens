@@ -225,7 +225,10 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
 
 const NetworkPolicyEventsTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: np.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [np.Namespace],
+  });
   const npEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "networkpolicy" && e.InvolvedObjectName === np.Name

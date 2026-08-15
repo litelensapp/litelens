@@ -1,26 +1,19 @@
-import {
-  ErrorBoundary,
-  NavItem,
-  renderErrorToast,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@litelens/design-system";
+import { ErrorBoundary, NavItem, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useMemo, useState } from "react";
-import { useGetInstalledPluginNav } from "./plugins/hooks/useGetInstalledPluginNav";
-import { usePluginTrayRegistry } from "./plugins/hooks/usePluginTrayRegistry";
-import { PluginResourceView } from "./plugins/PluginResourceView";
-import { PluginEventBridges } from "./plugins/PluginEventBridges";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
 import { MainLayoutProvider } from "./MainLayoutContext";
-import { NavSidebar } from "./NavSidebar";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
+import { NavSidebar } from "./NavSidebar";
+import { useGetInstalledPluginNav } from "./plugins/hooks/useGetInstalledPluginNav";
+import { usePluginTrayRegistry } from "./plugins/hooks/usePluginTrayRegistry";
+import { PluginEventBridges } from "./plugins/PluginEventBridges";
+import { PluginResourceView } from "./plugins/PluginResourceView";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
+import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
 import { unifiedTrayRegistry } from "./shared/components/trays/unified/unifiedTrayRegistry";
+import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 
 const PodsView = lazy(() =>
   import("./modules/workloads/pods/PodsView").then((m) => ({
@@ -207,11 +200,40 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(["workloads", "network", "config", "storage", "access-control"])
   );
-  const storageKey = `litelens:namespace:${activeContext}`;
-  const [namespace, setNamespace] = useState<string>(() => localStorage.getItem(storageKey) ?? "");
-  const { data: namespaceNames = [] } = useGetNamespaceNames(activeContext);
 
-  const sortedNamespaceNames = useMemo(() => namespaceNames.slice().sort(), [namespaceNames]);
+  const [namespaces, setNamespaces] = useState<string[]>([]);
+  const { data: namespaceNames = [] } = useGetNamespaceNames(activeContext);
+  const { data: defaultNamespaces } = useGetDefaultNamespaces(activeContext);
+  // Tracks the last-applied "<context>:<defaults>" snapshot, so the seed below
+  // re-applies both on first load for a context AND whenever the persisted
+  // defaults change (e.g. the user saves new ones in cluster settings), while
+  // not re-running on every render or clobbering in-session filter changes
+  // made via handleNamespacesChange in between saves.
+  const [appliedDefaultKey, setAppliedDefaultKey] = useState<string | null>(null);
+
+  // Settings-persisted default namespaces are the source of truth for the
+  // filter, applied on load and re-applied whenever they're saved again. In
+  // between saves, in-session filter changes are kept in memory only (notxw
+  // persisted) — reloading or restarting the app always rolls back to the
+  // latest saved default. Defaults naming a namespace that no longer exists on
+  // the cluster are dropped.
+  if (defaultNamespaces && namespaceNames.length > 0) {
+    const defaultKey = `${activeContext}:${JSON.stringify(defaultNamespaces)}`;
+    if (appliedDefaultKey !== defaultKey) {
+      setAppliedDefaultKey(defaultKey);
+      const existing = new Set(namespaceNames);
+      setNamespaces(defaultNamespaces.filter((ns) => existing.has(ns)));
+    }
+  }
+
+  // Union with the persisted defaults so a namespace typed manually in cluster
+  // settings (e.g. because the cluster can't be listed due to RBAC) shows up as
+  // a selectable filter option immediately, without switching clusters to
+  // remount and re-fetch.
+  const sortedNamespaceNames = useMemo(
+    () => Array.from(new Set([...namespaceNames, ...(defaultNamespaces ?? [])])).sort(),
+    [namespaceNames, defaultNamespaces]
+  );
 
   // Discover installed plugins and their nav entries/tray families at runtime
   const { pluginNavData } = useGetInstalledPluginNav();
@@ -230,9 +252,8 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     activeContext,
   });
 
-  function handleNamespaceChange(ns: string) {
-    setNamespace(ns);
-    localStorage.setItem(storageKey, ns);
+  function handleNamespacesChange(ns: string[]) {
+    setNamespaces(ns);
   }
 
   function toggleGroup(id: string) {
@@ -258,8 +279,8 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   return (
     <MainLayoutProvider
       activeContext={activeContext}
-      namespace={namespace}
-      onNamespaceChange={handleNamespaceChange}
+      namespaces={namespaces}
+      onNamespacesChange={handleNamespacesChange}
       className="flex h-full min-w-0 flex-1 overflow-hidden"
     >
       <PluginEventBridges />
@@ -278,19 +299,11 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
         {/* Top bar */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2">
           <span className="text-h1 font-medium">{activeContext}</span>
-          <Select value={namespace} onValueChange={(ns) => handleNamespaceChange(ns ?? "")}>
-            <SelectTrigger className="w-max max-w-xs">
-              <SelectValue placeholder="All namespaces" />
-            </SelectTrigger>
-            <SelectContent className="w-fit">
-              <SelectItem value="">All namespaces</SelectItem>
-              {sortedNamespaceNames.map((ns) => (
-                <SelectItem key={ns} value={ns}>
-                  {ns}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <NamespaceMultiSelect
+            namespaces={namespaces}
+            availableNamespaces={sortedNamespaceNames}
+            onNamespacesChange={handleNamespacesChange}
+          />
         </header>
 
         {/* Content */}
@@ -342,7 +355,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
                   pluginName={pluginNavData.pluginNameByViewType[activeResource]}
                   viewType={activeResource}
                   activeContext={activeContext}
-                  namespace={namespace}
+                  namespaces={namespaces}
                   onNavigateToView={setActiveResource}
                   onGoToMarketplace={onOpenMarketplace}
                 />

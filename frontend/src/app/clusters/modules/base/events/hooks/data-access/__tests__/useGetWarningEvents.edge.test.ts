@@ -76,7 +76,7 @@ describe("useGetWarningEvents edge cases", () => {
     it("refetches when triggerRefresh toggles from false to true", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -95,7 +95,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -113,7 +113,7 @@ describe("useGetWarningEvents edge cases", () => {
     it("refetches again when triggerRefresh toggles back to original value", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -147,7 +147,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -171,7 +171,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -186,7 +186,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -199,7 +199,7 @@ describe("useGetWarningEvents edge cases", () => {
   describe("4. Context empty string — hook disabled but respects queryKey shape", () => {
     it("does not call ListWarningEvents when context is empty", async () => {
       const { wrapper } = makeWrapper();
-      renderHook(() => useGetWarningEvents({ context: "", namespace: "default" }), {
+      renderHook(() => useGetWarningEvents({ context: "", namespaces: ["default"] }), {
         wrapper,
       });
       await new Promise((r) => setTimeout(r, 20));
@@ -208,7 +208,7 @@ describe("useGetWarningEvents edge cases", () => {
 
     it("queryKey shape includes triggerRefresh even when disabled", async () => {
       const { wrapper, client } = makeWrapper();
-      renderHook(() => useGetWarningEvents({ context: "", namespace: "default" }), {
+      renderHook(() => useGetWarningEvents({ context: "", namespaces: ["default"] }), {
         wrapper,
       });
       await new Promise((r) => setTimeout(r, 20));
@@ -217,7 +217,7 @@ describe("useGetWarningEvents edge cases", () => {
       if (queries.length > 0) {
         const key = queries[0].queryKey;
         expect(key[0]).toBe(QUERY_KEY_WARNING_EVENTS);
-        expect(key[1]).toEqual({ context: "", namespace: "default" });
+        expect(key[1]).toEqual({ context: "", namespaces: ["default"] });
         expect(typeof key[2]).toBe("boolean");
       }
     });
@@ -234,7 +234,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -257,7 +257,7 @@ describe("useGetWarningEvents edge cases", () => {
       listWarningEventsMock.mockResolvedValue(events);
 
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetWarningEvents({ context: "ctx", namespace: "" }), {
+      const { result } = renderHook(() => useGetWarningEvents({ context: "ctx", namespaces: [] }), {
         wrapper,
       });
 
@@ -276,7 +276,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -289,7 +289,7 @@ describe("useGetWarningEvents edge cases", () => {
     it("uses cached result on re-render without triggerRefresh change", async () => {
       const { wrapper } = makeWrapper();
       const { result, rerender } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 
@@ -305,7 +305,7 @@ describe("useGetWarningEvents edge cases", () => {
     it("refetches when triggerRefresh boolean changes due to event", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
-        () => useGetWarningEvents({ context: "ctx", namespace: "default" }),
+        () => useGetWarningEvents({ context: "ctx", namespaces: ["default"] }),
         { wrapper }
       );
 

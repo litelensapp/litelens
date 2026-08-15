@@ -1,59 +1,82 @@
 import {
   Button,
+  CornerDownLeftIcon,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Divider,
   Input,
+  Trash2Icon,
 } from "@litelens/design-system";
 import { ClipboardGetText } from "@wailsjs/go/app/App";
 import { config } from "@wailsjs/go/models";
-import { FC, useEffect, useState } from "react";
+import { FC, useState } from "react";
+import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { useGetClusterProxy } from "./shared/hooks/data-access/useGetClusterProxy";
 import { useGetContextKubeconfigPath } from "./shared/hooks/data-access/useGetContextKubeconfigPath";
+import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
+import { useGetNamespacesForContext } from "./modules/base/namespaces/hooks/data-access/useGetNamespacesForContext";
 import { useSaveClusterProxy } from "./shared/hooks/data-mutation/useSaveClusterProxy";
+import { useSaveDefaultNamespaces } from "./modules/base/namespaces/hooks/data-mutation/useSaveDefaultNamespaces";
 
-type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SaveStatus = "idle" | "saving" | "error";
 
 function saveLabel(status: SaveStatus): string {
   if (status === "saving") return "Saving…";
-  if (status === "saved") return "Saved!";
   return "Save";
 }
 
 interface ClusterSettingsModalProps {
   contextName: string | null;
   onClose: () => void;
-  onSaved: (ctx: string) => void;
 }
 
-export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({
-  contextName,
-  onClose,
-  onSaved,
-}) => {
+export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextName, onClose }) => {
   const [proxy, setProxy] = useState("");
+  const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
+  const [manualNamespace, setManualNamespace] = useState("");
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [loadedContextName, setLoadedContextName] = useState<string | null>(null);
 
   const { data: kubeconfigPath } = useGetContextKubeconfigPath(contextName);
   const { data: clusterProxy } = useGetClusterProxy(contextName);
+  const { data: defaultNamespaces } = useGetDefaultNamespaces(contextName);
+  const {
+    data: availableNamespaces,
+    isLoading: isLoadingNamespaces,
+    error: namespacesError,
+  } = useGetNamespacesForContext(contextName);
   const { mutate: saveClusterProxy } = useSaveClusterProxy();
+  const { mutate: saveDefaultNamespaces } = useSaveDefaultNamespaces();
 
   if (contextName && clusterProxy && contextName !== loadedContextName) {
     setLoadedContextName(contextName);
     setProxy(clusterProxy.httpProxy ?? "");
+    setSelectedNamespaces(defaultNamespaces ?? []);
     setStatus("idle");
   } else if (!contextName && loadedContextName !== null) {
     setLoadedContextName(null);
   }
 
-  useEffect(() => {
-    if (status !== "saved") return;
-    const t = setTimeout(() => setStatus("idle"), 2000);
-    return () => clearTimeout(t);
-  }, [status]);
+  const removeNamespace = (ns: string) => {
+    setSelectedNamespaces((prev) => prev.filter((n) => n !== ns));
+  };
+
+  const addManualNamespace = () => {
+    const trimmed = manualNamespace.trim();
+    if (!trimmed) return;
+    setSelectedNamespaces((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setManualNamespace("");
+  };
+
+  function handleManualNamespaceKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addManualNamespace();
+    }
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,17 +84,46 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({
     const trimmed = proxy.trim();
     setProxy(trimmed);
     setStatus("saving");
+
+    let completed = 0;
+    let hasError = false;
+
+    const onComplete = () => {
+      completed++;
+      if (completed === 2) {
+        if (hasError) {
+          setStatus("error");
+        } else {
+          onClose();
+        }
+      }
+    };
+
     saveClusterProxy(
       {
         contextName,
         proxy: config.ClusterProxy.createFrom({ httpProxy: trimmed, httpsProxy: trimmed }),
       },
       {
-        onSuccess: () => {
-          setStatus("saved");
-          onSaved(contextName);
+        onSuccess: onComplete,
+        onError: () => {
+          hasError = true;
+          onComplete();
         },
-        onError: () => setStatus("error"),
+      }
+    );
+
+    saveDefaultNamespaces(
+      {
+        contextName,
+        namespaces: selectedNamespaces,
+      },
+      {
+        onSuccess: onComplete,
+        onError: () => {
+          hasError = true;
+          onComplete();
+        },
       }
     );
   }
@@ -106,6 +158,8 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({
               </p>
             </div>
 
+            <Divider />
+
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="cluster-proxy"
@@ -126,6 +180,86 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({
             <p className="text-muted-foreground text-left text-xs">
               Applied to both HTTP and HTTPS traffic. Takes effect on the next connection.
             </p>
+
+            <Divider />
+
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="cluster-manual-namespace"
+                className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider"
+              >
+                Default Namespaces
+              </label>
+
+              <div className="relative">
+                <Input
+                  id="cluster-manual-namespace"
+                  value={manualNamespace}
+                  onChange={(e) => setManualNamespace(e.target.value)}
+                  onKeyDown={handleManualNamespaceKeyDown}
+                  placeholder="Type a namespace and press Enter"
+                  className="pr-8"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Add namespace"
+                  onClick={addManualNamespace}
+                  disabled={!manualNamespace.trim()}
+                  className="absolute right-0.5 top-1/2 -translate-y-1/2"
+                >
+                  <CornerDownLeftIcon className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-left text-xs">
+                This setting is useful for manually specifying which namespaces you have access to.
+                This is useful when you do not have permissions to list namespaces.
+              </p>
+
+              {namespacesError ? (
+                <p className="text-destructive text-xs">
+                  Failed to load namespaces. Please try again.
+                </p>
+              ) : (
+                <NamespaceMultiSelect
+                  namespaces={selectedNamespaces}
+                  availableNamespaces={availableNamespaces ?? []}
+                  onNamespacesChange={setSelectedNamespaces}
+                  disabled={isLoadingNamespaces}
+                />
+              )}
+
+              {selectedNamespaces.length > 0 && (
+                <div className="bg-muted/40 flex max-h-80 flex-col gap-1 overflow-y-auto rounded-md p-1">
+                  {selectedNamespaces
+                    .slice()
+                    .sort()
+                    .map((ns) => (
+                      <div
+                        key={ns}
+                        className="flex items-center justify-between gap-2 rounded px-2 py-1.5"
+                      >
+                        <span className="text-foreground truncate text-sm">{ns}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Remove ${ns} from default namespaces`}
+                          onClick={() => removeNamespace(ns)}
+                        >
+                          <Trash2Icon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+              )}
+              <p className="text-muted-foreground text-left text-xs">
+                Select namespaces to use as the default filter when connecting to this context.
+                Leave empty for all namespaces.
+              </p>
+            </div>
+
             {status === "error" && (
               <p className="text-destructive text-xs">Failed to save. Please try again.</p>
             )}
