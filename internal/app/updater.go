@@ -146,6 +146,13 @@ func selectUpdateStrategy(goos string) string {
 // handles code-signing); Linux downloads the binary and uses pkexec to run
 // the install-helper with elevated privileges (avoiding TTY issues with sudo).
 func (a *App) PerformUpdate(version string) error {
+	// Defense in depth: reject in-app self-update on package-manager-managed installs.
+	// The frontend should disable the "Update Now" button for these, but enforce it here too.
+	source := updater.DetectInstallSource()
+	if source != updater.InstallSourceManual {
+		return fmt.Errorf("cannot auto-update: managed by %s, use its upgrade command instead", source)
+	}
+
 	a.mu.RLock()
 	token := a.settings.AccessToken
 	a.mu.RUnlock()

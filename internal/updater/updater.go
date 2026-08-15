@@ -1,8 +1,6 @@
 package updater
 
 import (
-	"log"
-	"os"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -56,18 +54,6 @@ func SetCheckHomebrewManagedForTest(fn func() bool) (restore func()) {
 // private repositories can be queried.
 func Check(current, token string) (*Release, error) {
 	if current == "dev" || !semver.IsValid(current) {
-		return nil, nil
-	}
-
-	// Check if this is an apt-managed installation; if so, defer to apt upgrade
-	if exe, err := os.Executable(); err == nil && IsAptManagedInstall(exe) {
-		log.Printf("updater: apt-managed install detected; use 'apt upgrade' to update")
-		return nil, nil
-	}
-
-	// Check if this is a Homebrew-managed installation; if so, defer to brew upgrade
-	if checkHomebrewManaged() {
-		log.Printf("updater: Homebrew-managed install detected; use 'brew upgrade' to update")
 		return nil, nil
 	}
 
