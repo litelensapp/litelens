@@ -12,8 +12,23 @@ on:
         required: true
 
 jobs:
+  detect-design-system-changes:
+    name: Detect Design System Changes
+    uses: ./.github/workflows/job-detect-changes.yml
+    with:
+      RUNNER: ${{ inputs.RUNNER }}
+      paths: |
+        design-system/**
+        pnpm-lock.yaml
+        package.json
+        pnpm-workspace.yaml
+        .github/workflows/job-publish-design-system.yml
+        .github/actions/setup-node-pnpm/**
+
   publish-npm:
     name: Publish to NPM
+    needs: [detect-design-system-changes]
+    if: ${{ needs.detect-design-system-changes.outputs.changed == 'true' }}
     runs-on: ${{ inputs.RUNNER }}
     permissions:
       contents: read
