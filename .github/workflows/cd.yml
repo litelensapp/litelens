@@ -20,6 +20,24 @@ jobs:
     with:
       version: ${{ needs.release-version.outputs.tag_name }}
 
+  publish-homebrew:
+    name: Publish to Homebrew
+    needs: [release-version, build]
+    if: ${{ needs.build.result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    uses: ./.github/workflows/job-publish-homebrew.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.release-version.outputs.tag_name }}
+
+  publish-apt:
+    name: Publish to APT
+    needs: [release-version, build]
+    if: ${{ needs.build.result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    uses: ./.github/workflows/job-publish-apt.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.release-version.outputs.tag_name }}
+
   publish-design-system:
     name: Publish Design System
     needs: [release-version]
