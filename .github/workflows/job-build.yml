@@ -209,7 +209,11 @@ jobs:
 
   publish-manifest:
     needs: run
-    if: ${{ inputs.version != 'dev' }}
+    # `run` uses fail-fast: false, so a single matrix failure still marks the
+    # job "failure" even though other platforms succeeded and uploaded their
+    # assets. Run on any non-cancelled/skipped outcome so the manifest still
+    # gets built from whatever assets actually made it onto the release.
+    if: ${{ always() && needs.run.result != 'cancelled' && needs.run.result != 'skipped' && inputs.version != 'dev' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
