@@ -29,9 +29,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
   );
 
   const [open, setOpen] = useState(false);
-  const [draftNamespaces, setDraftNamespaces] = useState<string[]>(namespaces);
 
-  // Derive trigger label from the last confirmed selection, not the in-progress draft.
   const triggerLabel = useMemo(() => {
     if (namespaces.length === 0) {
       return "All namespaces";
@@ -42,36 +40,22 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
     return `${namespaces.length} namespaces`;
   }, [namespaces]);
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      // Reset the draft to the last confirmed selection each time the popover opens.
-      setDraftNamespaces(namespaces);
-    }
-    setOpen(nextOpen);
-  };
-
   const handleSelectAll = () => {
-    setDraftNamespaces(sortedNamespaces);
+    onNamespacesChange(sortedNamespaces);
   };
 
   const handleClearAll = () => {
-    setDraftNamespaces([]);
+    onNamespacesChange([]);
   };
 
   const handleToggleNamespace = (ns: string) => {
-    setDraftNamespaces((prev) => {
-      const set = new Set(prev);
-      if (set.has(ns)) {
-        set.delete(ns);
-      } else {
-        set.add(ns);
-      }
-      return Array.from(set);
-    });
-  };
-
-  const handleConfirm = () => {
-    onNamespacesChange(draftNamespaces);
+    const set = new Set(namespaces);
+    if (set.has(ns)) {
+      set.delete(ns);
+    } else {
+      set.add(ns);
+    }
+    onNamespacesChange(Array.from(set));
   };
 
   if (sortedNamespaces.length === 0) {
@@ -87,7 +71,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
@@ -123,7 +107,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
               className="hover:bg-accent/50 flex items-center gap-2 rounded px-2 py-1.5"
             >
               <Checkbox
-                checked={draftNamespaces.includes(ns)}
+                checked={namespaces.includes(ns)}
                 onCheckedChange={() => handleToggleNamespace(ns)}
                 id={`ns-${ns}`}
               />
@@ -139,18 +123,15 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
 
         <Separator className="my-2" />
 
-        <div className="flex gap-2 px-2 py-2">
+        <div className="px-2 py-2">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={handleClearAll}
-            className="flex-1 text-xs"
+            className="w-full justify-center text-xs"
           >
             Clear
-          </Button>
-          <Button type="button" size="sm" onClick={handleConfirm} className="flex-1 text-xs">
-            Confirm
           </Button>
         </div>
       </DropdownMenuContent>
