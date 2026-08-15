@@ -60,6 +60,11 @@ func (a *App) pluginInstallDir(pluginID string) string {
 // holds a well-formed checksum, then marks the plugin as READY so
 // GetInstalledPlugin reports correctly.
 func (a *App) restoreInstalledPlugins() {
+	// Skip if marketplace feature is disabled; no plugins should be present in that case.
+	if !config.IsMarketplaceEnabled() {
+		return
+	}
+
 	pluginsRoot := a.pluginsRootDir()
 
 	// If plugins directory doesn't exist, return silently (first run).

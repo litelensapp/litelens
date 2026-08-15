@@ -16,6 +16,7 @@ import (
 func TestRestoreInstalledPluginsValidMetadata(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	// Use a directory name that differs from the plugin ID to prove metadata ID wins
@@ -437,6 +438,7 @@ func TestRestoreInstalledPluginsMissingBinary(t *testing.T) {
 func TestRestoreInstalledPluginsMultiplePlugins(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	pluginsRoot := filepath.Join(tempHome, ".litelens", "plugins")
@@ -518,6 +520,7 @@ func TestRestoreInstalledPluginsMultiplePlugins(t *testing.T) {
 func TestRestoreInstalledPluginsCustomBinaryName(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	dirName := "custom-bin-plugin"
@@ -594,6 +597,7 @@ func TestRestoreInstalledPluginsCustomBinaryName(t *testing.T) {
 func TestRestoreInstalledPluginsBinaryNameFallback(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
 
 	dirName := "fallback-plugin"

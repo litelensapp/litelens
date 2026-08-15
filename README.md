@@ -23,9 +23,6 @@ brew trust litelensapp/litelens/litelens
 brew install litelens
 ```
 
-If you install via Homebrew, prefer `brew upgrade litelens` over the
-in-app updater to keep versions in sync.
-
 ### APT (Debian/Ubuntu)
 
 LiteLens publishes `.deb` packages to a self-hosted APT repository, signed
@@ -56,10 +53,6 @@ echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://l
 sudo apt-get update && sudo apt-get install litelens
 ```
 
-If you install via `apt`, prefer `apt upgrade` over the in-app updater — the
-in-app updater detects apt-managed installs and silently defers to `apt`
-rather than prompting.
-
 ### Manual (Linux + MacOS)
 
 ```sh
@@ -71,7 +64,7 @@ curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/
 ### Homebrew (macOS)
 
 ```sh
-brew uninstall litelensapp/litelens/litelens
+brew uninstall litelens
 ```
 
 ### APT (Debian/Ubuntu)

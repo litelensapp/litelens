@@ -24,10 +24,10 @@ const INSTALL_SOURCE_LABELS: Record<string, string> = {
   winget: "winget",
 };
 
-const UPGRADE_COMMANDS: Record<string, string> = {
-  homebrew: "brew upgrade litelens",
-  apt: "apt upgrade",
-  winget: "winget upgrade litelensapp.LiteLens",
+const UPGRADE_COMMANDS: Record<string, string[]> = {
+  homebrew: ["brew update", "brew upgrade litelens"],
+  apt: ["apt upgrade"],
+  winget: ["winget upgrade litelensapp.LiteLens"],
 };
 
 interface UpdateModalProps {
@@ -90,7 +90,7 @@ export const UpdateModal: FC<UpdateModalProps> = ({
               Installed via {INSTALL_SOURCE_LABELS[installSource] ?? installSource}
             </p>
             <p className="text-muted-foreground mb-1">Run the following to upgrade:</p>
-            <Textarea variant="code" value={UPGRADE_COMMANDS[installSource]} disabled />
+            <Textarea variant="code" value={UPGRADE_COMMANDS[installSource]?.join("\n")} disabled />
           </div>
         )}
 
