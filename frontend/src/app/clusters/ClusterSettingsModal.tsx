@@ -184,12 +184,16 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
             <Divider />
 
             <div className="flex flex-col gap-2">
-              <label className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider">
+              <label
+                htmlFor="cluster-manual-namespace"
+                className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider"
+              >
                 Default Namespaces
               </label>
 
               <div className="relative">
                 <Input
+                  id="cluster-manual-namespace"
                   value={manualNamespace}
                   onChange={(e) => setManualNamespace(e.target.value)}
                   onKeyDown={handleManualNamespaceKeyDown}

@@ -28,6 +28,8 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
     [availableNamespaces]
   );
 
+  const selectedNamespaces = useMemo(() => new Set(namespaces), [namespaces]);
+
   const [open, setOpen] = useState(false);
 
   const triggerLabel = useMemo(() => {
@@ -107,7 +109,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
               className="hover:bg-accent/50 flex items-center gap-2 rounded px-2 py-1.5"
             >
               <Checkbox
-                checked={namespaces.includes(ns)}
+                checked={selectedNamespaces.has(ns)}
                 onCheckedChange={() => handleToggleNamespace(ns)}
                 id={`ns-${ns}`}
               />
