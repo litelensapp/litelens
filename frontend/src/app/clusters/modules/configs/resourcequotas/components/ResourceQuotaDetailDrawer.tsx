@@ -107,7 +107,10 @@ const ResourceQuotaOverviewTab: FC<{ rq: ResourceQuotaDetail }> = ({ rq }) => {
 
 const ResourceQuotaEventsTab: FC<{ rq: ResourceQuotaDetail }> = ({ rq }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: rq.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [rq.Namespace],
+  });
   const rqEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "resourcequota" &&

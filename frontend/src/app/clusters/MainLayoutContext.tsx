@@ -4,8 +4,8 @@ import { UnifiedTrayProvider } from "./shared/components/trays/unified/UnifiedTr
 
 interface MainLayoutContextValue {
   activeContext: string;
-  namespace: string;
-  onNamespaceChange: (ns: string) => void;
+  namespaces: string[];
+  onNamespacesChange: (ns: string[]) => void;
 }
 
 const MainLayoutCtx = createContext<MainLayoutContextValue | null>(null);
@@ -20,24 +20,24 @@ interface MainLayoutProviderProps {
   children: ReactNode;
   className?: string;
   activeContext: string;
-  namespace: string;
-  onNamespaceChange: (ns: string) => void;
+  namespaces: string[];
+  onNamespacesChange: (ns: string[]) => void;
 }
 
 export const MainLayoutProvider: FC<MainLayoutProviderProps> = ({
   children,
   className,
   activeContext,
-  namespace,
-  onNamespaceChange,
+  namespaces,
+  onNamespacesChange,
 }) => {
   const ctxValue = useMemo<MainLayoutContextValue>(
     () => ({
       activeContext,
-      namespace,
-      onNamespaceChange,
+      namespaces,
+      onNamespacesChange,
     }),
-    [activeContext, namespace, onNamespaceChange]
+    [activeContext, namespaces, onNamespacesChange]
   );
 
   return (

@@ -113,7 +113,10 @@ const LimitRangeOverviewTab: FC<{ lr: LimitRangeDetail }> = ({ lr }) => {
 
 const LimitRangeEventsTab: FC<{ lr: LimitRangeDetail }> = ({ lr }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: lr.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [lr.Namespace],
+  });
   const lrEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "limitrange" &&

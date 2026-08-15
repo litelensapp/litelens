@@ -83,12 +83,12 @@ export const CronJobsView: FC = () => {
   const [selectedCronJobIds, setSelectedCronJobIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleCronJobDetail } = useDetailDrawerContext();
 
   const { mutate: deleteCronJobs, isPending: isBulkDeletePending } = useDeleteCronJobs();
 
-  const { data: raw = [], isLoading } = useGetCronJobs({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetCronJobs({ context: activeContext, namespaces });
 
   const cronjobs = useMemo(
     () =>
@@ -148,7 +148,7 @@ export const CronJobsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Schedule</TableHead>
             <TableHead>Timezone</TableHead>
             <TableHead>Resumed</TableHead>
@@ -162,7 +162,7 @@ export const CronJobsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 7 : 8}
+              columns={namespaces.length !== 1 ? 8 : 7}
               includeCheckbox={true}
               columnWidths={[
                 "w-[65%]",
@@ -177,7 +177,7 @@ export const CronJobsView: FC = () => {
             />
           ) : cronjobs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 9 : 10} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 10 : 9} className="px-0 py-0">
                 <EmptyState
                   icon={<TimerIcon className="size-8" />}
                   title="No CronJobs"
@@ -206,7 +206,7 @@ export const CronJobsView: FC = () => {
                   />
                 </TableCell>
                 <TableCell className="font-mono text-xs">{cj.Name}</TableCell>
-                {!namespace && (
+                {namespaces.length !== 1 && (
                   <TableCell className="text-xs">
                     <ResourceLink
                       onClick={(e) => {

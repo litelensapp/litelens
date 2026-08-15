@@ -237,7 +237,10 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
 const ServiceEventsTab: FC<{ svc: Service }> = ({ svc }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: svc.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [svc.Namespace],
+  });
   const svcEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "service" &&

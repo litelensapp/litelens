@@ -69,9 +69,12 @@ describe("useGetDeployments", () => {
 
   it("is disabled when context is empty", () => {
     const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useGetDeployments({ context: "", namespace: "default" }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useGetDeployments({ context: "", namespaces: ["default"] }),
+      {
+        wrapper,
+      }
+    );
     expect(result.current.fetchStatus).toBe("idle");
     expect(listDeploymentsMock).not.toHaveBeenCalled();
   });
@@ -79,7 +82,7 @@ describe("useGetDeployments", () => {
   it("fetches when context is provided", async () => {
     const { wrapper } = makeWrapper();
     const { result } = renderHook(
-      () => useGetDeployments({ context: "my-ctx", namespace: "default" }),
+      () => useGetDeployments({ context: "my-ctx", namespaces: ["default"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -88,9 +91,12 @@ describe("useGetDeployments", () => {
 
   it("uses correct queryKey", () => {
     const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useGetDeployments({ context: "ctx1", namespace: "ns1" }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useGetDeployments({ context: "ctx1", namespaces: ["ns1"] }),
+      {
+        wrapper,
+      }
+    );
     expect(result.current).toBeDefined();
     expect(listDeploymentsMock).toHaveBeenCalled();
     const callArgs = listDeploymentsMock.mock.calls[0];
@@ -103,7 +109,7 @@ describe("useGetDeployments", () => {
     listDeploymentsMock.mockResolvedValue([{ name: "d1" }]);
 
     const { result } = renderHook(
-      () => useGetDeployments({ context: "ctx1", namespace: "ns1" }, { select: selectFn }),
+      () => useGetDeployments({ context: "ctx1", namespaces: ["ns1"] }, { select: selectFn }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -142,7 +148,7 @@ describe("useGetPods", () => {
 
   it("is disabled when context is empty", () => {
     const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useGetPods({ context: "", namespace: "default" }), {
+    const { result } = renderHook(() => useGetPods({ context: "", namespaces: ["default"] }), {
       wrapper,
     });
     expect(result.current.fetchStatus).toBe("idle");
@@ -151,9 +157,12 @@ describe("useGetPods", () => {
 
   it("fetches when context is provided", async () => {
     const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useGetPods({ context: "ctx1", namespace: "kube-system" }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useGetPods({ context: "ctx1", namespaces: ["kube-system"] }),
+      {
+        wrapper,
+      }
+    );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(listPodsMock).toHaveBeenCalledWith("kube-system");
   });
@@ -167,9 +176,12 @@ describe("useGetPods", () => {
     });
     listPodsMock.mockReturnValue(neverResolvesPromise);
 
-    const { result } = renderHook(() => useGetPods({ context: "ctx1", namespace: "kube-system" }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useGetPods({ context: "ctx1", namespaces: ["kube-system"] }),
+      {
+        wrapper,
+      }
+    );
 
     // Query starts loading, no event data yet → hook.isLoading = true
     expect(result.current.isLoading).toBe(true);

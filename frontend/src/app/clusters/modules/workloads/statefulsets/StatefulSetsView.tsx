@@ -83,12 +83,12 @@ export const StatefulSetsView: FC = () => {
   const [selectedStatefulSetIds, setSelectedStatefulSetIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleStatefulSetDetail } = useDetailDrawerContext();
 
   const { mutate: deleteStatefulSets, isPending: isBulkDeletePending } = useDeleteStatefulSets();
 
-  const { data: raw = [], isLoading } = useGetStatefulSets({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetStatefulSets({ context: activeContext, namespaces });
 
   const statefulsets = useMemo(
     () =>
@@ -155,7 +155,7 @@ export const StatefulSetsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Pods</TableHead>
             <TableHead>Replicas</TableHead>
             <TableHead>Age</TableHead>
@@ -166,13 +166,13 @@ export const StatefulSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 4 : 5}
+              columns={namespaces.length !== 1 ? 5 : 4}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]"]}
             />
           ) : statefulsets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 6 : 7} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
                 <EmptyState
                   icon={<DatabaseIcon className="size-8" />}
                   title="No StatefulSets"
@@ -203,7 +203,7 @@ export const StatefulSetsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{ss.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

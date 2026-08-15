@@ -147,7 +147,7 @@ const DaemonSetPodsTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
-  const { data: allPods = [] } = useGetPods({ context: activeContext, namespace: ds.Namespace });
+  const { data: allPods = [] } = useGetPods({ context: activeContext, namespaces: [ds.Namespace] });
   const pods = allPods
     .filter(
       (p) =>
@@ -216,7 +216,10 @@ const DaemonSetPodsTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
 const DaemonSetEventsTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: ds.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [ds.Namespace],
+  });
   const dsEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "daemonset" &&

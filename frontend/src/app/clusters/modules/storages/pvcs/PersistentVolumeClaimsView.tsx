@@ -92,7 +92,7 @@ export const PersistentVolumeClaimsView: FC = () => {
   const [selectedPVCKeys, setSelectedPVCKeys] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePersistentVolumeClaimDetail } = useDetailDrawerContext();
 
   const { mutate: deletePersistentVolumeClaims, isPending: isBulkDeletePending } =
@@ -100,7 +100,7 @@ export const PersistentVolumeClaimsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetPersistentVolumeClaims({
     context: activeContext,
-    namespace,
+    namespaces,
   });
 
   const pvcs = raw
@@ -158,7 +158,7 @@ export const PersistentVolumeClaimsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Storage Class</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Pods</TableHead>
@@ -171,13 +171,13 @@ export const PersistentVolumeClaimsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 5 : 6}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[30%]", "w-[45%]", "w-[30%]"]}
             />
           ) : pvcs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 8 : 9} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
                   icon={<HardDriveIcon className="size-8" />}
                   title="No PersistentVolumeClaims"
@@ -208,7 +208,7 @@ export const PersistentVolumeClaimsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{p.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

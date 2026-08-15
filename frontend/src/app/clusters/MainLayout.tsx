@@ -1,13 +1,4 @@
-import {
-  ErrorBoundary,
-  NavItem,
-  renderErrorToast,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@litelens/design-system";
+import { ErrorBoundary, NavItem, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useMemo, useState } from "react";
 import { useGetInstalledPluginNav } from "./plugins/hooks/useGetInstalledPluginNav";
 import { usePluginTrayRegistry } from "./plugins/hooks/usePluginTrayRegistry";
@@ -21,6 +12,7 @@ import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
 import { unifiedTrayRegistry } from "./shared/components/trays/unified/unifiedTrayRegistry";
+import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 
 const PodsView = lazy(() =>
   import("./modules/workloads/pods/PodsView").then((m) => ({
@@ -208,7 +200,20 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     () => new Set(["workloads", "network", "config", "storage", "access-control"])
   );
   const storageKey = `litelens:namespace:${activeContext}`;
-  const [namespace, setNamespace] = useState<string>(() => localStorage.getItem(storageKey) ?? "");
+  const [namespaces, setNamespaces] = useState<string[]>(() => {
+    const stored = localStorage.getItem(storageKey);
+    // Handle migration from old single-string format to new array format
+    if (stored && stored[0] === "[") {
+      // Try to parse as JSON array
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    // Old format: single string; convert to array (empty means all namespaces)
+    return stored ? [stored] : [];
+  });
   const { data: namespaceNames = [] } = useGetNamespaceNames(activeContext);
 
   const sortedNamespaceNames = useMemo(() => namespaceNames.slice().sort(), [namespaceNames]);
@@ -230,9 +235,9 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     activeContext,
   });
 
-  function handleNamespaceChange(ns: string) {
-    setNamespace(ns);
-    localStorage.setItem(storageKey, ns);
+  function handleNamespacesChange(ns: string[]) {
+    setNamespaces(ns);
+    localStorage.setItem(storageKey, JSON.stringify(ns));
   }
 
   function toggleGroup(id: string) {
@@ -258,8 +263,8 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   return (
     <MainLayoutProvider
       activeContext={activeContext}
-      namespace={namespace}
-      onNamespaceChange={handleNamespaceChange}
+      namespaces={namespaces}
+      onNamespacesChange={handleNamespacesChange}
       className="flex h-full min-w-0 flex-1 overflow-hidden"
     >
       <PluginEventBridges />
@@ -278,19 +283,11 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
         {/* Top bar */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2">
           <span className="text-h1 font-medium">{activeContext}</span>
-          <Select value={namespace} onValueChange={(ns) => handleNamespaceChange(ns ?? "")}>
-            <SelectTrigger className="w-max max-w-xs">
-              <SelectValue placeholder="All namespaces" />
-            </SelectTrigger>
-            <SelectContent className="w-fit">
-              <SelectItem value="">All namespaces</SelectItem>
-              {sortedNamespaceNames.map((ns) => (
-                <SelectItem key={ns} value={ns}>
-                  {ns}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <NamespaceMultiSelect
+            namespaces={namespaces}
+            availableNamespaces={sortedNamespaceNames}
+            onNamespacesChange={handleNamespacesChange}
+          />
         </header>
 
         {/* Content */}
@@ -342,7 +339,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
                   pluginName={pluginNavData.pluginNameByViewType[activeResource]}
                   viewType={activeResource}
                   activeContext={activeContext}
-                  namespace={namespace}
+                  namespaces={namespaces}
                   onNavigateToView={setActiveResource}
                   onGoToMarketplace={onOpenMarketplace}
                 />

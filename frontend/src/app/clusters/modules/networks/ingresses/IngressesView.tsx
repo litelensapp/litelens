@@ -118,12 +118,12 @@ export const IngressesView: FC = () => {
   const [selectedIngressIds, setSelectedIngressIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleIngressDetail } = useDetailDrawerContext();
 
   const { mutate: deleteIngresses, isPending: isBulkDeletePending } = useDeleteIngresses();
 
-  const { data: raw = [], isLoading } = useGetIngresses({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetIngresses({ context: activeContext, namespaces });
 
   const ingresses = raw
     .filter((i) => !search || i.Name.toLowerCase().includes(search.toLowerCase()))
@@ -180,7 +180,7 @@ export const IngressesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>LoadBalancers</TableHead>
             <TableHead>Rules</TableHead>
             <TableHead>Age</TableHead>
@@ -191,13 +191,13 @@ export const IngressesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 4 : 5}
+              columns={namespaces.length !== 1 ? 5 : 4}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[45%]", "w-[55%]", "w-[30%]"]}
             />
           ) : ingresses.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 6 : 7} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
                 <EmptyState
                   icon={<RouteIcon className="size-8" />}
                   title="No Ingresses"
@@ -228,7 +228,7 @@ export const IngressesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{i.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

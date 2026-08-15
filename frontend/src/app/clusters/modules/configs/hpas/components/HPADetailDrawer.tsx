@@ -202,7 +202,10 @@ const HPAOverviewTab: FC<{ hpa: HPADetail }> = ({ hpa }) => {
 const HPAEventsTab: FC<{ hpa: HPADetail }> = ({ hpa }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: hpa.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [hpa.Namespace],
+  });
   const hpaEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "horizontalpodautoscaler" &&

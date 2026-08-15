@@ -64,13 +64,13 @@ beforeEach(() => {
   useGetResourceQuotasMock.mockReturnValue({ data: [] });
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onToggleResourceQuotaDetail: onToggleResourceQuotaDetailMock,
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onToggleResourceQuotaDetail: onToggleResourceQuotaDetailMock,
   } as unknown as ReturnType<typeof useDetailDrawerContext>);
@@ -293,7 +293,7 @@ describe("ResourceQuotasView — edge cases", () => {
   - Special characters in Name (slash, hyphen)
   - Substring-in-middle search match
   - No-match search → empty state
-  - Multi-row same-namespace: each row has its own ResourceLink
+  - Multi-row same-namespaces: each row has its own ResourceLink
   - Click isolation: onToggleNamespaceDetail fires only on ResourceLink, not on other cells
   - Singular vs. plural count label boundary
   - Case-insensitive search

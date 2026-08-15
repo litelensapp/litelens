@@ -5,30 +5,32 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_CONFIGMAPS } from "../../api/api.const";
 import type { ConfigMap } from "../../api/resources";
 import { ListConfigMaps } from "../../api/resources";
+import {
+  getEffectiveNamespace,
+  filterByNamespaces,
+} from "../../../../../shared/utils/namespaceFiltering";
 import { useConfigMapsUpdateEvents } from "../async-events/useConfigMapsUpdateEvents";
 
 export const useGetConfigMaps = (
-  input: { context: string; namespace: string },
+  input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<ConfigMap[]>
 ) => {
-  const { context, namespace } = input;
-  const latestConfigMaps = useConfigMapsUpdateEvents(namespace);
+  const { context, namespaces } = input;
+  const effectiveNamespace = getEffectiveNamespace(namespaces);
+  const latestConfigMaps = useConfigMapsUpdateEvents(effectiveNamespace);
+
   const query = useQuery<ConfigMap[], Error>({
-    queryKey: [QUERY_KEY_CONFIGMAPS, { context, namespace }],
-    queryFn: () => ListConfigMaps(namespace),
+    queryKey: [QUERY_KEY_CONFIGMAPS, { context, namespaces }],
+    queryFn: () => ListConfigMaps(effectiveNamespace),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
   const mergedData = useMemo(() => {
     let baseData = query.data;
-    if (latestConfigMaps.length)
-      baseData =
-        namespace === ""
-          ? latestConfigMaps
-          : latestConfigMaps.filter((cm) => cm.Namespace === namespace);
+    if (latestConfigMaps.length) baseData = filterByNamespaces(latestConfigMaps, namespaces);
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestConfigMaps, query.data, namespace, callback]);
+  }, [latestConfigMaps, query.data, namespaces, callback]);
 
   return { ...query, data: mergedData };
 };

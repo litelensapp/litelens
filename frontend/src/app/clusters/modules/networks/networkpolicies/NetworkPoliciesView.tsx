@@ -86,7 +86,7 @@ export const NetworkPoliciesView: FC = () => {
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleNetworkPolicyDetail } = useDetailDrawerContext();
 
   const { mutate: deleteNetworkPolicies, isPending: isBulkDeletePending } =
@@ -94,7 +94,7 @@ export const NetworkPoliciesView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetNetworkPolicies({
     context: activeContext,
-    namespace,
+    namespaces,
   });
 
   const policies = raw
@@ -152,7 +152,7 @@ export const NetworkPoliciesView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Policy Types</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
@@ -162,13 +162,13 @@ export const NetworkPoliciesView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 2 : 3}
+              columns={namespaces.length !== 1 ? 3 : 2}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[40%]"]}
             />
           ) : policies.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 5 : 6} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 6 : 5} className="px-0 py-0">
                 <EmptyState
                   icon={<ShieldCheckIcon className="size-8" />}
                   title="No NetworkPolicies"
@@ -199,7 +199,7 @@ export const NetworkPoliciesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{n.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

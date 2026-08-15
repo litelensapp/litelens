@@ -168,7 +168,7 @@ const JobPodsTab: FC<{ j: Job }> = ({ j }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
-  const { data: allPods = [] } = useGetPods({ context: activeContext, namespace: j.Namespace });
+  const { data: allPods = [] } = useGetPods({ context: activeContext, namespaces: [j.Namespace] });
   const pods = allPods
     .filter(
       (p) =>
@@ -291,7 +291,7 @@ const JobDrawerCtaButtons: FC<JobDrawerCtaButtonsProps> = ({ jobName, jobNamespa
 const JobEventsTab: FC<{ j: Job }> = ({ j }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: j.Namespace });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [j.Namespace] });
   const jobEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "job" &&

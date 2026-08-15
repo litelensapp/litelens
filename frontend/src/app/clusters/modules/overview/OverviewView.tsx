@@ -17,35 +17,35 @@ interface OverviewViewProps {
 }
 
 export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
 
   const { data: podsSummary = { Running: 0, Pending: 0, Failed: 0, Succeeded: 0, Evicted: 0 } } =
-    useGetPodsSummary({ context: activeContext, namespace });
+    useGetPodsSummary({ context: activeContext, namespaces });
   const { data: deploymentsSummary = { Running: 0, Pending: 0 } } = useGetDeploymentsSummary({
     context: activeContext,
-    namespace,
+    namespaces,
   });
   const { data: daemonSetsSummary = { Running: 0, Pending: 0 } } = useGetDaemonSetsSummary({
     context: activeContext,
-    namespace,
+    namespaces,
   });
   const { data: statefulSetsSummary = { Running: 0, Pending: 0 } } = useGetStatefulSetsSummary({
     context: activeContext,
-    namespace,
+    namespaces,
   });
   const { data: replicaSetsSummary = { Running: 0, Pending: 0 } } = useGetReplicaSetsSummary({
     context: activeContext,
-    namespace,
+    namespaces,
   });
   const { data: jobsSummary = { Succeeded: 0, Failed: 0, Pending: 0 } } = useGetJobsSummary({
     context: activeContext,
-    namespace,
+    namespaces,
   });
   const { data: cronJobsSummary = { Scheduled: 0, Suspended: 0 } } = useGetCronJobsSummary({
     context: activeContext,
-    namespace,
+    namespaces,
   });
-  const { data: warningEvents = [] } = useGetWarningEvents({ context: activeContext, namespace });
+  const { data: warningEvents = [] } = useGetWarningEvents({ context: activeContext, namespaces });
 
   const totalPods =
     podsSummary.Running +

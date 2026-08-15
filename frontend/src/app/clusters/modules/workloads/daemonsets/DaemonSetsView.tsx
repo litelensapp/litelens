@@ -97,7 +97,7 @@ const DaemonSetTableCtaButtons: FC<DaemonSetTableCtaButtonsProps> = ({ namespace
 };
 
 export const DaemonSetsView: FC = () => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleDaemonSetDetail } = useDetailDrawerContext();
   const [search, setSearch] = useState("");
   const [selectedDaemonSetIds, setSelectedDaemonSetIds] = useState<Set<string>>(new Set());
@@ -105,7 +105,7 @@ export const DaemonSetsView: FC = () => {
 
   const { mutate: deleteDaemonSets, isPending: isBulkDeletePending } = useDeleteDaemonSets();
 
-  const { data: raw = [], isLoading } = useGetDaemonSets({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetDaemonSets({ context: activeContext, namespaces });
 
   const daemonsets = useMemo(
     () =>
@@ -166,7 +166,7 @@ export const DaemonSetsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Pods</TableHead>
             <TableHead>Node Selector</TableHead>
             <TableHead>Age</TableHead>
@@ -177,13 +177,13 @@ export const DaemonSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 4 : 5}
+              columns={namespaces.length !== 1 ? 5 : 4}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[40%]", "w-[45%]", "w-[30%]"]}
             />
           ) : daemonsets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 6 : 7} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
                 <EmptyState
                   icon={<LayersIcon className="size-8" />}
                   title="No DaemonSets"
@@ -214,7 +214,7 @@ export const DaemonSetsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{ds.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

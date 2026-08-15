@@ -60,7 +60,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
 
   const { data: allRS = [] } = useGetReplicaSets({
     context: activeContext,
-    namespace: deployment.Namespace,
+    namespaces: [deployment.Namespace],
   });
   const replicaSets = useMemo(
     () =>
@@ -289,7 +289,7 @@ const DeploymentPodsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
 
   const { data: allRS = [] } = useGetReplicaSets({
     context: activeContext,
-    namespace: deployment.Namespace,
+    namespaces: [deployment.Namespace],
   });
   const rsNames = useMemo(
     () =>
@@ -303,7 +303,7 @@ const DeploymentPodsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
 
   const { data: allPods = [] } = useGetPods({
     context: activeContext,
-    namespace: deployment.Namespace,
+    namespaces: [deployment.Namespace],
   });
   const pods = useMemo(
     () =>
@@ -377,7 +377,7 @@ const DeploymentEventsTab: FC<{ deployment: Deployment }> = ({ deployment }) => 
 
   const { data: events = [] } = useGetEvents({
     context: activeContext,
-    namespace: deployment.Namespace,
+    namespaces: [deployment.Namespace],
   });
   const depEvents = events.filter(
     (e) =>

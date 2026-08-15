@@ -69,7 +69,7 @@ beforeEach(() => {
 describe("useGetEvents", () => {
   it("is disabled when context is empty", () => {
     const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useGetEvents({ context: "", namespace: "default" }), {
+    const { result } = renderHook(() => useGetEvents({ context: "", namespaces: ["default"] }), {
       wrapper,
     });
     expect(result.current.fetchStatus).toBe("idle");
@@ -78,7 +78,7 @@ describe("useGetEvents", () => {
 
   it("fetches when context is provided", async () => {
     const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
+    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespaces: ["default"] }), {
       wrapper,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -87,9 +87,12 @@ describe("useGetEvents", () => {
 
   it("uses correct queryKey with context and namespace", () => {
     const { wrapper, client } = makeWrapper();
-    renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), { wrapper });
+    renderHook(() => useGetEvents({ context: "ctx", namespaces: ["default"] }), { wrapper });
     const cache = client.getQueryCache().findAll();
-    expect(cache[0].queryKey).toEqual([QUERY_KEY_EVENTS, { context: "ctx", namespace: "default" }]);
+    expect(cache[0].queryKey).toEqual([
+      QUERY_KEY_EVENTS,
+      { context: "ctx", namespaces: ["default"] },
+    ]);
   });
 
   it("returns query.data when latestEvents is empty", async () => {
@@ -97,7 +100,7 @@ describe("useGetEvents", () => {
     const queryData = [mockEvent("e1", "default")];
     listEventsMock.mockResolvedValue(queryData);
 
-    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
+    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespaces: ["default"] }), {
       wrapper,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -109,7 +112,7 @@ describe("useGetEvents", () => {
     const queryData = [mockEvent("e1", "default")];
     listEventsMock.mockResolvedValue(queryData);
 
-    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
+    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespaces: ["default"] }), {
       wrapper,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -125,7 +128,7 @@ describe("useGetEvents", () => {
     const { wrapper } = makeWrapper();
     listEventsMock.mockResolvedValue([]);
 
-    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "" }), {
+    const { result } = renderHook(() => useGetEvents({ context: "ctx", namespaces: [] }), {
       wrapper,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -144,7 +147,7 @@ describe("useGetEvents", () => {
 
     const selectFn = vi.fn((data: Event[] | undefined) => data?.slice(0, 1) ?? []);
     const { result } = renderHook(
-      () => useGetEvents({ context: "ctx", namespace: "default" }, { select: selectFn }),
+      () => useGetEvents({ context: "ctx", namespaces: ["default"] }, { select: selectFn }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -157,7 +160,7 @@ describe("useGetEvents", () => {
 
     const selectFn = vi.fn((data: Event[] | undefined) => data?.slice(0, 1) ?? []);
     const { result } = renderHook(
-      () => useGetEvents({ context: "ctx", namespace: "default" }, { select: selectFn }),
+      () => useGetEvents({ context: "ctx", namespaces: ["default"] }, { select: selectFn }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));

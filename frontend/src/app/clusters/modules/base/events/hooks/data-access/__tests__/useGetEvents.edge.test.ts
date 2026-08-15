@@ -70,9 +70,12 @@ describe("useGetEvents edge cases", () => {
   describe("1. Event push with different namespace — should filter out", () => {
     it("excludes events from different namespace when hook scoped to 'default'", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
+        {
+          wrapper,
+        }
+      );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -90,9 +93,12 @@ describe("useGetEvents edge cases", () => {
 
     it("includes only events matching hook namespace from mixed event push", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
+        {
+          wrapper,
+        }
+      );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -113,9 +119,12 @@ describe("useGetEvents edge cases", () => {
       listEventsMock.mockResolvedValue(queryData);
 
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
+        {
+          wrapper,
+        }
+      );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data).toEqual(queryData);
@@ -130,7 +139,7 @@ describe("useGetEvents edge cases", () => {
   describe("3. Cluster-wide (namespace === '') receives unfiltered events", () => {
     it("includes all events from multiple namespaces when namespace is empty string", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "" }), {
+      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespaces: [] }), {
         wrapper,
       });
 
@@ -156,7 +165,7 @@ describe("useGetEvents edge cases", () => {
       const selectFn = vi.fn((events: Event[] | undefined) => events?.slice(0, 1) ?? []);
 
       const { result } = renderHook(
-        () => useGetEvents({ context: "ctx", namespace: "default" }, { select: selectFn }),
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }, { select: selectFn }),
         { wrapper }
       );
 
@@ -170,7 +179,7 @@ describe("useGetEvents edge cases", () => {
       const selectFn = vi.fn((events: Event[] | undefined) => events?.slice(0, 1) ?? []);
 
       const { result } = renderHook(
-        () => useGetEvents({ context: "ctx", namespace: "default" }, { select: selectFn }),
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }, { select: selectFn }),
         { wrapper }
       );
 
@@ -192,9 +201,12 @@ describe("useGetEvents edge cases", () => {
       listEventsMock.mockRejectedValue(new Error("Network error"));
 
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
+        {
+          wrapper,
+        }
+      );
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.data).toBeUndefined();
@@ -211,7 +223,7 @@ describe("useGetEvents edge cases", () => {
   describe("6. Context empty string — hook disabled", () => {
     it("does not call ListEvents when context is empty", async () => {
       const { wrapper } = makeWrapper();
-      renderHook(() => useGetEvents({ context: "", namespace: "default" }), { wrapper });
+      renderHook(() => useGetEvents({ context: "", namespaces: ["default"] }), { wrapper });
       await new Promise((r) => setTimeout(r, 20));
       expect(listEventsMock).not.toHaveBeenCalled();
     });
@@ -220,9 +232,12 @@ describe("useGetEvents edge cases", () => {
   describe("7. Namespace filter case sensitivity", () => {
     it("requires exact namespace match (case-sensitive)", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "Default" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEvents({ context: "ctx", namespaces: ["Default"] }),
+        {
+          wrapper,
+        }
+      );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -238,9 +253,12 @@ describe("useGetEvents edge cases", () => {
   describe("8. Multiple consecutive event pushes", () => {
     it("replaces data with latest event push each time", async () => {
       const { wrapper } = makeWrapper();
-      const { result } = renderHook(() => useGetEvents({ context: "ctx", namespace: "default" }), {
-        wrapper,
-      });
+      const { result } = renderHook(
+        () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
+        {
+          wrapper,
+        }
+      );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 

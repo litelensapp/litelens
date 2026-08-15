@@ -64,13 +64,13 @@ beforeEach(() => {
   useGetSecretsMock.mockReturnValue({ data: [] });
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onToggleSecretDetail: onToggleSecretDetailMock,
   } as unknown as ReturnType<typeof useMainLayoutContext>);
   vi.mocked(useDetailDrawerContext).mockReturnValue({
     activeContext: "test-ctx",
-    namespace: "",
+    namespaces: [],
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,
     onToggleSecretDetail: onToggleSecretDetailMock,
   } as unknown as ReturnType<typeof useDetailDrawerContext>);
@@ -290,7 +290,7 @@ describe("SecretsView — edge cases and boundary conditions", () => {
   - Empty namespace prop on component and empty Namespace field in data
   - Name with special characters (forward slash, hyphens)
   - Substring-in-middle search match
-  - Multiple rows sharing the same namespace: each row gets its own ResourceLink
+  - Multiple rows sharing the same namespaces: each row gets its own ResourceLink
   - Click isolation: onToggleNamespaceDetail fires only on ResourceLink, not on Name cell
   - Alphabetical sort order of rendered rows regardless of input order
   - Labels: null, undefined, and empty array all render "—"

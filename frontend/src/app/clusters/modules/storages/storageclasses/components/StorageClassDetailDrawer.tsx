@@ -123,7 +123,7 @@ const StorageClassOverviewTab: FC<{ sc: StorageClass }> = ({ sc }) => {
 const StorageClassEventsTab: FC<{ sc: StorageClass }> = ({ sc }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const scEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "storageclass" && e.InvolvedObjectName === sc.Name
   );

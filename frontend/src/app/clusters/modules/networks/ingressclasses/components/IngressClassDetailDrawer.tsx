@@ -156,7 +156,7 @@ const IngressClassDrawerCtaButtons: FC<IngressClassDrawerCtaButtonsProps> = ({ i
 
 const IngressClassEventsTab: FC<{ ic: IngressClass }> = ({ ic }) => {
   const { activeContext } = useMainLayoutContext();
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: "" });
+  const { data: events = [] } = useGetEvents({ context: activeContext, namespaces: [] });
   const icEvents = events.filter(
     (e) => e.InvolvedObjectKind.toLowerCase() === "ingressclass" && e.InvolvedObjectName === ic.Name
   );

@@ -80,7 +80,7 @@ const ConfigMapTableCtaButtons: FC<ConfigMapTableCtaButtonsProps> = ({ namespace
 };
 
 export const ConfigMapsView: FC = () => {
-  const { activeContext, namespace } = useMainLayoutContext();
+  const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleConfigMapDetail } = useDetailDrawerContext();
 
   const [search, setSearch] = useState("");
@@ -89,7 +89,7 @@ export const ConfigMapsView: FC = () => {
 
   const { mutate: deleteConfigMaps, isPending: isBulkDeletePending } = useDeleteConfigMaps();
 
-  const { data: raw = [], isLoading } = useGetConfigMaps({ context: activeContext, namespace });
+  const { data: raw = [], isLoading } = useGetConfigMaps({ context: activeContext, namespaces });
 
   const configmaps = raw
     .filter((cm) => !search || cm.Name.toLowerCase().includes(search.toLowerCase()))
@@ -146,7 +146,7 @@ export const ConfigMapsView: FC = () => {
               />
             </TableHead>
             <TableHead>Name</TableHead>
-            {!namespace && <TableHead>Namespace</TableHead>}
+            {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Keys</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
@@ -156,13 +156,13 @@ export const ConfigMapsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespace ? 3 : 4}
+              columns={namespaces.length === 1 ? 3 : 4}
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[30%]"]}
             />
           ) : configmaps.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespace ? 5 : 6} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length === 1 ? 5 : 6} className="px-0 py-0">
                 <EmptyState
                   icon={<FileTextIcon className="size-8" />}
                   title="No ConfigMaps"
@@ -193,7 +193,7 @@ export const ConfigMapsView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{cm.Name}</TableCell>
-                  {!namespace && (
+                  {namespaces.length !== 1 && (
                     <TableCell className="text-xs">
                       <ResourceLink
                         onClick={(e) => {

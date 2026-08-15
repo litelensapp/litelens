@@ -228,7 +228,7 @@ const ReplicaSetPodsTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
-  const { data: allPods = [] } = useGetPods({ context: activeContext, namespace: rs.Namespace });
+  const { data: allPods = [] } = useGetPods({ context: activeContext, namespaces: [rs.Namespace] });
   const pods = allPods
     .filter(
       (p) =>
@@ -297,7 +297,10 @@ const ReplicaSetPodsTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
 const ReplicaSetEventsTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
   const { activeContext } = useMainLayoutContext();
 
-  const { data: events = [] } = useGetEvents({ context: activeContext, namespace: rs.Namespace });
+  const { data: events = [] } = useGetEvents({
+    context: activeContext,
+    namespaces: [rs.Namespace],
+  });
   const rsEvents = events.filter(
     (e) =>
       e.InvolvedObjectKind.toLowerCase() === "replicaset" &&
