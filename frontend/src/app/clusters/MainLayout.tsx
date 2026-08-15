@@ -203,7 +203,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   const [namespaces, setNamespaces] = useState<string[]>(() => {
     const stored = localStorage.getItem(storageKey);
     // Handle migration from old single-string format to new array format
-    if (stored && stored[0] === "[") {
+    if (stored?.[0] === "[") {
       // Try to parse as JSON array
       try {
         return JSON.parse(stored);

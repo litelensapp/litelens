@@ -70,12 +70,17 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		resource string
 	}
 
+	// Order mirrors NAV_CORE in frontend/src/app/clusters/navConfig.ts (top-to-bottom,
+	// group-by-group) so the stagger delay below lines up with how soon each resource
+	// is likely to be viewed/needed after connecting, instead of an arbitrary order.
 	informerList := []entry{
+		{factory.Core().V1().Namespaces().Informer(), "namespaces"},
+		{factory.Core().V1().Nodes().Informer(), "nodes"},
 		{factory.Core().V1().Pods().Informer(), "pods"},
 		{factory.Apps().V1().Deployments().Informer(), "deployments"},
 		{factory.Apps().V1().DaemonSets().Informer(), "daemonsets"},
-		{factory.Apps().V1().ReplicaSets().Informer(), "replicasets"},
 		{factory.Apps().V1().StatefulSets().Informer(), "statefulsets"},
+		{factory.Apps().V1().ReplicaSets().Informer(), "replicasets"},
 		{factory.Batch().V1().Jobs().Informer(), "jobs"},
 		{factory.Batch().V1().CronJobs().Informer(), "cronjobs"},
 		{factory.Core().V1().ConfigMaps().Informer(), "configmaps"},
@@ -84,26 +89,24 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		{factory.Core().V1().LimitRanges().Informer(), "limitranges"},
 		{factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer(), "hpa"},
 		{factory.Policy().V1().PodDisruptionBudgets().Informer(), "pdbs"},
+		{factory.Scheduling().V1().PriorityClasses().Informer(), "priorityclasses"},
+		{factory.Coordination().V1().Leases().Informer(), "leases"},
+		{factory.Admissionregistration().V1().ValidatingWebhookConfigurations().Informer(), "validatingwebhookconfigs"},
+		{factory.Core().V1().Services().Informer(), "services"},
+		{factory.Discovery().V1().EndpointSlices().Informer(), "endpointslices"},
+		{factory.Core().V1().Endpoints().Informer(), "endpoints"},
 		{factory.Networking().V1().Ingresses().Informer(), "ingresses"},
 		{factory.Networking().V1().IngressClasses().Informer(), "ingressclasses"},
 		{factory.Networking().V1().NetworkPolicies().Informer(), "networkpolicies"},
-		{factory.Admissionregistration().V1().ValidatingWebhookConfigurations().Informer(), "validatingwebhookconfigs"},
 		{factory.Core().V1().PersistentVolumeClaims().Informer(), "pvcs"},
 		{factory.Core().V1().PersistentVolumes().Informer(), "pvs"},
 		{factory.Storage().V1().StorageClasses().Informer(), "storageclasses"},
-		{factory.Core().V1().Endpoints().Informer(), "endpoints"},
-		{factory.Core().V1().Services().Informer(), "services"},
-		{factory.Core().V1().Nodes().Informer(), "nodes"},
-		{factory.Core().V1().Namespaces().Informer(), "namespaces"},
 		{factory.Core().V1().ServiceAccounts().Informer(), "serviceaccounts"},
 		{factory.Rbac().V1().ClusterRoles().Informer(), "clusterroles"},
 		{factory.Rbac().V1().Roles().Informer(), "roles"},
 		{factory.Rbac().V1().ClusterRoleBindings().Informer(), "clusterrolebindings"},
 		{factory.Rbac().V1().RoleBindings().Informer(), "rolebindings"},
-		{factory.Scheduling().V1().PriorityClasses().Informer(), "priorityclasses"},
-		{factory.Coordination().V1().Leases().Informer(), "leases"},
 		{factory.Core().V1().Events().Informer(), "events"},
-		{factory.Discovery().V1().EndpointSlices().Informer(), "endpointslices"},
 	}
 
 	// Allocate per-resource stop channels, sync channels, sync.Once, wire error handlers.
