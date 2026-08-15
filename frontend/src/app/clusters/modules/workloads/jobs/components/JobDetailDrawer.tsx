@@ -37,8 +37,8 @@ import type { Job } from "../api/resources";
 import { useGetJobDetail } from "../hooks/data-access/useGetJobDetail";
 import { useDeleteJob } from "../hooks/data-mutation/useDeleteJob";
 import { JobConditionBadge } from "./JobConditionBadge";
-import { JobResumedBadge } from "./JobResumedBadge";
 import { JobDeleteConfirmationModal } from "./JobDeleteConfirmationModal";
+import { JobResumedBadge } from "./JobResumedBadge";
 
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
