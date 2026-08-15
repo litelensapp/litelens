@@ -1,0 +1,14 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { SaveDefaultNamespaces } from "@wailsjs/go/app/App";
+import { QUERY_KEY_DEFAULT_NAMESPACES } from "../../api/api.const";
+
+export const useSaveDefaultNamespaces = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contextName, namespaces }: { contextName: string; namespaces: string[] }) =>
+      SaveDefaultNamespaces(contextName, namespaces),
+    onSuccess: (_, { contextName }) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY_DEFAULT_NAMESPACES, { contextName }] });
+    },
+  });
+};

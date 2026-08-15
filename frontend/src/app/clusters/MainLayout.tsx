@@ -8,6 +8,7 @@ import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatc
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { NavSidebar } from "./NavSidebar";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
+import { useGetDefaultNamespaces } from "./shared/hooks/data-access/useGetDefaultNamespaces";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
@@ -199,22 +200,22 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(["workloads", "network", "config", "storage", "access-control"])
   );
-  const storageKey = `litelens:namespace:${activeContext}`;
-  const [namespaces, setNamespaces] = useState<string[]>(() => {
-    const stored = localStorage.getItem(storageKey);
-    // Handle migration from old single-string format to new array format
-    if (stored?.[0] === "[") {
-      // Try to parse as JSON array
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return [];
-      }
-    }
-    // Old format: single string; convert to array (empty means all namespaces)
-    return stored ? [stored] : [];
-  });
+  const [namespaces, setNamespaces] = useState<string[]>([]);
+  // Tracks whether the backend default-namespaces seed (below) has already been
+  // applied for this context, so it only runs once even though the query result
+  // can change reference across re-renders, and doesn't clobber later in-session
+  // filter changes made via handleNamespacesChange.
+  const [appliedDefaultFor, setAppliedDefaultFor] = useState<string | null>(null);
   const { data: namespaceNames = [] } = useGetNamespaceNames(activeContext);
+  const { data: defaultNamespaces } = useGetDefaultNamespaces(activeContext);
+
+  // Settings-persisted default namespaces are the source of truth for the initial
+  // filter on every load. In-session filter changes are kept in memory only (not
+  // persisted) — reloading or restarting the app always rolls back to the default.
+  if (appliedDefaultFor !== activeContext && defaultNamespaces) {
+    setAppliedDefaultFor(activeContext);
+    setNamespaces(defaultNamespaces);
+  }
 
   const sortedNamespaceNames = useMemo(() => namespaceNames.slice().sort(), [namespaceNames]);
 
@@ -237,7 +238,6 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
 
   function handleNamespacesChange(ns: string[]) {
     setNamespaces(ns);
-    localStorage.setItem(storageKey, JSON.stringify(ns));
   }
 
   function toggleGroup(id: string) {

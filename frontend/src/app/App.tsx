@@ -333,7 +333,6 @@ export const App: FC = () => {
         <ClusterSettingsModal
           contextName={clusterSettingsCtx}
           onClose={() => dispatch({ type: "CLOSE_CLUSTER_SETTINGS" })}
-          onSaved={(ctx) => connectTo(ctx)}
         />
 
         <Toaster position="bottom-right" />

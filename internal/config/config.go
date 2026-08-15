@@ -24,6 +24,7 @@ type MarketplaceRepository struct {
 type Settings struct {
 	AccessToken             string                  `json:"accessToken"`
 	ClusterProxies          map[string]ClusterProxy `json:"clusterProxies"`
+	ClusterDefaultNamespaces map[string][]string    `json:"clusterDefaultNamespaces"`
 	ShellPath               string                  `json:"shellPath"`
 	KubeconfigPaths         []string                `json:"kubeconfigPaths"`
 	Locale                  string                  `json:"locale"`
