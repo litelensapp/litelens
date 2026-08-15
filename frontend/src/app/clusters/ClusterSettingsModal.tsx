@@ -1,10 +1,12 @@
 import {
   Button,
+  CornerDownLeftIcon,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Divider,
   Input,
   Trash2Icon,
 } from "@litelens/design-system";
@@ -14,10 +16,10 @@ import { FC, useState } from "react";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { useGetClusterProxy } from "./shared/hooks/data-access/useGetClusterProxy";
 import { useGetContextKubeconfigPath } from "./shared/hooks/data-access/useGetContextKubeconfigPath";
-import { useGetDefaultNamespaces } from "./shared/hooks/data-access/useGetDefaultNamespaces";
-import { useGetNamespacesForContext } from "./shared/hooks/data-access/useGetNamespacesForContext";
+import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
+import { useGetNamespacesForContext } from "./modules/base/namespaces/hooks/data-access/useGetNamespacesForContext";
 import { useSaveClusterProxy } from "./shared/hooks/data-mutation/useSaveClusterProxy";
-import { useSaveDefaultNamespaces } from "./shared/hooks/data-mutation/useSaveDefaultNamespaces";
+import { useSaveDefaultNamespaces } from "./modules/base/namespaces/hooks/data-mutation/useSaveDefaultNamespaces";
 
 type SaveStatus = "idle" | "saving" | "error";
 
@@ -34,6 +36,7 @@ interface ClusterSettingsModalProps {
 export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextName, onClose }) => {
   const [proxy, setProxy] = useState("");
   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
+  const [manualNamespace, setManualNamespace] = useState("");
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [loadedContextName, setLoadedContextName] = useState<string | null>(null);
 
@@ -60,6 +63,20 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
   const removeNamespace = (ns: string) => {
     setSelectedNamespaces((prev) => prev.filter((n) => n !== ns));
   };
+
+  const addManualNamespace = () => {
+    const trimmed = manualNamespace.trim();
+    if (!trimmed) return;
+    setSelectedNamespaces((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setManualNamespace("");
+  };
+
+  function handleManualNamespaceKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addManualNamespace();
+    }
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -141,6 +158,8 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
               </p>
             </div>
 
+            <Divider />
+
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="cluster-proxy"
@@ -162,24 +181,53 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
               Applied to both HTTP and HTTPS traffic. Takes effect on the next connection.
             </p>
 
+            <Divider />
+
             <div className="flex flex-col gap-2">
               <label className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider">
                 Default Namespaces
               </label>
-              <NamespaceMultiSelect
-                namespaces={selectedNamespaces}
-                availableNamespaces={availableNamespaces ?? []}
-                onNamespacesChange={setSelectedNamespaces}
-                disabled={isLoadingNamespaces || !!namespacesError}
-              />
-              {namespacesError && (
+
+              <div className="relative">
+                <Input
+                  value={manualNamespace}
+                  onChange={(e) => setManualNamespace(e.target.value)}
+                  onKeyDown={handleManualNamespaceKeyDown}
+                  placeholder="Type a namespace and press Enter"
+                  className="pr-8"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Add namespace"
+                  onClick={addManualNamespace}
+                  disabled={!manualNamespace.trim()}
+                  className="absolute right-0.5 top-1/2 -translate-y-1/2"
+                >
+                  <CornerDownLeftIcon className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-left text-xs">
+                This setting is useful for manually specifying which namespaces you have access to.
+                This is useful when you do not have permissions to list namespaces.
+              </p>
+
+              {namespacesError ? (
                 <p className="text-destructive text-xs">
                   Failed to load namespaces. Please try again.
                 </p>
+              ) : (
+                <NamespaceMultiSelect
+                  namespaces={selectedNamespaces}
+                  availableNamespaces={availableNamespaces ?? []}
+                  onNamespacesChange={setSelectedNamespaces}
+                  disabled={isLoadingNamespaces}
+                />
               )}
 
               {selectedNamespaces.length > 0 && (
-                <div className="bg-muted/40 flex flex-col gap-1 rounded-md p-1">
+                <div className="bg-muted/40 flex max-h-80 flex-col gap-1 overflow-y-auto rounded-md p-1">
                   {selectedNamespaces
                     .slice()
                     .sort()
@@ -202,7 +250,6 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
                     ))}
                 </div>
               )}
-
               <p className="text-muted-foreground text-left text-xs">
                 Select namespaces to use as the default filter when connecting to this context.
                 Leave empty for all namespaces.

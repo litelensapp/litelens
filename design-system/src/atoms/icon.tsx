@@ -19,6 +19,7 @@ export {
   ClockIcon,
   ContainerIcon,
   CopyIcon,
+  CornerDownLeftIcon,
   CpuIcon,
   DatabaseIcon,
   DownloadIcon,

@@ -1,19 +1,19 @@
 import { ErrorBoundary, NavItem, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useMemo, useState } from "react";
-import { useGetInstalledPluginNav } from "./plugins/hooks/useGetInstalledPluginNav";
-import { usePluginTrayRegistry } from "./plugins/hooks/usePluginTrayRegistry";
-import { PluginResourceView } from "./plugins/PluginResourceView";
-import { PluginEventBridges } from "./plugins/PluginEventBridges";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
 import { MainLayoutProvider } from "./MainLayoutContext";
-import { NavSidebar } from "./NavSidebar";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
-import { useGetDefaultNamespaces } from "./shared/hooks/data-access/useGetDefaultNamespaces";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
+import { NavSidebar } from "./NavSidebar";
+import { useGetInstalledPluginNav } from "./plugins/hooks/useGetInstalledPluginNav";
+import { usePluginTrayRegistry } from "./plugins/hooks/usePluginTrayRegistry";
+import { PluginEventBridges } from "./plugins/PluginEventBridges";
+import { PluginResourceView } from "./plugins/PluginResourceView";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
+import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
 import { unifiedTrayRegistry } from "./shared/components/trays/unified/unifiedTrayRegistry";
-import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
+import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 
 const PodsView = lazy(() =>
   import("./modules/workloads/pods/PodsView").then((m) => ({
@@ -200,24 +200,40 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(["workloads", "network", "config", "storage", "access-control"])
   );
+
   const [namespaces, setNamespaces] = useState<string[]>([]);
-  // Tracks whether the backend default-namespaces seed (below) has already been
-  // applied for this context, so it only runs once even though the query result
-  // can change reference across re-renders, and doesn't clobber later in-session
-  // filter changes made via handleNamespacesChange.
-  const [appliedDefaultFor, setAppliedDefaultFor] = useState<string | null>(null);
   const { data: namespaceNames = [] } = useGetNamespaceNames(activeContext);
   const { data: defaultNamespaces } = useGetDefaultNamespaces(activeContext);
+  // Tracks the last-applied "<context>:<defaults>" snapshot, so the seed below
+  // re-applies both on first load for a context AND whenever the persisted
+  // defaults change (e.g. the user saves new ones in cluster settings), while
+  // not re-running on every render or clobbering in-session filter changes
+  // made via handleNamespacesChange in between saves.
+  const [appliedDefaultKey, setAppliedDefaultKey] = useState<string | null>(null);
 
-  // Settings-persisted default namespaces are the source of truth for the initial
-  // filter on every load. In-session filter changes are kept in memory only (not
-  // persisted) — reloading or restarting the app always rolls back to the default.
-  if (appliedDefaultFor !== activeContext && defaultNamespaces) {
-    setAppliedDefaultFor(activeContext);
-    setNamespaces(defaultNamespaces);
+  // Settings-persisted default namespaces are the source of truth for the
+  // filter, applied on load and re-applied whenever they're saved again. In
+  // between saves, in-session filter changes are kept in memory only (notxw
+  // persisted) — reloading or restarting the app always rolls back to the
+  // latest saved default. Defaults naming a namespace that no longer exists on
+  // the cluster are dropped.
+  if (defaultNamespaces && namespaceNames.length > 0) {
+    const defaultKey = `${activeContext}:${JSON.stringify(defaultNamespaces)}`;
+    if (appliedDefaultKey !== defaultKey) {
+      setAppliedDefaultKey(defaultKey);
+      const existing = new Set(namespaceNames);
+      setNamespaces(defaultNamespaces.filter((ns) => existing.has(ns)));
+    }
   }
 
-  const sortedNamespaceNames = useMemo(() => namespaceNames.slice().sort(), [namespaceNames]);
+  // Union with the persisted defaults so a namespace typed manually in cluster
+  // settings (e.g. because the cluster can't be listed due to RBAC) shows up as
+  // a selectable filter option immediately, without switching clusters to
+  // remount and re-fetch.
+  const sortedNamespaceNames = useMemo(
+    () => Array.from(new Set([...namespaceNames, ...(defaultNamespaces ?? [])])).sort(),
+    [namespaceNames, defaultNamespaces]
+  );
 
   // Discover installed plugins and their nav entries/tray families at runtime
   const { pluginNavData } = useGetInstalledPluginNav();
