@@ -1,5 +1,6 @@
 # Litelens
 
+[![homepage](https://img.shields.io/badge/🏘️-litelensapp.github.io-1abc9c)](https://litelensapp.github.io/)
 [![license](https://img.shields.io/github/license/litelensapp/litelens.svg)](LICENSE)
 [![release](https://img.shields.io/github/v/release/litelensapp/litelens?display_name=tag&sort=semver)](https://github.com/litelensapp/litelens/releases/latest)
 

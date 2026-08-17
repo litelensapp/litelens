@@ -34,7 +34,8 @@ export default defineConfig({
     "@xterm/addon-search",
     "tw-animate-css",
     "shadcn/tailwind.css",
-    "@fontsource-variable/geist",
+    "@fontsource-variable/inter",
+    "@fontsource-variable/space-grotesk",
   ],
   onSuccess: async () => {
     // Copy style.css and its partials to dist folder
