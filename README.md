@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/github/license/litelensapp/litelens.svg)](LICENSE)
 [![release](https://img.shields.io/github/v/release/litelensapp/litelens?display_name=tag&sort=semver)](https://github.com/litelensapp/litelens/releases/latest)
 
-LiteLens is a lightweight, native desktop dashboard for managing Kubernetes
+Litelens is a lightweight, native desktop dashboard for managing Kubernetes
 clusters. It's built with [Wails](https://wails.io) (Go backend + React
 webview, no Electron), so it stays small and fast while giving you a clean,
 modern watch-based UI over your cluster.
@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/7afe5c08-fb14-4ca1-ac33-4a2cbe8d2849
 
 ### Homebrew (macOS)
 
-LiteLens is distributed via a custom Homebrew tap (not `homebrew-core`), so
+Litelens is distributed via a custom Homebrew tap (not `homebrew-core`), so
 `brew search litelens` won't find it — tap it explicitly first:
 
 ```sh
@@ -26,7 +26,7 @@ brew install litelens
 
 ### APT (Debian/Ubuntu)
 
-LiteLens publishes `.deb` packages to a self-hosted APT repository, signed
+Litelens publishes `.deb` packages to a self-hosted APT repository, signed
 with a dedicated GPG key. Pick the command block matching your Ubuntu
 release:
 
@@ -100,4 +100,4 @@ testing, and PR guidelines. Please also review our
 
 ## License
 
-LiteLens is licensed under the [Apache License 2.0](LICENSE).
+Litelens is licensed under the [Apache License 2.0](LICENSE).

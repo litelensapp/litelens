@@ -16,20 +16,21 @@ for arg in "$@"; do
 done
 
 if [[ "$OS" == "Darwin" ]]; then
-  rm -rf /Applications/LiteLens.app
+  rm -rf /Applications/Litelens.app
+  rm -rf /Applications/LiteLens.app # pre-rebrand install path
   rm -f /usr/local/bin/litelens
-  success "LiteLens removed"
+  success "Litelens removed"
 else
   sudo rm -f /usr/local/bin/litelens
   rm -f "$HOME/.local/share/applications/litelens.desktop"
   if command -v update-desktop-database &>/dev/null; then
     update-desktop-database "$HOME/.local/share/applications"
   fi
-  success "LiteLens removed"
+  success "Litelens removed"
 fi
 
 if [[ "$CLEANUP" == "true" ]]; then
-  # All LiteLens app data (settings.json, plugins) now lives under ~/.litelens.
+  # All Litelens app data (settings.json, plugins) now lives under ~/.litelens.
   # Also remove old settings location for thoroughness.
   APP_DATA_DIR="$HOME/.litelens"
 
@@ -45,5 +46,5 @@ if [[ "$CLEANUP" == "true" ]]; then
 
   # Remove consolidated app data directory
   rm -rf "$APP_DATA_DIR"
-  success "LiteLens persistent data removed"
+  success "Litelens persistent data removed"
 fi

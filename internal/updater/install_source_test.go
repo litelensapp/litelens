@@ -105,7 +105,7 @@ func TestIsWingetManagedPath(t *testing.T) {
 	}{
 		{
 			name: "winget packages dir",
-			path: `C:\Users\alice\AppData\Local\Microsoft\WinGet\Packages\litelensapp.LiteLens_abc123\litelens.exe`,
+			path: `C:\Users\alice\AppData\Local\Microsoft\WinGet\Packages\litelensapp.Litelens_abc123\litelens.exe`,
 			want: true,
 		},
 		{
@@ -115,7 +115,7 @@ func TestIsWingetManagedPath(t *testing.T) {
 		},
 		{
 			name: "case-insensitive match",
-			path: `C:\Users\alice\AppData\Local\microsoft\winget\packages\litelensapp.LiteLens_abc123\litelens.exe`,
+			path: `C:\Users\alice\AppData\Local\microsoft\winget\packages\litelensapp.Litelens_abc123\litelens.exe`,
 			want: true,
 		},
 		{

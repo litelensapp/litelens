@@ -66,7 +66,7 @@ func buildMenu(a *app.App) *menu.Menu {
 	// Build the app menu manually. On macOS the first submenu IS the app menu;
 	// the OS replaces its title with the application name automatically.
 	appSub := m.AddSubmenu("litelens")
-	appSub.AddText("About LiteLens", nil, func(_ *menu.CallbackData) {
+	appSub.AddText("About Litelens", nil, func(_ *menu.CallbackData) {
 		go a.OpenAbout()
 	})
 	appSub.AddSeparator()

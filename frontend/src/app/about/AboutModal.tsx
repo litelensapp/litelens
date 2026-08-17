@@ -60,11 +60,11 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
         if (!open) onClose();
       }}
     >
-      <DialogContent aria-label="About LiteLens" size="sm">
+      <DialogContent aria-label="About Litelens" size="sm">
         <div className="flex flex-col items-center px-8 pb-6 pt-8 text-center">
-          <img src={logo} alt="LiteLens" className="mb-4 h-16 w-16 rounded-2xl" />
+          <img src={logo} alt="Litelens" className="mb-4 h-16 w-16 rounded-2xl" />
 
-          <h1 className="text-lg font-semibold">LiteLens</h1>
+          <h1 className="text-lg font-semibold">Litelens</h1>
           <p className="text-muted-foreground mt-0.5 font-mono text-xs">
             {payload.version}
             {payload.installSource && <> · {payload.installSource}</>}
