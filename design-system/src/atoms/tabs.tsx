@@ -6,7 +6,7 @@ function Tabs({ className, orientation = "horizontal", ...props }: TabsPrimitive
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      data-orientation={orientation}
+      orientation={orientation}
       className={cn(
         "group/tabs data-horizontal:grid-rows-[auto_1fr] data-vertical:grid-cols-[auto_1fr] grid gap-2",
         className

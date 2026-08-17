@@ -6,7 +6,7 @@
 @import "./styles.animation.css";
 @import "./styles.palette.css";
 
-@source "../src";
+@source "./";
 
 @custom-variant dark (&:is(.dark *));
 
