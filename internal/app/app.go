@@ -219,6 +219,19 @@ func (a *App) Connect(contextName string) error {
 	a.factories[contextName] = h
 	a.activeContext = contextName
 
+	// Push cluster context to all running plugins with HTTP backends.
+	// Phase 2 design decision: "The host pushes POST on every cluster switch."
+	// Unlock before resolving the kubeconfig path and pushing: GetContextKubeconfigPath
+	// takes its own RLock on a.mu, and a.mu is not reentrant, so calling it while still
+	// holding the write lock acquired above would deadlock.
+	a.mu.Unlock()
+	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
+	if err != nil {
+		log.Printf("resolve kubeconfig path for plugin cluster-context push (context %q): %v", contextName, err)
+	}
+	a.pushClusterContextToAllPlugins(contextName, kubeconfigPath)
+	a.mu.Lock()
+
 	// Register event handlers for live updates.
 	isCtx := func() bool { return a.isActive(contextName) }
 	debLeases := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, a.emitLeases, isCtx)

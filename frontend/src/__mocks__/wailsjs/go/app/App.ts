@@ -39,3 +39,4 @@ export const UpdateNamespaceYAML = (_yamlString: string): Promise<void> => Promi
 export const GetPluginsFromMarketplace = (): Promise<unknown[]> => Promise.resolve([]);
 export const IsMarketplaceEnabled = (): Promise<boolean> => Promise.resolve(true);
 export const IsPrivateRepoAccess = (): Promise<boolean> => Promise.resolve(true);
+export const GetPluginBackendAddr = (_pluginID: string): Promise<string> => Promise.resolve("");

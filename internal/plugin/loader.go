@@ -29,6 +29,8 @@ type PluginLoader struct {
 	processCmd       *exec.Cmd
 	cancelHealthLoop context.CancelFunc
 	lastError        string
+	backendAddr      string // HTTP backend address (127.0.0.1:<port>), if provided by plugin handshake
+	onRestart        func(id string, backendAddr string) // callback to emit plugin:backendRestarted event
 }
 
 // NewPluginLoader creates a new loader for a plugin. The lock file lives
@@ -138,8 +140,18 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 			return err
 		}
 
-		// Write lock file
+		// Extract gRPC port (required)
 		port := int(handshake["grpcPort"].(float64))
+
+		// Extract HTTP backend address if provided by plugin (optional, Phase 5+)
+		backendAddr := ""
+		if httpAddrVal, ok := handshake["httpAddr"]; ok {
+			if httpAddrStr, ok := httpAddrVal.(string); ok && httpAddrStr != "" {
+				backendAddr = httpAddrStr
+			}
+		}
+
+		// Write lock file
 		if err := pl.writeLockFile(cmd.Process.Pid, port); err != nil {
 			_ = cmd.Process.Kill()
 			pl.status = dto.PluginStatusCrashed
@@ -154,6 +166,11 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 			pl.lastError = fmt.Sprintf("dial grpc: %v", err)
 			return err
 		}
+
+		// Store backend address if available. pl.mu is already held for the
+		// duration of Launch() (see the defer at the top) — locking again here
+		// would deadlock since sync.Mutex is not reentrant.
+		pl.backendAddr = backendAddr
 
 		pl.status = dto.PluginStatusReady
 		pl.startHealthLoop()
@@ -286,6 +303,8 @@ func (pl *PluginLoader) startHealthLoop() {
 						pl.mu.Lock()
 						pl.status = dto.PluginStatusCrashed
 						pl.lastError = fmt.Sprintf("health check failed: %v", err)
+						backendAddr := pl.backendAddr
+						onRestart := pl.onRestart
 						pl.mu.Unlock()
 
 						// Kill process and delete lock
@@ -294,6 +313,12 @@ func (pl *PluginLoader) startHealthLoop() {
 						}
 						_ = os.Remove(pl.lockFilePath)
 						_ = pl.conn.Close()
+
+						// Emit restart event if callback is set
+						if onRestart != nil {
+							onRestart(pl.id, backendAddr)
+						}
+
 						return
 					}
 				} else {
@@ -375,6 +400,24 @@ func (pl *PluginLoader) GetClient() pb.PluginClient {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	return pl.client
+}
+
+// GetBackendAddr returns the HTTP backend address (127.0.0.1:<port>), or "" if not available
+func (pl *PluginLoader) GetBackendAddr() string {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	return pl.backendAddr
+}
+
+// SetOnRestart sets a callback to be invoked when the plugin restarts. The
+// callback runs from the health-loop goroutine with pl.mu NOT held (it is
+// read and released before invocation, see startHealthLoop) — but it must
+// still stay cheap and non-blocking, since it runs synchronously on that
+// goroutine before the health loop exits.
+func (pl *PluginLoader) SetOnRestart(callback func(id string, backendAddr string)) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	pl.onRestart = callback
 }
 
 // SetClient sets the gRPC client directly (used for testing)
