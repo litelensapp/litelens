@@ -209,11 +209,15 @@ jobs:
 
   publish-manifest:
     needs: run
-    # `run` uses fail-fast: false, so a single matrix failure still marks the
-    # job "failure" even though other platforms succeeded and uploaded their
-    # assets. Run on any non-cancelled/skipped outcome so the manifest still
-    # gets built from whatever assets actually made it onto the release.
-    if: ${{ always() && needs.run.result != 'cancelled' && needs.run.result != 'skipped' && inputs.version != 'dev' }}
+    # `run` uses fail-fast: false, so a single matrix leg failing OR being
+    # cancelled still rolls the aggregate job result up to "failure"/
+    # "cancelled" even when other platforms succeeded and uploaded their
+    # assets. Run on any non-skipped outcome (success/failure/cancelled) so
+    # the manifest still gets built from whatever assets actually made it
+    # onto the release; the manifest-build step below only reads assets that
+    # actually exist on the release, so a fully-empty matrix just yields an
+    # empty (but harmless) manifest.
+    if: ${{ always() && needs.run.result != 'skipped' && inputs.version != 'dev' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
