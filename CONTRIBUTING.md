@@ -107,11 +107,10 @@ These checks must pass before submitting a PR:
 pnpm format
 
 # Lint TypeScript/React code
-pnpm lint
+pnpm lint:fe
 
 # Lint Go
-go vet ./internal/...
-go tool staticcheck ./internal/...
+pnpm lint:be
 ```
 
 ## Test cluster on local

@@ -27,9 +27,8 @@ pnpm build:app:fe        # build:ds + frontend build only (no Wails binary)
 
 ```bash
 pnpm format              # prettier --write across ts/tsx/js/json/css/md/yml
-pnpm lint                 # eslint frontend/src design-system/src
-go vet ./internal/...
-go tool staticcheck ./internal/...
+pnpm lint:fe              # eslint frontend/src design-system/src
+pnpm lint:be              # go vet + staticcheck for ./internal/... and the packages/core module
 ```
 
 ### Tests
@@ -78,11 +77,12 @@ minikube addons enable metrics-server
 
 ### Plugin architecture
 
-Plugins are **fully standalone Go modules** (e.g. `plugins/<name>` — own `go.mod` under `github.com/litelensapp/litelens/plugins/<name>`, zero dependency on the root module: local copies of `dto`, the plugin gRPC `pb` package, and `kube.LoadingRules`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package).
+Plugins are **fully standalone Go modules** (e.g. `plugins/<name>` — own `go.mod` under `github.com/litelensapp/litelens/plugins/<name>`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package).
 
+- **Shared contract via `packages/core` module:** a nested Go module (`github.com/litelensapp/litelens/packages/core`, own `go.mod`) exporting the plugin-host contract: protobuf service definitions (`packages/core/pb/`), data transfer objects (`packages/core/dto/`), and kubeconfig loading utilities (`packages/core/kube/`). Plugins depend on this module (versioned as `packages/core/vX.Y.Z`) instead of hand-copying these packages. See `packages/core/README.md` for versioning and update workflow. **Status:** the host's `internal/` currently maintains parallel copies; Phase 4 of the architecture plan will migrate the host to import `packages/core` as a normal dependency.
 - The plugin binary is launched as a subprocess by `internal/plugin`, emits a one-line JSON `READY` handshake (`grpcPort`, `pid`, version) on stdout, then serves gRPC.
 - The main app never calls plugin methods directly — everything crosses the boundary via the generic `pb.PluginServer` contract (`GetCapabilities` / `SetClusterContext` / `Invoke(method, payloadJson)`), dispatched inside the plugin's own `internal/server/grpc.go`.
-- Plugin frontend bundles are loaded dynamically and resolve `react`/`react-dom`/`@litelens/design-system`/`@tanstack/react-query` as **bare specifiers against the host's own module instances** via an import map (`frontend/index.html`) + verbatim-copied shim files in `frontend/public/vendor/` — this avoids shipping a second React/query-client instance that would break Context.
+- Plugin frontend bundles are loaded dynamically and resolve `react`/`react-dom`/`@litelens/design-system`/`@litelens/core`/`@tanstack/react-query` as **bare specifiers against the host's own module instances** via an import map (`frontend/index.html`) + verbatim-copied shim files in `frontend/public/vendor/` — this avoids shipping duplicate instances that would break Context (React) or query client isolation.
 - Plugins are installed at runtime from a marketplace (GitHub release manifests); nothing plugin-specific is compiled into `main.go`.
 
 ### Frontend (`frontend/src`)
