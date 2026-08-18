@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/internal/kube"
+	corekube "github.com/litelensapp/litelens/packages/core/kube"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -276,7 +276,7 @@ func (a *App) GetContextKubeconfigPath(contextName string) (string, error) {
 	paths := a.settings.KubeconfigPaths
 	a.mu.RUnlock()
 
-	rules := kube.LoadingRules(paths)
+	rules := corekube.LoadingRules(paths)
 	for _, path := range rules.Precedence {
 		cfg, err := clientcmd.LoadFromFile(path)
 		if err != nil {

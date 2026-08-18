@@ -49,3 +49,15 @@ jobs:
     permissions:
       id-token: write
       contents: read
+
+  publish-app-core-packages:
+    name: Publish App Core Packages
+    needs: [release-version]
+    if: ${{ needs.release-version.result == 'success' && vars.CORE_PACKAGE_RELEASED == 'true' }}
+    uses: ./.github/workflows/job-publish-app-core-packages.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.release-version.outputs.tag_name }}
+    permissions:
+      id-token: write
+      contents: write

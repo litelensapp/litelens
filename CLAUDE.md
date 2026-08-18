@@ -58,13 +58,13 @@ minikube addons enable metrics-server
 - **`internal/app`** — one file per Wails-bound method group (`pod.go`, `deployment.go`, `node.go`, …), plus `app.go` (the `App` struct, `Connect`/`Disconnect`, event wiring). Every exported method on `App` is auto-bound to TypeScript by Wails (`main.go` binds only `*App` — `bindList := []any{a}`; nothing else is exposed directly).
 - **`internal/kube`** — client/informer plumbing: per-context `*kubernetes.Clientset` cache (mutex-guarded map), `clientcmd` loading rules (respects `$KUBECONFIG`), `SharedInformerFactory` handles, node/pod metrics fetch.
 - **`internal/kube/resources`** — per-resource-type `ListXxx`/`toXxx` conversion logic (raw K8s object → DTO).
-- **`internal/dto`** — leaf package, pure DTO type definitions (no imports of `kube`/`app`). One type per K8s resource kind; **fields must use `string` for timestamps, never `time.Time`** — Wails can't generate TS bindings for it.
-- **`internal/plugin`** — generic plugin host: discovery, download/verify, process lifecycle (`loader.go`), gRPC handshake. Talks to plugin subprocesses ONLY through `Invoke(pluginID, method, payloadJSON)` — see Plugin architecture below.
+- **`packages/core/dto`** — leaf package, pure DTO type definitions (no imports of `kube`/`app`), imported by `internal/` as a Go module dependency (see Plugin architecture below). One type per K8s resource kind; **fields must use `string` for timestamps, never `time.Time`** — Wails can't generate TS bindings for it. `internal/dto` no longer exists — it was removed once every importer moved to `packages/core/dto`.
+- **`internal/plugin`** — generic plugin host: discovery, download/verify, process lifecycle (`loader.go`), gRPC handshake (types from `packages/core/pb`). Talks to plugin subprocesses ONLY through `Invoke(pluginID, method, payloadJSON)` — see Plugin architecture below.
 - **`internal/updater`** — self-update (checks GitHub releases, downloads, swaps binary); split into `authenticated_updater.go` (private repo, token-based) and `unauthenticated_updater.go` (public repo, driven by a `manifest.json` release artifact — the single source of truth for per-OS/arch download filenames + SHA256, see `manifest.go`).
 - **`internal/config`** — app config (`~/.litelens/settings.json`, via `internal/storage`).
 - **`internal/storage`** — resolves `~/.litelens`, the single on-disk directory for all persistent app data (settings, installed plugins). Leaf package (no internal deps); `internal/config` and `internal/app` both depend on it.
 
-**Package dependency direction** (no cycles): `dto` ← `kube/resources` ← `kube` ← `app`; `store` ← `config` ← `app`, `store` ← `app`. `dto` and `store` are the leaves.
+**Package dependency direction** (no cycles): `packages/core/dto` ← `kube/resources` ← `kube` ← `app`; `store` ← `config` ← `app`, `store` ← `app`. `packages/core/dto` and `store` are the leaves.
 
 ### Core backend patterns
 
@@ -77,12 +77,23 @@ minikube addons enable metrics-server
 
 ### Plugin architecture
 
-Plugins are **fully standalone Go modules** (e.g. `plugins/<name>` — own `go.mod` under `github.com/litelensapp/litelens/plugins/<name>`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package).
+Plugins are **fully standalone Go modules** (e.g. in `litelens-plugins` repo, own `go.mod` under `github.com/litelensapp/litelens-plugins/plugins/<name>`). Each plugin ships its own frontend bundle too (`plugins/<name>/frontend`, its own workspace package). The host (`internal/`) and all plugins share a common contract via the `packages/core` nested Go module.
 
-- **Shared contract via `packages/core` module:** a nested Go module (`github.com/litelensapp/litelens/packages/core`, own `go.mod`) exporting the plugin-host contract: protobuf service definitions (`packages/core/pb/`), data transfer objects (`packages/core/dto/`), and kubeconfig loading utilities (`packages/core/kube/`). Plugins depend on this module (versioned as `packages/core/vX.Y.Z`) instead of hand-copying these packages. See `packages/core/README.md` for versioning and update workflow. **Status:** the host's `internal/` currently maintains parallel copies; Phase 4 of the architecture plan will migrate the host to import `packages/core` as a normal dependency.
-- The plugin binary is launched as a subprocess by `internal/plugin`, emits a one-line JSON `READY` handshake (`grpcPort`, `pid`, version) on stdout, then serves gRPC.
-- The main app never calls plugin methods directly — everything crosses the boundary via the generic `pb.PluginServer` contract (`GetCapabilities` / `SetClusterContext` / `Invoke(method, payloadJson)`), dispatched inside the plugin's own `internal/server/grpc.go`.
-- Plugin frontend bundles are loaded dynamically and resolve `react`/`react-dom`/`@litelens/design-system`/`@litelens/core`/`@tanstack/react-query` as **bare specifiers against the host's own module instances** via an import map (`frontend/index.html`) + verbatim-copied shim files in `frontend/public/vendor/` — this avoids shipping duplicate instances that would break Context (React) or query client isolation.
+**Go module structure:**
+
+- **`packages/core/` (nested module):** a sibling to `internal/`, with its own `go.mod` (`github.com/litelensapp/litelens/packages/core`), to be versioned via git tags shaped `packages/core/vX.Y.Z` once the first one is published (none exists yet — see `go.work`'s TODO). Exports the plugin-host contract: protobuf service definitions (`packages/core/pb/`), data transfer objects (`packages/core/dto/` — leaf package, no heavy deps), and kubeconfig loading utilities (`packages/core/kube.LoadingRules` only, not full client/informer machinery).
+- **Host import:** `internal/` now imports `packages/core/{pb,dto,kube}` directly as a Go module dependency (via the `go.work` workspace file for same-repo multi-module dev until `packages/core/v0.1.0` is tagged and released). This replaces parallel hand-maintained copies in `internal/`.
+- **Plugin import:** plugins depend on `packages/core/` as a normal versioned Go dependency (e.g. `github.com/litelensapp/litelens/packages/core@packages/core/vX.Y.Z`), avoiding the old manual-sync cost of hand-copying DTO and proto files.
+
+**Frontend packages:**
+
+- **`@litelens/core` (pnpm workspace package):** provisioned at `packages/core/frontend/`, exports host-level React hooks (starting with `useResourceLinks`) for plugin frontends to import. Resolved via import map (`frontend/index.html`) and vendor shims (`frontend/public/vendor/litelens/core.js`), same pattern as `@litelens/design-system`. Versioned alongside the host app, not as a stable long-term SDK. See `packages/core/README.md` for rationale and versioning.
+
+**Plugin subprocess model (unchanged):**
+
+- Plugin binary is launched as a subprocess by `internal/plugin`, emits a one-line JSON `READY` handshake (`grpcPort`, `pid`, version) on stdout, then serves gRPC.
+- The main app still manages process lifecycle (spawn, health checks, restart detection). The existing `pb.PluginServer` gRPC contract (`GetCapabilities` / `SetClusterContext` / legacy `Invoke`) remains for now (full removal is a future follow-up).
+- Plugin frontend bundles are loaded dynamically and resolve `react`/`react-dom`/`@litelens/design-system`/`@litelens/core`/`@tanstack/react-query` as bare specifiers against the host's own module instances via import map + vendor shims — avoids duplicate instances that would break React Context or query client isolation.
 - Plugins are installed at runtime from a marketplace (GitHub release manifests); nothing plugin-specific is compiled into `main.go`.
 
 ### Frontend (`frontend/src`)

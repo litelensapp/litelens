@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-08-11T16:17:50.232Z
+  modified: 2026-08-18T16:41:58.555Z
 ---
 
 ### IPC Pattern
@@ -65,7 +65,7 @@ Every resource view follows the same structure:
 
 ### DTO Design
 
-Each resource type has a dedicated type in `internal/dto/<type>.go` (no `DTO` suffix — the `dto.` package prefix already signals intent) and a matching TypeScript interface in `frontend/src/api/resources.ts`. Conversion logic (`toXxx`) and list functions (`ListXxx`) live in `internal/kube/resources/<type>.go`.
+Each resource type has a dedicated type in `packages/core/dto/<type>.go` (no `DTO` suffix — the `dto.` package prefix already signals intent) and a matching TypeScript interface in `frontend/src/api/resources.ts`. Conversion logic (`toXxx`) and list functions (`ListXxx`) live in `internal/kube/resources/<type>.go`. (Moved from `internal/dto` in Phase 4 of [[plugin-architecture-inversion]] — that package was deleted 2026-08-18 once every importer migrated.)
 
 | Type (`dto.*`)          | Key fields                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -105,14 +105,14 @@ Each resource type has a dedicated type in `internal/dto/<type>.go` (no `DTO` su
 ### Package Dependency Direction
 
 ```text
-internal/dto             →  (nothing — leaf package, pure type definitions)
+packages/core/dto        →  (nothing — leaf package, pure type definitions; separate Go module, imported via go.work — see [[go_work_removal_todo]])
 internal/storage           →  (nothing — leaf package, directory resolver only)
-internal/kube/resources  →  internal/dto  (uses DTO types) + k8s.io/...
-internal/kube            →  internal/dto  (metrics.go uses dto.NodeUsage)
+internal/kube/resources  →  packages/core/dto  (uses DTO types) + k8s.io/...
+internal/kube            →  packages/core/dto  (metrics.go uses dto.NodeUsage)
 internal/kube            →  internal/kube/resources  (FactoryHandle, informers)
 internal/config          →  internal/storage  (settings path resolver, new 2026-08-11)
 internal/app             →  internal/storage  (plugins root dir resolver, new 2026-08-11; also injected into internal/plugin/assets.go's resolvePluginDir callback — internal/plugin itself has no direct storage import)
-internal/app             →  internal/dto  (DTO types in method signatures)
+internal/app             →  packages/core/dto  (DTO types in method signatures)
 internal/app             →  internal/kube/resources  (list functions)
 internal/app             →  internal/kube  (FactoryHandle, client primitives)
 internal/app             →  internal/config  (settings I/O)

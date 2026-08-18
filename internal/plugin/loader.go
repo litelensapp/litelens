@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
-	"github.com/litelensapp/litelens/internal/plugin/pb"
+	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/pb"
 	"google.golang.org/grpc"
 )
 
@@ -254,7 +254,7 @@ func (pl *PluginLoader) writeLockFile(pid, port int) error {
 	lockFile := dto.PluginLockFile{
 		PID:       pid,
 		Port:      port,
-		Timestamp: time.Now(),
+		Timestamp: time.Now().Format(time.RFC3339),
 		Version:   "v1",
 	}
 	data, _ := json.MarshalIndent(lockFile, "", "  ")

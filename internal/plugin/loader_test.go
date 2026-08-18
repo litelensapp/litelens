@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 )
 
 // mockPluginBinary creates a test-only plugin binary that emits a handshake and stays alive.
@@ -196,7 +196,7 @@ func TestLockFileJSON(t *testing.T) {
 		original := dto.PluginLockFile{
 			PID:       1234,
 			Port:      54321,
-			Timestamp: time.Date(2026, 7, 23, 12, 0, 0, 0, time.UTC),
+			Timestamp: time.Date(2026, 7, 23, 12, 0, 0, 0, time.UTC).Format(time.RFC3339),
 			Version:   "v1",
 		}
 

@@ -26,16 +26,11 @@ This module is tagged independently using Go's subdirectory-module convention:
 
 ## Source-of-truth decision
 
-**The host's `internal/` packages (`internal/plugin/pb/`, `internal/dto/`, `internal/kube`) are currently hand-maintained parallel copies.** Future phases (Phase 4, not part of this provisioning) will decide whether:
+**Resolved in Phase 4:** the host's `internal/` code imports `packages/core/{pb,dto,kube}` directly as a normal Go module dependency (via a root `go.work` workspace file until `packages/core/vX.Y.Z` is first tagged — see `go.work`'s TODO comment for the removal steps). This is option 1 of the two considered during provisioning; there are no more hand-maintained parallel copies to sync — `internal/dto/` and `internal/plugin/pb/` were deleted once every importer moved over.
 
-1. The host's `internal/` code imports `core/` directly as a normal module dependency, or
-2. `core/` is kept as the source of truth, with updates propagated _back_ to `internal/` copies via an automated sync step.
+### Resolved divergence: `PluginLockFile.Timestamp` field type
 
-This phase does **not** perform that migration — it only provisions the `core/` module standalone. Phase 4 will make the dependency direction choice explicit and implement the corresponding workflow.
-
-### Intentional divergence: `PluginLockFile.Timestamp` field type
-
-`core/dto/plugin.go`'s `PluginLockFile.Timestamp` field is intentionally typed as `string` (RFC3339 format) to match the Wails binding convention used throughout `core/dto`. This diverges from `internal/dto/plugin.go`, where the same field is currently typed as `time.Time` — a pre-existing bug in `internal/` that violates the project convention documented in CLAUDE.md ("fields must use `string` for timestamps, never `time.Time`"). The `internal/dto/plugin.go` bug is out of scope for this provisioning phase and should be fixed as a separate, dedicated follow-up (see the plan's Phase 1 notes).
+`core/dto/plugin.go`'s `PluginLockFile.Timestamp` field is `string` (RFC3339 format), matching the Wails binding convention used throughout `core/dto`. The old `internal/dto/plugin.go` copy had this field mistyped as `time.Time` (a pre-existing bug violating the project convention in CLAUDE.md, "fields must use `string` for timestamps, never `time.Time`") — that copy no longer exists, so the divergence is moot. `internal/plugin/loader.go`'s lock-file write site was updated to `time.Now().Format(time.RFC3339)` when it moved onto `core/dto`.
 
 ## Use by plugins
 

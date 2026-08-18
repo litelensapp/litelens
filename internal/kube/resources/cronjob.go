@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	batchv1 "k8s.io/api/batch/v1"
 	sigsyaml "sigs.k8s.io/yaml"
 	"k8s.io/apimachinery/pkg/labels"

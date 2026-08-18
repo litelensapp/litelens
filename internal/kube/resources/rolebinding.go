@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersrbacv1 "k8s.io/client-go/listers/rbac/v1"

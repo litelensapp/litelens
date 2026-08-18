@@ -17,7 +17,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	appversion "github.com/litelensapp/litelens/internal/version"
 )
 

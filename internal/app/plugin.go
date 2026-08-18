@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/plugin"
-	"github.com/litelensapp/litelens/internal/plugin/pb"
+	"github.com/litelensapp/litelens/packages/core/pb"
 	"github.com/litelensapp/litelens/internal/storage"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )

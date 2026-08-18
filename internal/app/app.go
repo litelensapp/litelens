@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
