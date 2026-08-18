@@ -6,28 +6,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorStatefulSetLister struct{ err error }
-
-func (e *errorStatefulSetLister) List(_ labels.Selector) ([]*appsv1.StatefulSet, error) {
-	return nil, e.err
-}
-func (e *errorStatefulSetLister) StatefulSets(_ string) listersappsv1.StatefulSetNamespaceLister {
-	return &errorStatefulSetNamespaceLister{e.err}
-}
-
-type errorStatefulSetNamespaceLister struct{ err error }
-
-func (e *errorStatefulSetNamespaceLister) List(_ labels.Selector) ([]*appsv1.StatefulSet, error) {
-	return nil, e.err
-}
-func (e *errorStatefulSetNamespaceLister) Get(_ string) (*appsv1.StatefulSet, error) {
-	return nil, e.err
-}
 
 func newStatefulSetLister(sss ...*appsv1.StatefulSet) listersappsv1.StatefulSetLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
@@ -95,7 +76,6 @@ func TestListStatefulSets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 		t.Errorf("expected empty result; got %d items", len(result))
 	}
 }
-
 
 func TestToStatefulSet_NilReplicas_DefaultsToOne(t *testing.T) {
 	ss := makeStatefulSet("ss", "default")

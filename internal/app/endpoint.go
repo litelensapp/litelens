@@ -178,6 +178,7 @@ func (a *App) UpdateEndpointYAML(namespace, yamlString string) error {
 		return fmt.Errorf("not connected")
 	}
 
+	//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice; UpdateEndpointYAML edits the resource kind the user is viewing
 	var ep corev1.Endpoints
 	err := sigsyaml.Unmarshal([]byte(yamlString), &ep)
 	if err != nil {

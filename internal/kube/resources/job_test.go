@@ -6,28 +6,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listersbatchv1 "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorJobLister struct{ err error }
-
-func (e *errorJobLister) List(_ labels.Selector) ([]*batchv1.Job, error) {
-	return nil, e.err
-}
-func (e *errorJobLister) Jobs(_ string) listersbatchv1.JobNamespaceLister {
-	return &errorJobNamespaceLister{e.err}
-}
-
-type errorJobNamespaceLister struct{ err error }
-
-func (e *errorJobNamespaceLister) List(_ labels.Selector) ([]*batchv1.Job, error) {
-	return nil, e.err
-}
-func (e *errorJobNamespaceLister) Get(_ string) (*batchv1.Job, error) {
-	return nil, e.err
-}
 
 func newJobLister(jobs ...*batchv1.Job) listersbatchv1.JobLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})

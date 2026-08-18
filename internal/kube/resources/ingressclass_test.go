@@ -5,16 +5,9 @@ import (
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listersnetworkingv1 "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorIngressClassLister struct{ err error }
-
-func (e *errorIngressClassLister) List(_ labels.Selector) ([]*networkingv1.IngressClass, error) {
-	return nil, e.err
-}
 
 func newIngressClassLister(ics ...*networkingv1.IngressClass) listersnetworkingv1.IngressClassLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})

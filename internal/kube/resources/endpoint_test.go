@@ -1,3 +1,4 @@
+//lint:file-ignore SA1019 exercises the legacy Endpoints API, which toEndpoint/ListEndpoints still supports alongside EndpointSlice
 package kubeResources
 
 import (

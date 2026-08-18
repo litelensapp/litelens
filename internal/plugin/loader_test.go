@@ -11,28 +11,6 @@ import (
 	"github.com/litelensapp/litelens/packages/core/dto"
 )
 
-// mockPluginBinary creates a test-only plugin binary that emits a handshake and stays alive.
-func mockPluginBinary(t *testing.T) string {
-	tmpDir := t.TempDir()
-	binPath := filepath.Join(tmpDir, "mock-plugin")
-
-	// Write a simple shell script that acts as the plugin
-	script := `#!/bin/bash
-# Find a free port (use port 0 to let OS assign)
-PORT=0
-# For testing, just output a fixed high port
-PORT=54321
-echo '{"type":"READY","version":"test","grpcPort":'$PORT',"pid":'$$',"timestamp":"2026-07-23T00:00:00Z"}'
-# Keep running
-while true; do sleep 1; done
-`
-
-	if err := os.WriteFile(binPath, []byte(script), 0755); err != nil {
-		t.Fatalf("write mock plugin: %v", err)
-	}
-	return binPath
-}
-
 func TestPluginLoaderStatus(t *testing.T) {
 	t.Run("initial status is NOT_INSTALLED", func(t *testing.T) {
 		pl := NewPluginLoader("test-helm", "/bin/true")
@@ -277,25 +255,6 @@ func TestHandshakeJSONParsing(t *testing.T) {
 	})
 }
 
-// Helper function to wait for condition with timeout
-func waitFor(t *testing.T, timeout time.Duration, condition func() bool) bool {
-	deadline := time.Now().Add(timeout)
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		if condition() {
-			return true
-		}
-		select {
-		case <-ticker.C:
-			if time.Now().After(deadline) {
-				return false
-			}
-		}
-	}
-}
-
 func TestPluginStatusThreadSafety(t *testing.T) {
 	pl := NewPluginLoader("test", "/bin/true")
 
@@ -421,8 +380,7 @@ sleep 3600
 	start := time.Now()
 
 	// Launch with a 10s timeout context and empty kubeconfig
-	ctx := context.WithValue(context.Background(), "test", "launch")
-	_ = pl.Launch(ctx, "") // Expected to fail on gRPC dial, but handshake read should complete quickly
+	_ = pl.Launch(context.Background(), "") // Expected to fail on gRPC dial, but handshake read should complete quickly
 
 	elapsed := time.Since(start)
 

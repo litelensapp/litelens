@@ -202,6 +202,7 @@ func (pl *PluginLoader) validateHandshake(handshake map[string]interface{}) erro
 // path) end up with a usable client, not just a bool.
 func (pl *PluginLoader) dialAndHealthCheck(ctx context.Context, port int) bool {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	//lint:ignore SA1019 grpc.NewClient's lazy-connect semantics would change this synchronous dial-then-healthcheck probe's behavior; migrate deliberately, not as a lint fix
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	if err != nil {
 		return false
@@ -223,6 +224,7 @@ func (pl *PluginLoader) dialAndHealthCheck(ctx context.Context, port int) bool {
 
 // dialGRPC establishes a gRPC connection
 func (pl *PluginLoader) dialGRPC(ctx context.Context, addr string) error {
+	//lint:ignore SA1019 grpc.NewClient's lazy-connect semantics would change this synchronous dial's behavior; migrate deliberately, not as a lint fix
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	if err != nil {
 		return err

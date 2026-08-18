@@ -5,29 +5,10 @@ import (
 
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	listerspolicyv1 "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorPDBLister struct{ err error }
-
-func (e *errorPDBLister) List(_ labels.Selector) ([]*policyv1.PodDisruptionBudget, error) {
-	return nil, e.err
-}
-func (e *errorPDBLister) PodDisruptionBudgets(_ string) listerspolicyv1.PodDisruptionBudgetNamespaceLister {
-	return &errorPDBNamespaceLister{e.err}
-}
-
-type errorPDBNamespaceLister struct{ err error }
-
-func (e *errorPDBNamespaceLister) List(_ labels.Selector) ([]*policyv1.PodDisruptionBudget, error) {
-	return nil, e.err
-}
-func (e *errorPDBNamespaceLister) Get(_ string) (*policyv1.PodDisruptionBudget, error) {
-	return nil, e.err
-}
 
 func newPDBLister(pdbs ...*policyv1.PodDisruptionBudget) listerspolicyv1.PodDisruptionBudgetLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})

@@ -22,24 +22,6 @@ import (
 	"github.com/litelensapp/litelens/internal/updater"
 )
 
-// mockUpdater is a mock for internal/updater.FetchRelease
-// We'll test performLinuxUpdate with mocked dependencies
-type mockHTTPClient struct {
-	statusCode int
-	body       []byte
-	err        error
-}
-
-func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return &http.Response{
-		StatusCode: m.statusCode,
-		Body:       io.NopCloser(bytes.NewReader(m.body)),
-	}, nil
-}
-
 // Test_performWindowsUpdate_UnsafeCharacterValidation tests each unsafe character individually.
 func Test_performWindowsUpdate_UnsafeCharacterValidation(t *testing.T) {
 	unsafeChars := []rune{'&', '|', '<', '>', '^', '%', '!', '"'}

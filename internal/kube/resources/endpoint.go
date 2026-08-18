@@ -12,7 +12,8 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func toEndpoint(ep *corev1.Endpoints) dto.Endpoint { //nolint:staticcheck
+//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice (see ListEndpointSlices for the newer resource)
+func toEndpoint(ep *corev1.Endpoints) dto.Endpoint {
 	var addrs []string
 	for _, subset := range ep.Subsets {
 		for _, addr := range subset.Addresses {
@@ -85,8 +86,9 @@ func toEndpoint(ep *corev1.Endpoints) dto.Endpoint { //nolint:staticcheck
 	}
 }
 
-func ListEndpoints(lister listerscorev1.EndpointsLister, namespace string) ([]dto.Endpoint, error) { //nolint:staticcheck
-	var eps []*corev1.Endpoints //nolint:staticcheck
+func ListEndpoints(lister listerscorev1.EndpointsLister, namespace string) ([]dto.Endpoint, error) {
+	//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice (see ListEndpointSlices for the newer resource)
+	var eps []*corev1.Endpoints
 	var err error
 	if namespace == "" {
 		eps, err = lister.List(labels.Everything())
