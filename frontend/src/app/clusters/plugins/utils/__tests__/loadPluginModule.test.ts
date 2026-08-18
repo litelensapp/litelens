@@ -547,6 +547,7 @@ const C = () => import("../../too-far/Chunk-C.js");
       expect(BARE_SPECIFIER_MAP["@litelens/design-system"]).toBe(
         "/vendor/litelens/design-system.js"
       );
+      expect(BARE_SPECIFIER_MAP["@litelens/core"]).toBe("/vendor/litelens/core.js");
       expect(BARE_SPECIFIER_MAP["@tanstack/react-query"]).toBe("/vendor/tanstack/react-query.js");
     });
 
@@ -558,6 +559,7 @@ const C = () => import("../../too-far/Chunk-C.js");
         "react-dom": "/vendor/react-dom.js",
         "react/jsx-runtime": "/vendor/react-jsx-runtime.js",
         "@litelens/design-system": "/vendor/litelens/design-system.js",
+        "@litelens/core": "/vendor/litelens/core.js",
         "@tanstack/react-query": "/vendor/tanstack/react-query.js",
       };
 

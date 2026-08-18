@@ -10,6 +10,9 @@ frontend/pkg/
 packages/design-system/dist/
 packages/design-system/pkg/
 
+packages/core/frontend/dist/
+packages/core/frontend/pkg/
+
 build/bin/
 build/storage/
 /litelens

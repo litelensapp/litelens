@@ -1,12 +1,14 @@
+import * as Core from "@litelens/core";
 import * as DesignSystem from "@litelens/design-system";
 import { TooltipProvider } from "@litelens/design-system";
 import * as ReactQuery from "@tanstack/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
-import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as ReactDom from "react-dom";
 import { createRoot } from "react-dom/client";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 import { App } from "./app/App";
+import { useResourceLinks } from "./app/clusters/shared/hooks/useResourceLinks";
 import "./style.css";
 
 // Expose the host's own singleton module instances so dynamically-imported
@@ -24,6 +26,7 @@ declare global {
       reactDom: typeof ReactDom;
       reactJsxRuntime: typeof ReactJsxRuntime;
       designSystem: typeof DesignSystem;
+      core: typeof Core;
       reactQuery: typeof ReactQuery;
     };
   }
@@ -34,6 +37,10 @@ window.__LITELENS_VENDOR__ = {
   reactDom: ReactDom,
   reactJsxRuntime: ReactJsxRuntime,
   designSystem: DesignSystem,
+  core: {
+    ...Core,
+    useResourceLinks,
+  },
   reactQuery: ReactQuery,
 };
 

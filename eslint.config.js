@@ -9,7 +9,11 @@ import iconButtonAriaLabelRule from "./eslint.rules/icon-button-aria-label.js";
 export default defineConfig([
   globalIgnores(["**/dist/**", "**/wailsjs/**"]),
   {
-    files: ["frontend/src/**/*.{ts,tsx}", "packages/design-system/src/**/*.{ts,tsx}"],
+    files: [
+      "frontend/src/**/*.{ts,tsx}",
+      "packages/design-system/src/**/*.{ts,tsx}",
+      "packages/core/frontend/src/**/*.{ts,tsx}",
+    ],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -34,6 +38,8 @@ export default defineConfig([
       "frontend/src/**/*.test.{ts,tsx}",
       "packages/design-system/src/**/__tests__/**/*.{ts,tsx}",
       "packages/design-system/src/**/*.test.{ts,tsx}",
+      "packages/core/frontend/src/**/__tests__/**/*.{ts,tsx}",
+      "packages/core/frontend/src/**/*.test.{ts,tsx}",
     ],
     rules: {
       "react-hooks/rules-of-hooks": "off",
