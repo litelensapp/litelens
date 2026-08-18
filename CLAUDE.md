@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-LiteLens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.io) (Go backend + React/TypeScript frontend, native webview shell, no Electron). Root module `github.com/litelensapp/litelens`. pnpm workspace with `frontend` and `design-system` as packages. Plugins are separate Go modules, launched as subprocesses and driven over gRPC — never compiled into the main binary. No plugins currently ship; the plugin host (`internal/plugin`, marketplace UI, tray registry) is generic infrastructure for plugins installed at runtime.
+Litelens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.io) (Go backend + React/TypeScript frontend, native webview shell, no Electron). Root module `github.com/litelensapp/litelens`. pnpm workspace with `frontend` and `design-system` as packages. Plugins are separate Go modules, launched as subprocesses and driven over gRPC — never compiled into the main binary. No plugins currently ship; the plugin host (`internal/plugin`, marketplace UI, tray registry) is generic infrastructure for plugins installed at runtime.
 
 ## Commands
 

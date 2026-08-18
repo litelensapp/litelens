@@ -27,7 +27,7 @@ const INSTALL_SOURCE_LABELS: Record<string, string> = {
 const UPGRADE_COMMANDS: Record<string, string[]> = {
   homebrew: ["brew update", "brew upgrade litelens"],
   apt: ["sudo apt upgrade"],
-  winget: ["winget upgrade litelensapp.LiteLens"],
+  winget: ["winget upgrade litelensapp.Litelens"],
 };
 
 interface UpdateModalProps {

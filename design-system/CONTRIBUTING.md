@@ -1,4 +1,4 @@
-# Contributing to LiteLens's Design System
+# Contributing to Litelens's Design System
 
 ## Testing local changes against a consumer project
 

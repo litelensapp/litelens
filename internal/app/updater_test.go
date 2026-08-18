@@ -62,7 +62,7 @@ func Test_performWindowsUpdate_UnsafeCharacterValidation(t *testing.T) {
 
 // Test_performWindowsUpdate_CleanPathPassesValidation verifies that a path without unsafe chars is valid.
 func Test_performWindowsUpdate_CleanPathPassesValidation(t *testing.T) {
-	cleanPath := "C:\\Program Files\\LiteLens\\app.exe"
+	cleanPath := "C:\\Program Files\\Litelens\\app.exe"
 
 	const unsafeChars = "&|<>^%!\""
 	if strings.ContainsAny(cleanPath, unsafeChars) {
@@ -149,7 +149,7 @@ func Test_performWindowsUpdate_MultipleUnsafeCharsDetected(t *testing.T) {
 
 // Test_performWindowsUpdate_SpacesAndNormalCharsAllowed verifies normal characters pass.
 func Test_performWindowsUpdate_SpacesAndNormalCharsAllowed(t *testing.T) {
-	path := "C:\\Program Files\\LiteLens-v1.0.0\\app.exe"
+	path := "C:\\Program Files\\Litelens-v1.0.0\\app.exe"
 	const unsafeChars = "&|<>^%!\""
 	if strings.ContainsAny(path, unsafeChars) {
 		t.Errorf("clean path with spaces and dashes should be allowed")
@@ -159,9 +159,9 @@ func Test_performWindowsUpdate_SpacesAndNormalCharsAllowed(t *testing.T) {
 // Test_performWindowsUpdate_WindowsNTPathsAllowed verifies standard Windows paths are valid.
 func Test_performWindowsUpdate_WindowsNTPathsAllowed(t *testing.T) {
 	paths := []string{
-		"C:\\Users\\John Doe\\AppData\\Local\\LiteLens\\app.exe",
-		"D:\\Applications\\LiteLens\\bin\\app.exe",
-		"\\\\?\\C:\\Program Files\\LiteLens\\app.exe", // UNC path
+		"C:\\Users\\John Doe\\AppData\\Local\\Litelens\\app.exe",
+		"D:\\Applications\\Litelens\\bin\\app.exe",
+		"\\\\?\\C:\\Program Files\\Litelens\\app.exe", // UNC path
 	}
 	const unsafeChars = "&|<>^%!\""
 	for _, path := range paths {

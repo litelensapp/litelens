@@ -241,7 +241,7 @@ func (a *App) PerformUpdate(version string) error {
 		return fmt.Errorf("install failed: %w", err)
 	}
 
-	exec.Command("open", "-n", "/Applications/LiteLens.app").Start() //nolint:errcheck
+	exec.Command("open", "-n", "/Applications/Litelens.app").Start() //nolint:errcheck
 	runtime.Quit(a.ctx)
 	return nil
 }

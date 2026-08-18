@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Security vulnerabilities in LiteLens should be reported responsibly and confidentially. We appreciate your help in keeping our project secure.
+Security vulnerabilities in Litelens should be reported responsibly and confidentially. We appreciate your help in keeping our project secure.
 
 ### Primary Reporting Channel
 
@@ -24,7 +24,7 @@ When reporting a vulnerability, please provide:
 
 - A clear description of the vulnerability and its impact
 - Steps to reproduce the issue (if applicable)
-- Affected version(s) of LiteLens
+- Affected version(s) of Litelens
 - Any suggested remediation or fix (optional but helpful)
 
 ## Response Expectations
@@ -40,11 +40,11 @@ Once you submit a vulnerability report via GitHub Security Advisories:
 
 <!-- update this table as release policy evolves -->
 
-Currently, only the latest released version of LiteLens is actively supported with security updates. As the project matures, a more detailed version support policy may be established.
+Currently, only the latest released version of Litelens is actively supported with security updates. As the project matures, a more detailed version support policy may be established.
 
 ## Security Considerations for Developers
 
-If you are contributing code to LiteLens:
+If you are contributing code to Litelens:
 
 - Avoid hardcoding secrets or API keys; use environment variables
 - Apply the principle of least privilege (e.g., Kubernetes RBAC, file permissions)
@@ -55,4 +55,4 @@ If you are contributing code to LiteLens:
 
 If you have general security questions or feedback on this policy, please contact the maintainers through the GitHub repository. As the project grows, we may establish a dedicated security contact email.
 
-Thank you for helping to keep LiteLens secure!
+Thank you for helping to keep Litelens secure!

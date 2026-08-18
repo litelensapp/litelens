@@ -32,7 +32,7 @@ export const useCheckForUpdate = (onUpdateAvailable?: () => void) => {
         toastShownRef.current = true;
         renderSuccessToast({
           title: "Up to date",
-          description: "You're running the latest version of LiteLens.",
+          description: "You're running the latest version of Litelens.",
         });
       }
     });

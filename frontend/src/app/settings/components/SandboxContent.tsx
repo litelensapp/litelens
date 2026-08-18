@@ -111,7 +111,7 @@ export const SandboxContent: FC = () => {
               <p className="text-destructive text-xs">Failed to save. Please try again.</p>
             )}
             <p className="text-muted-foreground text-xs">
-              Allows LiteLens to access &amp; download the app from a private source.
+              Allows Litelens to access &amp; download the app from a private source.
             </p>
           </div>
         </div>

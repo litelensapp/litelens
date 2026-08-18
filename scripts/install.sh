@@ -203,7 +203,8 @@ fi
 # half-installed one. Restored on any download/checksum failure below;
 # discarded once the new artifact is verified good.
 if [[ "$OS" == "Darwin" ]]; then
-  CURRENT_INSTALL="/Applications/LiteLens.app"
+  CURRENT_INSTALL="/Applications/Litelens.app"
+  [[ -e "$CURRENT_INSTALL" ]] || CURRENT_INSTALL="/Applications/LiteLens.app" # pre-rebrand install path
 else
   CURRENT_INSTALL="$INSTALL_DIR/$BIN_NAME"
 fi
@@ -284,9 +285,10 @@ if [[ "$OS" == "Darwin" ]]; then
   APP_SRC=$(find "$TMP_DIR" -name "litelens.app" -maxdepth 3 | head -1)
   [[ -z "$APP_SRC" ]] && error "litelens.app not found in archive"
 
-  APP_DEST="/Applications/LiteLens.app"
+  APP_DEST="/Applications/Litelens.app"
   info "Installing to $APP_DEST..."
   rm -rf "$APP_DEST"
+  rm -rf "/Applications/LiteLens.app" # pre-rebrand install path
   cp -r "$APP_SRC" "$APP_DEST"
 
   info "Applying ad-hoc code signature..."
@@ -295,8 +297,8 @@ if [[ "$OS" == "Darwin" ]]; then
 
   ln -sf "$APP_DEST/Contents/MacOS/litelens" "$INSTALL_DIR/$BIN_NAME" 2>/dev/null || true
 
-  success "LiteLens installed to $APP_DEST"
-  echo "  Open from Applications or run: open /Applications/LiteLens.app"
+  success "Litelens installed to $APP_DEST"
+  echo "  Open from Applications or run: open /Applications/Litelens.app"
 
 else
   BIN_SRC=$(find "$TMP_DIR" -name "$BIN_NAME" -type f | head -1)
@@ -386,7 +388,7 @@ else
   mkdir -p "$DESKTOP_DIR"
   cat > "$DESKTOP_DIR/litelens.desktop" << EOF
 [Desktop Entry]
-Name=LiteLens
+Name=Litelens
 Comment=Kubernetes Cluster Manager
 Exec=$INSTALL_DIR/$BIN_NAME
 Icon=litelens
@@ -399,7 +401,7 @@ EOF
     update-desktop-database "$DESKTOP_DIR"
   fi
 
-  success "LiteLens $TAG installed to $INSTALL_DIR/$BIN_NAME"
+  success "Litelens $TAG installed to $INSTALL_DIR/$BIN_NAME"
   echo "  Run from terminal: litelens"
   echo "  Or find it in your application launcher"
 fi

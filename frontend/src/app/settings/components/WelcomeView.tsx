@@ -13,9 +13,9 @@ export const WelcomeView: FC = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-10 p-10">
     <div className="flex flex-col items-center gap-2 text-center">
       <div className="bg-primary/10 text-primary mb-2 flex h-16 w-16 items-center justify-center rounded-2xl">
-        <img src={logo} alt="LiteLens" className="mb-4 h-16 w-16 rounded-2xl" />
+        <img src={logo} alt="Litelens" className="mb-4 h-16 w-16 rounded-2xl" />
       </div>
-      <h1 className="text-foreground text-2xl font-bold tracking-tight">LiteLens</h1>
+      <h1 className="text-foreground text-2xl font-bold tracking-tight">Litelens</h1>
       <p className="text-muted-foreground text-sm">Lightweight Kubernetes Cluster Manager</p>
     </div>
 

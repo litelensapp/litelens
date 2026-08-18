@@ -1,10 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: litelens
-Upstream-Contact: LiteLens Team <packages@litelens.io>
+Upstream-Contact: Litelens Team <packages@litelens.io>
 Source: https://github.com/litelensapp/litelens
 
 Files: *
-Copyright: 2024 LiteLens Team
+Copyright: 2024 Litelens Team
 License: Apache-2.0
 
 License: Apache-2.0

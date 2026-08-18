@@ -1,4 +1,4 @@
-// Package storage resolves the on-disk directory LiteLens uses for persistent
+// Package storage resolves the on-disk directory Litelens uses for persistent
 // app data (settings, installed plugins). In development mode (when SetDevMode(true)
 // is called), it returns build/storage relative to the current working directory.
 // Otherwise it defaults to ~/.litelens, which can be overridden in production
@@ -31,7 +31,7 @@ func SetRootDirOverride(dir string) {
 	rootDirOverride = dir
 }
 
-// Dir returns the LiteLens storage directory. In development mode, this is
+// Dir returns the Litelens storage directory. In development mode, this is
 // build/storage relative to the current working directory; otherwise it is
 // ~/.litelens (or the path specified in LITELENS_ROOT_DIR if set in production mode).
 // All results are joined with any additional path elements.

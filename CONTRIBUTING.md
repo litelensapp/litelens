@@ -1,10 +1,10 @@
-# Contributing to LiteLens
+# Contributing to Litelens
 
-Welcome to LiteLens! We're excited you want to contribute.
+Welcome to Litelens! We're excited you want to contribute.
 
-## About LiteLens
+## About Litelens
 
-LiteLens is a lightweight Kubernetes dashboard built with [Wails v2](https://wails.io). It combines a Go backend with a React/TypeScript frontend running in a native webview shell. The repository is structured around a pnpm workspace with the following key directories:
+Litelens is a lightweight Kubernetes dashboard built with [Wails v2](https://wails.io). It combines a Go backend with a React/TypeScript frontend running in a native webview shell. The repository is structured around a pnpm workspace with the following key directories:
 
 - **`internal/`** — Go backend implementation (Kubernetes client, business logic, app state)
 - **`frontend/`** — React + TypeScript frontend application
@@ -191,7 +191,7 @@ One-time setup for the self-hosted APT repository (`litelensapp/litelens-apt`), 
    %no-protection
    Key-Type: RSA
    Key-Length: 4096
-   Name-Real: LiteLens Packages
+   Name-Real: Litelens Packages
    Name-Email: packages@litelens.io
    Expire-Date: 0
    %commit
@@ -228,7 +228,7 @@ Once these are in place, every tagged release automatically builds, signs, and p
 
 ## License
 
-Contributions to LiteLens are licensed under the Apache License 2.0 (see `LICENSE` file). By contributing, you agree to license your contribution under the same terms.
+Contributions to Litelens are licensed under the Apache License 2.0 (see `LICENSE` file). By contributing, you agree to license your contribution under the same terms.
 
 ---
 
