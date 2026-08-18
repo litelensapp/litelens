@@ -4,8 +4,8 @@ frontend/dist/
 frontend/wailsjs/
 frontend/pkg/
 
-design-system/dist/
-design-system/pkg/
+packages/design-system/dist/
+packages/design-system/pkg/
 
 build/
 

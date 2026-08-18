@@ -7,8 +7,8 @@ frontend/package.json.md5
 frontend/wailsjs/
 frontend/pkg/
 
-design-system/dist/
-design-system/pkg/
+packages/design-system/dist/
+packages/design-system/pkg/
 
 build/bin/
 build/storage/

@@ -6,7 +6,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/litelensapp/litelens.git",
-    "directory": "design-system"
+    "directory": "packages/design-system"
   },
   "publishConfig": {
     "access": "public"
