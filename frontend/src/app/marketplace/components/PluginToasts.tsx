@@ -31,3 +31,21 @@ export function toastPluginRemovalFailed(pluginName: string, err?: unknown) {
       : `Failed to remove ${pluginName}.`,
   });
 }
+
+export function toastPluginDisableFailed(pluginName: string, err?: unknown) {
+  renderErrorToast({
+    title: "Plugin Disable Failed",
+    description: err
+      ? `Failed to disable ${pluginName}: ${String(err)}`
+      : `Failed to disable ${pluginName}.`,
+  });
+}
+
+export function toastPluginEnableFailed(pluginName: string, err?: unknown) {
+  renderErrorToast({
+    title: "Plugin Enable Failed",
+    description: err
+      ? `Failed to enable ${pluginName}: ${String(err)}`
+      : `Failed to enable ${pluginName}.`,
+  });
+}

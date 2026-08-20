@@ -335,6 +335,50 @@ describe("PluginCard", () => {
     });
   });
 
+  describe("Disable/Enable button visibility (regression: Enable button missing after disable)", () => {
+    it("shows the Enable icon button when the plugin is disabled", () => {
+      render(
+        <PluginCard
+          plugin={mockPlugin}
+          hostVersion="0.1.0"
+          installStatus="DISABLED"
+          isPluginDisabled={true}
+        />
+      );
+
+      expect(screen.getByLabelText("Enable plugin")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Disable plugin")).not.toBeInTheDocument();
+    });
+
+    it("shows the Disable icon button when READY and not disabled", () => {
+      render(
+        <PluginCard
+          plugin={mockPlugin}
+          hostVersion="0.1.0"
+          installStatus="READY"
+          isPluginDisabled={false}
+        />
+      );
+
+      expect(screen.getByLabelText("Disable plugin")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Enable plugin")).not.toBeInTheDocument();
+    });
+
+    it("shows 'Plugin disabled' footer text and still allows Remove when disabled", () => {
+      render(
+        <PluginCard
+          plugin={mockPlugin}
+          hostVersion="0.1.0"
+          installStatus="DISABLED"
+          isPluginDisabled={true}
+        />
+      );
+
+      expect(screen.getByText("Plugin disabled")).toBeInTheDocument();
+      expect(screen.getByLabelText("Remove plugin")).toBeInTheDocument();
+    });
+  });
+
   describe("OS compatibility display", () => {
     it("renders all supported OS platforms", () => {
       const { container } = render(

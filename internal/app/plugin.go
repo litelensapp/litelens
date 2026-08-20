@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/storage"
+	"github.com/litelensapp/litelens/packages/core/dto"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // pluginsRootDir returns the directory all installed plugins live under. If a custom
@@ -134,9 +135,20 @@ func (a *App) restoreInstalledPlugins() {
 			continue
 		}
 
-		// Both binary and metadata exist and look valid. Create a loader and mark it READY.
+		// Both binary and metadata exist and look valid. Create a loader.
 		loader := plugin.NewPluginLoader(pluginID, binaryPath)
-		loader.SetStatus(dto.PluginStatusReady)
+
+		// Check if the plugin is disabled in settings
+		a.mu.RLock()
+		isDisabled := a.settings.PluginDisabledState[pluginID]
+		a.mu.RUnlock()
+
+		// Set status to DISABLED if disabled, otherwise READY
+		if isDisabled {
+			loader.SetStatus(dto.PluginStatusDisabled)
+		} else {
+			loader.SetStatus(dto.PluginStatusReady)
+		}
 
 		// Add to pluginLoaders map if not already present.
 		a.pluginsMu.Lock()
@@ -301,7 +313,7 @@ func (a *App) getInstalledPluginInfo(pluginID string) dto.InstalledPlugin {
 	}
 
 	var size int64
-	if status == dto.PluginStatusReady || status == dto.PluginStatusCrashed {
+	if status == dto.PluginStatusReady || status == dto.PluginStatusCrashed || status == dto.PluginStatusDisabled {
 		size = plugin.DirSize(pluginDir)
 	}
 
@@ -691,7 +703,128 @@ func (a *App) RemovePlugin(pluginID string) error {
 	}
 	a.pluginsMu.Unlock()
 
+	// Delete from disabled state and persist
+	a.mu.Lock()
+	delete(a.settings.PluginDisabledState, pluginID)
+	config.Save(a.settings)
+	a.mu.Unlock()
+
 	return removeErr
+}
+
+// DisablePlugin disables an installed plugin by ID. The plugin process is shut down
+// if running, and the plugin is marked as DISABLED in the disabled state map and persisted to disk.
+// Returns an error if the plugin is not installed.
+func (a *App) DisablePlugin(pluginID string) error {
+	// Gate marketplace feature if disabled
+	if !config.IsMarketplaceEnabled() {
+		return fmt.Errorf("marketplace feature is disabled")
+	}
+
+	// Validate pluginID to prevent path traversal
+	if !plugin.ValidPluginID(pluginID) {
+		return fmt.Errorf("invalid plugin ID: %q", pluginID)
+	}
+
+	// Look up the loader to check if the plugin is installed
+	a.pluginsMu.RLock()
+	loader, ok := a.pluginLoaders[pluginID]
+	a.pluginsMu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("plugin %q is not installed", pluginID)
+	}
+
+	// Shut down the plugin if it's running (do this outside any lock)
+	if loader.IsAlive() {
+		if err := loader.Shutdown(); err != nil {
+			log.Printf("plugin %q shutdown warning: %v", pluginID, err)
+		}
+	}
+
+	// Update settings and mark plugin as disabled
+	a.mu.Lock()
+	if a.settings.PluginDisabledState == nil {
+		a.settings.PluginDisabledState = make(map[string]bool)
+	}
+	a.settings.PluginDisabledState[pluginID] = true
+	if err := config.Save(a.settings); err != nil {
+		a.mu.Unlock()
+		return fmt.Errorf("failed to save settings: %w", err)
+	}
+	a.mu.Unlock()
+
+	// Set loader status to DISABLED
+	loader.SetStatus(dto.PluginStatusDisabled)
+
+	// Emit plugin:disabled event (skip if context is invalid, e.g. in tests)
+	if a.ctx != nil {
+		wailsruntime.EventsEmit(a.ctx, "plugin:disabled", pluginID)
+	}
+
+	return nil
+}
+
+// EnablePlugin enables a disabled plugin by ID. If an active cluster context is present,
+// the plugin is launched. Returns an error if the plugin is not installed or if the kubeconfig
+// cannot be resolved.
+func (a *App) EnablePlugin(pluginID string) error {
+	// Gate marketplace feature if disabled
+	if !config.IsMarketplaceEnabled() {
+		return fmt.Errorf("marketplace feature is disabled")
+	}
+
+	// Validate pluginID to prevent path traversal
+	if !plugin.ValidPluginID(pluginID) {
+		return fmt.Errorf("invalid plugin ID: %q", pluginID)
+	}
+
+	// Look up the loader to check if the plugin is installed
+	a.pluginsMu.RLock()
+	loader, ok := a.pluginLoaders[pluginID]
+	a.pluginsMu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("plugin %q is not installed", pluginID)
+	}
+
+	// Update settings to remove from disabled state and persist
+	a.mu.Lock()
+	delete(a.settings.PluginDisabledState, pluginID)
+	if err := config.Save(a.settings); err != nil {
+		a.mu.Unlock()
+		return fmt.Errorf("failed to save settings: %w", err)
+	}
+	// Capture the active context before releasing the lock
+	activeContextName := a.activeContext
+	a.mu.Unlock()
+
+	// Set loader status to READY
+	loader.SetStatus(dto.PluginStatusReady)
+
+	// If an active context exists, launch the plugin
+	if activeContextName != "" {
+		kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
+		if err != nil {
+			// Log but don't fail — the plugin is now enabled and will be launched on next use
+			log.Printf("plugin %q: resolve kubeconfig failed: %v", pluginID, err)
+		} else {
+			if a.grpcServerCfg != nil {
+				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+			}
+			if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
+				// Log but don't fail — matches crash-recovery behavior
+				log.Printf("plugin %q: launch failed: %v", pluginID, err)
+			}
+		}
+	}
+
+	// Emit plugin:enabled event (skip if context is invalid, e.g. in tests)
+	if a.ctx != nil {
+		wailsruntime.EventsEmit(a.ctx, "plugin:enabled", pluginID)
+	}
+
+	return nil
 }
 
 // GetPluginsFromMarketplace fetches manifests from the default marketplace and all
@@ -827,6 +960,10 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 		return "", fmt.Errorf("plugin %q is not installed", pluginID)
 	}
 
+	if loader.Status() == dto.PluginStatusDisabled {
+		return "", fmt.Errorf("plugin %q is disabled", pluginID)
+	}
+
 	if !loader.IsAlive() {
 		// Lazily relaunch: the plugin may have crashed, been killed externally,
 		// or simply never been started for this context (prewarmRestoredPlugins
@@ -864,4 +1001,3 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 
 	return fmt.Sprintf("127.0.0.1:%d", port), nil
 }
-

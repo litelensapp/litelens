@@ -675,6 +675,37 @@ describe("MarketplaceView", () => {
       expect(container).toBeTruthy();
       expect(container.querySelector("header")).toBeTruthy();
     });
+
+    it("scopes the marketplace error to Available Plugins, leaving Installed Plugins visible", () => {
+      mockGetInstalledPlugins.mockReturnValue([
+        mockInstalledPlugin({
+          pluginId: "helm",
+          status: "READY",
+          progress: 100,
+          installedVersion: "3.15.0",
+          size: 50000000,
+        }),
+      ]);
+      mockUseGetPluginsFromMarketplaceState.data = [];
+      mockUseGetPluginsFromMarketplaceState.isError = true;
+      mockUseGetPluginsFromMarketplaceState.error = new Error(
+        "Failed to fetch plugin marketplace: default:release: github API rate limit exceeded"
+      );
+
+      const { wrapper } = makeWrapper();
+      const { container } = render(<MarketplaceView />, { wrapper });
+
+      // Installed Plugins section still renders with its plugin, unaffected by the marketplace error.
+      expect(screen.getByText("Installed Plugins (1)")).toBeInTheDocument();
+      expect(screen.getAllByText("Helm")[0]).toBeInTheDocument();
+
+      // The error is confined to the Available Plugins section.
+      expect(screen.getByText("Couldn't load marketplace")).toBeInTheDocument();
+      expect(screen.getByText(/github API rate limit exceeded/)).toBeInTheDocument();
+
+      const sections = container.querySelectorAll("section");
+      expect(sections.length).toBe(2);
+    });
   });
 
   describe("Coverage gaps: real component rendering (unmocked)", () => {

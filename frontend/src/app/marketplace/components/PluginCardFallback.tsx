@@ -50,11 +50,13 @@ export const PluginCardFallback: FC<PluginCardFallbackProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <Tooltip>
-              <TooltipTrigger>
-                <Badge className="border border-gray-200 bg-gray-50 text-gray-900">
-                  {status.status}
-                </Badge>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={
+                  <Badge className="border border-gray-200 bg-gray-50 text-gray-900">
+                    {status.status}
+                  </Badge>
+                }
+              />
               <TooltipContent>
                 This plugin&apos;s metadata is unavailable in the marketplace
               </TooltipContent>

@@ -97,6 +97,7 @@ const (
 	PluginStatusReady        PluginStatus = "READY"
 	PluginStatusCrashed      PluginStatus = "CRASHED"
 	PluginStatusIncompatible PluginStatus = "INCOMPATIBLE"
+	PluginStatusDisabled     PluginStatus = "DISABLED"
 )
 
 func (ps PluginStatus) String() string {

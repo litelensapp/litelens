@@ -2,6 +2,7 @@ import { FC, lazy, Suspense, useMemo } from "react";
 import { PluginNotInstalledEmptyState } from "../../marketplace/components/PluginNotInstalledEmptyState";
 import { useGetInstalledPlugin } from "./hooks/useGetInstalledPlugin";
 import { PluginCrashedError } from "./components/PluginCrashedError";
+import { PluginDisabledEmptyState } from "./components/PluginDisabledEmptyState";
 import { PluginErrorBoundary } from "./components/PluginErrorBoundary";
 import { PluginLoadingFallback } from "./components/PluginLoadingFallback";
 import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
@@ -97,6 +98,10 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
     return (
       <PluginNotInstalledEmptyState pluginName={pluginName} onGoToMarketplace={onGoToMarketplace} />
     );
+  }
+
+  if (pluginStatus === "DISABLED") {
+    return <PluginDisabledEmptyState onGoToMarketplace={onGoToMarketplace} />;
   }
 
   // CRASHED || INCOMPATIBLE

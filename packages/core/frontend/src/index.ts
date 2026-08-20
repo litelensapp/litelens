@@ -22,7 +22,7 @@ export * from "./types";
  * Example:
  *   const { activeContext, activeNamespaces, activeResource, availableNamespaces, onNavigateToView, resourceLinks, unifiedTray, useRegisterClusterWideEvents, useRegisterNavEntry, useRegisterTrayFamilies } = useClusterWideAPI();
  *   resourceLinks.pod(namespace, podName);  // Opens pod detail drawer
- *   unifiedTray.openTab("my-plugin-family", { label: "...", dedupeKey: "..." });
+ *   unifiedTray.openTab("my-plugin-family", { pluginId: "my-plugin", label: "...", dedupeKey: "..." });
  *   useRegisterClusterWideEvents({
  *     "helm:release-updated": (payload) => { console.log("Release updated:", payload); },
  *   });

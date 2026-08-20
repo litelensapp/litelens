@@ -1,21 +1,21 @@
-import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { NavEntry, NavItem } from "@litelens/core";
+import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
-import { useClusterWideEventListener } from "./shared/hooks/registry/event/useClusterWideEventListener";
 import { MainLayoutProvider } from "./MainLayoutContext";
+import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { NavSidebar } from "./NavSidebar";
 import { usePluginNavEntries } from "./plugins/hooks/registry/nav/usePluginNavEntries";
-import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
 import { usePluginTrayFamilies } from "./plugins/hooks/registry/tray/usePluginTrayFamilies";
+import { PluginEventsSubscriber } from "./plugins/PluginEventsSubscriber";
 import { PluginResourceView } from "./plugins/PluginResourceView";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
 import { unifiedTrayRegistry } from "./shared/components/trays/unified/unifiedTrayRegistry";
-import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 
 const PodsView = lazy(() =>
   import("./modules/workloads/pods/PodsView").then((m) => ({
@@ -198,9 +198,6 @@ interface MainLayoutProps {
 }
 
 export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketplace }) => {
-  // Listen for plugin:event emissions and route to registered handlers
-  useClusterWideEventListener();
-
   const [activeResource, setActiveResource] = useState<ViewType>("overview");
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(["workloads", "network", "config", "storage", "access-control"])
@@ -326,6 +323,8 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
       onNavigateToView={setActiveResource}
       className="flex h-full min-w-0 flex-1 overflow-hidden"
     >
+      <PluginEventsSubscriber />
+
       {/* Sidebar */}
       <NavSidebar
         activeResource={activeResource}

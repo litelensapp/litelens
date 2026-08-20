@@ -29,6 +29,7 @@ type Settings struct {
 	KubeconfigPaths         []string                `json:"kubeconfigPaths"`
 	Locale                  string                  `json:"locale"`
 	PluginsDir              string                  `json:"pluginsDir"`
+	PluginDisabledState     map[string]bool         `json:"pluginDisabledState"`
 	MarketplaceRepositories []MarketplaceRepository `json:"marketplaceRepositories"`
 }
 

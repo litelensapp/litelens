@@ -13,7 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/litelensapp/litelens/internal/config"
@@ -65,6 +67,27 @@ func newAssetDownloadRequest(ctx context.Context, url, token string) (*http.Requ
 	return req, nil
 }
 
+// checkGitHubAPIResponse turns a non-200 GitHub API response into an error,
+// giving a specific, actionable message when the failure is due to the
+// unauthenticated rate limit (60 requests/hour per IP) rather than a generic
+// "status 403" — that limit is shared by anything else on the same network
+// calling GitHub's API, so it's routinely hit without the plugin fetch itself
+// being at fault.
+func checkGitHubAPIResponse(resp *http.Response) error {
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+	if (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) &&
+		resp.Header.Get("X-RateLimit-Remaining") == "0" {
+		resetAt := "an unknown time"
+		if resetUnix, err := strconv.ParseInt(resp.Header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
+			resetAt = time.Unix(resetUnix, 0).Local().Format("15:04:05 MST")
+		}
+		return fmt.Errorf("github API rate limit exceeded for this network (resets at %s); this limit is shared by anything else on your network calling GitHub's API and is unrelated to plugin availability", resetAt)
+	}
+	return fmt.Errorf("github API returned status %d", resp.StatusCode)
+}
+
 // FetchLatestRelease fetches the latest release from GitHub API.
 // If baseURL is empty, uses config.GetMarketplaceBaseURL() (env-var/default behavior).
 // If baseURL is non-empty, uses it directly (expected to be in the form: https://api.github.com/repos/owner/repo/releases).
@@ -89,8 +112,8 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("github API returned status %d", resp.StatusCode)
+	if err := checkGitHubAPIResponse(resp); err != nil {
+		return nil, "", err
 	}
 
 	var release dto.GitHubRelease
@@ -138,8 +161,8 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("github API returned status %d", resp.StatusCode)
+	if err := checkGitHubAPIResponse(resp); err != nil {
+		return nil, "", err
 	}
 
 	var release dto.GitHubRelease

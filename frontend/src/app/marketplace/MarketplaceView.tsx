@@ -1,11 +1,13 @@
 import { Button, Divider, FrownIcon, LoadingSpinner } from "@litelens/design-system";
 import type { dto } from "@wailsjs/go/models";
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FC, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { maskTerminalStatus } from "../shared/utils/maskTerminalStatus";
 import { useGetVersion } from "../updater/hooks/data-access/useGetVersion";
 import { PluginCard } from "./components/PluginCard";
 import { PluginCardFallback } from "./components/PluginCardFallback";
 import {
+  toastPluginDisableFailed,
+  toastPluginEnableFailed,
   toastPluginInstallFailed,
   toastPluginInstallSucceeded,
   toastPluginRemovalFailed,
@@ -14,6 +16,8 @@ import {
 import { useGetHostPlatform } from "./hooks/useGetHostPlatform";
 import { useGetInstalledPlugins } from "./hooks/useGetInstalledPlugins";
 import { PluginManifest, useGetPluginsFromMarketplace } from "./hooks/useGetPluginsFromMarketplace";
+import { useMutateDisablePlugin } from "./hooks/useMutateDisablePlugin";
+import { useMutateEnablePlugin } from "./hooks/useMutateEnablePlugin";
 import { useMutateInstallPlugin } from "./hooks/useMutateInstallPlugin";
 import { useMutateRemovePlugin } from "./hooks/useMutateRemovePlugin";
 
@@ -43,9 +47,11 @@ export const MarketplaceView: FC<{
   const { pluginStatuses: installedPlugins = [], isLoading: isLoadingInstalled } =
     useGetInstalledPlugins();
 
-  // Mutation hooks for install and remove (call-time arguments, not hook-time)
+  // Mutation hooks for install, remove, disable, and enable (call-time arguments, not hook-time)
   const installMutation = useMutateInstallPlugin();
   const removeMutation = useMutateRemovePlugin();
+  const disableMutation = useMutateDisablePlugin();
+  const enableMutation = useMutateEnablePlugin();
 
   // Track per-plugin "attempted install this mount" as a Set in state
   // Used to mask CRASHED/INCOMPATIBLE statuses as NOT_INSTALLED for display
@@ -57,6 +63,10 @@ export const MarketplaceView: FC<{
   // same hook instance. This Set lets us track in-flight removes independently
   // per pluginId instead of relying on mutation.variables which gets overwritten.
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+
+  // Track per-plugin IDs currently being disabled/enabled
+  const [disablingIds, setDisablingIds] = useState<Set<string>>(new Set());
+  const [enablingIds, setEnablingIds] = useState<Set<string>>(new Set());
 
   // Generic install handler called from card's onInstall/onUpdate callbacks
   const handleInstall = useCallback(
@@ -94,6 +104,46 @@ export const MarketplaceView: FC<{
       }
     },
     [removeMutation]
+  );
+
+  // Generic disable handler called from card's onDisable callback
+  const handleDisable = useCallback(
+    async (pluginId: string, pluginName: string) => {
+      setDisablingIds((prev) => new Set(prev).add(pluginId));
+      try {
+        await disableMutation.mutateAsync({ pluginId });
+      } catch (error) {
+        console.error(`Failed to disable ${pluginName} plugin:`, error);
+        toastPluginDisableFailed(pluginName, error);
+      } finally {
+        setDisablingIds((prev) => {
+          const updated = new Set(prev);
+          updated.delete(pluginId);
+          return updated;
+        });
+      }
+    },
+    [disableMutation]
+  );
+
+  // Generic enable handler called from card's onEnable callback
+  const handleEnable = useCallback(
+    async (pluginId: string, pluginName: string) => {
+      setEnablingIds((prev) => new Set(prev).add(pluginId));
+      try {
+        await enableMutation.mutateAsync({ pluginId });
+      } catch (error) {
+        console.error(`Failed to enable ${pluginName} plugin:`, error);
+        toastPluginEnableFailed(pluginName, error);
+      } finally {
+        setEnablingIds((prev) => {
+          const updated = new Set(prev);
+          updated.delete(pluginId);
+          return updated;
+        });
+      }
+    },
+    [enableMutation]
   );
 
   // Track previous statuses per plugin ID for toast on install completion
@@ -182,164 +232,182 @@ export const MarketplaceView: FC<{
     return { installed, available };
   }, [installedPlugins, attemptedInstalls, marketplacePlugins]);
 
+  let availableSectionContent: ReactNode;
+  if (isMarketplaceError) {
+    availableSectionContent = (
+      <div className="flex flex-1 flex-col gap-4 py-16 text-center">
+        <div>
+          <FrownIcon className="text-muted-foreground mx-auto mb-3 size-12" />
+          <p className="text-destructive text-lg font-medium">Couldn&apos;t load marketplace</p>
+          <p className="text-muted-foreground mt-2 text-xs">
+            {marketplaceError?.message || "Check your Access Token in Settings"}
+          </p>
+        </div>
+        {marketplaceError?.message && (
+          <div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Please check your Marketplace Repository URL
+            </p>
+            <Button className="mt-4" onClick={onGoToMarketplaceSettings}>
+              Go to Marketplace settings
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  } else if (isLoadingMarketplace) {
+    availableSectionContent = (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
+        <LoadingSpinner />
+        <p className="text-muted-foreground text-sm">Loading available plugins...</p>
+      </div>
+    );
+  } else if (available.length === 0) {
+    availableSectionContent = (
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <p className="text-muted-foreground">No available plugins</p>
+      </div>
+    );
+  } else {
+    availableSectionContent = (
+      <div className="flex flex-col gap-6">
+        {available.map(({ id, manifest, installStatus: installStatusEntry }) => {
+          if (!manifest) {
+            return (
+              <PluginCardFallback
+                key={id}
+                status={installStatusEntry!}
+                onRemove={() => handleRemove(id, id)}
+                isRemoving={removingIds.has(id)}
+              />
+            );
+          }
+
+          return (
+            <PluginCard
+              key={id}
+              plugin={manifest}
+              hostVersion={hostVersion}
+              hostPlatform={hostPlatform}
+              installStatus={installStatusEntry ? "INSTALLING" : "NOT_INSTALLED"}
+              installProgress={installStatusEntry?.progress ?? 0}
+              isVerifying={Boolean(installStatusEntry)}
+              updateAvailable={false}
+              installedVersion={undefined}
+              installedSize={undefined}
+              onInstall={() => handleInstall(id, manifest.name)}
+              onUpdate={undefined}
+              onRetry={undefined}
+              onRemove={undefined}
+              isRemoving={false}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex h-14 shrink-0 items-center justify-between border-b px-6 py-3">
         <h2 className="text-sm font-semibold">Marketplace</h2>
       </header>
       <div className="flex-1 overflow-auto px-6 py-4">
-        {isMarketplaceError ? (
-          <div className="flex flex-col gap-4 py-16 text-center">
-            <div>
-              <FrownIcon className="text-muted-foreground mx-auto mb-3 size-12" />
-              <p className="text-destructive text-lg font-medium">Couldn&apos;t load marketplace</p>
-              <p className="text-muted-foreground mt-2 text-xs">
-                {marketplaceError?.message || "Check your Access Token in Settings"}
-              </p>
-            </div>
-            {marketplaceError?.message && (
-              <div>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Please check your Marketplace Repository URL
-                </p>
-                <Button className="mt-4" onClick={onGoToMarketplaceSettings}>
-                  Go to Marketplace settings
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex min-h-full flex-col gap-4">
-            {/* Installed Plugins Section */}
-            {installed.length > 0 && (
-              <>
-                <section className="flex flex-col gap-4">
-                  <h3 className="text-sm font-semibold">
-                    Installed Plugins{installed.length > 0 ? ` (${installed.length})` : ""}
-                  </h3>
-                  {isLoadingInstalled ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-16">
-                      <LoadingSpinner />
-                      <p className="text-muted-foreground text-sm">Loading installed plugins...</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-6">
-                      {installed.map(({ installedPlugin, manifest }) => {
-                        const hasAttempted = attemptedInstalls.has(installedPlugin.pluginId);
-                        const displayStatus = maskTerminalStatus(
-                          installedPlugin.status,
-                          hasAttempted
-                        );
+        <div className="flex min-h-full flex-col gap-4">
+          {/* Installed Plugins Section — sourced from local disk state, unaffected by marketplace fetch errors */}
+          {installed.length > 0 && (
+            <>
+              <section className="flex flex-col gap-4">
+                <h3 className="text-sm font-semibold">
+                  Installed Plugins{installed.length > 0 ? ` (${installed.length})` : ""}
+                </h3>
+                {isLoadingInstalled ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-16">
+                    <LoadingSpinner />
+                    <p className="text-muted-foreground text-sm">Loading installed plugins...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-6">
+                    {installed.map(({ installedPlugin, manifest }) => {
+                      const hasAttempted = attemptedInstalls.has(installedPlugin.pluginId);
+                      const displayStatus = maskTerminalStatus(
+                        installedPlugin.status,
+                        hasAttempted
+                      );
 
-                        const hasComparableChecksum = Boolean(
-                          installedPlugin.bundleChecksum &&
-                          installedPlugin.bundleChecksum !== "" &&
-                          installedPlugin.bundleChecksum !== PLACEHOLDER_BUNDLE_CHECKSUM
-                        );
-                        const checksumMismatch =
-                          hasComparableChecksum &&
-                          installedPlugin.bundleChecksum !== manifest.bundle.sha256;
-                        const versionMismatch =
-                          (installedPlugin.installedVersion ?? "") !== manifest.version;
-                        const updateAvailable: boolean =
-                          displayStatus === "READY" && (checksumMismatch || versionMismatch);
+                      const hasComparableChecksum = Boolean(
+                        installedPlugin.bundleChecksum &&
+                        installedPlugin.bundleChecksum !== "" &&
+                        installedPlugin.bundleChecksum !== PLACEHOLDER_BUNDLE_CHECKSUM
+                      );
+                      const checksumMismatch =
+                        hasComparableChecksum &&
+                        installedPlugin.bundleChecksum !== manifest.bundle.sha256;
+                      const versionMismatch =
+                        (installedPlugin.installedVersion ?? "") !== manifest.version;
+                      const updateAvailable: boolean =
+                        displayStatus === "READY" && (checksumMismatch || versionMismatch);
 
-                        const isPluginRemoving = removingIds.has(installedPlugin.pluginId);
+                      const isPluginRemoving = removingIds.has(installedPlugin.pluginId);
+                      const isPluginDisabling = disablingIds.has(installedPlugin.pluginId);
+                      const isPluginEnabling = enablingIds.has(installedPlugin.pluginId);
+                      const isPluginDisabled = installedPlugin.status === "DISABLED";
 
-                        return (
-                          <PluginCard
-                            key={installedPlugin.pluginId}
-                            plugin={manifest}
-                            hostVersion={hostVersion}
-                            hostPlatform={hostPlatform}
-                            installStatus={
-                              displayStatus as
-                                | "NOT_INSTALLED"
-                                | "INSTALLING"
-                                | "READY"
-                                | "CRASHED"
-                                | "INCOMPATIBLE"
-                            }
-                            installProgress={installedPlugin.progress}
-                            isVerifying={displayStatus === "INSTALLING"}
-                            updateAvailable={updateAvailable}
-                            installedVersion={installedPlugin.installedVersion}
-                            installedSize={installedPlugin.size}
-                            onInstall={() => handleInstall(installedPlugin.pluginId, manifest.name)}
-                            onUpdate={() => handleInstall(installedPlugin.pluginId, manifest.name)}
-                            onRetry={() =>
-                              handleInstall(
-                                installedPlugin.pluginId,
-                                manifest.name,
-                                installedPlugin.installedVersion
-                              )
-                            }
-                            onRemove={() => handleRemove(installedPlugin.pluginId, manifest.name)}
-                            isRemoving={isPluginRemoving}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                <Divider />
-              </>
-            )}
-
-            {/* Available Plugins Section */}
-            <section className="flex flex-1 flex-col gap-4">
-              <h3 className="text-sm font-semibold">
-                Available Plugins{available.length > 0 ? ` (${available.length})` : ""}
-              </h3>
-              {isLoadingMarketplace ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
-                  <LoadingSpinner />
-                  <p className="text-muted-foreground text-sm">Loading available plugins...</p>
-                </div>
-              ) : available.length === 0 ? (
-                <div className="flex flex-1 flex-col items-center justify-center text-center">
-                  <p className="text-muted-foreground">No available plugins</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-6">
-                  {available.map(({ id, manifest, installStatus: installStatusEntry }) => {
-                    if (!manifest) {
                       return (
-                        <PluginCardFallback
-                          key={id}
-                          status={installStatusEntry!}
-                          onRemove={() => handleRemove(id, id)}
-                          isRemoving={removingIds.has(id)}
+                        <PluginCard
+                          key={installedPlugin.pluginId}
+                          plugin={manifest}
+                          hostVersion={hostVersion}
+                          hostPlatform={hostPlatform}
+                          installStatus={
+                            displayStatus as
+                              | "NOT_INSTALLED"
+                              | "INSTALLING"
+                              | "READY"
+                              | "CRASHED"
+                              | "INCOMPATIBLE"
+                              | "DISABLED"
+                          }
+                          installProgress={installedPlugin.progress}
+                          isVerifying={displayStatus === "INSTALLING"}
+                          updateAvailable={updateAvailable}
+                          installedVersion={installedPlugin.installedVersion}
+                          installedSize={installedPlugin.size}
+                          isPluginDisabled={isPluginDisabled}
+                          isDisabling={isPluginDisabling}
+                          isEnabling={isPluginEnabling}
+                          onInstall={() => handleInstall(installedPlugin.pluginId, manifest.name)}
+                          onUpdate={() => handleInstall(installedPlugin.pluginId, manifest.name)}
+                          onRetry={() =>
+                            handleInstall(
+                              installedPlugin.pluginId,
+                              manifest.name,
+                              installedPlugin.installedVersion
+                            )
+                          }
+                          onRemove={() => handleRemove(installedPlugin.pluginId, manifest.name)}
+                          onDisable={() => handleDisable(installedPlugin.pluginId, manifest.name)}
+                          onEnable={() => handleEnable(installedPlugin.pluginId, manifest.name)}
+                          isRemoving={isPluginRemoving}
                         />
                       );
-                    }
+                    })}
+                  </div>
+                )}
+              </section>
 
-                    return (
-                      <PluginCard
-                        key={id}
-                        plugin={manifest}
-                        hostVersion={hostVersion}
-                        hostPlatform={hostPlatform}
-                        installStatus={installStatusEntry ? "INSTALLING" : "NOT_INSTALLED"}
-                        installProgress={installStatusEntry?.progress ?? 0}
-                        isVerifying={Boolean(installStatusEntry)}
-                        updateAvailable={false}
-                        installedVersion={undefined}
-                        installedSize={undefined}
-                        onInstall={() => handleInstall(id, manifest.name)}
-                        onUpdate={undefined}
-                        onRetry={undefined}
-                        onRemove={undefined}
-                        isRemoving={false}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </div>
-        )}
+              <Divider />
+            </>
+          )}
+
+          {/* Available Plugins Section — sourced from the marketplace fetch; errors here don't affect Installed */}
+          <section className="flex flex-1 flex-col gap-4">
+            <h3 className="text-sm font-semibold">
+              Available Plugins{available.length > 0 ? ` (${available.length})` : ""}
+            </h3>
+            {availableSectionContent}
+          </section>
+        </div>
       </div>
     </div>
   );
