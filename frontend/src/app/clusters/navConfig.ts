@@ -1,10 +1,10 @@
+import { NavEntry } from "@litelens/core";
 import {
   BoxesIcon,
   ClockIcon,
   HardDriveIcon,
   LayersIcon,
   LayoutDashboardIcon,
-  NavEntry,
   NetworkIcon,
   ServerIcon,
   Settings2Icon,

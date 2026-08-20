@@ -74,6 +74,8 @@ export const TrayTabBar: FC<TrayTabBarProps> = memo(
                   {tab.icon}
                   <span>{tab.label}</span>
                   <Button
+                    render={<span />}
+                    nativeButton={false}
                     variant="ghost"
                     size="icon-lg"
                     aria-label={`Close ${tab.label} tab`}

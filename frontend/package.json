@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/generate-vendor-shims.mjs",
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:report": "tsc -p tsconfig.build.json && cross-env ANALYZE=true vite build",

@@ -19,18 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Plugin_GetCapabilities_FullMethodName   = "/pluginapi.Plugin/GetCapabilities"
-	Plugin_SetClusterContext_FullMethodName = "/pluginapi.Plugin/SetClusterContext"
-	Plugin_Invoke_FullMethodName            = "/pluginapi.Plugin/Invoke"
+	Plugin_ClusterContextWatch_FullMethodName = "/pluginapi.Plugin/ClusterContextWatch"
+	Plugin_EmitEvent_FullMethodName           = "/pluginapi.Plugin/EmitEvent"
 )
 
 // PluginClient is the client API for Plugin service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PluginClient interface {
-	GetCapabilities(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CapabilitiesResponse, error)
-	SetClusterContext(ctx context.Context, in *SetClusterContextRequest, opts ...grpc.CallOption) (*Empty, error)
-	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
+	ClusterContextWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ClusterContextChangedEvent], error)
+	EmitEvent(ctx context.Context, in *PluginEventRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type pluginClient struct {
@@ -41,30 +39,29 @@ func NewPluginClient(cc grpc.ClientConnInterface) PluginClient {
 	return &pluginClient{cc}
 }
 
-func (c *pluginClient) GetCapabilities(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CapabilitiesResponse, error) {
+func (c *pluginClient) ClusterContextWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ClusterContextChangedEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CapabilitiesResponse)
-	err := c.cc.Invoke(ctx, Plugin_GetCapabilities_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Plugin_ServiceDesc.Streams[0], Plugin_ClusterContextWatch_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[Empty, ClusterContextChangedEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *pluginClient) SetClusterContext(ctx context.Context, in *SetClusterContextRequest, opts ...grpc.CallOption) (*Empty, error) {
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Plugin_ClusterContextWatchClient = grpc.ServerStreamingClient[ClusterContextChangedEvent]
+
+func (c *pluginClient) EmitEvent(ctx context.Context, in *PluginEventRequest, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, Plugin_SetClusterContext_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *pluginClient) Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InvokeResponse)
-	err := c.cc.Invoke(ctx, Plugin_Invoke_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Plugin_EmitEvent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,9 +72,8 @@ func (c *pluginClient) Invoke(ctx context.Context, in *InvokeRequest, opts ...gr
 // All implementations must embed UnimplementedPluginServer
 // for forward compatibility.
 type PluginServer interface {
-	GetCapabilities(context.Context, *Empty) (*CapabilitiesResponse, error)
-	SetClusterContext(context.Context, *SetClusterContextRequest) (*Empty, error)
-	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
+	ClusterContextWatch(*Empty, grpc.ServerStreamingServer[ClusterContextChangedEvent]) error
+	EmitEvent(context.Context, *PluginEventRequest) (*Empty, error)
 	mustEmbedUnimplementedPluginServer()
 }
 
@@ -88,14 +84,11 @@ type PluginServer interface {
 // pointer dereference when methods are called.
 type UnimplementedPluginServer struct{}
 
-func (UnimplementedPluginServer) GetCapabilities(context.Context, *Empty) (*CapabilitiesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetCapabilities not implemented")
+func (UnimplementedPluginServer) ClusterContextWatch(*Empty, grpc.ServerStreamingServer[ClusterContextChangedEvent]) error {
+	return status.Error(codes.Unimplemented, "method ClusterContextWatch not implemented")
 }
-func (UnimplementedPluginServer) SetClusterContext(context.Context, *SetClusterContextRequest) (*Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetClusterContext not implemented")
-}
-func (UnimplementedPluginServer) Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Invoke not implemented")
+func (UnimplementedPluginServer) EmitEvent(context.Context, *PluginEventRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method EmitEvent not implemented")
 }
 func (UnimplementedPluginServer) mustEmbedUnimplementedPluginServer() {}
 func (UnimplementedPluginServer) testEmbeddedByValue()                {}
@@ -118,56 +111,31 @@ func RegisterPluginServer(s grpc.ServiceRegistrar, srv PluginServer) {
 	s.RegisterService(&Plugin_ServiceDesc, srv)
 }
 
-func _Plugin_GetCapabilities_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
+func _Plugin_ClusterContextWatch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(PluginServer).GetCapabilities(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Plugin_GetCapabilities_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServer).GetCapabilities(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(PluginServer).ClusterContextWatch(m, &grpc.GenericServerStream[Empty, ClusterContextChangedEvent]{ServerStream: stream})
 }
 
-func _Plugin_SetClusterContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetClusterContextRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PluginServer).SetClusterContext(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Plugin_SetClusterContext_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServer).SetClusterContext(ctx, req.(*SetClusterContextRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Plugin_ClusterContextWatchServer = grpc.ServerStreamingServer[ClusterContextChangedEvent]
 
-func _Plugin_Invoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InvokeRequest)
+func _Plugin_EmitEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PluginEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginServer).Invoke(ctx, in)
+		return srv.(PluginServer).EmitEvent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Plugin_Invoke_FullMethodName,
+		FullMethod: Plugin_EmitEvent_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServer).Invoke(ctx, req.(*InvokeRequest))
+		return srv.(PluginServer).EmitEvent(ctx, req.(*PluginEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -180,18 +148,16 @@ var Plugin_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PluginServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetCapabilities",
-			Handler:    _Plugin_GetCapabilities_Handler,
-		},
-		{
-			MethodName: "SetClusterContext",
-			Handler:    _Plugin_SetClusterContext_Handler,
-		},
-		{
-			MethodName: "Invoke",
-			Handler:    _Plugin_Invoke_Handler,
+			MethodName: "EmitEvent",
+			Handler:    _Plugin_EmitEvent_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ClusterContextWatch",
+			Handler:       _Plugin_ClusterContextWatch_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "plugin.proto",
 }

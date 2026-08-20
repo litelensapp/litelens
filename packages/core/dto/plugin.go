@@ -106,7 +106,7 @@ func (ps PluginStatus) String() string {
 // PluginLockFile is stored as JSON
 type PluginLockFile struct {
 	PID       int    `json:"pid"`
-	Port      int    `json:"port"`
+	Port      int    `json:"port"` // HTTP backend port (127.0.0.1:<port>)
 	Timestamp string `json:"timestamp"` // RFC3339 — MUST be string, not time.Time (Wails limitation)
 	Version   string `json:"version"`
 }

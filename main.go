@@ -33,7 +33,7 @@ func main() {
 
 	a := app.NewApp(Version)
 
-	// Build bind list: include only App, all plugins are accessed via InvokePlugin.
+	// Build bind list: include only App, all plugins are accessed over gRPC (see internal/server).
 	bindList := []any{a}
 
 	err := wails.Run(&options.App{

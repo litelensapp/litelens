@@ -1,6 +1,6 @@
 {
   "name": "@litelens/design-system",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Design system components, utilities, and hooks for litelens",
   "private": false,
   "repository": {
@@ -29,9 +29,6 @@
     },
     "./hooks": {
       "import": "./dist/hooks/index.js"
-    },
-    "./types": {
-      "import": "./dist/types/index.js"
     },
     "./utils": {
       "import": "./dist/utils/index.js"

@@ -12,25 +12,20 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/dto"
-	"github.com/litelensapp/litelens/packages/core/pb"
-	"google.golang.org/grpc"
 )
 
 // PluginLoader manages a single plugin instance lifecycle
 type PluginLoader struct {
-	id               string
-	binaryPath       string
-	lockFilePath     string
-	mu               sync.Mutex
-	status           dto.PluginStatus
-	progress         int // 0-100 download progress
-	conn             *grpc.ClientConn
-	client           pb.PluginClient
-	processCmd       *exec.Cmd
-	cancelHealthLoop context.CancelFunc
-	lastError        string
-	backendAddr      string // HTTP backend address (127.0.0.1:<port>), if provided by plugin handshake
-	onRestart        func(id string, backendAddr string) // callback to emit plugin:backendRestarted event
+	id           string
+	binaryPath   string
+	lockFilePath string
+	mu           sync.Mutex
+	status       dto.PluginStatus
+	progress     int // 0-100 download progress
+	pid          int // plugin subprocess PID, used for on-demand liveness checks
+	processCmd   *exec.Cmd
+	lastError    string
+	hostGRPCPort int // host's gRPC port for cluster context watch (0 = not set)
 }
 
 // NewPluginLoader creates a new loader for a plugin. The lock file lives
@@ -38,8 +33,8 @@ type PluginLoader struct {
 // not a hardcoded default — otherwise switching to a custom plugins
 // directory would leave lock-file lookups pointed at the old location,
 // letting Launch() reuse a stale process from a completely different
-// directory (Launch only verifies PID-liveness + a gRPC health check, never
-// that the process was spawned from the currently configured binary).
+// directory (Launch only verifies PID-liveness, never that the process was
+// spawned from the currently configured binary).
 func NewPluginLoader(id string, binaryPath string) *PluginLoader {
 	lockDir := filepath.Dir(binaryPath)
 	lockFile := filepath.Join(lockDir, id+".lock")
@@ -56,15 +51,14 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	// Check if lock file exists with a live process
+	// Check if lock file exists with a live process. Liveness is PID-only —
+	// there is no network health check anymore; a process that's alive but
+	// unresponsive is caught later by the frontend's on-demand retry path.
 	if lockData, err := pl.readLockFile(); err == nil && lockData != nil {
 		if isProcessAlive(lockData.PID) {
-			// Try health check
-			if pl.dialAndHealthCheck(ctx, lockData.Port) {
-				pl.status = dto.PluginStatusReady
-				pl.startHealthLoop()
-				return nil
-			}
+			pl.pid = lockData.PID
+			pl.status = dto.PluginStatusReady
+			return nil
 		}
 		// Stale lock, delete it
 		_ = os.Remove(pl.lockFilePath)
@@ -76,6 +70,14 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 		args = append(args, "-kubeconfig", kubeconfigPath)
 	}
 	cmd := exec.CommandContext(ctx, pl.binaryPath, args...)
+
+	// Set environment variable for host gRPC port. pl.mu is already held for
+	// the duration of Launch() (see the defer at the top) — locking again here
+	// would deadlock since sync.Mutex is not reentrant.
+	hostGRPCPort := pl.hostGRPCPort
+	if hostGRPCPort > 0 {
+		cmd.Env = append(os.Environ(), fmt.Sprintf("LITELENS_HOST_GRPC_PORT=%d", hostGRPCPort))
+	}
 
 	// Log the command being launched for troubleshooting
 	fmt.Printf("launching plugin %s with args %v\n", pl.binaryPath, cmd.Args)
@@ -140,40 +142,23 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 			return err
 		}
 
-		// Extract gRPC port (required)
-		port := int(handshake["grpcPort"].(float64))
-
-		// Extract HTTP backend address if provided by plugin (optional, Phase 5+)
-		backendAddr := ""
-		if httpAddrVal, ok := handshake["httpAddr"]; ok {
-			if httpAddrStr, ok := httpAddrVal.(string); ok && httpAddrStr != "" {
-				backendAddr = httpAddrStr
-			}
-		}
+		// Extract HTTP port (required)
+		httpPort := int(handshake["httpPort"].(float64))
 
 		// Write lock file
-		if err := pl.writeLockFile(cmd.Process.Pid, port); err != nil {
+		if err := pl.writeLockFile(cmd.Process.Pid, httpPort); err != nil {
 			_ = cmd.Process.Kill()
 			pl.status = dto.PluginStatusCrashed
 			pl.lastError = fmt.Sprintf("write lock file: %v", err)
 			return err
 		}
 
-		// Dial gRPC
-		if err := pl.dialGRPC(ctx, fmt.Sprintf("127.0.0.1:%d", port)); err != nil {
-			_ = cmd.Process.Kill()
-			pl.status = dto.PluginStatusCrashed
-			pl.lastError = fmt.Sprintf("dial grpc: %v", err)
-			return err
-		}
-
-		// Store backend address if available. pl.mu is already held for the
-		// duration of Launch() (see the defer at the top) — locking again here
-		// would deadlock since sync.Mutex is not reentrant.
-		pl.backendAddr = backendAddr
+		// pl.mu is already held for the duration of Launch() (see the defer at
+		// the top) — locking again here would deadlock since sync.Mutex is not
+		// reentrant.
+		pl.pid = cmd.Process.Pid
 
 		pl.status = dto.PluginStatusReady
-		pl.startHealthLoop()
 		return nil
 	}
 }
@@ -183,54 +168,17 @@ func (pl *PluginLoader) validateHandshake(handshake map[string]interface{}) erro
 	if handshake["type"] != "READY" {
 		return fmt.Errorf("invalid handshake type: %v", handshake["type"])
 	}
-	if _, ok := handshake["grpcPort"]; !ok {
-		return fmt.Errorf("missing grpcPort in handshake")
+	if _, ok := handshake["httpPort"]; !ok {
+		return fmt.Errorf("missing httpPort in handshake")
 	}
-	port, ok := handshake["grpcPort"].(float64)
+	port, ok := handshake["httpPort"].(float64)
 	if !ok {
-		return fmt.Errorf("invalid grpcPort type")
+		return fmt.Errorf("invalid httpPort type")
 	}
 	portInt := int(port)
 	if portInt < 1 || portInt > 65535 {
-		return fmt.Errorf("grpcPort out of range: %d", portInt)
+		return fmt.Errorf("httpPort out of range: %d", portInt)
 	}
-	return nil
-}
-
-// dialAndHealthCheck attempts to dial and check health. On success it stores
-// the connection/client on pl so callers (e.g. Launch's reuse-existing-process
-// path) end up with a usable client, not just a bool.
-func (pl *PluginLoader) dialAndHealthCheck(ctx context.Context, port int) bool {
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	//lint:ignore SA1019 grpc.NewClient's lazy-connect semantics would change this synchronous dial-then-healthcheck probe's behavior; migrate deliberately, not as a lint fix
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
-	if err != nil {
-		return false
-	}
-	client := pb.NewPluginClient(conn)
-
-	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	if _, err := client.GetCapabilities(checkCtx, &pb.Empty{}); err != nil {
-		conn.Close()
-		return false
-	}
-
-	pl.conn = conn
-	pl.client = client
-	return true
-}
-
-// dialGRPC establishes a gRPC connection
-func (pl *PluginLoader) dialGRPC(ctx context.Context, addr string) error {
-	//lint:ignore SA1019 grpc.NewClient's lazy-connect semantics would change this synchronous dial's behavior; migrate deliberately, not as a lint fix
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
-	if err != nil {
-		return err
-	}
-	pl.conn = conn
-	pl.client = pb.NewPluginClient(conn)
 	return nil
 }
 
@@ -261,74 +209,6 @@ func (pl *PluginLoader) writeLockFile(pid, port int) error {
 	}
 	data, _ := json.MarshalIndent(lockFile, "", "  ")
 	return os.WriteFile(pl.lockFilePath, data, 0600)
-}
-
-// startHealthLoop starts the background health check goroutine.
-// Must be called with pl.mu already held by the caller (see Launch) — it does
-// not lock internally, since re-locking here would deadlock against the
-// caller's held lock (sync.Mutex is not reentrant).
-func (pl *PluginLoader) startHealthLoop() {
-	// Cancel any prior health loop before starting a new one.
-	if pl.cancelHealthLoop != nil {
-		pl.cancelHealthLoop()
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	pl.cancelHealthLoop = cancel
-
-	go func() {
-		failures := 0
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				// Snapshot pl.client under lock to avoid data race
-				pl.mu.Lock()
-				client := pl.client
-				pl.mu.Unlock()
-
-				if client == nil {
-					return
-				}
-
-				checkCtx, checkCancel := context.WithTimeout(ctx, 2*time.Second)
-				_, err := client.GetCapabilities(checkCtx, &pb.Empty{})
-				checkCancel()
-
-				if err != nil {
-					failures++
-					if failures >= 3 {
-						pl.mu.Lock()
-						pl.status = dto.PluginStatusCrashed
-						pl.lastError = fmt.Sprintf("health check failed: %v", err)
-						backendAddr := pl.backendAddr
-						onRestart := pl.onRestart
-						pl.mu.Unlock()
-
-						// Kill process and delete lock
-						if pl.processCmd != nil && pl.processCmd.Process != nil {
-							_ = pl.processCmd.Process.Kill()
-						}
-						_ = os.Remove(pl.lockFilePath)
-						_ = pl.conn.Close()
-
-						// Emit restart event if callback is set
-						if onRestart != nil {
-							onRestart(pl.id, backendAddr)
-						}
-
-						return
-					}
-				} else {
-					failures = 0
-				}
-			}
-		}
-	}()
 }
 
 // Status returns the current plugin status (thread-safe)
@@ -397,36 +277,33 @@ func (pl *PluginLoader) SetBinaryPath(binaryPath string) {
 	pl.lockFilePath = filepath.Join(filepath.Dir(binaryPath), pl.id+".lock")
 }
 
-// GetClient returns the gRPC client (requires status check first)
-func (pl *PluginLoader) GetClient() pb.PluginClient {
+// IsAlive reports whether the plugin's subprocess PID is still alive. This is
+// the sole liveness signal used for on-demand relaunch decisions — there is
+// no network health check; a process that's alive but unresponsive is not
+// detected here.
+func (pl *PluginLoader) IsAlive() bool {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-	return pl.client
+	return pl.pid != 0 && isProcessAlive(pl.pid)
 }
 
-// GetBackendAddr returns the HTTP backend address (127.0.0.1:<port>), or "" if not available
-func (pl *PluginLoader) GetBackendAddr() string {
+// HTTPPort reads and returns the plugin's HTTP backend port from the lock file.
+// Returns an error if the lock file cannot be read or is invalid.
+func (pl *PluginLoader) HTTPPort() (int, error) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-	return pl.backendAddr
+	lockData, err := pl.readLockFile()
+	if err != nil {
+		return 0, err
+	}
+	return lockData.Port, nil
 }
 
-// SetOnRestart sets a callback to be invoked when the plugin restarts. The
-// callback runs from the health-loop goroutine with pl.mu NOT held (it is
-// read and released before invocation, see startHealthLoop) — but it must
-// still stay cheap and non-blocking, since it runs synchronously on that
-// goroutine before the health loop exits.
-func (pl *PluginLoader) SetOnRestart(callback func(id string, backendAddr string)) {
+// SetHostGRPCPort sets the host's gRPC port for cluster context watch (thread-safe)
+func (pl *PluginLoader) SetHostGRPCPort(port int) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-	pl.onRestart = callback
-}
-
-// SetClient sets the gRPC client directly (used for testing)
-func (pl *PluginLoader) SetClient(client pb.PluginClient) {
-	pl.mu.Lock()
-	defer pl.mu.Unlock()
-	pl.client = client
+	pl.hostGRPCPort = port
 }
 
 // Shutdown cleanly shuts down the plugin
@@ -434,17 +311,9 @@ func (pl *PluginLoader) Shutdown() error {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	if pl.cancelHealthLoop != nil {
-		pl.cancelHealthLoop()
-	}
-
 	if pl.processCmd != nil && pl.processCmd.Process != nil {
 		_ = pl.processCmd.Process.Kill()
 		_ = pl.processCmd.Wait()
-	}
-
-	if pl.conn != nil {
-		_ = pl.conn.Close()
 	}
 
 	_ = os.Remove(pl.lockFilePath)

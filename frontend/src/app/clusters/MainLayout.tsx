@@ -1,13 +1,15 @@
-import { ErrorBoundary, NavItem, renderErrorToast } from "@litelens/design-system";
-import { FC, lazy, Suspense, useMemo, useState } from "react";
+import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
+import { NavEntry, NavItem } from "@litelens/core";
+import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
+import { useClusterWideEventListener } from "./shared/hooks/registry/event/useClusterWideEventListener";
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { NavSidebar } from "./NavSidebar";
-import { useGetInstalledPluginNav } from "./plugins/hooks/useGetInstalledPluginNav";
-import { usePluginTrayRegistry } from "./plugins/hooks/usePluginTrayRegistry";
-import { PluginEventBridges } from "./plugins/PluginEventBridges";
+import { usePluginNavEntries } from "./plugins/hooks/registry/nav/usePluginNavEntries";
+import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
+import { usePluginTrayFamilies } from "./plugins/hooks/registry/tray/usePluginTrayFamilies";
 import { PluginResourceView } from "./plugins/PluginResourceView";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
@@ -196,6 +198,9 @@ interface MainLayoutProps {
 }
 
 export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketplace }) => {
+  // Listen for plugin:event emissions and route to registered handlers
+  useClusterWideEventListener();
+
   const [activeResource, setActiveResource] = useState<ViewType>("overview");
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(["workloads", "network", "config", "storage", "access-control"])
@@ -235,9 +240,45 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     [namespaceNames, defaultNamespaces]
   );
 
-  // Discover installed plugins and their nav entries/tray families at runtime
-  const { pluginNavData } = useGetInstalledPluginNav();
-  const pluginTrayRegistry = usePluginTrayRegistry();
+  // Nav data comes from usePluginNavEntries reading pluginNavRegistry, which
+  // each plugin's own PluginView populates via useRegisterNavEntry() on mount
+  // (below, in JSX every non-uninstalled plugin is always mounted, hidden
+  // when inactive — see PluginResourceView) — the plugin pushes its own nav
+  // entry rather than the host reading a static export or importing any
+  // plugin-specific nav contract.
+  const pluginNavData = usePluginNavEntries();
+  // Plugin groups registered with defaultOpen expand the first time they're
+  // seen (e.g. right after install). Tracked separately from openGroups so a
+  // user collapsing the group afterwards isn't overridden on re-registration.
+  const seededDefaultOpenGroups = useRef(new Set<string>());
+  const pluginNavEntries = pluginNavData.navEntries;
+  useEffect(() => {
+    const toSeed = pluginNavEntries
+      .filter(
+        (entry): entry is Extract<NavEntry<string>, { kind: "group" }> => entry.kind === "group"
+      )
+      .filter(
+        (entry) => entry.group.defaultOpen && !seededDefaultOpenGroups.current.has(entry.group.id)
+      )
+      .map((entry) => entry.group.id);
+
+    if (toSeed.length === 0) return;
+
+    for (const id of toSeed) {
+      seededDefaultOpenGroups.current.add(id);
+    }
+    setOpenGroups((prev) => new Set([...prev, ...toSeed]));
+  }, [pluginNavEntries]);
+  const { pluginStatuses } = useGetInstalledPlugins();
+  const mountedPlugins = useMemo(
+    () => pluginStatuses.filter((s) => s.status !== "NOT_INSTALLED"),
+    [pluginStatuses]
+  );
+  // Tray families come from usePluginTrayFamilies reading pluginTrayRegistry,
+  // which each plugin's own PluginView populates via useRegisterTrayFamilies()
+  // on mount (mirrors the nav-entry mechanism above) — the plugin pushes its
+  // own tray-family components rather than the host reading a static export.
+  const pluginTrayRegistry = usePluginTrayFamilies();
   const mergedResourceLabels = useMemo(
     () => ({ ...RESOURCE_LABEL, ...pluginNavData.resourceLabels }),
     [pluginNavData.resourceLabels]
@@ -279,12 +320,12 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   return (
     <MainLayoutProvider
       activeContext={activeContext}
+      activeResource={activeResource}
       namespaces={namespaces}
       onNamespacesChange={handleNamespacesChange}
+      onNavigateToView={setActiveResource}
       className="flex h-full min-w-0 flex-1 overflow-hidden"
     >
-      <PluginEventBridges />
-
       {/* Sidebar */}
       <NavSidebar
         activeResource={activeResource}
@@ -348,18 +389,18 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
               {activeResource === "leases" && <LeasesView />}
               {activeResource === "events" && <EventsView />}
 
-              {/* Render plugin views dynamically for any installed plugins */}
-              {pluginNavData.viewTypeToPluginId[activeResource] && (
+              {/* Every non-uninstalled plugin stays mounted (hidden when inactive)
+                  so a READY plugin's own PluginView can register its nav entry
+                  before the user has navigated to it — see PluginResourceView. */}
+              {mountedPlugins.map((status) => (
                 <PluginResourceView
-                  pluginId={pluginNavData.viewTypeToPluginId[activeResource]}
-                  pluginName={pluginNavData.pluginNameByViewType[activeResource]}
-                  viewType={activeResource}
-                  activeContext={activeContext}
-                  namespaces={namespaces}
-                  onNavigateToView={setActiveResource}
+                  key={status.pluginId}
+                  pluginId={status.pluginId}
+                  pluginName={status.name}
+                  isActive={pluginNavData.viewTypeToPluginId[activeResource] === status.pluginId}
                   onGoToMarketplace={onOpenMarketplace}
                 />
-              )}
+              ))}
             </Suspense>
 
             <DetailBlock onNavigateToPortForwarding={() => setActiveResource("portforwarding")} />

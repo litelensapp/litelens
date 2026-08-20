@@ -36,7 +36,8 @@ export const DeleteNode = (_name: string): Promise<void> => Promise.resolve();
 export const DeleteNodes = (_names: string[]): Promise<void> => Promise.resolve();
 export const GetNamespaceYAML = (_name: string): Promise<string> => Promise.resolve("");
 export const UpdateNamespaceYAML = (_yamlString: string): Promise<void> => Promise.resolve();
+export const GetPluginBackendAddr = (_pluginID: string): Promise<string> =>
+  Promise.resolve("127.0.0.1:8080");
 export const GetPluginsFromMarketplace = (): Promise<unknown[]> => Promise.resolve([]);
 export const IsMarketplaceEnabled = (): Promise<boolean> => Promise.resolve(true);
 export const IsPrivateRepoAccess = (): Promise<boolean> => Promise.resolve(true);
-export const GetPluginBackendAddr = (_pluginID: string): Promise<string> => Promise.resolve("");

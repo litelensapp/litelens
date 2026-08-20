@@ -1,4 +1,4 @@
-import type { SharedUnifiedTrayContext, UnifiedTrayAllFamily } from "@litelens/design-system";
+import type { SharedUnifiedTrayContext, UnifiedTrayAllFamily } from "@litelens/core";
 import { createContext, FC, ReactNode, useCallback, useContext, useMemo, useReducer } from "react";
 import type { UnifiedTrayTab } from "./UnifiedTrayTypes";
 

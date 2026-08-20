@@ -1,27 +1,21 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"maps"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/plugin"
-	"github.com/litelensapp/litelens/packages/core/pb"
 	"github.com/litelensapp/litelens/internal/storage"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // pluginsRootDir returns the directory all installed plugins live under. If a custom
@@ -144,14 +138,6 @@ func (a *App) restoreInstalledPlugins() {
 		loader := plugin.NewPluginLoader(pluginID, binaryPath)
 		loader.SetStatus(dto.PluginStatusReady)
 
-		// Set restart callback to emit plugin:backendRestarted event
-		loader.SetOnRestart(func(id string, backendAddr string) {
-			wailsruntime.EventsEmit(a.ctx, "plugin:backendRestarted", map[string]string{
-				"pluginID":   id,
-				"backendAddr": backendAddr,
-			})
-		})
-
 		// Add to pluginLoaders map if not already present.
 		a.pluginsMu.Lock()
 		if _, exists := a.pluginLoaders[pluginID]; !exists {
@@ -182,7 +168,10 @@ func (a *App) prewarmRestoredPlugins(contextName string) {
 	a.pluginsMu.RUnlock()
 
 	for _, loader := range loaders {
-		if loader.Status() == dto.PluginStatusReady && loader.GetClient() == nil {
+		if loader.Status() == dto.PluginStatusReady && !loader.IsAlive() {
+			if a.grpcServerCfg != nil {
+				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+			}
 			_ = loader.Launch(context.Background(), kubeconfigPath)
 		}
 	}
@@ -608,6 +597,9 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 			// lazy-launch retry once a valid context is available.
 			kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
 			if err == nil {
+				if a.grpcServerCfg != nil {
+					loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+				}
 				_ = loader.Launch(ctx, kubeconfigPath)
 			}
 		}
@@ -820,153 +812,9 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 	}
 }
 
-// pushPluginClusterContext sends cluster context to a plugin via HTTP POST (Phase 2 business-call inversion).
-// If the plugin has no HTTP backend address, this is a no-op (no error). If POST fails, returns the error.
-func (a *App) pushPluginClusterContext(pluginID, contextName, kubeconfigPath, backendAddr string) error {
-	// Skip plugins without an HTTP backend (Phase 5+ feature)
-	if backendAddr == "" {
-		return nil
-	}
-
-	type ClusterContextPayload struct {
-		ContextName    string `json:"contextName"`
-		KubeconfigPath string `json:"kubeconfigPath"`
-	}
-
-	payload := ClusterContextPayload{
-		ContextName:    contextName,
-		KubeconfigPath: kubeconfigPath,
-	}
-
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("marshal cluster context payload: %w", err)
-	}
-
-	url := fmt.Sprintf("http://%s/internal/setClusterContext", backendAddr)
-
-	// Use a short timeout (3 seconds) for the HTTP call
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return fmt.Errorf("create HTTP request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("push cluster context to %s: %w", pluginID, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("push cluster context to %s failed (HTTP %d): %s", pluginID, resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-// pushClusterContextToAllPlugins sends cluster context to every running plugin with an HTTP backend,
-// matching the Phase 2 design decision: "The host pushes POST on every cluster switch."
-// Fires all pushes concurrently (one goroutine per plugin) to avoid blocking Connect().
-// Errors are logged but do not fail the cluster switch.
-func (a *App) pushClusterContextToAllPlugins(contextName, kubeconfigPath string) {
-	// Snapshot pluginLoaders under read lock
-	a.pluginsMu.RLock()
-	loaders := make(map[string]*plugin.PluginLoader, len(a.pluginLoaders))
-	for id, loader := range a.pluginLoaders {
-		loaders[id] = loader
-	}
-	a.pluginsMu.RUnlock()
-
-	// Fire pushes concurrently
-	var wg sync.WaitGroup
-	for pluginID, loader := range loaders {
-		// Only push to ready plugins with an HTTP backend
-		if loader.Status() != dto.PluginStatusReady {
-			continue
-		}
-		backendAddr := loader.GetBackendAddr()
-		if backendAddr == "" {
-			// No HTTP server yet — gRPC-based plugins get synced lazily via pluginClient()
-			continue
-		}
-
-		wg.Add(1)
-		go func(id string, addr string) {
-			defer wg.Done()
-			if err := a.pushPluginClusterContext(id, contextName, kubeconfigPath, addr); err != nil {
-				log.Printf("push cluster context to plugin %q failed: %v", id, err)
-			}
-		}(pluginID, backendAddr)
-	}
-	wg.Wait()
-}
-
-// pluginClient returns a ready gRPC client for the named plugin, launching it
-// lazily and syncing its active cluster context. Generic across every
-// plugin — this file must never import a concrete plugin's own package.
-func (a *App) pluginClient(pluginID string) (pb.PluginClient, error) {
-	a.pluginsMu.RLock()
-	loader, ok := a.pluginLoaders[pluginID]
-	a.pluginsMu.RUnlock()
-	if !ok {
-		return nil, fmt.Errorf("plugin %q not installed", pluginID)
-	}
-	if status := loader.Status(); status != dto.PluginStatusReady {
-		return nil, fmt.Errorf("plugin %q not ready (status: %s)", pluginID, status)
-	}
-
-	a.mu.RLock()
-	activeContextName := a.activeContext
-	a.mu.RUnlock()
-	if activeContextName == "" {
-		return nil, fmt.Errorf("plugin %q requires a connected cluster context", pluginID)
-	}
-	kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
-	if err != nil {
-		return nil, fmt.Errorf("resolve kubeconfig: %w", err)
-	}
-
-	client := loader.GetClient()
-	if client == nil {
-		if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
-			return nil, fmt.Errorf("launch plugin %q: %w", pluginID, err)
-		}
-		client = loader.GetClient()
-		if client == nil {
-			return nil, fmt.Errorf("plugin %q client unavailable", pluginID)
-		}
-	}
-
-	// Push cluster context via HTTP (Phase 2). If the plugin has no HTTP backend yet,
-	// fall back to gRPC for backward compatibility.
-	backendAddr := loader.GetBackendAddr()
-	if backendAddr != "" {
-		// Phase 5+: plugin has HTTP server, push via HTTP (best-effort, don't fail if it errors)
-		_ = a.pushPluginClusterContext(pluginID, activeContextName, kubeconfigPath, backendAddr)
-	} else {
-		// Phase 1-4: plugin has no HTTP server yet, use gRPC SetClusterContext for backward compatibility
-		if _, err := client.SetClusterContext(context.Background(), &pb.SetClusterContextRequest{
-			ContextName:    activeContextName,
-			KubeconfigPath: kubeconfigPath,
-		}); err != nil {
-			return nil, fmt.Errorf("sync cluster context: %w", err)
-		}
-	}
-
-	return client, nil
-}
-
-// GetPluginBackendAddr returns the HTTP backend address for a plugin (127.0.0.1:<port>),
-// or an error if the plugin is not installed or not ready. Used by the plugin frontend
-// to fetch the backend address for direct HTTP calls (Phase 2: business-call inversion).
+// GetPluginBackendAddr returns the HTTP address (host:port) for a plugin's backend.
+// Returns an error if the plugin is not installed, not running, or if the lock file cannot be read.
 func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
-	// Validate pluginID to prevent path traversal
 	if !plugin.ValidPluginID(pluginID) {
 		return "", fmt.Errorf("invalid plugin ID: %q", pluginID)
 	}
@@ -976,35 +824,44 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 	a.pluginsMu.RUnlock()
 
 	if !ok {
-		return "", fmt.Errorf("plugin %q not installed", pluginID)
+		return "", fmt.Errorf("plugin %q is not installed", pluginID)
 	}
 
-	if status := loader.Status(); status != dto.PluginStatusReady {
-		return "", fmt.Errorf("plugin %q not ready (status: %s)", pluginID, status)
+	if !loader.IsAlive() {
+		// Lazily relaunch: the plugin may have crashed, been killed externally,
+		// or simply never been started for this context (prewarmRestoredPlugins
+		// only relaunches on Connect, not on-demand). Mirrors the launch pattern
+		// used by InstallPlugin/prewarmRestoredPlugins.
+		a.mu.RLock()
+		activeContextName := a.activeContext
+		a.mu.RUnlock()
+
+		if activeContextName == "" {
+			return "", fmt.Errorf("plugin %q is not running", pluginID)
+		}
+
+		kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
+		if err != nil {
+			return "", fmt.Errorf("plugin %q is not running", pluginID)
+		}
+
+		if a.grpcServerCfg != nil {
+			loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+		}
+		if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
+			return "", fmt.Errorf("plugin %q: relaunch failed: %w", pluginID, err)
+		}
 	}
 
-	return loader.GetBackendAddr(), nil
+	port, err := loader.HTTPPort()
+	if err != nil {
+		return "", fmt.Errorf("plugin %q: read HTTP port: %v", pluginID, err)
+	}
+
+	if port < 1 || port > 65535 {
+		return "", fmt.Errorf("plugin %q: invalid port %d", pluginID, port)
+	}
+
+	return fmt.Sprintf("127.0.0.1:%d", port), nil
 }
 
-// InvokePlugin is the single generic Wails-bound entry point the frontend
-// uses to call into any installed plugin. pluginID selects the plugin (e.g.
-// "helm"); method and payloadJSON/the return value are opaque strings whose
-// shape only the plugin's own frontend bundle and backend agree on — this
-// method must never branch on pluginID or method.
-func (a *App) InvokePlugin(pluginID, method, payloadJSON string) (string, error) {
-	client, err := a.pluginClient(pluginID)
-	if err != nil {
-		return "", err
-	}
-	resp, err := client.Invoke(context.Background(), &pb.InvokeRequest{
-		Method:      method,
-		PayloadJson: payloadJSON,
-	})
-	if err != nil {
-		return "", err
-	}
-	if resp.Error != "" {
-		return "", fmt.Errorf("%s", resp.Error)
-	}
-	return resp.PayloadJson, nil
-}

@@ -19,10 +19,25 @@ React 19 component library for litelens — atoms, components, utilities, and ho
 
 ## Installation
 
+This package is published to [GitHub Packages](https://github.com/orgs/litelensapp/packages), not the public npm registry. GitHub Packages requires the npm scope to match the owning GitHub org, so the package is published there as **`@litelensapp/design-system`** (the source package is `@litelens/design-system` internally, but external consumers install and import it under the `@litelensapp` scope).
+
+### 1. Authenticate to GitHub Packages
+
+Create a GitHub [personal access token](https://github.com/settings/tokens) with at least `read:packages` scope, then add a `.npmrc` in your project root (or `~/.npmrc` for a global config):
+
+```
+@litelensapp:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Set `GITHUB_TOKEN` in your shell environment (or replace `${GITHUB_TOKEN}` with the token directly, though an env var is recommended so the token isn't committed).
+
+### 2. Install
+
 ```bash
-npm install @litelens/design-system
+npm install @litelensapp/design-system
 # or
-pnpm add @litelens/design-system
+pnpm add @litelensapp/design-system
 ```
 
 ## Tailwind CSS v4 Setup
@@ -31,7 +46,7 @@ Tailwind CSS v4 is required, via the `@tailwindcss/vite` plugin. After installin
 
 ```css
 /* src/style.css */
-@import "@litelens/design-system/styles.css";
+@import "@litelensapp/design-system/styles.css";
 
 /* your app's own styles below */
 ```
@@ -55,9 +70,9 @@ The package exports from multiple entrypoints for granular imports:
 Low-level primitive components (buttons, inputs, dialogs, etc.):
 
 ```tsx
-import { Button } from "@litelens/design-system";
-import { Input } from "@litelens/design-system";
-import { Badge } from "@litelens/design-system";
+import { Button } from "@litelensapp/design-system";
+import { Input } from "@litelensapp/design-system";
+import { Badge } from "@litelensapp/design-system";
 ```
 
 ### Atoms subpath (`./atoms`)
@@ -65,7 +80,7 @@ import { Badge } from "@litelens/design-system";
 Directly reference the atoms barrel export:
 
 ```tsx
-import { Button, Checkbox, Select } from "@litelens/design-system/atoms";
+import { Button, Checkbox, Select } from "@litelensapp/design-system/atoms";
 ```
 
 ### Components (`./components`)
@@ -77,7 +92,7 @@ import {
   AnnotationBadge,
   ResourceDetailDrawer,
   ResourceDeletionButton,
-} from "@litelens/design-system/components";
+} from "@litelensapp/design-system/components";
 ```
 
 ### Hooks (`./hooks`)
@@ -85,7 +100,7 @@ import {
 React hooks for common operations:
 
 ```tsx
-import { useCopyToClipboard } from "@litelens/design-system/hooks";
+import { useCopyToClipboard } from "@litelensapp/design-system/hooks";
 ```
 
 ### Utils (`./utils`)
@@ -93,15 +108,7 @@ import { useCopyToClipboard } from "@litelens/design-system/hooks";
 Utility functions for formatting, transformation, and common operations:
 
 ```tsx
-import { formatRelativeTime, formatTs, cn } from "@litelens/design-system/utils";
-```
-
-### Types (`./types`)
-
-TypeScript type definitions for API and navigation:
-
-```tsx
-import type { NavItem, NavGroup, UseQueryCallback } from "@litelens/design-system/types";
+import { formatRelativeTime, formatTs, cn } from "@litelensapp/design-system/utils";
 ```
 
 ### Libs (`./libs`)
@@ -109,7 +116,7 @@ import type { NavItem, NavGroup, UseQueryCallback } from "@litelens/design-syste
 Advanced libraries and utilities (full-text search, etc.):
 
 ```tsx
-import { FullTextSearchInput, useFullTextSearch } from "@litelens/design-system/libs";
+import { FullTextSearchInput, useFullTextSearch } from "@litelensapp/design-system/libs";
 ```
 
 ## Publishing
@@ -119,10 +126,9 @@ Version bumps and publishing are automated:
 1. Bump the version in `package.json`
 2. Commit and push to the main branch
 3. Create a git tag: `git tag design-system/vX.Y.Z` and push it
-4. The `.github/workflows/publish-design-system.yml` workflow automatically:
+4. The `.github/workflows/job-publish-design-system.yml` workflow (invoked from `cd.yml`) automatically:
    - Builds the package using `tsup`
-   - Publishes to npm
-   - Creates a GitHub release
+   - Publishes to [GitHub Packages](https://github.com/orgs/litelensapp/packages) as `@litelensapp/design-system`
 
 ## Contributing
 

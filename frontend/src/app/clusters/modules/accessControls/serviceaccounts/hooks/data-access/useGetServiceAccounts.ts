@@ -1,5 +1,5 @@
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
-import type { UseQueryCallback } from "@litelens/design-system";
+import type { UseQueryCallback } from "@litelens/core";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_SERVICE_ACCOUNTS } from "../../api/api.const";

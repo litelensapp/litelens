@@ -20,7 +20,7 @@ import { PluginLogo } from "./PluginLogo";
 // Keys match Manifest.os (Go GOOS values); labels are the human-readable names shown in chips.
 const OS_CHIPS: { key: "linux" | "darwin" | "windows"; label: string }[] = [
   { key: "linux", label: "Linux" },
-  { key: "darwin", label: "macOS" },
+  { key: "darwin", label: "MacOS" },
   { key: "windows", label: "Windows" },
 ];
 

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import { QUERY_KEY_NAMESPACE_NAMES } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
-import type { UseQueryCallback } from "@litelens/design-system";
+import type { UseQueryCallback } from "@litelens/core";
 import { GetNamespaces } from "../../api/resources";
 import type { Namespace } from "../../api/resources";
 

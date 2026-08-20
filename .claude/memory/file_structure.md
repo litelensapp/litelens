@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-08-18T16:37:33.430Z
+  modified: 2026-08-20T11:10:27.310Z
 ---
 
 ```text
@@ -374,13 +374,7 @@ metadata:
         index.ts            # export * from "./common"; export * from "./datetime" (api.ts REMOVED 2026-07-20 — DEFAULT_QUERY_OPTIONS moved back to frontend/src/api/api.ts, see /api/ section)
         common.ts            # cn(...inputs) — clsx+twMerge; clamp(v,min,max)
         datetime.ts           # formatRelativeTime(isoString): combines relative + full ISO timestamp; formatTs(unix): locale timestamp string
-      /types/             # barrel-exported via index.ts (added 2026-07-13); consumers import from "@/design-system/types" (not the per-file paths)
-        index.ts            # export * from "./api"; export * from "./nav"; export * from "./resources/namespace"; export * from "./tray" (both NEW 2026-07-25)
-        nav.ts            # NavItem, NavGroup, NavEntry type definitions
-        api.ts            # UseQueryCallback<T> generic (select?: (data?: T) => T); moved from src/api/api.interface.ts 2026-07-13; ~35 consumers in src/hooks/data-access/* + NavSidebar.tsx/navConfig.ts/MainLayout.tsx import via barrel "@/design-system/types"
-        tray.ts           # NEW 2026-07-25 (Phase 4): SharedUnifiedTrayContext boundary contract ({openTab(family, params)}) consumed by both the main app and standalone plugin frontend bundles, since plugin bundles can't import the main app's own `UnifiedTrayContextValue`; UnifiedTrayCoreFamily ("modification"|"pod") union into UnifiedTrayAllFamily, extended per-plugin by whatever families an installed plugin registers at runtime; the main app's real UnifiedTrayContextValue is a structural superset that extends this type
-        /resources/
-          namespace.ts    # NEW 2026-07-25 (Phase 4): SharedNamespaceContext ({Name: string}) — same plugin-boundary rationale as tray.ts; main app's real Namespace type extends this
+      # /types/ REMOVED 2026-08-20 — merged into packages/core/frontend/src/types/ (@litelens/core's src/types/, not documented elsewhere in this file): index.ts barrel (export * from "./api"/"./nav"/"./resources/namespace"/"./tray"), api.ts (UseQueryCallback<T>), tray.ts (SharedUnifiedTrayContext/SharedUnifiedTrayContentProps/UnifiedTrayCoreFamily/UnifiedTrayAllFamily), nav.ts (NavItem/NavGroup/NavEntry, pre-existing), resources/namespace.ts (SharedNamespaceContext, pre-existing). design-system's package.json "./types" export subpath, tsup entry, and index.ts re-export all dropped. All ~44 consumers (UseQueryCallback, SharedUnifiedTray* etc.) now import from "@litelens/core" instead of "@litelens/design-system".
     /app/                 # all top-level and cluster-connected modules (renamed from /modules/ 2026-07-12; 248 files, imports updated @/modules/* -> @/app/*)
       ClusterRail.tsx     # cluster switcher rail (avatar buttons per context); top-level module file; UPDATED 2026-07-31: added "Marketplace" rail button (onMarketplaceToggle prop) below the cluster avatars, opens MarketplaceView as its own top-level view
       AppFooter.tsx       # app-level footer (update-available notice); top-level module file

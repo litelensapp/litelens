@@ -57,89 +57,30 @@ func (*Empty) Descriptor() ([]byte, []int) {
 	return file_plugin_proto_rawDescGZIP(), []int{0}
 }
 
-type CapabilitiesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	Ready         bool                   `protobuf:"varint,2,opt,name=ready,proto3" json:"ready,omitempty"`
-	Features      []string               `protobuf:"bytes,3,rep,name=features,proto3" json:"features,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CapabilitiesResponse) Reset() {
-	*x = CapabilitiesResponse{}
-	mi := &file_plugin_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CapabilitiesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CapabilitiesResponse) ProtoMessage() {}
-
-func (x *CapabilitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CapabilitiesResponse.ProtoReflect.Descriptor instead.
-func (*CapabilitiesResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *CapabilitiesResponse) GetVersion() string {
-	if x != nil {
-		return x.Version
-	}
-	return ""
-}
-
-func (x *CapabilitiesResponse) GetReady() bool {
-	if x != nil {
-		return x.Ready
-	}
-	return false
-}
-
-func (x *CapabilitiesResponse) GetFeatures() []string {
-	if x != nil {
-		return x.Features
-	}
-	return nil
-}
-
-type SetClusterContextRequest struct {
+type ClusterContextChangedEvent struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ContextName    string                 `protobuf:"bytes,1,opt,name=contextName,proto3" json:"contextName,omitempty"`
 	KubeconfigPath string                 `protobuf:"bytes,2,opt,name=kubeconfigPath,proto3" json:"kubeconfigPath,omitempty"`
+	Timestamp      string                 `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
-func (x *SetClusterContextRequest) Reset() {
-	*x = SetClusterContextRequest{}
-	mi := &file_plugin_proto_msgTypes[2]
+func (x *ClusterContextChangedEvent) Reset() {
+	*x = ClusterContextChangedEvent{}
+	mi := &file_plugin_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SetClusterContextRequest) String() string {
+func (x *ClusterContextChangedEvent) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SetClusterContextRequest) ProtoMessage() {}
+func (*ClusterContextChangedEvent) ProtoMessage() {}
 
-func (x *SetClusterContextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_proto_msgTypes[2]
+func (x *ClusterContextChangedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -150,48 +91,56 @@ func (x *SetClusterContextRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SetClusterContextRequest.ProtoReflect.Descriptor instead.
-func (*SetClusterContextRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use ClusterContextChangedEvent.ProtoReflect.Descriptor instead.
+func (*ClusterContextChangedEvent) Descriptor() ([]byte, []int) {
+	return file_plugin_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SetClusterContextRequest) GetContextName() string {
+func (x *ClusterContextChangedEvent) GetContextName() string {
 	if x != nil {
 		return x.ContextName
 	}
 	return ""
 }
 
-func (x *SetClusterContextRequest) GetKubeconfigPath() string {
+func (x *ClusterContextChangedEvent) GetKubeconfigPath() string {
 	if x != nil {
 		return x.KubeconfigPath
 	}
 	return ""
 }
 
-type InvokeRequest struct {
+func (x *ClusterContextChangedEvent) GetTimestamp() string {
+	if x != nil {
+		return x.Timestamp
+	}
+	return ""
+}
+
+type PluginEventRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Method        string                 `protobuf:"bytes,1,opt,name=method,proto3" json:"method,omitempty"`
-	PayloadJson   string                 `protobuf:"bytes,2,opt,name=payloadJson,proto3" json:"payloadJson,omitempty"`
+	PluginId      string                 `protobuf:"bytes,1,opt,name=pluginId,proto3" json:"pluginId,omitempty"`
+	EventName     string                 `protobuf:"bytes,2,opt,name=eventName,proto3" json:"eventName,omitempty"`
+	PayloadJson   string                 `protobuf:"bytes,3,opt,name=payloadJson,proto3" json:"payloadJson,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *InvokeRequest) Reset() {
-	*x = InvokeRequest{}
-	mi := &file_plugin_proto_msgTypes[3]
+func (x *PluginEventRequest) Reset() {
+	*x = PluginEventRequest{}
+	mi := &file_plugin_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *InvokeRequest) String() string {
+func (x *PluginEventRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InvokeRequest) ProtoMessage() {}
+func (*PluginEventRequest) ProtoMessage() {}
 
-func (x *InvokeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_proto_msgTypes[3]
+func (x *PluginEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -202,73 +151,28 @@ func (x *InvokeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use InvokeRequest.ProtoReflect.Descriptor instead.
-func (*InvokeRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use PluginEventRequest.ProtoReflect.Descriptor instead.
+func (*PluginEventRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *InvokeRequest) GetMethod() string {
+func (x *PluginEventRequest) GetPluginId() string {
 	if x != nil {
-		return x.Method
+		return x.PluginId
 	}
 	return ""
 }
 
-func (x *InvokeRequest) GetPayloadJson() string {
+func (x *PluginEventRequest) GetEventName() string {
+	if x != nil {
+		return x.EventName
+	}
+	return ""
+}
+
+func (x *PluginEventRequest) GetPayloadJson() string {
 	if x != nil {
 		return x.PayloadJson
-	}
-	return ""
-}
-
-type InvokeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PayloadJson   string                 `protobuf:"bytes,1,opt,name=payloadJson,proto3" json:"payloadJson,omitempty"`
-	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *InvokeResponse) Reset() {
-	*x = InvokeResponse{}
-	mi := &file_plugin_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *InvokeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*InvokeResponse) ProtoMessage() {}
-
-func (x *InvokeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use InvokeResponse.ProtoReflect.Descriptor instead.
-func (*InvokeResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *InvokeResponse) GetPayloadJson() string {
-	if x != nil {
-		return x.PayloadJson
-	}
-	return ""
-}
-
-func (x *InvokeResponse) GetError() string {
-	if x != nil {
-		return x.Error
 	}
 	return ""
 }
@@ -278,24 +182,18 @@ var File_plugin_proto protoreflect.FileDescriptor
 const file_plugin_proto_rawDesc = "" +
 	"\n" +
 	"\fplugin.proto\x12\tpluginapi\"\a\n" +
-	"\x05Empty\"b\n" +
-	"\x14CapabilitiesResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion\x12\x14\n" +
-	"\x05ready\x18\x02 \x01(\bR\x05ready\x12\x1a\n" +
-	"\bfeatures\x18\x03 \x03(\tR\bfeatures\"d\n" +
-	"\x18SetClusterContextRequest\x12 \n" +
+	"\x05Empty\"\x84\x01\n" +
+	"\x1aClusterContextChangedEvent\x12 \n" +
 	"\vcontextName\x18\x01 \x01(\tR\vcontextName\x12&\n" +
-	"\x0ekubeconfigPath\x18\x02 \x01(\tR\x0ekubeconfigPath\"I\n" +
-	"\rInvokeRequest\x12\x16\n" +
-	"\x06method\x18\x01 \x01(\tR\x06method\x12 \n" +
-	"\vpayloadJson\x18\x02 \x01(\tR\vpayloadJson\"H\n" +
-	"\x0eInvokeResponse\x12 \n" +
-	"\vpayloadJson\x18\x01 \x01(\tR\vpayloadJson\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error2\xd9\x01\n" +
-	"\x06Plugin\x12D\n" +
-	"\x0fGetCapabilities\x12\x10.pluginapi.Empty\x1a\x1f.pluginapi.CapabilitiesResponse\x12J\n" +
-	"\x11SetClusterContext\x12#.pluginapi.SetClusterContextRequest\x1a\x10.pluginapi.Empty\x12=\n" +
-	"\x06Invoke\x12\x18.pluginapi.InvokeRequest\x1a\x19.pluginapi.InvokeResponseB2Z0github.com/litelensapp/litelens/packages/core/pbb\x06proto3"
+	"\x0ekubeconfigPath\x18\x02 \x01(\tR\x0ekubeconfigPath\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\"p\n" +
+	"\x12PluginEventRequest\x12\x1a\n" +
+	"\bpluginId\x18\x01 \x01(\tR\bpluginId\x12\x1c\n" +
+	"\teventName\x18\x02 \x01(\tR\teventName\x12 \n" +
+	"\vpayloadJson\x18\x03 \x01(\tR\vpayloadJson2\x98\x01\n" +
+	"\x06Plugin\x12P\n" +
+	"\x13ClusterContextWatch\x12\x10.pluginapi.Empty\x1a%.pluginapi.ClusterContextChangedEvent0\x01\x12<\n" +
+	"\tEmitEvent\x12\x1d.pluginapi.PluginEventRequest\x1a\x10.pluginapi.EmptyB2Z0github.com/litelensapp/litelens/packages/core/pbb\x06proto3"
 
 var (
 	file_plugin_proto_rawDescOnce sync.Once
@@ -309,23 +207,19 @@ func file_plugin_proto_rawDescGZIP() []byte {
 	return file_plugin_proto_rawDescData
 }
 
-var file_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_plugin_proto_goTypes = []any{
-	(*Empty)(nil),                    // 0: pluginapi.Empty
-	(*CapabilitiesResponse)(nil),     // 1: pluginapi.CapabilitiesResponse
-	(*SetClusterContextRequest)(nil), // 2: pluginapi.SetClusterContextRequest
-	(*InvokeRequest)(nil),            // 3: pluginapi.InvokeRequest
-	(*InvokeResponse)(nil),           // 4: pluginapi.InvokeResponse
+	(*Empty)(nil),                      // 0: pluginapi.Empty
+	(*ClusterContextChangedEvent)(nil), // 1: pluginapi.ClusterContextChangedEvent
+	(*PluginEventRequest)(nil),         // 2: pluginapi.PluginEventRequest
 }
 var file_plugin_proto_depIdxs = []int32{
-	0, // 0: pluginapi.Plugin.GetCapabilities:input_type -> pluginapi.Empty
-	2, // 1: pluginapi.Plugin.SetClusterContext:input_type -> pluginapi.SetClusterContextRequest
-	3, // 2: pluginapi.Plugin.Invoke:input_type -> pluginapi.InvokeRequest
-	1, // 3: pluginapi.Plugin.GetCapabilities:output_type -> pluginapi.CapabilitiesResponse
-	0, // 4: pluginapi.Plugin.SetClusterContext:output_type -> pluginapi.Empty
-	4, // 5: pluginapi.Plugin.Invoke:output_type -> pluginapi.InvokeResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	0, // 0: pluginapi.Plugin.ClusterContextWatch:input_type -> pluginapi.Empty
+	2, // 1: pluginapi.Plugin.EmitEvent:input_type -> pluginapi.PluginEventRequest
+	1, // 2: pluginapi.Plugin.ClusterContextWatch:output_type -> pluginapi.ClusterContextChangedEvent
+	0, // 3: pluginapi.Plugin.EmitEvent:output_type -> pluginapi.Empty
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -342,7 +236,7 @@ func file_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_proto_rawDesc), len(file_plugin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
