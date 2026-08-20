@@ -6,9 +6,13 @@ frontend/dist/
 frontend/package.json.md5
 frontend/wailsjs/
 frontend/pkg/
+frontend/public/vendor/
 
-design-system/dist/
-design-system/pkg/
+packages/design-system/dist/
+packages/design-system/pkg/
+
+packages/core/frontend/dist/
+packages/core/frontend/pkg/
 
 build/bin/
 build/storage/

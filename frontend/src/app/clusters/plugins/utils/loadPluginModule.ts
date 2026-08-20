@@ -20,6 +20,7 @@ export const BARE_SPECIFIER_MAP = {
   "react-dom": "/vendor/react-dom.js",
   "react/jsx-runtime": "/vendor/react-jsx-runtime.js",
   "@litelens/design-system": "/vendor/litelens/design-system.js",
+  "@litelens/core": "/vendor/litelens/core.js",
   "@tanstack/react-query": "/vendor/tanstack/react-query.js",
 } as const;
 

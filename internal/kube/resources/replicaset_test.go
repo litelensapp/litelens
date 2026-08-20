@@ -6,28 +6,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorReplicaSetLister struct{ err error }
-
-func (e *errorReplicaSetLister) List(_ labels.Selector) ([]*appsv1.ReplicaSet, error) {
-	return nil, e.err
-}
-func (e *errorReplicaSetLister) ReplicaSets(_ string) listersappsv1.ReplicaSetNamespaceLister {
-	return &errorReplicaSetNamespaceLister{e.err}
-}
-
-type errorReplicaSetNamespaceLister struct{ err error }
-
-func (e *errorReplicaSetNamespaceLister) List(_ labels.Selector) ([]*appsv1.ReplicaSet, error) {
-	return nil, e.err
-}
-func (e *errorReplicaSetNamespaceLister) Get(_ string) (*appsv1.ReplicaSet, error) {
-	return nil, e.err
-}
 
 func newReplicaSetLister(rss ...*appsv1.ReplicaSet) listersappsv1.ReplicaSetLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})

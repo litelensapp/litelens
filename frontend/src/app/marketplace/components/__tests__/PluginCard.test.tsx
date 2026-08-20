@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import { describe, it, expect, afterEach } from "vitest";
-import { PluginCard } from "../PluginCard";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { PluginManifest } from "../../hooks/useGetPluginsFromMarketplace";
+import { PluginCard } from "../PluginCard";
 
 // Mock plugin manifest for testing
 const mockPlugin: PluginManifest = {
@@ -335,6 +335,29 @@ describe("PluginCard", () => {
     });
   });
 
+  describe("Disable/Enable button visibility (regression: Enable button missing after disable)", () => {
+    it("shows the Enable icon button when the plugin is disabled", () => {
+      render(<PluginCard plugin={mockPlugin} hostVersion="0.1.0" installStatus="DISABLED" />);
+
+      expect(screen.getByLabelText("Enable plugin")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Disable plugin")).not.toBeInTheDocument();
+    });
+
+    it("shows the Disable icon button when READY and not disabled", () => {
+      render(<PluginCard plugin={mockPlugin} hostVersion="0.1.0" installStatus="READY" />);
+
+      expect(screen.getByLabelText("Disable plugin")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Enable plugin")).not.toBeInTheDocument();
+    });
+
+    it("shows 'Plugin disabled' footer text and still allows Remove when disabled", () => {
+      render(<PluginCard plugin={mockPlugin} hostVersion="0.1.0" installStatus="DISABLED" />);
+
+      expect(screen.getByText("Plugin disabled")).toBeInTheDocument();
+      expect(screen.getByLabelText("Remove plugin")).toBeInTheDocument();
+    });
+  });
+
   describe("OS compatibility display", () => {
     it("renders all supported OS platforms", () => {
       const { container } = render(
@@ -343,7 +366,7 @@ describe("PluginCard", () => {
 
       const text = container.textContent || "";
       expect(text).toMatch(/Linux/);
-      expect(text).toMatch(/macOS/);
+      expect(text).toMatch(/MacOS/);
       expect(text).toMatch(/Windows/);
     });
 
@@ -358,9 +381,9 @@ describe("PluginCard", () => {
       );
 
       const chips = Array.from(container.querySelectorAll("span")).filter((s) =>
-        /^(Linux|macOS|Windows) \(/.test(s.textContent || "")
+        /^(Linux|MacOS|Windows) \(/.test(s.textContent || "")
       );
-      const macChip = chips.find((c) => c.textContent?.startsWith("macOS"));
+      const macChip = chips.find((c) => c.textContent?.startsWith("MacOS"));
       const linuxChip = chips.find((c) => c.textContent?.startsWith("Linux"));
 
       expect(macChip?.className).toMatch(/font-semibold/);
@@ -373,7 +396,7 @@ describe("PluginCard", () => {
       );
 
       const chips = Array.from(container.querySelectorAll("span")).filter((s) =>
-        /^(Linux|macOS|Windows) \(/.test(s.textContent || "")
+        /^(Linux|MacOS|Windows) \(/.test(s.textContent || "")
       );
       expect(chips.every((c) => !c.className.match(/font-semibold/))).toBe(true);
     });

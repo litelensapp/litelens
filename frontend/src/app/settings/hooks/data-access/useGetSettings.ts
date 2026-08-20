@@ -3,7 +3,7 @@ import { GetSettings } from "@wailsjs/go/app/App";
 import type { config } from "@wailsjs/go/models";
 import { QUERY_KEY_SETTINGS } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../shared/api/api";
-import type { UseQueryCallback } from "@litelens/design-system";
+import type { UseQueryCallback } from "@litelens/core";
 
 export const useGetSettings = (callback?: UseQueryCallback<config.Settings>) => {
   return useQuery<config.Settings, Error>({

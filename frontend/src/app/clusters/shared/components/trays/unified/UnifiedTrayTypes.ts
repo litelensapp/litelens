@@ -38,6 +38,7 @@ export type UnifiedTrayTab =
       id: string;
       label: string;
       icon?: ReactNode;
+      pluginId: string;
       params: Record<string, unknown>;
     };
 

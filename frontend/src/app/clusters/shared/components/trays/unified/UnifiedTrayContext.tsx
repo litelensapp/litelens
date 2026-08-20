@@ -1,4 +1,4 @@
-import type { SharedUnifiedTrayContext, UnifiedTrayAllFamily } from "@litelens/design-system";
+import type { SharedUnifiedTrayContext, UnifiedTrayAllFamily } from "@litelens/core";
 import { createContext, FC, ReactNode, useCallback, useContext, useMemo, useReducer } from "react";
 import type { UnifiedTrayTab } from "./UnifiedTrayTypes";
 
@@ -153,13 +153,14 @@ export const UnifiedTrayProvider: FC<{ children: ReactNode }> = ({ children }) =
         // shape. `label`/`icon`/`dedupeKey` drive the tab bar and identity;
         // everything else is opaque domain data for the plugin's own
         // content component to read back out of `params`.
-        const { label, icon, dedupeKey, ...rest } = params;
+        const { label, icon, dedupeKey, pluginId, ...rest } = params;
         newTab = {
           origin: "plugin",
           family,
           id: `${family}:${dedupeKey}`,
           label,
           icon,
+          pluginId,
           params: rest,
         };
       }

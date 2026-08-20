@@ -9,7 +9,7 @@ on:
         default: ubuntu-latest
 
 jobs:
-  run:
+  app:
     runs-on: ${{ inputs.RUNNER }}
 
     steps:
@@ -31,11 +31,33 @@ jobs:
       - name: Install Wails CLI
         run: go install tool
 
-      - name: Build design-system
-        run: pnpm build:ds
+      - name: Build frontend bundles
+        uses: ./.github/actions/build-frontend-bundles
 
       - name: Build
         shell: bash
         run: >
           pnpm build:app --
           ${{ runner.os == 'Linux' && '-tags webkit2_41' || '' }}
+
+  core:
+    runs-on: ${{ inputs.RUNNER }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Go from packages/core/go.mod
+        uses: ./.github/actions/setup-go
+        with:
+          go-version-file: packages/core/go.mod
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          ignore-scripts: "false"
+
+      - name: Build packages/core (Go + frontend)
+        run: pnpm build:core

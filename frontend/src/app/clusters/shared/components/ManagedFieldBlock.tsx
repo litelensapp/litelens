@@ -1,6 +1,6 @@
 import { Button, ChevronDownIcon, ChevronUpIcon, Textarea } from "@litelens/design-system";
 import { FC, useState } from "react";
-import type { ManagedField } from "../../../shared/api/resources";
+import type { ManagedField } from "@litelens/core";
 
 export const ManagedFieldBlock: FC<{ mf: ManagedField }> = ({ mf }) => {
   const [show, setShow] = useState(false);

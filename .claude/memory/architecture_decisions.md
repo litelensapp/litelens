@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-08-11T16:17:50.232Z
+  modified: 2026-08-20T11:43:34.248Z
 ---
 
 ### IPC Pattern
@@ -65,7 +65,9 @@ Every resource view follows the same structure:
 
 ### DTO Design
 
-Each resource type has a dedicated type in `internal/dto/<type>.go` (no `DTO` suffix — the `dto.` package prefix already signals intent) and a matching TypeScript interface in `frontend/src/api/resources.ts`. Conversion logic (`toXxx`) and list functions (`ListXxx`) live in `internal/kube/resources/<type>.go`.
+Each resource type has a dedicated type in `packages/core/dto/<type>.go` (no `DTO` suffix — the `dto.` package prefix already signals intent) and a matching TypeScript interface in `packages/core/frontend/src/types/resources/<type>.ts` (same spirit as the Go side — one file per resource, e.g. `pod.ts`, `deployment.ts`; a `shared.ts` holds cross-resource types like `ManagedField`). Conversion logic (`toXxx`) and list functions (`ListXxx`) live in `internal/kube/resources/<type>.go`. (Moved from `internal/dto` in Phase 4 of [[plugin-architecture-inversion]] — that package was deleted 2026-08-18 once every importer migrated.)
+
+Each module's `frontend/src/app/clusters/modules/<group>/<resource>/api/resources.ts` no longer declares the interfaces itself — it only re-exports the Wails-bound methods (`export { ListPods, GetPodByName, ... } from "@wailsjs/go/app/App"`) plus `export type { Pod, PodSummary, ... } from "@litelens/core"`. This keeps every hook/component's existing import path (`from "../../api/resources"`) unchanged while the actual shape lives in the shared package — moved 2026-08-20 to mirror the DTO pattern above. Cross-resource type deps (e.g. `Deployment` needing `TolerationDetail` from `pod.ts`, `Role` needing `PolicyRule` from `clusterrole.ts`) are same-directory imports inside `packages/core/frontend/src/types/resources/`. After editing any file there, `pnpm build:core:fe` (root script; `pnpm --filter @litelens/core run build` directly) must be rerun to refresh `packages/core/frontend/dist` before the frontend picks up the change.
 
 | Type (`dto.*`)          | Key fields                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -105,14 +107,14 @@ Each resource type has a dedicated type in `internal/dto/<type>.go` (no `DTO` su
 ### Package Dependency Direction
 
 ```text
-internal/dto             →  (nothing — leaf package, pure type definitions)
+packages/core/dto        →  (nothing — leaf package, pure type definitions; separate Go module, imported via go.work — see [[go_work_removal_todo]])
 internal/storage           →  (nothing — leaf package, directory resolver only)
-internal/kube/resources  →  internal/dto  (uses DTO types) + k8s.io/...
-internal/kube            →  internal/dto  (metrics.go uses dto.NodeUsage)
+internal/kube/resources  →  packages/core/dto  (uses DTO types) + k8s.io/...
+internal/kube            →  packages/core/dto  (metrics.go uses dto.NodeUsage)
 internal/kube            →  internal/kube/resources  (FactoryHandle, informers)
 internal/config          →  internal/storage  (settings path resolver, new 2026-08-11)
 internal/app             →  internal/storage  (plugins root dir resolver, new 2026-08-11; also injected into internal/plugin/assets.go's resolvePluginDir callback — internal/plugin itself has no direct storage import)
-internal/app             →  internal/dto  (DTO types in method signatures)
+internal/app             →  packages/core/dto  (DTO types in method signatures)
 internal/app             →  internal/kube/resources  (list functions)
 internal/app             →  internal/kube  (FactoryHandle, client primitives)
 internal/app             →  internal/config  (settings I/O)

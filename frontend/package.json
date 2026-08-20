@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/generate-vendor-shims.mjs",
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:report": "tsc -p tsconfig.build.json && cross-env ANALYZE=true vite build",
@@ -13,6 +14,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@litelens/core": "workspace:*",
     "@litelens/design-system": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
     "@xterm/addon-fit": "^0.11.0",

@@ -1,6 +1,7 @@
 packages:
   - "frontend"
-  - "design-system"
+  - "packages/design-system"
+  - "packages/core/frontend"
 catalog:
   "@testing-library/jest-dom": ^6.9.1
   "@testing-library/react": ^16.3.2

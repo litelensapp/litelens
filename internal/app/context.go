@@ -3,8 +3,9 @@ package app
 import (
 	"sort"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube"
+	corekube "github.com/litelensapp/litelens/packages/core/kube"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -31,7 +32,7 @@ func (a *App) GetContextsGrouped() ([]dto.KubeconfigGroup, error) {
 	paths := a.settings.KubeconfigPaths
 	a.mu.RUnlock()
 
-	rules := kube.LoadingRules(paths)
+	rules := corekube.LoadingRules(paths)
 	groups := make([]dto.KubeconfigGroup, 0)
 	for _, path := range rules.Precedence {
 		cfg, err := clientcmd.LoadFromFile(path)

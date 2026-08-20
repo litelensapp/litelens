@@ -3,7 +3,7 @@ package kubeResources
 import (
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	sigsyaml "sigs.k8s.io/yaml"

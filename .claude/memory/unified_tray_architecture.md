@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 5a93f8be-580d-4db7-8b0a-372271194fa9
+  modified: 2026-08-18T10:27:01.174Z
 ---
 
 ## Overview
@@ -142,7 +143,7 @@ Run before committing:
 
 ```bash
 pnpm exec tsc --noEmit -p frontend  # TypeScript
-pnpm lint                            # ESLint
+pnpm lint:fe                         # ESLint
 pnpm run format                      # Prettier
 npx vitest run                       # full suite
 ```

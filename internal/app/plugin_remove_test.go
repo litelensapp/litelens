@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/plugin"
 )
 

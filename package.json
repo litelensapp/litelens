@@ -1,7 +1,7 @@
 {
   "name": "litelens",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
     "node": "26"
@@ -12,9 +12,14 @@
     "build:ds": "pnpm --filter @litelens/design-system run build",
     "build:report:fe": "pnpm --filter litelens-frontend --filter @litelens/design-system run build:report",
     "build:app": "bash scripts/build.sh",
-    "build:app:fe": "pnpm build:ds && pnpm --filter litelens-frontend run build",
+    "build:app:fe": "pnpm build:ds && pnpm build:core:fe && pnpm generate:vendor && pnpm --filter litelens-frontend run build",
+    "build:core:be": "go build -C packages/core ./...",
+    "build:core:fe": "pnpm --filter @litelens/core run build",
+    "build:core": "pnpm build:core:be && pnpm build:core:fe",
+    "generate:vendor": "node frontend/scripts/generate-vendor-shims.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md,yml}\"",
-    "lint": "eslint frontend/src design-system/src",
+    "lint:fe": "eslint frontend/src packages/design-system/src packages/core/frontend/src",
+    "lint:be": "go vet ./internal/... && go tool staticcheck ./internal/... && go vet -C packages/core ./... && go tool -C packages/core staticcheck ./...",
     "test:ds": "pnpm --filter @litelens/design-system run test",
     "test:ds:coverage": "pnpm --filter @litelens/design-system run test:coverage",
     "test:fe": "pnpm --filter litelens-frontend run test",

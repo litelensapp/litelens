@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"

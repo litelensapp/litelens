@@ -5,16 +5,9 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listersrbacv1 "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorClusterRoleBindingLister struct{ err error }
-
-func (e *errorClusterRoleBindingLister) List(_ labels.Selector) ([]*rbacv1.ClusterRoleBinding, error) {
-	return nil, e.err
-}
 
 func newClusterRoleBindingLister(crbs ...*rbacv1.ClusterRoleBinding) listersrbacv1.ClusterRoleBindingLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})

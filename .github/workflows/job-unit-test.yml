@@ -14,7 +14,7 @@ on:
       DS_COVERAGE_DIR:
         type: string
         required: false
-        default: design-system/coverage
+        default: packages/design-system/coverage
       BE_TARGET_PATH:
         description: "Go packages to test (e.g. ./... or ./internal/...)"
         type: string

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package pluginapi;
+
+option go_package = "github.com/litelensapp/litelens/packages/core/pb";
+
+service Plugin {
+  rpc ClusterContextWatch(Empty) returns (stream ClusterContextChangedEvent);
+  rpc EmitEvent(PluginEventRequest) returns (Empty);
+}
+
+message Empty {}
+
+message ClusterContextChangedEvent {
+  string contextName = 1;
+  string kubeconfigPath = 2;
+  string timestamp = 3;
+}
+
+message PluginEventRequest {
+  string pluginId = 1;
+  string eventName = 2;
+  string payloadJson = 3;
+}

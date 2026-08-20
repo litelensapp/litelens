@@ -22,6 +22,10 @@ pnpm install
 
 # Install Go dependencies
 go mod download
+
+# Build the packages plugins vendor against, then generate the vendor shims
+# (frontend/public/vendor/**/*.js is gitignored — generated, not checked in)
+pnpm build:ds && pnpm build:core:fe && pnpm generate:vendor
 ```
 
 ### Running the app
@@ -37,6 +41,15 @@ For frontend-only development (Vite dev server, useful for pure UI work):
 ```bash
 pnpm dev
 ```
+
+### Local Plugin Development
+
+To test a locally-built plugin with Litelens during development:
+
+1. Build your plugin in its own repository (e.g. `litelens-plugins/plugins/helm/.output`).
+2. In Litelens, go to **Settings → Marketplace → Plugins Directory**.
+3. Set the path to the **parent directory** of your plugin's build output folder — for example, if your plugin produces `.output/.plugin-metadata.json`, set Plugins Directory to the parent folder containing `.output`.
+4. The app will scan all immediate subdirectories (including dot-prefixed folders like `.output`) and load any valid plugin metadata it finds.
 
 ## Building
 
@@ -63,6 +76,14 @@ pnpm build:app:fe
 ```
 
 Equivalent to `pnpm build:ds && <frontend build>`.
+
+### Plugin vendor shims
+
+```bash
+pnpm generate:vendor
+```
+
+Regenerates `frontend/public/vendor/**/*.js` (the import-map shims plugins resolve `react`/`react-dom`/`@litelens/design-system`/`@litelens/core`/`@tanstack/react-query` against) from the actual installed/built module each shim wraps, rather than a hand-maintained export list. `frontend/public/vendor/` is gitignored — it's build output, not source — so this must run at least once locally (see Local environment above) and on every CI build (wired into `job-build.yml` / `job-build-check.yml`, and into `pnpm build:app:fe`). Build the packages it wraps first — `pnpm build:ds` / `pnpm build:core:fe` — since the shim reads their `dist/`.
 
 ## Testing
 
@@ -107,11 +128,10 @@ These checks must pass before submitting a PR:
 pnpm format
 
 # Lint TypeScript/React code
-pnpm lint
+pnpm lint:fe
 
 # Lint Go
-go vet ./internal/...
-go tool staticcheck ./internal/...
+pnpm lint:be
 ```
 
 ## Test cluster on local

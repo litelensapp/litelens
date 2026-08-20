@@ -1,12 +1,8 @@
-import { SharedNamespaceContext, SharedUnifiedTrayContext } from "@litelens/design-system";
 import { FC, lazy, Suspense, useMemo } from "react";
 import { PluginNotInstalledEmptyState } from "../../marketplace/components/PluginNotInstalledEmptyState";
 import { useGetInstalledPlugin } from "./hooks/useGetInstalledPlugin";
-import { useGetNamespaces } from "../modules/base/namespaces/hooks/data-access/useGetNamespaces";
-import { useDetailDrawerContext } from "../shared/components/details/DetailDrawerContext";
-import { useUnifiedTray } from "../shared/components/trays/unified/UnifiedTrayContext";
-import { useResourceLinks } from "../shared/hooks/useResourceLinks";
 import { PluginCrashedError } from "./components/PluginCrashedError";
+import { PluginDisabledEmptyState } from "./components/PluginDisabledEmptyState";
 import { PluginErrorBoundary } from "./components/PluginErrorBoundary";
 import { PluginLoadingFallback } from "./components/PluginLoadingFallback";
 import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
@@ -14,52 +10,31 @@ import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
 /**
  * Props passed to the dynamically-imported plugin's PluginView component.
  * Must be kept in sync with the plugin's export by hand, since the plugin bundle
- * is loaded at runtime via import() and cannot be statically type-checked.
- * Shared boundary types (SharedNamespaceContext, SharedUnifiedTrayContext)
- * live in the design system so both sides use one source of truth.
+ * is loaded at runtime via import() and cannot be statically type-checked. Plugins
+ * source all cluster-scoped capabilities themselves via @litelens/core's
+ * useClusterWideAPI(), so this component takes no props today.
  */
-interface PluginViewProps {
-  activeResource: string;
-  activeContext: string;
-  namespaces: string[];
-  onNavigateToView: (view: string) => void;
-  onToggleNamespaceDetail: (name?: string) => void;
-  namespacesData: SharedNamespaceContext[];
-  unifiedTray: SharedUnifiedTrayContext | null;
-  getResourceLinks: (resource: {
-    kind: string;
-    name: string;
-    namespace?: string;
-  }) => Array<{ label: string; href: string }>;
-}
+type PluginViewProps = Record<string, never>;
 
 interface PluginResourceViewProps {
   pluginId: string;
   pluginName: string;
-  viewType: string;
-  activeContext: string;
-  namespaces: string[];
-  onNavigateToView: (view: string) => void;
+  /**
+   * Whether the currently active resource belongs to this plugin. A READY
+   * plugin's view stays mounted (just visually hidden) even when inactive —
+   * that's how it registers its own nav entry (via useRegisterNavEntry inside
+   * the plugin's own PluginView) before the user has ever navigated to it.
+   */
+  isActive: boolean;
   onGoToMarketplace: () => void;
 }
 
 export const PluginResourceView: FC<PluginResourceViewProps> = ({
   pluginId,
   pluginName,
-  viewType,
-  activeContext,
-  namespaces,
-  onNavigateToView,
+  isActive,
   onGoToMarketplace,
 }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
-  const unifiedTray = useUnifiedTray();
-  const resourceLinksMap = useResourceLinks();
-  const { data: namespacesData = [] } = useGetNamespaces(activeContext);
-
-  // This view is only reached for a plugin the user has already navigated to,
-  // so the real CRASHED/INCOMPATIBLE status must always surface (never masked
-  // as NOT_INSTALLED the way a fresh marketplace visitor's would be).
   const { status: pluginStatus, bundleChecksum } = useGetInstalledPlugin(pluginId, {
     hasAttemptedInstall: true,
   });
@@ -84,17 +59,37 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
     [pluginAssetUrl, pluginId]
   );
 
-  const getResourceLinks = (resource: { kind: string; name: string; namespace?: string }) => {
-    const kind = resource.kind.toLowerCase();
-    const linkFn = resourceLinksMap[kind];
-    if (linkFn && resource.namespace) {
-      linkFn(resource.namespace, resource.name);
-      return [{ label: `View ${resource.kind}`, href: "#" }];
-    }
-    return [];
-  };
+  // READY plugins mount unconditionally (kept alive even while another
+  // resource is active) so the plugin's own PluginView can call
+  // useRegisterNavEntry() and push its sidebar entry into the host before
+  // the user has ever navigated to it — no separate host-known contract
+  // needed beyond the existing PLUGIN_VIEW/PLUGIN_STYLES exports.
+  if (pluginStatus === "READY") {
+    return (
+      <PluginErrorBoundary onGoToMarketplace={onGoToMarketplace}>
+        <Suspense fallback={isActive ? <PluginLoadingFallback /> : null}>
+          {/* display:contents when active so this wrapper generates no box —
+              plugin views rely on h-full/flex-1 resolving against the host's
+              <main>, which only works if they're direct box-model children
+              of it. hidden still fully unmounts-from-layout (but keeps
+              mounted in React) when inactive. */}
+          <div className={isActive ? "contents" : "hidden"}>
+            {/* PluginViewDynamic is memoized on pluginAssetUrl (see above),
+                not recreated on every render — safe despite the static-components rule. */}
+            {/* eslint-disable-next-line react-hooks/static-components */}
+            <PluginViewDynamic />
+          </div>
+        </Suspense>
+      </PluginErrorBoundary>
+    );
+  }
 
-  // Route plugin status to appropriate UI
+  // Non-READY states only matter as full-page takeovers when the user is
+  // actually looking at this plugin's resource — otherwise nothing to show.
+  if (!isActive) {
+    return null;
+  }
+
   if (pluginStatus === "INSTALLING") {
     return <PluginLoadingFallback />;
   }
@@ -105,28 +100,10 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
     );
   }
 
-  if (pluginStatus === "CRASHED" || pluginStatus === "INCOMPATIBLE") {
-    return <PluginCrashedError onGoToMarketplace={onGoToMarketplace} />;
+  if (pluginStatus === "DISABLED") {
+    return <PluginDisabledEmptyState onGoToMarketplace={onGoToMarketplace} />;
   }
 
-  // READY state — render dynamic import
-  return (
-    <PluginErrorBoundary onGoToMarketplace={onGoToMarketplace}>
-      <Suspense fallback={<PluginLoadingFallback />}>
-        {/* PluginViewDynamic is memoized on pluginAssetUrl (see above),
-            not recreated on every render — safe despite the static-components rule. */}
-        {/* eslint-disable-next-line react-hooks/static-components */}
-        <PluginViewDynamic
-          activeResource={viewType}
-          activeContext={activeContext}
-          namespaces={namespaces}
-          onNavigateToView={onNavigateToView}
-          onToggleNamespaceDetail={onToggleNamespaceDetail}
-          namespacesData={namespacesData}
-          unifiedTray={unifiedTray}
-          getResourceLinks={getResourceLinks}
-        />
-      </Suspense>
-    </PluginErrorBoundary>
-  );
+  // CRASHED || INCOMPATIBLE
+  return <PluginCrashedError onGoToMarketplace={onGoToMarketplace} />;
 };

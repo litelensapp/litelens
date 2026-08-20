@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	schedulingv1 "k8s.io/api/scheduling/v1"

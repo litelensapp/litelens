@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 )
 
 func TestResolveAssetNames(t *testing.T) {
@@ -404,6 +404,46 @@ func TestFetchRelease_PublicSelectsBrowserURL(t *testing.T) {
 	wantBundleURL := "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-frontend.tar.gz"
 	if bundleURL != wantBundleURL {
 		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	}
+}
+
+func TestFetchLatestRelease_RateLimitReturnsActionableError(t *testing.T) {
+	ctx := context.Background()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.Header().Set("X-RateLimit-Reset", "1700000000")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"API rate limit exceeded"}`))
+	}))
+	defer server.Close()
+
+	_, _, err := FetchLatestRelease(ctx, server.URL, "", false)
+	if err == nil {
+		t.Fatal("FetchLatestRelease() error = nil; want rate limit error")
+	}
+	if !strings.Contains(err.Error(), "rate limit exceeded") {
+		t.Errorf("error = %q; want it to mention rate limit exceeded", err.Error())
+	}
+	if strings.Contains(err.Error(), "status 403") {
+		t.Errorf("error = %q; should give actionable rate-limit message, not generic status code", err.Error())
+	}
+}
+
+func TestFetchLatestRelease_ForbiddenWithoutRateLimitHeaderReturnsGenericError(t *testing.T) {
+	ctx := context.Background()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	_, _, err := FetchLatestRelease(ctx, server.URL, "", false)
+	if err == nil {
+		t.Fatal("FetchLatestRelease() error = nil; want error")
+	}
+	if !strings.Contains(err.Error(), "status 403") {
+		t.Errorf("error = %q; want generic status-code error when not rate-limited", err.Error())
 	}
 }
 

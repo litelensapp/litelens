@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"

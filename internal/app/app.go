@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
+	hostgrpc "github.com/litelensapp/litelens/internal/api/grpc"
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/internal/dto"
 	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/updater"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -64,7 +65,8 @@ type App struct {
 	// (e.g. InstallPlugin), so acquiring mu while already holding pluginsMu is
 	// fine, but the reverse (acquiring pluginsMu while already holding mu) would
 	// risk lock-order inversion and must be avoided.
-	pluginsMu sync.RWMutex
+	pluginsMu     sync.RWMutex
+	grpcServerCfg *hostgrpc.GRPCServerConfig
 }
 
 // NewApp creates a new App application struct
@@ -122,6 +124,19 @@ func (a *App) Startup(ctx context.Context) {
 		a.mu.Unlock()
 	}()
 	a.restoreInstalledPlugins()
+	// Start the plugin cluster context gRPC server. This is required for cluster sync
+	// to work with plugins; if it fails, plugins will not receive context changes.
+	eventEmitter := func(payload map[string]interface{}) {
+		wailsruntime.EventsEmit(a.ctx, "plugin:event", payload)
+	}
+	grpcCfg, err := hostgrpc.NewGRPCServerConfig(eventEmitter)
+	if err != nil {
+		// Log with ERROR level since plugin sync is essential infrastructure
+		log.Printf("ERROR: failed to start plugin gRPC server: %v (plugins will not receive cluster context changes)", err)
+	} else {
+		a.grpcServerCfg = grpcCfg
+		log.Printf("plugin cluster context gRPC server started on port %d", grpcCfg.Port())
+	}
 	go a.checkForUpdate(3)
 }
 
@@ -138,12 +153,22 @@ func (a *App) DomReady(_ context.Context) {
 // PluginLoader.Launch()'s stale-lock reuse path, even after the plugins
 // directory has since changed.
 func (a *App) Shutdown(_ context.Context) {
+	// Kill plugin processes before stopping the gRPC server. Each plugin
+	// holds a long-lived ClusterContextWatch stream open for its entire
+	// lifetime (see internal/api/grpc/server.go), and grpcServerCfg.Stop() calls
+	// GracefulStop(), which blocks until every active RPC finishes. Stopping
+	// the server first would deadlock: GracefulStop waits on a stream that
+	// only closes when the plugin dies, but the plugin is only killed below.
 	a.pluginsMu.Lock()
-	defer a.pluginsMu.Unlock()
 	for id, loader := range a.pluginLoaders {
 		if err := loader.Shutdown(); err != nil {
 			log.Printf("plugin %q shutdown on app quit failed: %v", id, err)
 		}
+	}
+	a.pluginsMu.Unlock()
+
+	if a.grpcServerCfg != nil {
+		a.grpcServerCfg.Stop()
 	}
 }
 
@@ -218,6 +243,21 @@ func (a *App) Connect(contextName string) error {
 	})
 	a.factories[contextName] = h
 	a.activeContext = contextName
+
+	// Push cluster context to all running plugins with HTTP backends.
+	// Phase 2 design decision: "The host pushes POST on every cluster switch."
+	// Unlock before resolving the kubeconfig path and pushing: GetContextKubeconfigPath
+	// takes its own RLock on a.mu, and a.mu is not reentrant, so calling it while still
+	// holding the write lock acquired above would deadlock.
+	a.mu.Unlock()
+	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
+	if err != nil {
+		log.Printf("resolve kubeconfig path for plugin cluster-context push (context %q): %v", contextName, err)
+	}
+	if a.grpcServerCfg != nil {
+		a.grpcServerCfg.PluginServer().PublishClusterContextChange(contextName, kubeconfigPath)
+	}
+	a.mu.Lock()
 
 	// Register event handlers for live updates.
 	isCtx := func() bool { return a.isActive(contextName) }

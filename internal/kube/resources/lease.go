@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscoordinationv1 "k8s.io/client-go/listers/coordination/v1"

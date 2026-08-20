@@ -5,28 +5,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 )
-
-type errorDaemonSetLister struct{ err error }
-
-func (e *errorDaemonSetLister) List(_ labels.Selector) ([]*appsv1.DaemonSet, error) {
-	return nil, e.err
-}
-func (e *errorDaemonSetLister) DaemonSets(_ string) listersappsv1.DaemonSetNamespaceLister {
-	return &errorDaemonSetNamespaceLister{e.err}
-}
-
-type errorDaemonSetNamespaceLister struct{ err error }
-
-func (e *errorDaemonSetNamespaceLister) List(_ labels.Selector) ([]*appsv1.DaemonSet, error) {
-	return nil, e.err
-}
-func (e *errorDaemonSetNamespaceLister) Get(_ string) (*appsv1.DaemonSet, error) {
-	return nil, e.err
-}
 
 func newDaemonSetLister(dss ...*appsv1.DaemonSet) listersappsv1.DaemonSetLister {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})

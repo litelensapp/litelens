@@ -229,7 +229,7 @@ func TestListEvents_EmptyNamespace(t *testing.T) {
 		t.Fatalf("ListEvents unexpected error: %v", err)
 	}
 	// Empty namespace should return empty/nil.
-	if events != nil && len(events) > 0 {
+	if len(events) > 0 {
 		t.Fatalf("expected nil/empty events for empty namespace, got %d", len(events))
 	}
 }

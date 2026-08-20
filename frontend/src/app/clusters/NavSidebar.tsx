@@ -1,3 +1,4 @@
+import { NavEntry, NavItem } from "@litelens/core";
 import {
   Button,
   ChevronDownIcon,
@@ -5,8 +6,6 @@ import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
-  NavEntry,
-  NavItem,
   Separator,
   cn,
 } from "@litelens/design-system";

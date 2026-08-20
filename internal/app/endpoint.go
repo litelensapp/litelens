@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/internal/dto"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -178,6 +178,7 @@ func (a *App) UpdateEndpointYAML(namespace, yamlString string) error {
 		return fmt.Errorf("not connected")
 	}
 
+	//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice; UpdateEndpointYAML edits the resource kind the user is viewing
 	var ep corev1.Endpoints
 	err := sigsyaml.Unmarshal([]byte(yamlString), &ep)
 	if err != nil {

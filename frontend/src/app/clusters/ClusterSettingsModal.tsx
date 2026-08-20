@@ -13,13 +13,13 @@ import {
 import { ClipboardGetText } from "@wailsjs/go/app/App";
 import { config } from "@wailsjs/go/models";
 import { FC, useState } from "react";
+import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
+import { useGetNamespacesForContext } from "./modules/base/namespaces/hooks/data-access/useGetNamespacesForContext";
+import { useSaveDefaultNamespaces } from "./modules/base/namespaces/hooks/data-mutation/useSaveDefaultNamespaces";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { useGetClusterProxy } from "./shared/hooks/data-access/useGetClusterProxy";
 import { useGetContextKubeconfigPath } from "./shared/hooks/data-access/useGetContextKubeconfigPath";
-import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
-import { useGetNamespacesForContext } from "./modules/base/namespaces/hooks/data-access/useGetNamespacesForContext";
 import { useSaveClusterProxy } from "./shared/hooks/data-mutation/useSaveClusterProxy";
-import { useSaveDefaultNamespaces } from "./modules/base/namespaces/hooks/data-mutation/useSaveDefaultNamespaces";
 
 type SaveStatus = "idle" | "saving" | "error";
 
@@ -142,13 +142,13 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
 
   return (
     <Dialog open={!!contextName} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex flex-col overflow-hidden sm:max-w-md">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-left">Cluster Settings — {contextName}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-4 py-2">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2">
             <div className="flex flex-col gap-1">
               <span className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider">
                 Kubeconfig
@@ -265,7 +265,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button type="submit" disabled={status === "saving"}>
               {saveLabel(status)}
             </Button>
