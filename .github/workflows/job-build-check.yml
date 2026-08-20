@@ -31,14 +31,8 @@ jobs:
       - name: Install Wails CLI
         run: go install tool
 
-      - name: Build design-system
-        run: pnpm build:ds
-
-      - name: Build @litelens/core (frontend)
-        run: pnpm build:core:fe
-
-      - name: Generate plugin vendor shims
-        run: pnpm generate:vendor
+      - name: Build frontend bundles
+        uses: ./.github/actions/build-frontend-bundles
 
       - name: Build
         shell: bash

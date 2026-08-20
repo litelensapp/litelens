@@ -13,7 +13,7 @@
 // identity to work when a plugin component mounts inline in the host's
 // fiber tree.
 
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -151,6 +151,7 @@ async function main() {
       continue;
     }
     const shim = renderShim({ ...target, names });
+    await mkdir(path.dirname(target.outFile), { recursive: true });
     await writeFile(target.outFile, shim);
     console.log(
       `wrote ${path.relative(repoRoot, target.outFile)} (${names.length} named export${names.length === 1 ? "" : "s"}${target.hasDefault ? " + default" : ""})`
