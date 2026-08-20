@@ -387,7 +387,7 @@ describe("PluginCard", () => {
 
       const text = container.textContent || "";
       expect(text).toMatch(/Linux/);
-      expect(text).toMatch(/macOS/);
+      expect(text).toMatch(/MacOS/);
       expect(text).toMatch(/Windows/);
     });
 
@@ -402,9 +402,9 @@ describe("PluginCard", () => {
       );
 
       const chips = Array.from(container.querySelectorAll("span")).filter((s) =>
-        /^(Linux|macOS|Windows) \(/.test(s.textContent || "")
+        /^(Linux|MacOS|Windows) \(/.test(s.textContent || "")
       );
-      const macChip = chips.find((c) => c.textContent?.startsWith("macOS"));
+      const macChip = chips.find((c) => c.textContent?.startsWith("MacOS"));
       const linuxChip = chips.find((c) => c.textContent?.startsWith("Linux"));
 
       expect(macChip?.className).toMatch(/font-semibold/);
@@ -417,7 +417,7 @@ describe("PluginCard", () => {
       );
 
       const chips = Array.from(container.querySelectorAll("span")).filter((s) =>
-        /^(Linux|macOS|Windows) \(/.test(s.textContent || "")
+        /^(Linux|MacOS|Windows) \(/.test(s.textContent || "")
       );
       expect(chips.every((c) => !c.className.match(/font-semibold/))).toBe(true);
     });
