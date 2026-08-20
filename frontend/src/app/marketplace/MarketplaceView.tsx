@@ -291,7 +291,6 @@ export const MarketplaceView: FC<{
               hostPlatform={hostPlatform}
               installStatus={installStatusEntry ? "INSTALLING" : "NOT_INSTALLED"}
               installProgress={installStatusEntry?.progress ?? 0}
-              isVerifying={Boolean(installStatusEntry)}
               updateAvailable={false}
               installedVersion={undefined}
               installedSize={undefined}
@@ -351,7 +350,6 @@ export const MarketplaceView: FC<{
                       const isPluginRemoving = removingIds.has(installedPlugin.pluginId);
                       const isPluginDisabling = disablingIds.has(installedPlugin.pluginId);
                       const isPluginEnabling = enablingIds.has(installedPlugin.pluginId);
-                      const isPluginDisabled = installedPlugin.status === "DISABLED";
 
                       return (
                         <PluginCard
@@ -369,11 +367,9 @@ export const MarketplaceView: FC<{
                               | "DISABLED"
                           }
                           installProgress={installedPlugin.progress}
-                          isVerifying={displayStatus === "INSTALLING"}
                           updateAvailable={updateAvailable}
                           installedVersion={installedPlugin.installedVersion}
                           installedSize={installedPlugin.size}
-                          isPluginDisabled={isPluginDisabled}
                           isDisabling={isPluginDisabling}
                           isEnabling={isPluginEnabling}
                           onInstall={() => handleInstall(installedPlugin.pluginId, manifest.name)}

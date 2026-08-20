@@ -1,4 +1,4 @@
-import { NavEntry, NavItem } from "@litelens/core";
+import { NavItem } from "@litelens/core";
 import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
@@ -250,14 +250,16 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   const seededDefaultOpenGroups = useRef(new Set<string>());
   const pluginNavEntries = pluginNavData.navEntries;
   useEffect(() => {
-    const toSeed = pluginNavEntries
-      .filter(
-        (entry): entry is Extract<NavEntry<string>, { kind: "group" }> => entry.kind === "group"
-      )
-      .filter(
-        (entry) => entry.group.defaultOpen && !seededDefaultOpenGroups.current.has(entry.group.id)
-      )
-      .map((entry) => entry.group.id);
+    const toSeed = pluginNavEntries.reduce<string[]>((acc, entry) => {
+      if (
+        entry.kind === "group" &&
+        entry.group.defaultOpen &&
+        !seededDefaultOpenGroups.current.has(entry.group.id)
+      ) {
+        acc.push(entry.group.id);
+      }
+      return acc;
+    }, []);
 
     if (toSeed.length === 0) return;
 

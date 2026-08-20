@@ -32,11 +32,9 @@ interface PluginCardProps {
   hostPlatform?: string; // "linux" | "darwin" | "windows" — highlights the matching compatibility chip
   installStatus: "NOT_INSTALLED" | "INSTALLING" | "READY" | "CRASHED" | "INCOMPATIBLE" | "DISABLED";
   installProgress?: number; // 0-100 for downloading
-  isVerifying?: boolean;
   updateAvailable?: boolean;
   installedVersion?: string;
   installedSize?: number;
-  isPluginDisabled?: boolean;
   isDisabling?: boolean;
   isEnabling?: boolean;
   onInstall?: () => void;
@@ -54,11 +52,9 @@ export const PluginCard: FC<PluginCardProps> = ({
   hostPlatform,
   installStatus,
   installProgress = 0,
-  isVerifying = false,
   updateAvailable = false,
   installedVersion,
   installedSize,
-  isPluginDisabled = false,
   isDisabling = false,
   isEnabling = false,
   onInstall,
@@ -86,6 +82,8 @@ export const PluginCard: FC<PluginCardProps> = ({
   }, [hostVersion, plugin]);
 
   const isDisabled = !isCompatible;
+  const isPluginDisabled = installStatus === "DISABLED";
+  const isVerifying = installStatus === "INSTALLING";
 
   const handleRemoveClick = async () => {
     try {

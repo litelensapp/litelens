@@ -1,5 +1,5 @@
-import { useMemo, useSyncExternalStore } from "react";
 import type { NavEntry } from "@litelens/core";
+import { useMemo, useSyncExternalStore } from "react";
 import { getNavEntries, subscribeNavRegistry } from "./pluginNavRegistry";
 
 interface PluginNavData {
@@ -35,9 +35,10 @@ export function usePluginNavEntries(): PluginNavData {
           }
         }
       } else if (navEntry.kind === "item" && navEntry.item.view) {
-        viewTypeToPluginId[navEntry.item.view] = pluginId;
-        pluginNameByViewType[navEntry.item.view] = pluginName;
-        resourceLabels[navEntry.item.view] = navEntry.item.label;
+        const view = navEntry.item.view;
+        viewTypeToPluginId[view] = pluginId;
+        pluginNameByViewType[view] = pluginName;
+        resourceLabels[view] = navEntry.item.label;
       }
     }
 

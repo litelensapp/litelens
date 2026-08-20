@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import { describe, it, expect, afterEach } from "vitest";
-import { PluginCard } from "../PluginCard";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { PluginManifest } from "../../hooks/useGetPluginsFromMarketplace";
+import { PluginCard } from "../PluginCard";
 
 // Mock plugin manifest for testing
 const mockPlugin: PluginManifest = {
@@ -337,42 +337,21 @@ describe("PluginCard", () => {
 
   describe("Disable/Enable button visibility (regression: Enable button missing after disable)", () => {
     it("shows the Enable icon button when the plugin is disabled", () => {
-      render(
-        <PluginCard
-          plugin={mockPlugin}
-          hostVersion="0.1.0"
-          installStatus="DISABLED"
-          isPluginDisabled={true}
-        />
-      );
+      render(<PluginCard plugin={mockPlugin} hostVersion="0.1.0" installStatus="DISABLED" />);
 
       expect(screen.getByLabelText("Enable plugin")).toBeInTheDocument();
       expect(screen.queryByLabelText("Disable plugin")).not.toBeInTheDocument();
     });
 
     it("shows the Disable icon button when READY and not disabled", () => {
-      render(
-        <PluginCard
-          plugin={mockPlugin}
-          hostVersion="0.1.0"
-          installStatus="READY"
-          isPluginDisabled={false}
-        />
-      );
+      render(<PluginCard plugin={mockPlugin} hostVersion="0.1.0" installStatus="READY" />);
 
       expect(screen.getByLabelText("Disable plugin")).toBeInTheDocument();
       expect(screen.queryByLabelText("Enable plugin")).not.toBeInTheDocument();
     });
 
     it("shows 'Plugin disabled' footer text and still allows Remove when disabled", () => {
-      render(
-        <PluginCard
-          plugin={mockPlugin}
-          hostVersion="0.1.0"
-          installStatus="DISABLED"
-          isPluginDisabled={true}
-        />
-      );
+      render(<PluginCard plugin={mockPlugin} hostVersion="0.1.0" installStatus="DISABLED" />);
 
       expect(screen.getByText("Plugin disabled")).toBeInTheDocument();
       expect(screen.getByLabelText("Remove plugin")).toBeInTheDocument();
