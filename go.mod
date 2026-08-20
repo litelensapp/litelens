@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/litelensapp/litelens/packages/core v0.0.0-00010101000000-000000000000
+	github.com/litelensapp/litelens/packages/core v1.7.0
 	github.com/wailsapp/wails/v2 v2.13.0
 	golang.org/x/mod v0.36.0
 	golang.org/x/sys v0.46.0
@@ -158,5 +158,3 @@ tool (
 	google.golang.org/protobuf/cmd/protoc-gen-go
 	honnef.co/go/tools/cmd/staticcheck
 )
-
-replace github.com/litelensapp/litelens/packages/core => ./packages/core

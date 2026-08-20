@@ -81,8 +81,8 @@ Plugins are **fully standalone Go modules** (e.g. in `litelens-plugins` repo, ow
 
 **Go module structure:**
 
-- **`packages/core/` (nested module):** a sibling to `internal/`, with its own `go.mod` (`github.com/litelensapp/litelens/packages/core`), to be versioned via git tags shaped `packages/core/vX.Y.Z` once the first one is published (none exists yet — see `go.work`'s TODO). Exports the plugin-host contract: protobuf service definitions (`packages/core/pb/`), data transfer objects (`packages/core/dto/` — leaf package, no heavy deps), and kubeconfig loading utilities (`packages/core/kube.LoadingRules` only, not full client/informer machinery).
-- **Host import:** `internal/` now imports `packages/core/{pb,dto,kube}` directly as a Go module dependency (via the `go.work` workspace file for same-repo multi-module dev until `packages/core/v0.1.0` is tagged and released). This replaces parallel hand-maintained copies in `internal/`.
+- **`packages/core/` (nested module):** a sibling to `internal/`, with its own `go.mod` (`github.com/litelensapp/litelens/packages/core`), versioned via git tags shaped `packages/core/vX.Y.Z` — first published as `packages/core/v1.7.0`. Exports the plugin-host contract: protobuf service definitions (`packages/core/pb/`), data transfer objects (`packages/core/dto/` — leaf package, no heavy deps), and kubeconfig loading utilities (`packages/core/kube.LoadingRules` only, not full client/informer machinery).
+- **Host import:** `internal/` imports `packages/core/{pb,dto,kube}` as a normal pinned Go module dependency (`go.mod` requires `github.com/litelensapp/litelens/packages/core v1.7.0`; no `replace` directive, no root `go.work`). This replaces parallel hand-maintained copies in `internal/`.
 - **Plugin import:** plugins depend on `packages/core/` as a normal versioned Go dependency (e.g. `github.com/litelensapp/litelens/packages/core@packages/core/vX.Y.Z`), avoiding the old manual-sync cost of hand-copying DTO and proto files.
 
 **Frontend packages:**
