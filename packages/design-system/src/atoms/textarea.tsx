@@ -224,7 +224,7 @@ function TextareaYaml({
   };
 
   const gutterLines = lines.map((_, i) => (
-    <div key={`line-${i}`} className="leading-5">
+    <div key={lineStarts[i]} className="leading-5">
       {i + 1}
     </div>
   ));
@@ -237,7 +237,7 @@ function TextareaYaml({
   };
 
   const highlightRows = lines.map((line, i) => (
-    <div key={`${i}-${line}`} className="whitespace-pre leading-5">
+    <div key={lineStarts[i]} className="whitespace-pre leading-5">
       <YamlLine
         line={line}
         searchTerm={searchTerm}
@@ -314,7 +314,7 @@ function TextareaYaml({
           <div className="flex-1 py-1">
             {lines.map((line, i) => (
               <div
-                key={`${i}-${line}`}
+                key={lineStarts[i]}
                 className="whitespace-pre pl-4 pr-4 leading-5 hover:bg-white/5"
               >
                 <YamlLine
