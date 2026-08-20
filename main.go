@@ -10,7 +10,6 @@ import (
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/storage"
-	"github.com/litelensapp/litelens/internal/version"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
@@ -28,12 +27,12 @@ func main() {
 	_ = godotenv.Load()
 
 	// Enable dev mode storage if running a development build.
-	storage.SetDevMode(Version == version.Dev)
+	storage.SetDevMode(Version == config.Dev)
 	storage.SetRootDirOverride(config.GetRootDirOverride())
 
 	a := app.NewApp(Version)
 
-	// Build bind list: include only App, all plugins are accessed over gRPC (see internal/server).
+	// Build bind list: include only App, all plugins are accessed over gRPC (see internal/api/grpc).
 	bindList := []any{a}
 
 	err := wails.Run(&options.App{

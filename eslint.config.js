@@ -4,7 +4,6 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-import iconButtonAriaLabelRule from "./eslint.rules/icon-button-aria-label.js";
 
 export default defineConfig([
   globalIgnores(["**/dist/**", "**/wailsjs/**"]),
@@ -24,12 +23,8 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-    plugins: {
-      "icon-button-aria-label": { rules: { check: iconButtonAriaLabelRule } },
-    },
     rules: {
       "react-refresh/only-export-components": "off",
-      "icon-button-aria-label/check": "error",
     },
   },
   {

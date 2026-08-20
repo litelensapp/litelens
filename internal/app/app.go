@@ -6,13 +6,13 @@ import (
 	"sync"
 	"time"
 
+	hostgrpc "github.com/litelensapp/litelens/internal/api/grpc"
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
-	"github.com/litelensapp/litelens/internal/server"
 	"github.com/litelensapp/litelens/internal/updater"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -65,8 +65,8 @@ type App struct {
 	// (e.g. InstallPlugin), so acquiring mu while already holding pluginsMu is
 	// fine, but the reverse (acquiring pluginsMu while already holding mu) would
 	// risk lock-order inversion and must be avoided.
-	pluginsMu      sync.RWMutex
-	grpcServerCfg  *server.GRPCServerConfig
+	pluginsMu     sync.RWMutex
+	grpcServerCfg *hostgrpc.GRPCServerConfig
 }
 
 // NewApp creates a new App application struct
@@ -129,7 +129,7 @@ func (a *App) Startup(ctx context.Context) {
 	eventEmitter := func(payload map[string]interface{}) {
 		wailsruntime.EventsEmit(a.ctx, "plugin:event", payload)
 	}
-	grpcCfg, err := server.NewGRPCServerConfig(eventEmitter)
+	grpcCfg, err := hostgrpc.NewGRPCServerConfig(eventEmitter)
 	if err != nil {
 		// Log with ERROR level since plugin sync is essential infrastructure
 		log.Printf("ERROR: failed to start plugin gRPC server: %v (plugins will not receive cluster context changes)", err)
@@ -155,7 +155,7 @@ func (a *App) DomReady(_ context.Context) {
 func (a *App) Shutdown(_ context.Context) {
 	// Kill plugin processes before stopping the gRPC server. Each plugin
 	// holds a long-lived ClusterContextWatch stream open for its entire
-	// lifetime (see internal/server/grpc.go), and grpcServerCfg.Stop() calls
+	// lifetime (see internal/api/grpc/server.go), and grpcServerCfg.Stop() calls
 	// GracefulStop(), which blocks until every active RPC finishes. Stopping
 	// the server first would deadlock: GracefulStop waits on a stream that
 	// only closes when the plugin dies, but the plugin is only killed below.

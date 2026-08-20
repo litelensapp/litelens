@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/litelensapp/litelens/internal/version"
+	"github.com/litelensapp/litelens/internal/config"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -21,7 +21,7 @@ import (
 // a blank window. `wails dev` already rebuilds and relaunches on Go file
 // changes, so this isn't needed there anyway.
 func (a *App) RestartApp() error {
-	if a.version == version.Dev {
+	if a.version == config.Dev {
 		log.Printf("app: RestartApp: skipping full restart under `wails dev` (not supported; the dev server isn't process-supervised)")
 		return nil
 	}

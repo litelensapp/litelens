@@ -18,7 +18,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/packages/core/dto"
-	appversion "github.com/litelensapp/litelens/internal/version"
 )
 
 const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"
@@ -264,11 +263,11 @@ func IsPlatformSupported(m *dto.Manifest, goos, goarch string) bool {
 }
 
 // IsHostVersionCompatible checks if hostVersion falls within min and max version constraints.
-// Development builds (hostVersion == version.Dev, the same value the frontend's About dialog
+// Development builds (hostVersion == config.Dev, the same value the frontend's About dialog
 // displays via GetVersion()) always report compatible, since the version gate only makes
 // sense for semver-tagged releases.
 func IsHostVersionCompatible(hostVersion, minVersion, maxVersion string) (bool, error) {
-	if hostVersion == appversion.Dev {
+	if hostVersion == config.Dev {
 		return true, nil
 	}
 
