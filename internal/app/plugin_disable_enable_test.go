@@ -525,3 +525,78 @@ func TestEnablePluginWithoutActiveContextSkipsSilently(t *testing.T) {
 		t.Errorf("expected status READY after EnablePlugin without context, got %s", statusAfterEnable)
 	}
 }
+
+// TestDisablePluginAfterShutdownStateReset verifies regression:
+// DisablePlugin should correctly set status to DISABLED even after the new Shutdown()
+// state reset that sets status to NOT_INSTALLED. The explicit SetStatus(DISABLED)
+// call in DisablePlugin must override the state reset and land correctly.
+func TestDisablePluginAfterShutdownStateReset(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("MARKETPLACE_ENABLED", "true")
+	app := NewApp("test")
+
+	pluginID := "helm"
+	pluginDir := filepath.Join(tempHome, ".litelens", "plugins", pluginID)
+	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+		t.Fatalf("failed to create plugin directory: %v", err)
+	}
+
+	binaryName := "plugin-" + pluginID
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
+	binaryPath := filepath.Join(pluginDir, binaryName)
+	if err := os.WriteFile(binaryPath, []byte("binary"), 0755); err != nil {
+		t.Fatalf("failed to create binary: %v", err)
+	}
+
+	metadata := dto.PluginMetadata{
+		Manifest: dto.Manifest{
+			ID:      pluginID,
+			Name:    "Helm",
+			Version: "1.0.0",
+			Bundle: dto.ManifestAsset{
+				SHA256: "0000000000000000000000000000000000000000000000000000000000000000",
+			},
+		},
+	}
+	metadataPath := filepath.Join(pluginDir, ".plugin-metadata.json")
+	metadataBytes, _ := json.Marshal(metadata)
+	if err := os.WriteFile(metadataPath, metadataBytes, 0644); err != nil {
+		t.Fatalf("failed to write metadata: %v", err)
+	}
+
+	// Restore plugin as READY
+	app.mu.Lock()
+	app.settings.PluginDisabledState = map[string]bool{}
+	app.activeContext = ""
+	app.mu.Unlock()
+	app.restoreInstalledPlugins()
+
+	// Verify plugin is in READY state
+	app.pluginsMu.RLock()
+	loader, exists := app.pluginLoaders[pluginID]
+	app.pluginsMu.RUnlock()
+	if !exists || loader == nil {
+		t.Fatalf("expected plugin loader to be restored")
+	}
+	if loader.Status() != dto.PluginStatusReady {
+		t.Errorf("expected initial status READY, got %s", loader.Status())
+	}
+
+	// Disable the plugin (this calls Shutdown() internally, which now resets state to NOT_INSTALLED)
+	err := app.DisablePlugin(pluginID)
+	if err != nil {
+		t.Errorf("DisablePlugin should not error, but got: %v", err)
+	}
+
+	// Verify that despite the Shutdown state reset, the loader status is now DISABLED
+	// (the explicit SetStatus(DISABLED) call in DisablePlugin must have landed correctly)
+	app.pluginsMu.RLock()
+	statusAfterDisable := app.pluginLoaders[pluginID].Status()
+	app.pluginsMu.RUnlock()
+	if statusAfterDisable != dto.PluginStatusDisabled {
+		t.Errorf("expected status DISABLED after DisablePlugin, got %s", statusAfterDisable)
+	}
+}

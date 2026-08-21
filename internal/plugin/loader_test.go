@@ -415,3 +415,136 @@ func TestPluginLoaderClientNilAfterRestore(t *testing.T) {
 		}
 	})
 }
+
+// TestPluginLoaderShutdownResetsState verifies the fix for the stale state bug:
+// After Shutdown(), the loader must report IsAlive() == false and Status() == NOT_INSTALLED,
+// allowing the loader to be reused for a fresh install without stale state.
+func TestPluginLoaderShutdownResetsState(t *testing.T) {
+	tmpDir := t.TempDir()
+	binPath := filepath.Join(tmpDir, "mock-plugin-simple")
+
+	// Write a simple shell script that emits the handshake once
+	script := `#!/bin/bash
+echo '{"type":"READY","version":"test","httpPort":54321}'
+# Keep running (plugin daemon)
+sleep 3600
+`
+
+	if err := os.WriteFile(binPath, []byte(script), 0755); err != nil {
+		t.Fatalf("write mock plugin: %v", err)
+	}
+
+	pl := NewPluginLoader("test-helm", binPath)
+	pl.lockFilePath = filepath.Join(tmpDir, "test.lock")
+
+	// Launch the plugin successfully
+	if err := pl.Launch(context.Background(), ""); err != nil {
+		t.Fatalf("Launch: %v", err)
+	}
+
+	// Verify it's alive and READY after successful Launch
+	if !pl.IsAlive() {
+		t.Error("expected IsAlive() == true after successful Launch()")
+	}
+	if pl.Status() != dto.PluginStatusReady {
+		t.Errorf("expected status READY after Launch, got %q", pl.Status())
+	}
+
+	// Now shutdown
+	if err := pl.Shutdown(); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	// Verify state is fully reset: not alive and NOT_INSTALLED
+	if pl.IsAlive() {
+		t.Error("expected IsAlive() == false after Shutdown()")
+	}
+	if pl.Status() != dto.PluginStatusNotInstalled {
+		t.Errorf("expected status NOT_INSTALLED after Shutdown, got %q", pl.Status())
+	}
+	if pl.LastError() != "" {
+		t.Errorf("expected empty lastError after Shutdown, got %q", pl.LastError())
+	}
+}
+
+// TestPluginLoaderShutdownThenRelaunch verifies that a loader can be reused
+// after Shutdown(). This confirms the state reset is complete and the loader
+// is ready for a fresh install/launch cycle (e.g., during plugin reinstall).
+func TestPluginLoaderShutdownThenRelaunch(t *testing.T) {
+	tmpDir := t.TempDir()
+	binPath := filepath.Join(tmpDir, "mock-plugin-relaunch")
+
+	// Write a simple shell script that emits the handshake once
+	script := `#!/bin/bash
+echo '{"type":"READY","version":"test","httpPort":54321}'
+# Keep running (plugin daemon)
+sleep 3600
+`
+
+	if err := os.WriteFile(binPath, []byte(script), 0755); err != nil {
+		t.Fatalf("write mock plugin: %v", err)
+	}
+
+	pl := NewPluginLoader("test-helm", binPath)
+	pl.lockFilePath = filepath.Join(tmpDir, "test.lock")
+
+	// First launch
+	if err := pl.Launch(context.Background(), ""); err != nil {
+		t.Fatalf("first Launch: %v", err)
+	}
+	if !pl.IsAlive() {
+		t.Error("expected IsAlive() == true after first Launch()")
+	}
+
+	// Shutdown
+	if err := pl.Shutdown(); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+	if pl.IsAlive() {
+		t.Error("expected IsAlive() == false after Shutdown()")
+	}
+
+	// Attempt relaunch (e.g., user reinstalls the plugin)
+	if err := pl.Launch(context.Background(), ""); err != nil {
+		t.Fatalf("second Launch after Shutdown: %v", err)
+	}
+	if !pl.IsAlive() {
+		t.Error("expected IsAlive() == true after second Launch()")
+	}
+	if pl.Status() != dto.PluginStatusReady {
+		t.Errorf("expected status READY after second Launch, got %q", pl.Status())
+	}
+
+	// Clean up
+	pl.Shutdown()
+}
+
+// TestPluginLoaderSetStatusNotReadyAfterError verifies that SetStatus does not
+// accidentally set READY when an error occurs during operations (regression test
+// for the original bug where InstallPlugin ignored Launch errors).
+func TestPluginLoaderSetStatusNotReadyAfterError(t *testing.T) {
+	pl := NewPluginLoader("test-helm", "/bin/nonexistent")
+	pl.lockFilePath = filepath.Join(t.TempDir(), "test.lock")
+
+	// Attempt Launch with non-existent binary (will fail)
+	err := pl.Launch(context.Background(), "")
+	if err == nil {
+		t.Fatalf("expected Launch error with non-existent binary, got nil")
+	}
+
+	// Verify that failed Launch sets status to CRASHED, not READY
+	status := pl.Status()
+	if status != dto.PluginStatusCrashed {
+		t.Errorf("expected status CRASHED after failed Launch, got %q", status)
+	}
+
+	// Verify there is a lastError recorded
+	if pl.LastError() == "" {
+		t.Error("expected lastError to be set after failed Launch")
+	}
+
+	// IsAlive should be false (no process running)
+	if pl.IsAlive() {
+		t.Error("expected IsAlive() == false after failed Launch")
+	}
+}
