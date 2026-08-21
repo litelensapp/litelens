@@ -15,7 +15,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListNetworkPolicies(namespace string) ([]dto.NetworkPolicy, error) {
+func (a *App) ListNetworkPolicies(namespaces []string) ([]dto.NetworkPolicy, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -29,7 +29,7 @@ func (a *App) ListNetworkPolicies(namespace string) ([]dto.NetworkPolicy, error)
 	if h.IsForbidden("networkpolicies") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListNetworkPolicies(h.Factory.Networking().V1().NetworkPolicies().Lister(), namespace)
+	result, err := kubeResources.ListNetworkPolicies(h.Factory.Networking().V1().NetworkPolicies().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListNetworkPolicies: %v", err)
 		return []dto.NetworkPolicy{}, nil
@@ -76,7 +76,7 @@ func (a *App) DeleteNetworkPolicy(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitNetworkPolicies(namespace)
+	a.emitNetworkPolicies([]string{namespace})
 
 	return nil
 }
@@ -104,9 +104,11 @@ func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitNetworkPolicies(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitNetworkPolicies(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d networkpolicies: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -114,7 +116,7 @@ func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
 	return nil
 }
 
-func (a *App) emitNetworkPolicies(namespace string) {
+func (a *App) emitNetworkPolicies(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -129,21 +131,21 @@ func (a *App) emitNetworkPolicies(namespace string) {
 		return
 	}
 	lister := h.Factory.Networking().V1().NetworkPolicies().Lister()
-	allData, err := kubeResources.ListNetworkPolicies(lister, "")
+	allData, err := kubeResources.ListNetworkPolicies(lister, nil)
 	if err != nil {
 		log.Printf("app: emitNetworkPolicies: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "networkpolicies:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.NetworkPolicy, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "networkpolicies:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "networkpolicies:"+ns+":update", nsData)
 	}
 }
 
@@ -191,7 +193,7 @@ func (a *App) UpdateNetworkPolicyYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update NetworkPolicy: %w", err)
 	}
 
-	a.emitNetworkPolicies(namespace)
+	a.emitNetworkPolicies([]string{namespace})
 
 	return nil
 }

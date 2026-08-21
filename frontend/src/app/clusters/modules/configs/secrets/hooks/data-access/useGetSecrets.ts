@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_SECRETS } from "../../api/api.const";
 import type { Secret } from "../../api/resources";
 import { ListSecrets } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useSecretsUpdateEvents } from "../async-events/useSecretsUpdateEvents";
 
 export const useGetSecrets = (
@@ -16,11 +13,10 @@ export const useGetSecrets = (
   callback?: UseQueryCallback<Secret[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestSecrets = useSecretsUpdateEvents(effectiveNamespace);
+  const latestSecrets = useSecretsUpdateEvents(namespaces);
   const query = useQuery<Secret[], Error>({
     queryKey: [QUERY_KEY_SECRETS, { context, namespaces }],
-    queryFn: () => ListSecrets(effectiveNamespace),
+    queryFn: () => ListSecrets(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

@@ -53,7 +53,7 @@ func TestListSecrets_SingleNamespace(t *testing.T) {
 	s := makeSecret("secret-1", "default")
 	lister := newSecretLister(s)
 
-	result, err := ListSecrets(lister, "default")
+	result, err := ListSecrets(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestListSecrets_EmptyNamespaceReturnsAll(t *testing.T) {
 	s2 := makeSecret("s-b", "ns-b")
 	lister := newSecretLister(s1, s2)
 
-	result, err := ListSecrets(lister, "")
+	result, err := ListSecrets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestListSecrets_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListSecrets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newSecretLister()
 
-	result, err := ListSecrets(lister, "")
+	result, err := ListSecrets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestListSecrets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListSecrets_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListSecrets(&errorSecretLister{err: sentinel}, "")
+	_, err := ListSecrets(&errorSecretLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -104,7 +104,7 @@ func TestListSecrets_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListSecrets_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListSecrets(&errorSecretLister{err: sentinel}, "default")
+	_, err := ListSecrets(&errorSecretLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

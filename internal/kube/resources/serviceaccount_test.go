@@ -51,7 +51,7 @@ func TestListServiceAccounts_SingleNamespace(t *testing.T) {
 	sa := makeServiceAccount("default", "default")
 	lister := newServiceAccountLister(sa)
 
-	result, err := ListServiceAccounts(lister, "default")
+	result, err := ListServiceAccounts(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestListServiceAccounts_EmptyNamespaceReturnsAll(t *testing.T) {
 	sa2 := makeServiceAccount("sa-b", "ns-b")
 	lister := newServiceAccountLister(sa1, sa2)
 
-	result, err := ListServiceAccounts(lister, "")
+	result, err := ListServiceAccounts(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestListServiceAccounts_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListServiceAccounts_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newServiceAccountLister()
 
-	result, err := ListServiceAccounts(lister, "")
+	result, err := ListServiceAccounts(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestListServiceAccounts_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListServiceAccounts_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListServiceAccounts(&errorServiceAccountLister{err: sentinel}, "")
+	_, err := ListServiceAccounts(&errorServiceAccountLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -102,7 +102,7 @@ func TestListServiceAccounts_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListServiceAccounts_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListServiceAccounts(&errorServiceAccountLister{err: sentinel}, "default")
+	_, err := ListServiceAccounts(&errorServiceAccountLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

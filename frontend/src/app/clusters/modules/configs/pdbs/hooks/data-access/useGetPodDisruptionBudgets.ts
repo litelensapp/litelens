@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_PDBS } from "../../api/api.const";
 import type { PodDisruptionBudget } from "../../api/resources";
 import { ListPodDisruptionBudgets } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { usePodDisruptionBudgetsUpdateEvents } from "../async-events/usePodDisruptionBudgetsUpdateEvents";
 
 export const useGetPodDisruptionBudgets = (
@@ -16,12 +13,11 @@ export const useGetPodDisruptionBudgets = (
   callback?: UseQueryCallback<PodDisruptionBudget[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents();
+  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents(namespaces);
 
   const query = useQuery<PodDisruptionBudget[], Error>({
     queryKey: [QUERY_KEY_PDBS, { context, namespaces }],
-    queryFn: () => ListPodDisruptionBudgets(effectiveNamespace),
+    queryFn: () => ListPodDisruptionBudgets(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

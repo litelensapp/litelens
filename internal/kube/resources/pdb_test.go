@@ -32,7 +32,7 @@ func TestListPodDisruptionBudgets_SingleNamespace(t *testing.T) {
 	pdb := makePDB("test-pdb", "default")
 	lister := newPDBLister(pdb)
 
-	result, err := ListPodDisruptionBudgets(lister, "default")
+	result, err := ListPodDisruptionBudgets(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestListPodDisruptionBudgets_EmptyNamespaceReturnsAll(t *testing.T) {
 	pdb2 := makePDB("pdb-b", "ns-b")
 	lister := newPDBLister(pdb1, pdb2)
 
-	result, err := ListPodDisruptionBudgets(lister, "")
+	result, err := ListPodDisruptionBudgets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestListPodDisruptionBudgets_SpecificNamespaceFilters(t *testing.T) {
 	pdb2 := makePDB("pdb-b", "ns-b")
 	lister := newPDBLister(pdb1, pdb2)
 
-	result, err := ListPodDisruptionBudgets(lister, "ns-a")
+	result, err := ListPodDisruptionBudgets(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestListPodDisruptionBudgets_SpecificNamespaceFilters(t *testing.T) {
 func TestListPodDisruptionBudgets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newPDBLister()
 
-	result, err := ListPodDisruptionBudgets(lister, "")
+	result, err := ListPodDisruptionBudgets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_RESOURCE_QUOTAS } from "../../api/api.const";
 import type { ResourceQuota } from "../../api/resources";
 import { ListResourceQuotas } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useResourceQuotasUpdateEvents } from "../async-events/useResourceQuotasUpdateEvents";
 
 export const useGetResourceQuotas = (
@@ -16,12 +13,11 @@ export const useGetResourceQuotas = (
   callback?: UseQueryCallback<ResourceQuota[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestResourceQuotas = useResourceQuotasUpdateEvents(effectiveNamespace);
+  const latestResourceQuotas = useResourceQuotasUpdateEvents(namespaces);
 
   const query = useQuery<ResourceQuota[], Error>({
     queryKey: [QUERY_KEY_RESOURCE_QUOTAS, { context, namespaces }],
-    queryFn: () => ListResourceQuotas(effectiveNamespace),
+    queryFn: () => ListResourceQuotas(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

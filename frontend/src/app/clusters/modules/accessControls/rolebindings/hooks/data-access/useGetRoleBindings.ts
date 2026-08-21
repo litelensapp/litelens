@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_ROLE_BINDINGS } from "../../api/api.const";
 import type { RoleBinding } from "../../api/resources";
 import { ListRoleBindings } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useRoleBindingsUpdateEvents } from "../async-events/useRoleBindingsUpdateEvents";
 
 export const useGetRoleBindings = (
@@ -16,12 +13,11 @@ export const useGetRoleBindings = (
   callback?: UseQueryCallback<RoleBinding[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestRoleBindings = useRoleBindingsUpdateEvents(effectiveNamespace);
+  const latestRoleBindings = useRoleBindingsUpdateEvents(namespaces);
 
   const query = useQuery<RoleBinding[], Error>({
     queryKey: [QUERY_KEY_ROLE_BINDINGS, { context, namespaces }],
-    queryFn: () => ListRoleBindings(effectiveNamespace),
+    queryFn: () => ListRoleBindings(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

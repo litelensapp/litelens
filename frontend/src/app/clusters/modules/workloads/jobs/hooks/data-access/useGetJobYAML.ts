@@ -7,7 +7,7 @@ import { useJobsUpdateEvents } from "../async-events/useJobsUpdateEvents";
 
 export function useGetJobYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestJobs = useJobsUpdateEvents(namespace);
+  const latestJobs = useJobsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_JOB_YAML, { context, namespace, name }],

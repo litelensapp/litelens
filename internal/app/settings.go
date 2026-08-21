@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -114,22 +113,12 @@ func (a *App) ClipboardGetText() (string, error) {
 
 // SaveSettings persists secrets and other settings. ClusterProxies are managed
 // separately via SaveClusterProxy and are preserved here unchanged.
-// If PluginsDir changes, rebuilds the plugin loader map to reflect the new directory.
 // Marketplace repository URLs are stored exactly as provided, no validation or
 // canonicalization — the user is responsible for entering a URL that resolves
 // to a GitHub releases API endpoint if they want that source to fetch successfully.
 func (a *App) SaveSettings(s config.Settings) error {
 	for i := range s.MarketplaceRepositories {
 		s.MarketplaceRepositories[i].URL = strings.TrimSpace(s.MarketplaceRepositories[i].URL)
-	}
-
-	a.mu.RLock()
-	oldPluginsDir := a.settings.PluginsDir
-	a.mu.RUnlock()
-
-	pluginsDirChanged := s.PluginsDir != oldPluginsDir
-	if pluginsDirChanged && a.pluginOperationInProgress() {
-		return fmt.Errorf("cannot change plugins directory while a plugin install or removal is in progress")
 	}
 
 	a.mu.Lock()
@@ -141,10 +130,6 @@ func (a *App) SaveSettings(s config.Settings) error {
 	a.settings = s
 	a.mu.Unlock()
 
-	if pluginsDirChanged {
-		a.onPluginsDirChanged()
-		runtime.EventsEmit(a.ctx, "plugins:changed")
-	}
 	return nil
 }
 
@@ -164,35 +149,6 @@ func (a *App) SaveMarketplaceRepositories(repos []config.MarketplaceRepository) 
 	err := config.Save(a.settings)
 	a.mu.Unlock()
 	return err
-}
-
-// SavePluginsDir persists just the plugins directory, applied directly onto
-// the authoritative in-memory settings under the lock (see
-// SaveMarketplaceRepositories for why this avoids the SaveSettings
-// full-object race). Rebuilds the plugin loader map if the directory changed.
-func (a *App) SavePluginsDir(dir string) error {
-	a.mu.RLock()
-	oldDir := a.settings.PluginsDir
-	a.mu.RUnlock()
-
-	dirChanged := dir != oldDir
-	if dirChanged && a.pluginOperationInProgress() {
-		return fmt.Errorf("cannot change plugins directory while a plugin install or removal is in progress")
-	}
-
-	a.mu.Lock()
-	a.settings.PluginsDir = dir
-	err := config.Save(a.settings)
-	a.mu.Unlock()
-	if err != nil {
-		return err
-	}
-
-	if dirChanged {
-		a.onPluginsDirChanged()
-		runtime.EventsEmit(a.ctx, "plugins:changed")
-	}
-	return nil
 }
 
 // GetClusterProxy returns the proxy settings for a specific cluster context.
@@ -328,10 +284,3 @@ func (a *App) SaveKubeconfigPaths(paths []string) error {
 	return nil
 }
 
-// PickPluginsDir opens a native folder dialog rooted at the current effective plugins directory.
-func (a *App) PickPluginsDir() (string, error) {
-	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:            "Select Plugins Directory",
-		DefaultDirectory: a.pluginsRootDir(),
-	})
-}

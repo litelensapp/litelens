@@ -39,16 +39,23 @@ func toSecret(s *corev1.Secret) dto.Secret {
 	}
 }
 
-func ListSecrets(lister listerscorev1.SecretLister, namespace string) ([]dto.Secret, error) {
-	var secrets []*corev1.Secret
-	var err error
-	if namespace == "" {
-		secrets, err = lister.List(labels.Everything())
-	} else {
-		secrets, err = lister.Secrets(namespace).List(labels.Everything())
-	}
+func ListSecrets(lister listerscorev1.SecretLister, namespaces []string) ([]dto.Secret, error) {
+	secrets, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := secrets[:0:0]
+		for _, secret := range secrets {
+			if _, ok := nsSet[secret.Namespace]; ok {
+				filtered = append(filtered, secret)
+			}
+		}
+		secrets = filtered
 	}
 	result := make([]dto.Secret, len(secrets))
 	for i, s := range secrets {

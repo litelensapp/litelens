@@ -15,7 +15,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListEndpoints(namespace string) ([]dto.Endpoint, error) {
+func (a *App) ListEndpoints(namespaces []string) ([]dto.Endpoint, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -29,7 +29,7 @@ func (a *App) ListEndpoints(namespace string) ([]dto.Endpoint, error) {
 	if h.IsForbidden("endpoints") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListEndpoints(h.Factory.Core().V1().Endpoints().Lister(), namespace)
+	result, err := kubeResources.ListEndpoints(h.Factory.Core().V1().Endpoints().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListEndpoints: %v", err)
 		return []dto.Endpoint{}, nil
@@ -76,7 +76,7 @@ func (a *App) DeleteEndpoint(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitEndpoints(namespace)
+	a.emitEndpoints([]string{namespace})
 
 	return nil
 }
@@ -104,9 +104,11 @@ func (a *App) DeleteEndpoints(items []dto.EndpointRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitEndpoints(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitEndpoints(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d endpoints: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -114,7 +116,7 @@ func (a *App) DeleteEndpoints(items []dto.EndpointRef) error {
 	return nil
 }
 
-func (a *App) emitEndpoints(namespace string) {
+func (a *App) emitEndpoints(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -129,21 +131,21 @@ func (a *App) emitEndpoints(namespace string) {
 		return
 	}
 	lister := h.Factory.Core().V1().Endpoints().Lister()
-	allData, err := kubeResources.ListEndpoints(lister, "")
+	allData, err := kubeResources.ListEndpoints(lister, nil)
 	if err != nil {
 		log.Printf("app: emitEndpoints: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "endpoints:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Endpoint, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "endpoints:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "endpoints:"+ns+":update", nsData)
 	}
 }
 
@@ -192,7 +194,7 @@ func (a *App) UpdateEndpointYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Endpoint: %w", err)
 	}
 
-	a.emitEndpoints(namespace)
+	a.emitEndpoints([]string{namespace})
 
 	return nil
 }

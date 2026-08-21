@@ -28,7 +28,6 @@ type Settings struct {
 	ShellPath               string                  `json:"shellPath"`
 	KubeconfigPaths         []string                `json:"kubeconfigPaths"`
 	Locale                  string                  `json:"locale"`
-	PluginsDir              string                  `json:"pluginsDir"`
 	PluginDisabledState     map[string]bool         `json:"pluginDisabledState"`
 	MarketplaceRepositories []MarketplaceRepository `json:"marketplaceRepositories"`
 }
@@ -47,7 +46,7 @@ func Load() (Settings, error) {
 	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return Settings{}, nil
+		return withDefaultMarketplaceRepo(Settings{}, nil), nil
 	}
 	if err != nil {
 		return Settings{}, err
@@ -82,7 +81,37 @@ func unmarshalAndMigrate(data []byte, s *Settings) error {
 		}
 	}
 
+	*s = withDefaultMarketplaceRepo(*s, data)
+
 	return nil
+}
+
+// withDefaultMarketplaceRepo provisions the official litelens marketplace
+// (GetMarketplaceBaseURL) as the first MarketplaceRepositories entry, but
+// only for settings that have never persisted a "marketplaceRepositories"
+// key at all — a fresh install (rawJSON nil), or a legacy config that
+// predates this field and had no old-format marketplace URL either. Once a
+// settings.json has been saved with this key present, even as an empty
+// array (the user removed every repository, including the default), that
+// choice is final: GetMarketplaceBaseURL is never consulted again. This is
+// what lets GetPluginsFromMarketplace treat MarketplaceRepositories as the
+// single source of truth with no implicit built-in source of its own.
+func withDefaultMarketplaceRepo(s Settings, rawJSON []byte) Settings {
+	if len(s.MarketplaceRepositories) != 0 {
+		return s
+	}
+
+	if rawJSON != nil {
+		var probe map[string]json.RawMessage
+		if err := json.Unmarshal(rawJSON, &probe); err == nil {
+			if _, hasKey := probe["marketplaceRepositories"]; hasKey {
+				return s
+			}
+		}
+	}
+
+	s.MarketplaceRepositories = []MarketplaceRepository{{URL: GetMarketplaceBaseURL()}}
+	return s
 }
 
 func Save(s Settings) error {

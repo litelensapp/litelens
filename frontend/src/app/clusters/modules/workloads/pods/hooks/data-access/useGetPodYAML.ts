@@ -7,7 +7,7 @@ import { usePodsUpdateEvents } from "../async-events/usePodsUpdateEvents";
 
 export function useGetPodYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestPods = usePodsUpdateEvents(namespace);
+  const latestPods = usePodsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_POD_YAML, { context, namespace, name }],

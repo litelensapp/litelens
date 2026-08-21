@@ -13,84 +13,58 @@ https://github.com/user-attachments/assets/7afe5c08-fb14-4ca1-ac33-4a2cbe8d2849
 
 ## Installation
 
-### Homebrew (macOS)
-
-Litelens is distributed via a custom Homebrew tap (not `homebrew-core`), so
-`brew search litelens` won't find it — tap it explicitly first:
-
-```sh
-brew tap litelensapp/homebrew-litelens
-brew trust litelensapp/litelens/litelens
-brew install litelens
-```
-
-### APT (Debian/Ubuntu)
-
-Litelens publishes `.deb` packages to a self-hosted APT repository, signed
-with a dedicated GPG key. Pick the command block matching your Ubuntu
-release:
-
-**Ubuntu 24.04 (noble)**
-
-```sh
-curl -fsSL https://litelensapp.github.io/litelens-apt/keys/litelens-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/litelens-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://litelensapp.github.io/litelens-apt noble main" | sudo tee /etc/apt/sources.list.d/litelens.list
-sudo apt-get update && sudo apt-get install litelens
-```
-
-**Ubuntu 22.04 (jammy)**
-
-```sh
-curl -fsSL https://litelensapp.github.io/litelens-apt/keys/litelens-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/litelens-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://litelensapp.github.io/litelens-apt jammy main" | sudo tee /etc/apt/sources.list.d/litelens.list
-sudo apt-get update && sudo apt-get install litelens
-```
-
-**Ubuntu 20.04 (focal)**
-
-```sh
-curl -fsSL https://litelensapp.github.io/litelens-apt/keys/litelens-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/litelens-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/litelens-archive-keyring.gpg] https://litelensapp.github.io/litelens-apt focal main" | sudo tee /etc/apt/sources.list.d/litelens.list
-sudo apt-get update && sudo apt-get install litelens
-```
-
-### Manual (Linux + MacOS)
-
-```sh
-curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/install.sh" | bash
-```
+For step-by-step installation instructions, see https://litelensapp.github.io/#installation
 
 ## Uninstallation
 
-### Homebrew (macOS)
+See [docs/UNINSTALLATION.md](docs/UNINSTALLATION.md).
 
-```sh
-brew uninstall litelens
+## Architecture
+
+Litelens has no HTTP/REST layer between its frontend and backend. Wails
+auto-generates TypeScript bindings for every exported Go method, so the React
+frontend calls Go directly as if it were a local async function; Go, in turn,
+watches the Kubernetes API via informers and pushes live updates back to the
+frontend as Wails events, rather than the frontend polling for changes.
+
+```mermaid
+flowchart LR
+    subgraph FE["Frontend (React / TypeScript)"]
+        UI["React components"]
+        Hooks["TanStack Query hooks"]
+        Bindings["Wails JS bindings\n(frontend/wailsjs)"]
+        EventListeners["Event listeners\n(useXxxUpdateEvents)"]
+    end
+
+    subgraph BE["Backend (Go)"]
+        AppMethods["App methods\n(internal/app)"]
+        Informers["SharedInformerFactory\n(internal/kube)"]
+        K8sClient["Kubernetes clientset"]
+    end
+
+    K8sAPI[("Kubernetes API server")]
+
+    UI --> Hooks
+    Hooks -->|"method call\n(request/response)"| Bindings
+    Bindings -->|"IPC call"| AppMethods
+    AppMethods --> Informers
+    Informers --> K8sClient
+    K8sClient <-->|watch/list| K8sAPI
+
+    Informers -->|"runtime.EventsEmit\n(e.g. pods:update)"| EventListeners
+    EventListeners -->|merge over query cache| Hooks
+    AppMethods -->|"return value\n(IPC response)"| Bindings
+    Bindings --> Hooks
 ```
 
-### APT (Debian/Ubuntu)
-
-```sh
-sudo apt remove litelens
-```
-
-This preserves `~/.litelens` (settings, installed plugins). To wipe it too:
-
-```sh
-sudo apt remove --purge litelens
-```
-
-### Manual (Linux + MacOS)
-
-```sh
-curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/uninstall.sh" | bash
-```
-
-This preserves `~/.litelens` (settings, installed plugins). To wipe it too:
-
-```sh
-curl -fsSL "https://raw.githubusercontent.com/litelensapp/litelens/main/scripts/uninstall.sh" | bash -s -- cleanup
-```
+- **Request/response**: the frontend calls a bound Go method (e.g.
+  `GetPods(namespace)`) through the Wails-generated bindings; Go runs it and
+  returns the result over the same call, same as awaiting a local function.
+- **Push updates**: Go's informers watch the cluster in the background and
+  emit Wails events (e.g. `pods:update`) whenever cluster state changes; the
+  frontend's per-resource event hooks subscribe to these events and merge the
+  pushed payload into the existing TanStack Query cache, so views stay live
+  without re-polling.
 
 ## Contributing
 

@@ -19,7 +19,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListDeployments(namespace string) ([]dto.Deployment, error) {
+func (a *App) ListDeployments(namespaces []string) ([]dto.Deployment, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -33,7 +33,7 @@ func (a *App) ListDeployments(namespace string) ([]dto.Deployment, error) {
 	if h.IsForbidden("deployments") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListDeployments(h.Factory.Apps().V1().Deployments().Lister(), namespace)
+	result, err := kubeResources.ListDeployments(h.Factory.Apps().V1().Deployments().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListDeployments: %v", err)
 		return []dto.Deployment{}, nil
@@ -159,7 +159,7 @@ func (a *App) DeleteDeployment(namespace, name string) error {
 		return fmt.Errorf("delete Deployment: %w", err)
 	}
 
-	a.emitDeployments(namespace)
+	a.emitDeployments([]string{namespace})
 
 	return nil
 }
@@ -187,9 +187,11 @@ func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitDeployments(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitDeployments(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d deployments: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -197,7 +199,7 @@ func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
 	return nil
 }
 
-func (a *App) emitDeployments(namespace string) {
+func (a *App) emitDeployments(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -212,21 +214,21 @@ func (a *App) emitDeployments(namespace string) {
 		return
 	}
 	lister := h.Factory.Apps().V1().Deployments().Lister()
-	allData, err := kubeResources.ListDeployments(lister, "")
+	allData, err := kubeResources.ListDeployments(lister, nil)
 	if err != nil {
 		log.Printf("app: emitDeployments: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "deployments:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Deployment, 0)
 		for _, d := range allData {
-			if d.Namespace == namespace {
+			if d.Namespace == ns {
 				nsData = append(nsData, d)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "deployments:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "deployments:"+ns+":update", nsData)
 	}
 }
 
@@ -274,7 +276,7 @@ func (a *App) UpdateDeploymentYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Deployment: %w", err)
 	}
 
-	a.emitDeployments(namespace)
+	a.emitDeployments([]string{namespace})
 
 	return nil
 }

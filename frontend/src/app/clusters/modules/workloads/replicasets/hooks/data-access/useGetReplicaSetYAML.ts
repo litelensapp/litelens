@@ -12,7 +12,7 @@ export function useGetReplicaSetYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestReplicaSets = useReplicaSetsUpdateEvents();
+  const latestReplicaSets = useReplicaSetsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_REPLICASET_YAML, { context, namespace, name }],

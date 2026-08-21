@@ -8,15 +8,22 @@ import (
 	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 )
 
+// RetryBackoffSchedule is the sleep schedule retryRelease applies between
+// attempts. Exported so tests can shrink it — at the production values
+// (5s, 10s), a single exhausted-retries test takes 15s, and tests that
+// exercise retryRelease from higher up the stack (FetchRelease, App's
+// checkForUpdate) pay the same cost again.
+var RetryBackoffSchedule = []time.Duration{5 * time.Second, 10 * time.Second}
+
 // retryRelease wraps a function that fetches a Release with retry logic.
-// It attempts up to 3 times with backoff (5s, 10s between attempts), but
-// short-circuits immediately on rate-limit errors. The sleep schedule is
-// only applied between attempts that will actually happen (no sleep after
-// the final attempt).
+// It attempts up to 3 times with backoff (RetryBackoffSchedule between
+// attempts), but short-circuits immediately on rate-limit errors. The sleep
+// schedule is only applied between attempts that will actually happen (no
+// sleep after the final attempt).
 func retryRelease(fn func() (*Release, error)) (*Release, error) {
 	var rel *Release
 	var err error
-	sleeps := []time.Duration{5 * time.Second, 10 * time.Second}
+	sleeps := RetryBackoffSchedule
 	for attempt := range 3 {
 		rel, err = fn()
 		if err == nil {

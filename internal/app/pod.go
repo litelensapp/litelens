@@ -17,7 +17,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListPods(namespace string) ([]dto.Pod, error) {
+func (a *App) ListPods(namespaces []string) ([]dto.Pod, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	mc := a.metricsClients[a.activeContext]
@@ -32,7 +32,7 @@ func (a *App) ListPods(namespace string) ([]dto.Pod, error) {
 	if h.IsForbidden("pods") {
 		return []dto.Pod{}, nil
 	}
-	pods, err := kubeResources.ListPods(h.Factory.Core().V1().Pods().Lister(), namespace)
+	pods, err := kubeResources.ListPods(h.Factory.Core().V1().Pods().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListPods: %v", err)
 		return []dto.Pod{}, nil
@@ -40,7 +40,11 @@ func (a *App) ListPods(namespace string) ([]dto.Pod, error) {
 	if mc != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), metricsFetchTimeout)
 		defer cancel()
-		usage := kube.FetchPodMetrics(ctx, mc, namespace)
+		metricsNamespace := ""
+		if len(namespaces) == 1 {
+			metricsNamespace = namespaces[0]
+		}
+		usage := kube.FetchPodMetrics(ctx, mc, metricsNamespace)
 		pods = kubeResources.ApplyPodMetrics(pods, usage)
 	}
 	return pods, nil
@@ -97,14 +101,14 @@ func (a *App) GetPodsSummary(namespace string) (dto.PodSummary, error) {
 	return kubeResources.SummarizePods(pods), nil
 }
 
-func (a *App) emitPods(namespace string) {
-	a.emitPodsWithMetrics(namespace, nil)
+func (a *App) emitPods(namespaces []string) {
+	a.emitPodsWithMetrics(namespaces, nil)
 }
 
 // emitPodsWithMetrics emits pod updates with optional pre-fetched cluster-wide metrics.
 // If allMetrics is nil, metrics are fetched asynchronously to avoid blocking the initial emit.
 // This variant avoids redundant metric fetches when emitting updates for multiple namespaces.
-func (a *App) emitPodsWithMetrics(namespace string, allMetrics map[string]dto.PodUsage) {
+func (a *App) emitPodsWithMetrics(namespaces []string, allMetrics map[string]dto.PodUsage) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	mc := a.metricsClients[a.activeContext]
@@ -117,7 +121,7 @@ func (a *App) emitPodsWithMetrics(namespace string, allMetrics map[string]dto.Po
 	}
 	lister := h.Factory.Core().V1().Pods().Lister()
 
-	allPods, err := kubeResources.ListPods(lister, "")
+	allPods, err := kubeResources.ListPods(lister, nil)
 	if err != nil {
 		log.Printf("app: emitPods: %v", err)
 		return
@@ -129,15 +133,15 @@ func (a *App) emitPodsWithMetrics(namespace string, allMetrics map[string]dto.Po
 	}
 	runtime.EventsEmit(a.ctx, "pods:update", allPods)
 
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsPods := make([]dto.Pod, 0)
 		for _, p := range allPods {
-			if p.Namespace == namespace {
+			if p.Namespace == ns {
 				nsPods = append(nsPods, p)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "pods:"+namespace+":update", nsPods)
+		runtime.EventsEmit(a.ctx, "pods:"+ns+":update", nsPods)
 	}
 
 	// Fetch metrics asynchronously if needed to avoid blocking the emit
@@ -151,15 +155,15 @@ func (a *App) emitPodsWithMetrics(namespace string, allMetrics map[string]dto.Po
 				allPodsWithMetrics := kubeResources.ApplyPodMetrics(allPods, fetchedMetrics)
 				runtime.EventsEmit(a.ctx, "pods:update", allPodsWithMetrics)
 
-				if namespace != "" {
+				for _, ns := range namespaces {
 					// Filter to namespace and emit namespaced update with metrics
 					nsPods := make([]dto.Pod, 0)
 					for _, p := range allPodsWithMetrics {
-						if p.Namespace == namespace {
+						if p.Namespace == ns {
 							nsPods = append(nsPods, p)
 						}
 					}
-					runtime.EventsEmit(a.ctx, "pods:"+namespace+":update", nsPods)
+					runtime.EventsEmit(a.ctx, "pods:"+ns+":update", nsPods)
 				}
 			}
 		}()
@@ -182,7 +186,7 @@ func (a *App) DeletePod(namespace, name string) error {
 		return fmt.Errorf("delete Pod: %w", err)
 	}
 
-	a.emitPods(namespace)
+	a.emitPods([]string{namespace})
 	return nil
 }
 
@@ -218,9 +222,11 @@ func (a *App) DeletePods(items []dto.PodRef) error {
 	}
 
 	// Emit updates for each unique namespace touched, using the pre-fetched metrics
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitPodsWithMetrics(ns, allMetrics)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitPodsWithMetrics(touchedNamespaces, allMetrics)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d pods: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -272,7 +278,7 @@ func (a *App) UpdatePodYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Pod: %w", err)
 	}
 
-	a.emitPods(namespace)
+	a.emitPods([]string{namespace})
 
 	return nil
 }

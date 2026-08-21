@@ -26,7 +26,7 @@ func warningEvents(events []dto.Event) []dto.Event {
 	return result
 }
 
-func (a *App) ListEvents(namespace string) ([]dto.Event, error) {
+func (a *App) ListEvents(namespaces []string) ([]dto.Event, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -42,7 +42,7 @@ func (a *App) ListEvents(namespace string) ([]dto.Event, error) {
 	}
 	result, err := kubeResources.ListEvents(
 		h.Factory.Core().V1().Events().Lister(),
-		namespace,
+		namespaces,
 	)
 	if err != nil {
 		log.Printf("app: ListEvents: %v", err)
@@ -51,7 +51,7 @@ func (a *App) ListEvents(namespace string) ([]dto.Event, error) {
 	return result, nil
 }
 
-func (a *App) ListWarningEvents(namespace string) ([]dto.Event, error) {
+func (a *App) ListWarningEvents(namespaces []string) ([]dto.Event, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -67,7 +67,7 @@ func (a *App) ListWarningEvents(namespace string) ([]dto.Event, error) {
 	}
 	result, err := kubeResources.ListWarningEvents(
 		h.Factory.Core().V1().Events().Lister(),
-		namespace,
+		namespaces,
 	)
 	if err != nil {
 		log.Printf("app: ListWarningEvents: %v", err)
@@ -98,7 +98,7 @@ func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
 	return result, nil
 }
 
-func (a *App) emitEvents(namespace string) {
+func (a *App) emitEvents(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -113,7 +113,7 @@ func (a *App) emitEvents(namespace string) {
 		return
 	}
 	lister := h.Factory.Core().V1().Events().Lister()
-	allData, err := kubeResources.ListEvents(lister, "")
+	allData, err := kubeResources.ListEvents(lister, nil)
 	if err != nil {
 		log.Printf("app: emitEvents: %v", err)
 		return
@@ -121,15 +121,15 @@ func (a *App) emitEvents(namespace string) {
 	sortEventsDesc(allData)
 	runtime.EventsEmit(a.ctx, "events:update", allData)
 	runtime.EventsEmit(a.ctx, "events:warning:update", warningEvents(allData))
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Event, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "events:"+namespace+":update", nsData)
-		runtime.EventsEmit(a.ctx, "events:"+namespace+":warning:update", warningEvents(nsData))
+		runtime.EventsEmit(a.ctx, "events:"+ns+":update", nsData)
+		runtime.EventsEmit(a.ctx, "events:"+ns+":warning:update", warningEvents(nsData))
 	}
 }

@@ -1,20 +1,17 @@
 ---
 name: go-work-removal-todo
-description: go.work at repo root is a temporary shim until packages/core is first tagged — remove it once that happens
+description: root go.work was removed for good (no go.work file), but a bare `replace` directive for packages/core in go.mod is now a permanent, intentional part of the architecture — not a shim to remove
 metadata:
   node_type: memory
   type: project
   originSessionId: d92fb7a1-c0a5-4c8c-9225-630bbe759b97
-  modified: 2026-08-18T16:31:38.693Z
+  modified: 2026-08-21T16:51:27.971Z
 ---
 
-Root `go.work` (created during Phase 4 of [[plugin-architecture-inversion]]) is an interim mechanism only: it lets `internal/` import `packages/core/{pb,dto,kube}` from the local checkout because no `packages/core/vX.Y.Z` git tag has ever been published yet — Go can't resolve a versioned module dependency without one.
+CURRENT STATE (2026-08-21, branch `chore/remove-go-work-shim`): root `go.mod` has `replace github.com/litelensapp/litelens/packages/core => ./packages/core`, permanently — this is intentional, not a temporary shim to remove before merge. No root `go.work`/`go.work.sum` file exists or is planned; the bare `replace` line is sufficient and simpler.
 
-**Why:** `packages/core` is a separate nested Go module (own `go.mod`), so without a tag, `go build ./internal/...` can't resolve `github.com/litelensapp/litelens/packages/core/...` as a normal dependency. `go.work` substitutes the on-disk directory instead, with no changes to either `go.mod`.
+**Why this is correct, not a regression:** `packages/core` is the host's own extension surface — same role as `@litelens/core` on the frontend, which the frontend resolves via pnpm `workspace:*` (always local source, no version pin). Host and `packages/core` ship from the same commit, so the version pin in `require github.com/litelensapp/litelens/packages/core vX.Y.Z` is decorative for the host build; `replace` makes the host always build against local `packages/core` source, matching the frontend pattern. Confirmed via `go build ./...`, `go vet ./internal/...`, `go test -race ./internal/...` — all pass with the replace directive present.
 
-**How to apply:** once `.github/workflows/job-publish-app-core-packages.yml`'s `publish-be` job has run at least once (gated behind repo var `vars.CORE_PACKAGE_RELEASED == 'true'` in `cd.yml`) and a `packages/core/vX.Y.Z` tag exists:
-1. Delete `go.work` and `go.work.sum` from the repo root.
-2. In root `go.mod`, run `go get github.com/litelensapp/litelens/packages/core@packages/core/vX.Y.Z` to add a normal pinned dependency.
-3. Re-run `go build ./... && go vet ./internal/... && pnpm test:be` to confirm the switch didn't break anything.
+**What still needs real tags:** external plugin repos (e.g. `litelens-plugins`) are the actual consumers of pinned `packages/core/vX.Y.Z` releases — they don't get the `replace` directive, so tags must still be cut whenever plugin-facing surface (`pb`, `dto`, `kube.LoadingRules`) changes, to keep plugins buildable against a real published version. The `require` line's version number in the host's `go.mod` should still be bumped opportunistically to stay close to the latest tag (keeps `go.sum`/`go mod tidy` sane and avoids the pin drifting to something ancient), but it no longer gates host builds the way it did right after the original go.work removal.
 
-Until then, `go.work` carries a `// TODO` comment pointing back to this same removal sequence.
+Original history: root `go.work` was deleted (2026-08-21 earlier same day) once `packages/core/v1.7.0` was tagged, moving `internal/` to a normal pinned dependency — this was itself the removal of an interim mechanism from Phase 4 of [[plugin-architecture-inversion]] (before any tag existed, `go.work` substituted the on-disk directory so `go build ./internal/...` could resolve `packages/core` at all). The bare `replace` directive reintroduced here is a distinct, smaller mechanism (no `go.work` file) chosen deliberately for the host↔core pairing, not a reversion to the old go.work setup.

@@ -15,7 +15,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListConfigMaps(namespace string) ([]dto.ConfigMap, error) {
+func (a *App) ListConfigMaps(namespaces []string) ([]dto.ConfigMap, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -29,7 +29,7 @@ func (a *App) ListConfigMaps(namespace string) ([]dto.ConfigMap, error) {
 	if h.IsForbidden("configmaps") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListConfigMaps(h.Factory.Core().V1().ConfigMaps().Lister(), namespace)
+	result, err := kubeResources.ListConfigMaps(h.Factory.Core().V1().ConfigMaps().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListConfigMaps: %v", err)
 		return []dto.ConfigMap{}, nil
@@ -92,7 +92,7 @@ func (a *App) DeleteConfigMap(namespace, name string) error {
 		return fmt.Errorf("delete ConfigMap: %w", err)
 	}
 
-	a.emitConfigMaps(namespace)
+	a.emitConfigMaps([]string{namespace})
 
 	return nil
 }
@@ -120,9 +120,11 @@ func (a *App) DeleteConfigMaps(items []dto.ConfigMapRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitConfigMaps(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitConfigMaps(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d configmaps: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -130,7 +132,7 @@ func (a *App) DeleteConfigMaps(items []dto.ConfigMapRef) error {
 	return nil
 }
 
-func (a *App) emitConfigMaps(namespace string) {
+func (a *App) emitConfigMaps(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -145,21 +147,21 @@ func (a *App) emitConfigMaps(namespace string) {
 		return
 	}
 	lister := h.Factory.Core().V1().ConfigMaps().Lister()
-	allData, err := kubeResources.ListConfigMaps(lister, "")
+	allData, err := kubeResources.ListConfigMaps(lister, nil)
 	if err != nil {
 		log.Printf("app: emitConfigMaps: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "configmaps:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.ConfigMap, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "configmaps:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "configmaps:"+ns+":update", nsData)
 	}
 }
 
@@ -207,7 +209,7 @@ func (a *App) UpdateConfigMapYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update ConfigMap: %w", err)
 	}
 
-	a.emitConfigMaps(namespace)
+	a.emitConfigMaps([]string{namespace})
 
 	return nil
 }

@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_JOBS } from "../../api/api.const";
 import type { Job } from "../../api/resources";
 import { ListJobs } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useJobsUpdateEvents } from "../async-events/useJobsUpdateEvents";
 
 export const useGetJobs = (
@@ -16,12 +13,11 @@ export const useGetJobs = (
   callback?: UseQueryCallback<Job[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestJobs = useJobsUpdateEvents(effectiveNamespace);
+  const latestJobs = useJobsUpdateEvents(namespaces);
 
   const query = useQuery<Job[], Error>({
     queryKey: [QUERY_KEY_JOBS, { context, namespaces }],
-    queryFn: () => ListJobs(effectiveNamespace),
+    queryFn: () => ListJobs(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

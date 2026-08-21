@@ -7,7 +7,7 @@ import { GetEndpointSliceByName } from "../../api/resources";
 import { useEndpointSlicesUpdateEvents } from "../async-events/useEndpointSlicesUpdateEvents";
 
 export const useGetEndpointSliceByName = (context: string, namespace: string, name: string) => {
-  const latestEndpointSlices = useEndpointSlicesUpdateEvents();
+  const latestEndpointSlices = useEndpointSlicesUpdateEvents([namespace]);
 
   const query = useQuery<EndpointSlice, Error>({
     queryKey: [QUERY_KEY_ENDPOINT_SLICE_DETAIL, { context, namespace, name }],

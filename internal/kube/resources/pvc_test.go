@@ -55,7 +55,7 @@ func TestListPersistentVolumeClaims_SingleNamespace(t *testing.T) {
 	pvcLister := newPVCLister(pvc)
 	podLister := newPodLister()
 
-	result, err := ListPersistentVolumeClaims(pvcLister, podLister, "default")
+	result, err := ListPersistentVolumeClaims(pvcLister, podLister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestListPersistentVolumeClaims_EmptyNamespaceReturnsAll(t *testing.T) {
 	pvcLister := newPVCLister(pvc1, pvc2)
 	podLister := newPodLister()
 
-	result, err := ListPersistentVolumeClaims(pvcLister, podLister, "")
+	result, err := ListPersistentVolumeClaims(pvcLister, podLister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestListPersistentVolumeClaims_EmptyLister_ReturnsEmptySlice(t *testing.T) 
 	pvcLister := newPVCLister()
 	podLister := newPodLister()
 
-	result, err := ListPersistentVolumeClaims(pvcLister, podLister, "")
+	result, err := ListPersistentVolumeClaims(pvcLister, podLister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestListPersistentVolumeClaims_EmptyLister_ReturnsEmptySlice(t *testing.T) 
 
 func TestListPersistentVolumeClaims_ErrorPropagation_PVCScope(t *testing.T) {
 	sentinel := errors.New("pvc store unavailable")
-	_, err := ListPersistentVolumeClaims(&errorPVCLister{err: sentinel}, newPodLister(), "")
+	_, err := ListPersistentVolumeClaims(&errorPVCLister{err: sentinel}, newPodLister(), nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

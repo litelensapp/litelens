@@ -57,7 +57,7 @@ func TestListLimitRanges_NameNamespace(t *testing.T) {
 	lr := makeLimitRange("my-limitrange", "production")
 	lister := newLimitRangeLister(lr)
 
-	result, err := ListLimitRanges(lister, "production")
+	result, err := ListLimitRanges(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestListLimitRanges_EmptyNamespaceReturnsAll(t *testing.T) {
 	lr2 := makeLimitRange("lr-b", "ns-b")
 	lister := newLimitRangeLister(lr1, lr2)
 
-	result, err := ListLimitRanges(lister, "")
+	result, err := ListLimitRanges(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestListLimitRanges_SpecificNamespaceFilters(t *testing.T) {
 	lr2 := makeLimitRange("lr-b", "ns-b")
 	lister := newLimitRangeLister(lr1, lr2)
 
-	result, err := ListLimitRanges(lister, "ns-a")
+	result, err := ListLimitRanges(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestListLimitRanges_Age_NonZeroTimestamp_IsNonEmpty(t *testing.T) {
 	lr := makeLimitRange("lr", "default")
 	lister := newLimitRangeLister(lr)
 
-	result, err := ListLimitRanges(lister, "default")
+	result, err := ListLimitRanges(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestListLimitRanges_Age_NonZeroTimestamp_IsNonEmpty(t *testing.T) {
 func TestListLimitRanges_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newLimitRangeLister()
 
-	result, err := ListLimitRanges(lister, "")
+	result, err := ListLimitRanges(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestListLimitRanges_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListLimitRanges_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListLimitRanges(&errorLimitRangeLister{err: sentinel}, "")
+	_, err := ListLimitRanges(&errorLimitRangeLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -148,7 +148,7 @@ func TestListLimitRanges_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListLimitRanges_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListLimitRanges(&errorLimitRangeLister{err: sentinel}, "default")
+	_, err := ListLimitRanges(&errorLimitRangeLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

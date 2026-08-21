@@ -134,16 +134,23 @@ func GetServiceByName(lister listerscorev1.ServiceLister, namespace, name string
 	return toService(svc), nil
 }
 
-func ListServices(lister listerscorev1.ServiceLister, namespace string) ([]dto.Service, error) {
-	var svcs []*corev1.Service
-	var err error
-	if namespace == "" {
-		svcs, err = lister.List(labels.Everything())
-	} else {
-		svcs, err = lister.Services(namespace).List(labels.Everything())
-	}
+func ListServices(lister listerscorev1.ServiceLister, namespaces []string) ([]dto.Service, error) {
+	svcs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := svcs[:0:0]
+		for _, svc := range svcs {
+			if _, ok := nsSet[svc.Namespace]; ok {
+				filtered = append(filtered, svc)
+			}
+		}
+		svcs = filtered
 	}
 	result := make([]dto.Service, len(svcs))
 	for i, s := range svcs {

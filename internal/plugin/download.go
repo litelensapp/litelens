@@ -24,16 +24,11 @@ import (
 
 const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"
 
-// manifestAssetPrefix and manifestAssetSuffix bound every plugin's manifest
-// asset filename in a GitHub release (e.g. "litelens-plugin-helm-manifest.json"
-// for plugin ID "helm"). The ID extracted from the filename is only used to
-// look up the asset's download URL — the manifest's own "id" field (its JSON
-// content) is the source of truth for plugin identity, the same convention
-// used by the locally installed .plugin-metadata.json.
-const (
-	manifestAssetPrefix = "litelens-plugin-"
-	manifestAssetSuffix = "-manifest.json"
-)
+// manifestIndexAssetName is the repo-wide release asset that acts as the
+// single source of truth for every plugin published in a release: it embeds
+// each plugin's complete manifest directly, so no separate per-plugin
+// manifest asset is needed (or published by real litelens-plugins releases).
+const manifestIndexAssetName = "manifest.json"
 
 // newGitHubAPIRequest builds a GET request with the headers GitHub's REST API
 // expects, plus a Bearer token when the target repo is private.
@@ -182,64 +177,65 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool)
 	return assets, release.TagName, nil
 }
 
+// FetchManifestIndex fetches and parses the repo-wide manifest.json index
+// asset from a release — the single source of truth for every plugin the
+// release publishes. Returns an error if the asset is missing or fails to
+// fetch/parse.
+func FetchManifestIndex(ctx context.Context, assets map[string]string, token string) (*dto.ManifestIndex, error) {
+	url, ok := assets[manifestIndexAssetName]
+	if !ok {
+		return nil, fmt.Errorf("%q not found in release", manifestIndexAssetName)
+	}
+
+	req, err := newAssetDownloadRequest(ctx, url, token)
+	if err != nil {
+		return nil, fmt.Errorf("creating manifest index request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetching manifest index: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("manifest index fetch returned status %d", resp.StatusCode)
+	}
+
+	var index dto.ManifestIndex
+	if err := json.NewDecoder(resp.Body).Decode(&index); err != nil {
+		return nil, fmt.Errorf("parsing manifest index JSON: %w", err)
+	}
+
+	return &index, nil
+}
+
 // DiscoverPluginIDs derives the set of plugin IDs published in a release from
-// its asset names, so the marketplace never needs a hardcoded list of known
-// plugins — any plugin that ships a "litelens-plugin-<id>-manifest.json"
-// asset is discovered automatically. The IDs returned here are only used to
-// locate each manifest asset via FetchManifest, which then trusts the
-// manifest's own "id" field as the actual plugin identity. Returned in
-// sorted order for determinism.
-func DiscoverPluginIDs(assets map[string]string) []string {
-	ids := make([]string, 0, len(assets))
-	for name := range assets {
-		rest, ok := strings.CutPrefix(name, manifestAssetPrefix)
-		if !ok {
-			continue
-		}
-		if id, ok := strings.CutSuffix(rest, manifestAssetSuffix); ok && id != "" {
-			ids = append(ids, id)
+// the manifest index's embedded manifests, so the marketplace never needs a
+// hardcoded list of known plugins. Returned in sorted order for determinism.
+func DiscoverPluginIDs(index *dto.ManifestIndex) []string {
+	ids := make([]string, 0, len(index.Plugins))
+	for _, entry := range index.Plugins {
+		if entry.ID != "" && ValidPluginID(entry.ID) {
+			ids = append(ids, entry.ID)
 		}
 	}
 	slices.Sort(ids)
 	return ids
 }
 
-// FetchManifest fetches and parses the plugin manifest from the provided assets.
-// pluginID is only used to locate the manifest asset by filename; the returned
-// manifest's ID field is populated from its JSON content (falling back to
-// pluginID only if the manifest omits "id").
-func FetchManifest(ctx context.Context, assets map[string]string, pluginID, token string) (*dto.Manifest, error) {
-	manifestName := manifestAssetPrefix + pluginID + manifestAssetSuffix
-	url, ok := assets[manifestName]
-	if !ok {
-		return nil, fmt.Errorf("manifest asset %q not found in release", manifestName)
+// FetchManifest returns the plugin's manifest from the manifest index — the
+// index embeds each plugin's complete manifest directly, so no further asset
+// fetch is needed.
+func FetchManifest(pluginID string, index *dto.ManifestIndex) (*dto.Manifest, error) {
+	for i := range index.Plugins {
+		if index.Plugins[i].ID == pluginID {
+			manifest := index.Plugins[i]
+			manifest.Version = NormalizeVersion(manifest.Version)
+			return &manifest, nil
+		}
 	}
-
-	req, err := newAssetDownloadRequest(ctx, url, token)
-	if err != nil {
-		return nil, fmt.Errorf("creating manifest request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetching manifest: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("manifest fetch returned status %d", resp.StatusCode)
-	}
-
-	var manifest dto.Manifest
-	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
-		return nil, fmt.Errorf("parsing manifest JSON: %w", err)
-	}
-	manifest.Version = NormalizeVersion(manifest.Version)
-	if manifest.ID == "" {
-		manifest.ID = pluginID
-	}
-
-	return &manifest, nil
+	return nil, fmt.Errorf("plugin %q not found in manifest index", pluginID)
 }
 
 // NormalizeVersion strips a leading "v"/"V" so versions from different sources

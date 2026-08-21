@@ -52,16 +52,23 @@ func toConfigMap(cm *corev1.ConfigMap) dto.ConfigMap {
 	}
 }
 
-func ListConfigMaps(lister listerscorev1.ConfigMapLister, namespace string) ([]dto.ConfigMap, error) {
-	var cms []*corev1.ConfigMap
-	var err error
-	if namespace == "" {
-		cms, err = lister.List(labels.Everything())
-	} else {
-		cms, err = lister.ConfigMaps(namespace).List(labels.Everything())
-	}
+func ListConfigMaps(lister listerscorev1.ConfigMapLister, namespaces []string) ([]dto.ConfigMap, error) {
+	cms, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := cms[:0:0]
+		for _, cm := range cms {
+			if _, ok := nsSet[cm.Namespace]; ok {
+				filtered = append(filtered, cm)
+			}
+		}
+		cms = filtered
 	}
 	result := make([]dto.ConfigMap, len(cms))
 	for i, cm := range cms {

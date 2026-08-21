@@ -33,7 +33,7 @@ func TestListJobs_SingleNamespace(t *testing.T) {
 	job := makeJob("my-job", "production")
 	lister := newJobLister(job)
 
-	result, err := ListJobs(lister, "production")
+	result, err := ListJobs(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestListJobs_EmptyNamespaceReturnsAll(t *testing.T) {
 	job2 := makeJob("job-b", "ns-b")
 	lister := newJobLister(job1, job2)
 
-	result, err := ListJobs(lister, "")
+	result, err := ListJobs(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestListJobs_SpecificNamespaceFilters(t *testing.T) {
 	job2 := makeJob("job-b", "ns-b")
 	lister := newJobLister(job1, job2)
 
-	result, err := ListJobs(lister, "ns-a")
+	result, err := ListJobs(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestListJobs_SpecificNamespaceFilters(t *testing.T) {
 func TestListJobs_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newJobLister()
 
-	result, err := ListJobs(lister, "default")
+	result, err := ListJobs(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

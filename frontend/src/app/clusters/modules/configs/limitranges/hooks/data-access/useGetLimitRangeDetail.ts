@@ -8,7 +8,7 @@ import { useLimitRangesUpdateEvents } from "../async-events/useLimitRangesUpdate
 
 export const useGetLimitRangeDetail = (context: string, namespace: string, name: string) => {
   const queryClient = useQueryClient();
-  const latestLimitRanges = useLimitRangesUpdateEvents(namespace);
+  const latestLimitRanges = useLimitRangesUpdateEvents([namespace]);
 
   const query = useQuery<LimitRangeDetail, Error>({
     queryKey: [QUERY_KEY_LIMIT_RANGE_DETAIL, { context, namespace, name }],

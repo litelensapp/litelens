@@ -12,9 +12,7 @@ const useGetDefaultShellMock = vi.hoisted(() => vi.fn());
 const saveSettingsMock = vi.hoisted(() => vi.fn());
 const getSettingsMock = vi.hoisted(() => vi.fn());
 const saveMarketplaceRepositoriesMock = vi.hoisted(() => vi.fn());
-const savePluginsDirMock = vi.hoisted(() => vi.fn());
 const renderSuccessToastMock = vi.hoisted(() => vi.fn());
-const usePickPluginsDirMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../hooks/data-access/useGetSettings", () => ({
   useGetSettings: useGetSettingsMock,
@@ -28,7 +26,6 @@ vi.mock("@wailsjs/go/app/App", () => ({
   SaveSettings: saveSettingsMock,
   GetSettings: getSettingsMock,
   SaveMarketplaceRepositories: saveMarketplaceRepositoriesMock,
-  SavePluginsDir: savePluginsDirMock,
 }));
 
 vi.mock("@litelens/design-system", async (importOriginal) => {
@@ -38,10 +35,6 @@ vi.mock("@litelens/design-system", async (importOriginal) => {
     renderSuccessToast: renderSuccessToastMock,
   };
 });
-
-vi.mock("../../hooks/data-mutation/usePickPluginsDir", () => ({
-  usePickPluginsDir: usePickPluginsDirMock,
-}));
 
 // ─── imports after mocks ──────────────────────────────────────────────────────
 
@@ -54,7 +47,6 @@ import { SandboxContent } from "../SandboxContent";
 interface TestSettings extends Partial<config.Settings> {
   shellPath?: string;
   accessToken?: string;
-  pluginsDir?: string;
   marketplaceRepositories?: config.MarketplaceRepository[];
   kubeconfigPaths?: string[];
   locale?: string;
@@ -64,7 +56,6 @@ function makeMockSettings(overrides?: TestSettings): config.Settings {
   const base = {
     shellPath: "/bin/bash",
     accessToken: "existing_token",
-    pluginsDir: "/default/plugins",
     marketplaceRepositories: [],
     kubeconfigPaths: ["/home/.kube/config"],
     locale: "UTC",
@@ -93,9 +84,7 @@ beforeEach(() => {
   saveSettingsMock.mockResolvedValue(undefined);
   getSettingsMock.mockResolvedValue(makeMockSettings());
   saveMarketplaceRepositoriesMock.mockResolvedValue(undefined);
-  savePluginsDirMock.mockResolvedValue(undefined);
   useGetDefaultShellMock.mockReturnValue({ data: "/bin/zsh" });
-  usePickPluginsDirMock.mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue("") });
   renderSuccessToastMock.mockImplementation(() => {});
 });
 
@@ -231,9 +220,8 @@ describe("Settings Sections Independence", () => {
   });
 
   describe("MarketplaceContent independence", () => {
-    it("manages its own pluginsDir, marketplace URL, and token states", async () => {
+    it("manages its own marketplace URL and token states", async () => {
       const settings = makeMockSettings({
-        pluginsDir: "/custom/plugins",
         marketplaceRepositories: [
           {
             url: "https://github.com/custom/repo",
@@ -250,30 +238,25 @@ describe("Settings Sections Independence", () => {
       render(<MarketplaceContent />, { wrapper });
 
       // Verify all fields are loaded
-      expect(screen.getByDisplayValue("/custom/plugins")).toBeInTheDocument();
       expect(screen.getByDisplayValue("https://github.com/custom/repo")).toBeInTheDocument();
       const privateSwitches = screen.getAllByRole("switch", { name: /private/i });
       expect(privateSwitches.length).toBeGreaterThan(0);
       expect(privateSwitches[0]).toBeChecked();
     });
 
-    it("has Browse button only in Marketplace section", async () => {
-      const settings = makeMockSettings();
-      useGetSettingsMock.mockReturnValue({ data: settings });
-
-      const { wrapper } = makeWrapper();
-
-      // Only MarketplaceContent has Browse button
-      render(<MarketplaceContent />, { wrapper });
-      const browseButton = screen.getByRole("button", { name: /browse/i });
-      expect(browseButton).toBeInTheDocument();
-    });
-
     it("does not interfere with App or Sandbox sections", async () => {
       const settings = makeMockSettings({
         shellPath: "/bin/bash",
         accessToken: "sandbox_token",
-        pluginsDir: "/mp/plugins",
+        marketplaceRepositories: [
+          {
+            url: "https://github.com/mp/repo",
+            private: false,
+            accessToken: "",
+            locked: false,
+            disabled: false,
+          },
+        ],
       });
       useGetSettingsMock.mockReturnValue({ data: settings });
 
@@ -291,7 +274,7 @@ describe("Settings Sections Independence", () => {
       cleanup();
       useGetSettingsMock.mockReturnValue({ data: settings });
       render(<MarketplaceContent />, { wrapper });
-      expect(screen.getByDisplayValue("/mp/plugins")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("https://github.com/mp/repo")).toBeInTheDocument();
     });
   });
 

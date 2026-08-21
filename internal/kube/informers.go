@@ -18,6 +18,12 @@ type stopEntry struct {
 	once sync.Once
 }
 
+// ResyncStaggerInterval is the delay between successive informer starts in
+// NewFactoryHandle. Exported so tests (in this package and internal/app) can
+// shrink it — at the production value, with ~30 resources, the
+// last-registered resource ("events") wouldn't start syncing for ~9s.
+var ResyncStaggerInterval = 300 * time.Millisecond
+
 // FactoryHandle wraps a SharedInformerFactory with per-informer stop channels.
 type FactoryHandle struct {
 	Factory      informers.SharedInformerFactory
@@ -133,7 +139,7 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 	// for the informer's lifetime) don't all land on the same instant — otherwise
 	// every resource's UPDATE events burst through the frontend's event handlers
 	// simultaneously every 30s, which can stall the UI on large clusters.
-	const resyncStagger = 300 * time.Millisecond
+	resyncStagger := ResyncStaggerInterval
 	for i, e := range informerList {
 		inf := e.inf
 		ch := h.stopChannels[e.resource].ch

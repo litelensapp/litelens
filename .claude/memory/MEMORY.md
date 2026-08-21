@@ -7,7 +7,7 @@
 - [Unified tray architecture](unified_tray_architecture.md) — built-in tray families (modification/pod) share one shell via discriminated union + registry; plugin-owned families merge in at runtime
 - [Modification tray architecture](modification_tray_architecture.md) — generic cross-resource bottom tray; how to add a new resource kind
 - [Detail drawer pattern](detail_drawer_pattern.md) — DetailDrawerContext + DetailBlock; full steps for adding a new drawer end-to-end
-- [go.work removal TODO](go_work_removal_todo.md) — root go.work is a temp shim until packages/core is first tagged; remove per steps once tagged
+- [go.work removal / packages/core replace](go_work_removal_todo.md) — no go.work file, but a bare `replace` for packages/core in go.mod is permanent by design (host+core ship as a pair, like @litelens/core workspace:*)
 
 ## Component & UI conventions
 

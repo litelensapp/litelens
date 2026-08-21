@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_HPAS } from "../../api/api.const";
 import type { HPA } from "../../api/resources";
 import { ListHPAs } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useHPAsUpdateEvents } from "../async-events/useHPAsUpdateEvents";
 
 export const useGetHPAs = (
@@ -16,12 +13,11 @@ export const useGetHPAs = (
   callback?: UseQueryCallback<HPA[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestHPAs = useHPAsUpdateEvents(effectiveNamespace);
+  const latestHPAs = useHPAsUpdateEvents(namespaces);
 
   const query = useQuery<HPA[], Error>({
     queryKey: [QUERY_KEY_HPAS, { context, namespaces }],
-    queryFn: () => ListHPAs(effectiveNamespace),
+    queryFn: () => ListHPAs(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

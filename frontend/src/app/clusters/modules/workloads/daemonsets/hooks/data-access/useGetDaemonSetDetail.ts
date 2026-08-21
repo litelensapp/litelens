@@ -7,7 +7,7 @@ import { GetDaemonSetByName } from "../../api/resources";
 import { useDaemonSetsUpdateEvents } from "../async-events/useDaemonSetsUpdateEvents";
 
 export const useGetDaemonSetDetail = (context: string, namespace: string, name: string) => {
-  const latestDaemonSets = useDaemonSetsUpdateEvents();
+  const latestDaemonSets = useDaemonSetsUpdateEvents([namespace]);
 
   const query = useQuery<DaemonSet, Error>({
     queryKey: [QUERY_KEY_DAEMONSET_DETAIL, { context, namespace, name }],

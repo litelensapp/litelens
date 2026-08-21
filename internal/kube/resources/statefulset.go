@@ -86,16 +86,23 @@ func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 	}
 }
 
-func ListStatefulSets(lister listersappsv1.StatefulSetLister, namespace string) ([]dto.StatefulSet, error) {
-	var sss []*appsv1.StatefulSet
-	var err error
-	if namespace == "" {
-		sss, err = lister.List(labels.Everything())
-	} else {
-		sss, err = lister.StatefulSets(namespace).List(labels.Everything())
-	}
+func ListStatefulSets(lister listersappsv1.StatefulSetLister, namespaces []string) ([]dto.StatefulSet, error) {
+	sss, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := sss[:0:0]
+		for _, ss := range sss {
+			if _, ok := nsSet[ss.Namespace]; ok {
+				filtered = append(filtered, ss)
+			}
+		}
+		sss = filtered
 	}
 	result := make([]dto.StatefulSet, len(sss))
 	for i, ss := range sss {

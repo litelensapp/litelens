@@ -210,16 +210,23 @@ func toHPA(hpa *autoscalingv2.HorizontalPodAutoscaler) dto.HPA {
 	}
 }
 
-func ListHPAs(lister listersautoscalingv2.HorizontalPodAutoscalerLister, namespace string) ([]dto.HPA, error) {
-	var hpas []*autoscalingv2.HorizontalPodAutoscaler
-	var err error
-	if namespace == "" {
-		hpas, err = lister.List(labels.Everything())
-	} else {
-		hpas, err = lister.HorizontalPodAutoscalers(namespace).List(labels.Everything())
-	}
+func ListHPAs(lister listersautoscalingv2.HorizontalPodAutoscalerLister, namespaces []string) ([]dto.HPA, error) {
+	hpas, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := hpas[:0:0]
+		for _, hpa := range hpas {
+			if _, ok := nsSet[hpa.Namespace]; ok {
+				filtered = append(filtered, hpa)
+			}
+		}
+		hpas = filtered
 	}
 	result := make([]dto.HPA, len(hpas))
 	for i, hpa := range hpas {

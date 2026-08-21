@@ -1,29 +1,51 @@
 import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { ServiceAccount } from "../../api/resources";
+import { mergeNamespaceScopedData } from "../../../../../shared/utils/eventMerging";
 
 // Data-only event hook: tracks the latest pushed serviceaccounts in local state.
 // Called directly from serviceaccount data-access hooks (useGetServiceAccounts, useGetServiceAccountDetail, useGetServiceAccountYAML)
 // to merge event-driven data locally without cache-wide side effects.
-// Pass a namespace to subscribe to the backend's namespace-scoped channel
-// ("serviceaccounts:{namespace}:update") instead of the cluster-wide "serviceaccounts:update" broadcast.
-export function useServiceAccountsUpdateEvents(namespace = ""): ServiceAccount[] {
+// Pass namespaces to subscribe to the backend's namespace-scoped channels
+// ("serviceaccounts:{namespace}:update" for each namespace) instead of the cluster-wide "serviceaccounts:update" broadcast.
+export function useServiceAccountsUpdateEvents(namespaces: string[] = []): ServiceAccount[] {
   const [latestServiceAccounts, setLatestServiceAccounts] = useState<ServiceAccount[]>([]);
-  const [prevNamespace, setPrevNamespace] = useState(namespace);
+  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
 
-  // Reset stale data from the previous namespace's channel before re-subscribing.
-  if (namespace !== prevNamespace) {
-    setPrevNamespace(namespace);
-    setLatestServiceAccounts([]);
+  // When namespace selection changes, filter down accumulated state to only selected namespaces.
+  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
+    setPrevNamespaces(namespaces);
+    if (namespaces.length > 0) {
+      const namespacesSet = new Set(namespaces);
+      setLatestServiceAccounts((prev) => prev.filter((sa) => namespacesSet.has(sa.Namespace)));
+    } else {
+      setLatestServiceAccounts([]);
+    }
   }
 
   useEffect(() => {
-    const eventName = namespace ? `serviceaccounts:${namespace}:update` : "serviceaccounts:update";
-    return EventsOn(eventName, (data: ServiceAccount[]) => {
-      startTransition(() => {
-        setLatestServiceAccounts(data);
+    if (namespaces.length === 0) {
+      return EventsOn("serviceaccounts:update", (data: ServiceAccount[]) => {
+        startTransition(() => {
+          setLatestServiceAccounts(data);
+        });
       });
-    });
-  }, [namespace]);
+    }
+
+    const unsubscribers: Array<() => void> = [];
+    for (const ns of namespaces) {
+      const eventName = `serviceaccounts:${ns}:update`;
+      const unsubscriber = EventsOn(eventName, (data: ServiceAccount[]) => {
+        startTransition(() => {
+          setLatestServiceAccounts((prev) => mergeNamespaceScopedData(prev, data, ns));
+        });
+      });
+      unsubscribers.push(unsubscriber);
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => unsub());
+    };
+  }, [namespaces]);
   return latestServiceAccounts;
 }

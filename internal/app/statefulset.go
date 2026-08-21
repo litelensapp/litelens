@@ -37,7 +37,7 @@ func (a *App) GetStatefulSetByName(namespace, name string) (dto.StatefulSet, err
 	return result, nil
 }
 
-func (a *App) ListStatefulSets(namespace string) ([]dto.StatefulSet, error) {
+func (a *App) ListStatefulSets(namespaces []string) ([]dto.StatefulSet, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -51,7 +51,7 @@ func (a *App) ListStatefulSets(namespace string) ([]dto.StatefulSet, error) {
 	if h.IsForbidden("statefulsets") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListStatefulSets(h.Factory.Apps().V1().StatefulSets().Lister(), namespace)
+	result, err := kubeResources.ListStatefulSets(h.Factory.Apps().V1().StatefulSets().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListStatefulSets: %v", err)
 		return []dto.StatefulSet{}, nil
@@ -105,7 +105,7 @@ func (a *App) DeleteStatefulSet(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitStatefulSets(namespace)
+	a.emitStatefulSets([]string{namespace})
 
 	return nil
 }
@@ -133,9 +133,11 @@ func (a *App) DeleteStatefulSets(items []dto.StatefulSetRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitStatefulSets(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitStatefulSets(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d statefulsets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -143,7 +145,7 @@ func (a *App) DeleteStatefulSets(items []dto.StatefulSetRef) error {
 	return nil
 }
 
-func (a *App) emitStatefulSets(namespace string) {
+func (a *App) emitStatefulSets(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -158,21 +160,21 @@ func (a *App) emitStatefulSets(namespace string) {
 		return
 	}
 	lister := h.Factory.Apps().V1().StatefulSets().Lister()
-	allData, err := kubeResources.ListStatefulSets(lister, "")
+	allData, err := kubeResources.ListStatefulSets(lister, nil)
 	if err != nil {
 		log.Printf("app: emitStatefulSets: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "statefulsets:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.StatefulSet, 0)
 		for _, ss := range allData {
-			if ss.Namespace == namespace {
+			if ss.Namespace == ns {
 				nsData = append(nsData, ss)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "statefulsets:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "statefulsets:"+ns+":update", nsData)
 	}
 }
 
@@ -220,7 +222,7 @@ func (a *App) UpdateStatefulSetYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update StatefulSet: %w", err)
 	}
 
-	a.emitStatefulSets(namespace)
+	a.emitStatefulSets([]string{namespace})
 
 	return nil
 }

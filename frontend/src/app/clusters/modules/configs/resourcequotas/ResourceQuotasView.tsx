@@ -29,7 +29,6 @@ import { useDeleteResourceQuotas } from "./hooks/data-mutation/useDeleteResource
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
-import { getEffectiveNamespace } from "../../../shared/utils/namespaceFiltering";
 import { ResourceQuotaCreationModal } from "./components/ResourceQuotaCreationModal";
 import { ResourceQuotaDeleteConfirmationModal } from "./components/ResourceQuotaDeleteConfirmationModal";
 
@@ -267,7 +266,7 @@ export const ResourceQuotasView: FC = () => {
       <ResourceQuotaCreationModal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        activeNamespace={getEffectiveNamespace(namespaces)}
+        activeNamespace={namespaces.length === 1 ? namespaces[0] : ""}
         activeContext={activeContext}
       />
     </div>

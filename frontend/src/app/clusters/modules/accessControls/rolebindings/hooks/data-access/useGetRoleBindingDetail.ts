@@ -7,7 +7,7 @@ import { GetRoleBindingByName } from "../../api/resources";
 import { useRoleBindingsUpdateEvents } from "../async-events/useRoleBindingsUpdateEvents";
 
 export const useGetRoleBindingDetail = (context: string, namespace: string, name: string) => {
-  const latestRoleBindings = useRoleBindingsUpdateEvents(namespace);
+  const latestRoleBindings = useRoleBindingsUpdateEvents([namespace]);
 
   const query = useQuery<RoleBinding, Error>({
     queryKey: [QUERY_KEY_ROLE_BINDING_DETAIL, { context, namespace, name }],

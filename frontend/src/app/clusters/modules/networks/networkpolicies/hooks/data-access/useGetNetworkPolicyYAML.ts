@@ -12,7 +12,7 @@ export function useGetNetworkPolicyYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents();
+  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_NETWORK_POLICY_YAML, { context, namespace, name }],

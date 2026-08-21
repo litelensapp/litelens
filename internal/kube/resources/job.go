@@ -196,16 +196,23 @@ func GetJobByName(lister listersbatchv1.JobLister, namespace, name string) (dto.
 	return toJob(job), nil
 }
 
-func ListJobs(lister listersbatchv1.JobLister, namespace string) ([]dto.Job, error) {
-	var jobs []*batchv1.Job
-	var err error
-	if namespace == "" {
-		jobs, err = lister.List(labels.Everything())
-	} else {
-		jobs, err = lister.Jobs(namespace).List(labels.Everything())
-	}
+func ListJobs(lister listersbatchv1.JobLister, namespaces []string) ([]dto.Job, error) {
+	jobs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := jobs[:0:0]
+		for _, job := range jobs {
+			if _, ok := nsSet[job.Namespace]; ok {
+				filtered = append(filtered, job)
+			}
+		}
+		jobs = filtered
 	}
 	result := make([]dto.Job, len(jobs))
 	for i, j := range jobs {

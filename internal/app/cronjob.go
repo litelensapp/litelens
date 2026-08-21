@@ -38,7 +38,7 @@ func (a *App) GetCronJobByName(namespace, name string) (dto.CronJob, error) {
 	return result, nil
 }
 
-func (a *App) ListCronJobs(namespace string) ([]dto.CronJob, error) {
+func (a *App) ListCronJobs(namespaces []string) ([]dto.CronJob, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -52,7 +52,7 @@ func (a *App) ListCronJobs(namespace string) ([]dto.CronJob, error) {
 	if h.IsForbidden("cronjobs") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListCronJobs(h.Factory.Batch().V1().CronJobs().Lister(), namespace)
+	result, err := kubeResources.ListCronJobs(h.Factory.Batch().V1().CronJobs().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListCronJobs: %v", err)
 		return []dto.CronJob{}, nil
@@ -89,7 +89,7 @@ func (a *App) GetCronJobsSummary(namespace string) (dto.CronJobSummary, error) {
 	return kubeResources.SummarizeCronJobs(cjs), nil
 }
 
-func (a *App) emitCronJobs(namespace string) {
+func (a *App) emitCronJobs(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -104,21 +104,21 @@ func (a *App) emitCronJobs(namespace string) {
 		return
 	}
 	lister := h.Factory.Batch().V1().CronJobs().Lister()
-	allData, err := kubeResources.ListCronJobs(lister, "")
+	allData, err := kubeResources.ListCronJobs(lister, nil)
 	if err != nil {
 		log.Printf("app: emitCronJobs: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "cronjobs:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.CronJob, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "cronjobs:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "cronjobs:"+ns+":update", nsData)
 	}
 }
 
@@ -139,7 +139,7 @@ func (a *App) DeleteCronJob(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitCronJobs(namespace)
+	a.emitCronJobs([]string{namespace})
 
 	return nil
 }
@@ -167,9 +167,11 @@ func (a *App) DeleteCronJobs(items []dto.CronJobRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitCronJobs(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitCronJobs(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d cronjobs: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -221,7 +223,7 @@ func (a *App) UpdateCronJobYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update CronJob: %w", err)
 	}
 
-	a.emitCronJobs(namespace)
+	a.emitCronJobs([]string{namespace})
 
 	return nil
 }

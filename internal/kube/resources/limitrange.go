@@ -17,16 +17,23 @@ func toLimitRange(lr *corev1.LimitRange) dto.LimitRange {
 	}
 }
 
-func ListLimitRanges(lister listerscorev1.LimitRangeLister, namespace string) ([]dto.LimitRange, error) {
-	var lrs []*corev1.LimitRange
-	var err error
-	if namespace == "" {
-		lrs, err = lister.List(labels.Everything())
-	} else {
-		lrs, err = lister.LimitRanges(namespace).List(labels.Everything())
-	}
+func ListLimitRanges(lister listerscorev1.LimitRangeLister, namespaces []string) ([]dto.LimitRange, error) {
+	lrs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := lrs[:0:0]
+		for _, lr := range lrs {
+			if _, ok := nsSet[lr.Namespace]; ok {
+				filtered = append(filtered, lr)
+			}
+		}
+		lrs = filtered
 	}
 	result := make([]dto.LimitRange, len(lrs))
 	for i, lr := range lrs {

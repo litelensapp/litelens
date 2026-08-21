@@ -7,8 +7,9 @@ import (
 	"testing"
 )
 
-// TestLoadFreshInstall tests that Load() returns zero-value Settings with no error
-// when no settings file exists anywhere, and no file is created until Save() is called.
+// TestLoadFreshInstall tests that Load() returns zero-value Settings (aside
+// from the provisioned default marketplace repository) with no error when no
+// settings file exists anywhere, and no file is created until Save() is called.
 func TestLoadFreshInstall(t *testing.T) {
 	// Create a temporary home directory
 	tmpHome := t.TempDir()
@@ -24,9 +25,12 @@ func TestLoadFreshInstall(t *testing.T) {
 		t.Fatalf("Load() failed on fresh install: %v", err)
 	}
 
-	// Verify zero-value Settings
-	if s.AccessToken != "" || len(s.MarketplaceRepositories) != 0 || s.ShellPath != "" {
+	// Verify zero-value Settings, aside from the provisioned default marketplace
+	if s.AccessToken != "" || s.ShellPath != "" {
 		t.Errorf("Load() returned non-zero Settings on fresh install: %+v", s)
+	}
+	if len(s.MarketplaceRepositories) != 1 || s.MarketplaceRepositories[0].URL != GetMarketplaceBaseURL() {
+		t.Errorf("Load() did not provision the default marketplace repository on fresh install: %+v", s.MarketplaceRepositories)
 	}
 
 	// Verify no file was created
@@ -151,7 +155,7 @@ func TestUnmarshalAndMigrate(t *testing.T) {
 			expectedFirstRepoToken:     "token_marketplace",
 		},
 		{
-			name: "empty marketplaceRepoURL not migrated",
+			name: "empty marketplaceRepoURL falls back to the provisioned default marketplace",
 			rawJSON: `{
   "accessToken": "token2",
   "marketplaceRepoURL": "",
@@ -159,7 +163,8 @@ func TestUnmarshalAndMigrate(t *testing.T) {
   "marketplaceAccessToken": ""
 }`,
 			expectedAccessToken:       "token2",
-			expectedRepositoriesCount: 0,
+			expectedRepositoriesCount: 1,
+			expectedFirstRepoURL:      GetMarketplaceBaseURL(),
 		},
 		{
 			name: "new array format preserved",

@@ -68,16 +68,23 @@ func toLease(l *coordinationv1.Lease) dto.Lease {
 	}
 }
 
-func ListLeases(lister listerscoordinationv1.LeaseLister, namespace string) ([]dto.Lease, error) {
-	var leases []*coordinationv1.Lease
-	var err error
-	if namespace == "" {
-		leases, err = lister.List(labels.Everything())
-	} else {
-		leases, err = lister.Leases(namespace).List(labels.Everything())
-	}
+func ListLeases(lister listerscoordinationv1.LeaseLister, namespaces []string) ([]dto.Lease, error) {
+	leases, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := leases[:0:0]
+		for _, lease := range leases {
+			if _, ok := nsSet[lease.Namespace]; ok {
+				filtered = append(filtered, lease)
+			}
+		}
+		leases = filtered
 	}
 	result := make([]dto.Lease, len(leases))
 	for i, l := range leases {

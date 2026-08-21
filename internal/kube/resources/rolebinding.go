@@ -80,16 +80,23 @@ func GetRoleBindingByName(lister listersrbacv1.RoleBindingLister, namespace, nam
 	return toRoleBinding(rb), nil
 }
 
-func ListRoleBindings(lister listersrbacv1.RoleBindingLister, namespace string) ([]dto.RoleBinding, error) {
-	var rbs []*rbacv1.RoleBinding
-	var err error
-	if namespace == "" {
-		rbs, err = lister.List(labels.Everything())
-	} else {
-		rbs, err = lister.RoleBindings(namespace).List(labels.Everything())
-	}
+func ListRoleBindings(lister listersrbacv1.RoleBindingLister, namespaces []string) ([]dto.RoleBinding, error) {
+	rbs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := rbs[:0:0]
+		for _, rb := range rbs {
+			if _, ok := nsSet[rb.Namespace]; ok {
+				filtered = append(filtered, rb)
+			}
+		}
+		rbs = filtered
 	}
 	result := make([]dto.RoleBinding, len(rbs))
 	for i, rb := range rbs {

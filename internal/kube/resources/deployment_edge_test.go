@@ -57,7 +57,7 @@ func TestToDeployment_TolerationSecondsNil_StoresNil(t *testing.T) {
 // — ListDeployments / GetDeploymentByName edge cases —
 
 func TestListDeployments_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
-	result, err := ListDeployments(newDeploymentLister(), "")
+	result, err := ListDeployments(newDeploymentLister(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestListDeployments_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
 
 func TestListDeployments_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListDeployments(&errorDeploymentLister{err: sentinel}, "")
+	_, err := ListDeployments(&errorDeploymentLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

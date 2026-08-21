@@ -16,19 +16,12 @@ import { config } from "@wailsjs/go/models";
 const getSettingsMock = vi.hoisted(() => vi.fn());
 const saveSettingsMock = vi.hoisted(() => vi.fn());
 const saveMarketplaceRepositoriesMock = vi.hoisted(() => vi.fn());
-const savePluginsDirMock = vi.hoisted(() => vi.fn());
-const usePickPluginsDirMock = vi.hoisted(() => vi.fn());
 const renderSuccessToastMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@wailsjs/go/app/App", () => ({
   GetSettings: getSettingsMock,
   SaveSettings: saveSettingsMock,
   SaveMarketplaceRepositories: saveMarketplaceRepositoriesMock,
-  SavePluginsDir: savePluginsDirMock,
-}));
-
-vi.mock("../hooks/data-mutation/usePickPluginsDir", () => ({
-  usePickPluginsDir: usePickPluginsDirMock,
 }));
 
 vi.mock("@litelens/design-system", async (importOriginal) => {
@@ -52,7 +45,6 @@ function makeSettings(repos: config.MarketplaceRepository[]): config.Settings {
     shellPath: "/bin/bash",
     kubeconfigPaths: [],
     locale: "UTC",
-    pluginsDir: "/default/plugins",
     marketplaceRepositories: repos,
   });
 }
@@ -64,7 +56,6 @@ afterEach(() => {
 
 describe("MarketplaceContent remount with real react-query (no hook mocking)", () => {
   it("shows saved rows after unmount+remount (tab switch) using the same QueryClient, with realistic IPC latency", async () => {
-    usePickPluginsDirMock.mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue("") });
     renderSuccessToastMock.mockImplementation(() => {});
 
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

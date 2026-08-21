@@ -126,16 +126,23 @@ func GetReplicaSetByName(lister listersappsv1.ReplicaSetLister, namespace, name 
 	return toReplicaSet(rs), nil
 }
 
-func ListReplicaSets(lister listersappsv1.ReplicaSetLister, namespace string) ([]dto.ReplicaSet, error) {
-	var rss []*appsv1.ReplicaSet
-	var err error
-	if namespace == "" {
-		rss, err = lister.List(labels.Everything())
-	} else {
-		rss, err = lister.ReplicaSets(namespace).List(labels.Everything())
-	}
+func ListReplicaSets(lister listersappsv1.ReplicaSetLister, namespaces []string) ([]dto.ReplicaSet, error) {
+	rss, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := rss[:0:0]
+		for _, rs := range rss {
+			if _, ok := nsSet[rs.Namespace]; ok {
+				filtered = append(filtered, rs)
+			}
+		}
+		rss = filtered
 	}
 	result := make([]dto.ReplicaSet, len(rss))
 	for i, rs := range rss {

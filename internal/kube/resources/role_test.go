@@ -51,7 +51,7 @@ func TestListRoles_SingleNamespace(t *testing.T) {
 	r := makeRole("reader", "default")
 	lister := newRoleLister(r)
 
-	result, err := ListRoles(lister, "default")
+	result, err := ListRoles(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestListRoles_EmptyNamespaceReturnsAll(t *testing.T) {
 	r2 := makeRole("r-b", "ns-b")
 	lister := newRoleLister(r1, r2)
 
-	result, err := ListRoles(lister, "")
+	result, err := ListRoles(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestListRoles_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListRoles_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newRoleLister()
 
-	result, err := ListRoles(lister, "")
+	result, err := ListRoles(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestListRoles_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListRoles_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListRoles(&errorRoleLister{err: sentinel}, "")
+	_, err := ListRoles(&errorRoleLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -102,7 +102,7 @@ func TestListRoles_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListRoles_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListRoles(&errorRoleLister{err: sentinel}, "default")
+	_, err := ListRoles(&errorRoleLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -142,7 +142,7 @@ func TestToRole_WithRules(t *testing.T) {
 	r := makeRole("role", "default")
 	r.Rules = []rbacv1.PolicyRule{
 		{
-			APIGroups: []string{""},
+			APIGroups: nil,
 			Resources: []string{"pods"},
 			Verbs:     []string{"get", "list"},
 		},
@@ -161,7 +161,7 @@ func TestToRole_NilResourcesSlice_EmptySlice(t *testing.T) {
 	r := makeRole("role", "default")
 	r.Rules = []rbacv1.PolicyRule{
 		{
-			APIGroups: []string{""},
+			APIGroups: nil,
 			Resources: nil,
 			Verbs:     []string{"create"},
 		},
@@ -180,7 +180,7 @@ func TestGetRoleByName_Success(t *testing.T) {
 	r := makeRole("reader", "default")
 	r.Rules = []rbacv1.PolicyRule{
 		{
-			APIGroups: []string{""},
+			APIGroups: nil,
 			Resources: []string{"pods"},
 			Verbs:     []string{"get"},
 		},

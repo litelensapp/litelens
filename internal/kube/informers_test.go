@@ -13,6 +13,15 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
+// TestMain shrinks the informer-start stagger for the whole package's test run.
+// At the production interval (300ms), the last-registered resource ("events",
+// index 30) doesn't start syncing for ~9s, which dominated `go test` runtime
+// without exercising anything the stagger value itself is meant to test.
+func TestMain(m *testing.M) {
+	ResyncStaggerInterval = time.Millisecond
+	m.Run()
+}
+
 // TestNewFactoryHandleAndGetSyncedChan verifies that NewFactoryHandle returns
 // quickly (non-blocking) and that GetSyncedChan allows callers to wait for
 // per-resource cache sync before reading from listers.

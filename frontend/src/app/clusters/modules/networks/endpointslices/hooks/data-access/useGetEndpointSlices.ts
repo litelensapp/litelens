@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_ENDPOINT_SLICES } from "../../api/api.const";
 import type { EndpointSlice } from "../../api/resources";
 import { ListEndpointSlices } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useEndpointSlicesUpdateEvents } from "../async-events/useEndpointSlicesUpdateEvents";
 
 export const useGetEndpointSlices = (
@@ -16,12 +13,11 @@ export const useGetEndpointSlices = (
   callback?: UseQueryCallback<EndpointSlice[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestEndpointSlices = useEndpointSlicesUpdateEvents();
+  const latestEndpointSlices = useEndpointSlicesUpdateEvents(namespaces);
 
   const query = useQuery<EndpointSlice[], Error>({
     queryKey: [QUERY_KEY_ENDPOINT_SLICES, { context, namespaces }],
-    queryFn: () => ListEndpointSlices(effectiveNamespace),
+    queryFn: () => ListEndpointSlices(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

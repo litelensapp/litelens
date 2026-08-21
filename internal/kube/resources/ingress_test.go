@@ -115,7 +115,7 @@ func TestListIngresses_LoadBalancers(t *testing.T) {
 			ing := makeIngress("test", "default", tt.lbs, nil)
 			lister := newIngressLister(ing)
 
-			result, err := ListIngresses(lister, "default")
+			result, err := ListIngresses(lister, []string{"default"})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -186,7 +186,7 @@ func TestListIngresses_Rules(t *testing.T) {
 			ing := makeIngress("test", "default", nil, tt.rules)
 			lister := newIngressLister(ing)
 
-			result, err := ListIngresses(lister, "default")
+			result, err := ListIngresses(lister, []string{"default"})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -204,7 +204,7 @@ func TestListIngresses_NameNamespace(t *testing.T) {
 	ing := makeIngress("my-ingress", "production", nil, nil)
 	lister := newIngressLister(ing)
 
-	result, err := ListIngresses(lister, "production")
+	result, err := ListIngresses(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestListIngresses_EmptyNamespaceReturnsAll(t *testing.T) {
 	ing2 := makeIngress("ingress-b", "ns-b", nil, nil)
 	lister := newIngressLister(ing1, ing2)
 
-	result, err := ListIngresses(lister, "")
+	result, err := ListIngresses(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestListIngresses_SpecificNamespaceFilters(t *testing.T) {
 	ing2 := makeIngress("ingress-b", "ns-b", nil, nil)
 	lister := newIngressLister(ing1, ing2)
 
-	result, err := ListIngresses(lister, "ns-a")
+	result, err := ListIngresses(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestToIngress_Age_NonZeroTimestamp_IsNonEmpty(t *testing.T) {
 // ListIngresses with an empty lister must return an empty (non-nil) slice, no error.
 func TestListIngresses_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newIngressLister()
-	result, err := ListIngresses(lister, "")
+	result, err := ListIngresses(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestListIngresses_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 // Error returned by the cluster-scoped List must propagate unchanged.
 func TestListIngresses_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListIngresses(&errorIngressLister{err: sentinel}, "")
+	_, err := ListIngresses(&errorIngressLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -358,7 +358,7 @@ func TestListIngresses_ErrorPropagation_ClusterScope(t *testing.T) {
 // Error returned by the namespaced List must propagate unchanged.
 func TestListIngresses_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListIngresses(&errorIngressLister{err: sentinel}, "default")
+	_, err := ListIngresses(&errorIngressLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

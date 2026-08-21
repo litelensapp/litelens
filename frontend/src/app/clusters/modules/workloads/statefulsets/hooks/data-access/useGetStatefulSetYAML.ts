@@ -12,7 +12,7 @@ export function useGetStatefulSetYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestStatefulSets = useStatefulSetsUpdateEvents();
+  const latestStatefulSets = useStatefulSetsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_STATEFULSET_YAML, { context, namespace, name }],

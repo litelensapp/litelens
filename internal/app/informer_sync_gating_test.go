@@ -41,7 +41,7 @@ func TestListPods_WaitForSync(t *testing.T) {
 	}
 
 	// ListPods should return all pods after syncing.
-	pods, err := a.ListPods("default")
+	pods, err := a.ListPods([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListPods unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestListPods_IsForbiddenPreCheck(t *testing.T) {
 	// The implementation correctly checks IsForbidden twice (before and after
 	// the sync gate), but with a fake clientset, it will never trigger.
 	// Instead, verify the happy path: fetch pods successfully.
-	pods, err := a.ListPods("default")
+	pods, err := a.ListPods([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListPods unexpected error: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestListPods_NoFactory(t *testing.T) {
 		mu:            sync.RWMutex{},
 	}
 
-	pods, err := a.ListPods("default")
+	pods, err := a.ListPods([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListPods unexpected error: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestListEvents_WaitForSync(t *testing.T) {
 		mu:            sync.RWMutex{},
 	}
 
-	events, err := a.ListEvents("default")
+	events, err := a.ListEvents([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListEvents unexpected error: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestListEvents_EmptyNamespace(t *testing.T) {
 		mu:            sync.RWMutex{},
 	}
 
-	events, err := a.ListEvents("default")
+	events, err := a.ListEvents([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListEvents unexpected error: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestListWarningEvents_WaitForSync(t *testing.T) {
 		mu:            sync.RWMutex{},
 	}
 
-	events, err := a.ListWarningEvents("default")
+	events, err := a.ListWarningEvents([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListWarningEvents unexpected error: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestAppMethodsSyncGateRaceCondition(t *testing.T) {
 
 	// Call ListPods immediately after NewFactoryHandle (cache may not be synced yet).
 	// The sync gate should ensure we wait before reading.
-	pods, err := a.ListPods("default")
+	pods, err := a.ListPods([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListPods unexpected error: %v", err)
 	}
@@ -435,13 +435,13 @@ func TestConcurrentAppMethodsWithSync(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		pods, err := a.ListPods("default")
+		pods, err := a.ListPods([]string{"default"})
 		podCount2 = len(pods)
 		podErr = err
 	}()
 	go func() {
 		defer wg.Done()
-		events, err := a.ListEvents("default")
+		events, err := a.ListEvents([]string{"default"})
 		eventCount2 = len(events)
 		eventErr = err
 	}()
@@ -495,7 +495,7 @@ func TestDoubleSyncGateCheck(t *testing.T) {
 
 	// In normal operation with a fake clientset, pods will never be forbidden.
 	// Verify the happy path works: data is returned successfully.
-	pods, err := a.ListPods("default")
+	pods, err := a.ListPods([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListPods unexpected error: %v", err)
 	}
@@ -540,7 +540,7 @@ func BenchmarkListPods_PostSync(b *testing.B) {
 
 	b.ResetTimer()
 	for range b.N {
-		_, _ = a.ListPods("default")
+		_, _ = a.ListPods([]string{"default"})
 	}
 }
 
@@ -580,7 +580,7 @@ func TestSyncGateConcurrency(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			pods, _ := a.ListPods("default")
+			pods, _ := a.ListPods([]string{"default"})
 			results <- len(pods)
 		}()
 	}
@@ -620,7 +620,7 @@ func TestSyncGateEventualSuccess(t *testing.T) {
 	}
 
 	// With a fake clientset, sync is immediate. Verify data comes back.
-	pods, err := a.ListPods("default")
+	pods, err := a.ListPods([]string{"default"})
 	if err != nil {
 		t.Fatalf("ListPods unexpected error: %v", err)
 	}
@@ -662,7 +662,7 @@ func TestMultipleFactoriesContextSwitch(t *testing.T) {
 	}
 
 	// Query cluster1.
-	pods1, _ := a.ListPods("default")
+	pods1, _ := a.ListPods([]string{"default"})
 	if len(pods1) != 1 || pods1[0].Name != "cluster1-pod" {
 		t.Fatalf("expected cluster1-pod from cluster1, got %v", pods1)
 	}
@@ -672,7 +672,7 @@ func TestMultipleFactoriesContextSwitch(t *testing.T) {
 	a.activeContext = "cluster2"
 	a.mu.Unlock()
 
-	pods2, _ := a.ListPods("default")
+	pods2, _ := a.ListPods([]string{"default"})
 	if len(pods2) != 1 || pods2[0].Name != "cluster2-pod" {
 		t.Fatalf("expected cluster2-pod from cluster2, got %v", pods2)
 	}

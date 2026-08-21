@@ -7,7 +7,7 @@ import { GetConfigMapByName } from "../../api/resources";
 import { useConfigMapsUpdateEvents } from "../async-events/useConfigMapsUpdateEvents";
 
 export const useGetConfigMapDetail = (context: string, namespace: string, name: string) => {
-  const latestConfigMaps = useConfigMapsUpdateEvents(namespace);
+  const latestConfigMaps = useConfigMapsUpdateEvents([namespace]);
   const query = useQuery<ConfigMap, Error>({
     queryKey: [QUERY_KEY_CONFIGMAP_DETAIL, { context, namespace, name }],
     queryFn: () => GetConfigMapByName(namespace, name),

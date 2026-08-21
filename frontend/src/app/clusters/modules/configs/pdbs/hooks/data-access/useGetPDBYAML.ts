@@ -7,7 +7,7 @@ import { usePodDisruptionBudgetsUpdateEvents } from "../async-events/usePodDisru
 
 export function useGetPDBYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents(namespace);
+  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_PDB_YAML, { context, namespace, name }],

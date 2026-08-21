@@ -7,7 +7,7 @@ import { GetLeaseByName } from "../../api/resources";
 import { useLeasesUpdateEvents } from "../async-events/useLeasesUpdateEvents";
 
 export const useGetLeaseByName = (context: string, namespace: string, name: string) => {
-  const latestLeases = useLeasesUpdateEvents(namespace);
+  const latestLeases = useLeasesUpdateEvents([namespace]);
 
   const query = useQuery<Lease, Error>({
     queryKey: [QUERY_KEY_LEASE_DETAIL, { context, namespace, name }],

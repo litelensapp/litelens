@@ -31,16 +31,23 @@ func GetServiceAccountByName(saLister listerscorev1.ServiceAccountLister, namesp
 	return toServiceAccount(sa), nil
 }
 
-func ListServiceAccounts(saLister listerscorev1.ServiceAccountLister, namespace string) ([]dto.ServiceAccount, error) {
-	var sas []*corev1.ServiceAccount
-	var err error
-	if namespace == "" {
-		sas, err = saLister.List(labels.Everything())
-	} else {
-		sas, err = saLister.ServiceAccounts(namespace).List(labels.Everything())
-	}
+func ListServiceAccounts(saLister listerscorev1.ServiceAccountLister, namespaces []string) ([]dto.ServiceAccount, error) {
+	sas, err := saLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := sas[:0:0]
+		for _, sa := range sas {
+			if _, ok := nsSet[sa.Namespace]; ok {
+				filtered = append(filtered, sa)
+			}
+		}
+		sas = filtered
 	}
 	result := make([]dto.ServiceAccount, len(sas))
 	for i, sa := range sas {

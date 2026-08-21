@@ -6,22 +6,18 @@ import { QUERY_KEY_PODS } from "../../api/api.const";
 import type { Pod } from "../../api/resources";
 import { ListPods } from "../../api/resources";
 import { usePodsUpdateEvents } from "../async-events/usePodsUpdateEvents";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 
 export const useGetPods = (
   input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<Pod[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestPods = usePodsUpdateEvents(effectiveNamespace);
+  const latestPods = usePodsUpdateEvents(namespaces);
 
   const query = useQuery<Pod[], Error>({
     queryKey: [QUERY_KEY_PODS, { context, namespaces }],
-    queryFn: () => ListPods(effectiveNamespace),
+    queryFn: () => ListPods(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

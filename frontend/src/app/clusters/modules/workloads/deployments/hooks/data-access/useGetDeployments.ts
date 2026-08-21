@@ -6,22 +6,18 @@ import { QUERY_KEY_DEPLOYMENTS } from "../../api/api.const";
 import type { Deployment } from "../../api/resources";
 import { ListDeployments } from "../../api/resources";
 import { useDeploymentsUpdateEvents } from "../async-events/useDeploymentsUpdateEvents";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 
 export const useGetDeployments = (
   input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<Deployment[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestDeployments = useDeploymentsUpdateEvents();
+  const latestDeployments = useDeploymentsUpdateEvents(namespaces);
 
   const query = useQuery<Deployment[], Error>({
     queryKey: [QUERY_KEY_DEPLOYMENTS, { context, namespaces }],
-    queryFn: () => ListDeployments(effectiveNamespace),
+    queryFn: () => ListDeployments(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/packages/core/dto"
 )
 
 // TestGetPluginsFromMultipleMarketplaces verifies that GetPluginsFromMarketplace
@@ -114,53 +114,43 @@ func TestGetPluginsFromMultipleMarketplaces(t *testing.T) {
 			app.settings.MarketplaceRepositories[0].AccessToken)
 	}
 
-	// Simulate what GetPluginsFromMarketplace does: collect sources from settings.
-	// Settings.AccessToken (reserved for app update-check downloads) must never
-	// leak into marketplace source tokens.
+	// Simulate what GetPluginsFromMarketplace does: collect sources purely from
+	// settings.MarketplaceRepositories (no implicit built-in default source —
+	// config.Load provisions the official marketplace as a regular
+	// MarketplaceRepositories entry on first run instead). Settings.AccessToken
+	// (reserved for app update-check downloads) must never leak into
+	// marketplace source tokens.
 	type source struct {
 		sourceURL string
 		token     string
 	}
 
-	sources := make([]source, 1+len(app.settings.MarketplaceRepositories))
-	// Default marketplace source (public, no token)
-	sources[0] = source{
-		sourceURL: "",
-		token:     "",
-	}
-	// User-added repository sources use their own token only
+	sources := make([]source, len(app.settings.MarketplaceRepositories))
 	for i, repo := range app.settings.MarketplaceRepositories {
-		sources[1+i] = source{
+		sources[i] = source{
 			sourceURL: repo.URL,
 			token:     repo.AccessToken,
 		}
 	}
 
 	// Verify sources have correct tokens
-	if len(sources) != 2 {
-		t.Errorf("expected 2 sources, got %d", len(sources))
-	}
-
-	// Default source
-	if sources[0].sourceURL != "" {
-		t.Errorf("default source URL should be empty, got %q", sources[0].sourceURL)
-	}
-	if sources[0].token != "" {
-		t.Errorf("default source token should be empty, got %q", sources[0].token)
+	if len(sources) != 1 {
+		t.Errorf("expected 1 source, got %d", len(sources))
 	}
 
 	// User source
-	if sources[1].sourceURL != userRepoURL {
-		t.Errorf("user source URL mismatch: got %q, expected %q", sources[1].sourceURL, userRepoURL)
+	if sources[0].sourceURL != userRepoURL {
+		t.Errorf("user source URL mismatch: got %q, expected %q", sources[0].sourceURL, userRepoURL)
 	}
-	if sources[1].token != "ghp_user_repo" {
-		t.Errorf("user source token should be ghp_user_repo, got %q", sources[1].token)
+	if sources[0].token != "ghp_user_repo" {
+		t.Errorf("user source token should be ghp_user_repo, got %q", sources[0].token)
 	}
 }
 
 // TestGetPluginsFromMarketplaceSkipsDisabledRepos verifies that repositories
-// with Disabled=true are excluded from the fetch sources, while the default
-// marketplace source and enabled user repos are still included.
+// with Disabled=true are excluded from the fetch sources, while enabled
+// repos are still included. There is no implicit built-in default source —
+// only entries actually present in MarketplaceRepositories are considered.
 func TestGetPluginsFromMarketplaceSkipsDisabledRepos(t *testing.T) {
 	app := &App{
 		settings: config.Settings{
@@ -172,15 +162,13 @@ func TestGetPluginsFromMarketplaceSkipsDisabledRepos(t *testing.T) {
 	}
 
 	// Simulate what GetPluginsFromMarketplace does: build sources, skipping
-	// disabled repos (default marketplace source is always included).
+	// disabled repos.
 	type source struct {
 		sourceURL string
 		token     string
 	}
 
-	sources := []source{
-		{sourceURL: "", token: ""},
-	}
+	sources := []source{}
 	for _, repo := range app.settings.MarketplaceRepositories {
 		if repo.Disabled {
 			continue
@@ -188,14 +176,11 @@ func TestGetPluginsFromMarketplaceSkipsDisabledRepos(t *testing.T) {
 		sources = append(sources, source{sourceURL: repo.URL, token: repo.AccessToken})
 	}
 
-	if len(sources) != 2 {
-		t.Fatalf("expected 2 sources (default + enabled repo), got %d", len(sources))
+	if len(sources) != 1 {
+		t.Fatalf("expected 1 source (enabled repo only), got %d", len(sources))
 	}
-	if sources[0].sourceURL != "" {
-		t.Errorf("expected default source first, got %q", sources[0].sourceURL)
-	}
-	if sources[1].sourceURL != "https://github.com/user/enabled-repo" {
-		t.Errorf("expected enabled repo in sources, got %q", sources[1].sourceURL)
+	if sources[0].sourceURL != "https://github.com/user/enabled-repo" {
+		t.Errorf("expected enabled repo in sources, got %q", sources[0].sourceURL)
 	}
 	for _, s := range sources {
 		if s.sourceURL == "https://github.com/user/disabled-repo" {
@@ -321,9 +306,11 @@ func TestManifestSourceURLAssignment(t *testing.T) {
 }
 
 // TestGetPluginsFromMarketplaceDefaults verifies that when MarketplaceRepositories
-// is empty, the app still fetches from the default marketplace, using an empty token
-// (the general AccessToken is reserved for app update-check downloads and must never
-// be used for marketplace fetches, even for the default source).
+// is empty, GetPluginsFromMarketplace fetches nothing and returns no error — there
+// is no implicit built-in default source to fall back to. The official marketplace
+// only appears here because config.Load provisions it as a regular
+// MarketplaceRepositories entry on first run (see config.withDefaultMarketplaceRepo);
+// once that entry (or any entry) is removed by the user, it stays removed.
 func TestGetPluginsFromMarketplaceDefaults(t *testing.T) {
 	app := &App{
 		settings: config.Settings{
@@ -332,24 +319,24 @@ func TestGetPluginsFromMarketplaceDefaults(t *testing.T) {
 		},
 	}
 
-	app.mu.RLock()
-	repoCount := len(app.settings.MarketplaceRepositories)
-	app.mu.RUnlock()
+	t.Setenv("MARKETPLACE_ENABLED", "true")
 
-	if repoCount != 0 {
-		t.Errorf("expected no user repos, got %d", repoCount)
+	result := app.GetPluginsFromMarketplace()
+
+	if len(result.Manifests) != 0 {
+		t.Errorf("expected no manifests with no configured repositories, got %d", len(result.Manifests))
 	}
-
-	// GetPluginsFromMarketplace should still create a source for the default
-	// marketplace (empty sourceURL, empty token — never the general AccessToken)
+	if len(result.Errors) != 0 {
+		t.Errorf("expected no errors with no configured repositories, got %v", result.Errors)
+	}
 }
 
-// TestPartialManifestResultsOnPluginError verifies that when a single plugin
-// manifest fetch fails within a source, the goroutine continues to fetch
-// remaining plugins (instead of returning early), so partial results are NOT
-// silently discarded. Errors are accumulated in a map instead of sent
-// immediately, and exactly one fetchResult is sent per source with both
-// successful manifests AND accumulated per-plugin errors.
+// TestPartialManifestResultsOnPluginError verifies that DiscoverPluginIDs and
+// FetchManifest, run together against a manifest.json index, resolve every
+// plugin embedded in the index. (Per-plugin fetch failure is no longer a
+// reachable case: the index embeds each plugin's complete manifest directly,
+// so DiscoverPluginIDs and FetchManifest read from the same source with no
+// separate network call that could fail independently.)
 func TestPartialManifestResultsOnPluginError(t *testing.T) {
 	var testServer *httptest.Server
 	testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -360,19 +347,9 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 				TagName: "v1.0.0",
 				Assets: []dto.GitHubAsset{
 					{
-						Name:               "litelens-plugin-working1-manifest.json",
-						URL:                testServer.URL + "/manifest-working1",
-						BrowserDownloadURL: testServer.URL + "/manifest-working1",
-					},
-					{
-						Name:               "litelens-plugin-broken-manifest.json",
-						URL:                testServer.URL + "/manifest-broken",
-						BrowserDownloadURL: testServer.URL + "/manifest-broken",
-					},
-					{
-						Name:               "litelens-plugin-working2-manifest.json",
-						URL:                testServer.URL + "/manifest-working2",
-						BrowserDownloadURL: testServer.URL + "/manifest-working2",
+						Name:               "manifest.json",
+						URL:                testServer.URL + "/manifest-index",
+						BrowserDownloadURL: testServer.URL + "/manifest-index",
 					},
 				},
 			}
@@ -380,31 +357,19 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 			json.NewEncoder(w).Encode(release)
 			return
 		}
-		// Serve 1st plugin manifest (success)
-		if r.URL.Path == "/manifest-working1" {
-			manifest := dto.Manifest{
-				ID:      "working1",
-				Name:    "Working Plugin 1",
-				Version: "1.0.0",
+		// Serve the manifest index: two valid plugins, one deliberately invalid
+		// ID (fails ValidPluginID and so is skipped by DiscoverPluginIDs) to
+		// simulate a plugin entry that a single-source fetch can't resolve.
+		if r.URL.Path == "/manifest-index" {
+			index := dto.ManifestIndex{
+				ReleaseTag: "v1.0.0",
+				Plugins: []dto.Manifest{
+					{ID: "working1", Name: "Working Plugin 1", Version: "1.0.0"},
+					{ID: "working2", Name: "Working Plugin 2", Version: "1.0.0"},
+				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(manifest)
-			return
-		}
-		// Serve 2nd plugin manifest (failure)
-		if r.URL.Path == "/manifest-broken" {
-			http.Error(w, "manifest download failed", http.StatusInternalServerError)
-			return
-		}
-		// Serve 3rd plugin manifest (success)
-		if r.URL.Path == "/manifest-working2" {
-			manifest := dto.Manifest{
-				ID:      "working2",
-				Name:    "Working Plugin 2",
-				Version: "1.0.0",
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(manifest)
+			json.NewEncoder(w).Encode(index)
 			return
 		}
 		http.NotFound(w, r)
@@ -449,13 +414,23 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 			return
 		}
 
-		pluginIDs := plugin.DiscoverPluginIDs(assets)
+		index, err := plugin.FetchManifestIndex(context.Background(), assets, src.token)
+		if err != nil {
+			resultsChan <- fetchResult{
+				manifests: nil,
+				sourceURL: src.sourceURL,
+				errors:    map[string]string{sourceLabel + ":manifest-index": err.Error()},
+			}
+			return
+		}
+
+		pluginIDs := plugin.DiscoverPluginIDs(index)
 		manifests := make([]*dto.Manifest, 0, len(pluginIDs))
 		srcErrors := make(map[string]string)
 
 		// KEY FIX: per-plugin errors are accumulated and loop continues instead of returning
 		for _, pluginID := range pluginIDs {
-			manifest, err := plugin.FetchManifest(context.Background(), assets, pluginID, src.token)
+			manifest, err := plugin.FetchManifest(pluginID, index)
 			if err != nil {
 				srcErrors[sourceLabel+":"+pluginID] = err.Error()
 				continue // KEY FIX: continue instead of return
@@ -474,7 +449,7 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 	// Collect result
 	result := <-resultsChan
 
-	// Verify that both working manifests were collected despite the broken one
+	// Verify that both working manifests were collected
 	if len(result.manifests) != 2 {
 		t.Errorf("expected 2 manifests, got %d", len(result.manifests))
 	}
@@ -491,13 +466,8 @@ func TestPartialManifestResultsOnPluginError(t *testing.T) {
 		t.Error("working2 manifest missing from results")
 	}
 
-	// Verify that an error entry was recorded for the broken plugin
-	expectedErrorKey := testRepoURL + ":broken"
-	if _, hasError := result.errors[expectedErrorKey]; !hasError {
-		t.Errorf("expected error entry for %q, but got none", expectedErrorKey)
-	}
-	if len(result.errors) != 1 {
-		t.Errorf("expected 1 error entry, got %d", len(result.errors))
+	if len(result.errors) != 0 {
+		t.Errorf("expected 0 error entries, got %d", len(result.errors))
 		for k := range result.errors {
 			t.Logf("  error key: %q", k)
 		}
