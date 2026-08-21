@@ -39,10 +39,10 @@ func (a *App) checkForUpdate(maxAttempts int) error {
 	token := a.settings.AccessToken
 	a.mu.RUnlock()
 
-	// Retry with bounded backoff: maxAttempts total, sleeping 5s then 10s between attempts
+	// Retry with bounded backoff: maxAttempts total, sleeping updater.RetryBackoffSchedule between attempts
 	var rel *updater.Release
 	var err error
-	sleeps := []time.Duration{5 * time.Second, 10 * time.Second}
+	sleeps := updater.RetryBackoffSchedule
 	for attempt := range maxAttempts {
 		rel, err = updater.Check(a.version, token)
 		if err == nil {
