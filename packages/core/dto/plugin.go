@@ -74,6 +74,20 @@ type Manifest struct {
 	SourceURL          string                   `json:"sourceUrl"`
 }
 
+// ManifestIndex is the optional repo-wide manifest.json release asset that
+// acts as a fast-path source of truth for available plugins, avoiding
+// filename-pattern discovery. Absent in older releases; callers fall back to
+// scanning asset filenames for the litelens-plugin-<id>-manifest.json
+// convention. Each entry under Plugins is a full Manifest (this asset embeds
+// complete plugin metadata directly — it does not merely point at separate
+// per-plugin manifest assets). Field names (generated_at/release_tag) match
+// the litelens-plugins repo's release-publishing tooling.
+type ManifestIndex struct {
+	GeneratedAt string     `json:"generated_at"`
+	ReleaseTag  string     `json:"release_tag"`
+	Plugins     []Manifest `json:"plugins"`
+}
+
 // GitHubAsset is a single asset attached to a GitHub Release.
 type GitHubAsset struct {
 	Name               string `json:"name"`

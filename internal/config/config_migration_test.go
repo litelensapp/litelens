@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"testing"
 )
 
@@ -52,15 +51,16 @@ func TestConfigMigration(t *testing.T) {
 			checkFirstRepoDetails:     false,
 		},
 		{
-			name: "old-format with empty marketplaceRepoURL is not migrated",
+			name: "old-format with empty marketplaceRepoURL falls back to the provisioned default marketplace",
 			rawJSON: `{
   "accessToken": "ghp_general_token",
   "marketplaceRepoURL": "",
   "marketplacePrivate": false,
   "marketplaceAccessToken": ""
 }`,
-			expectedRepositoriesCount: 0,
-			checkFirstRepoDetails:     false,
+			expectedRepositoriesCount:  1,
+			expectedFirstRepositoryURL: GetMarketplaceBaseURL(),
+			checkFirstRepoDetails:      true,
 		},
 		{
 			name: "mixed config (new array takes precedence, no migration)",
@@ -84,22 +84,8 @@ func TestConfigMigration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var s Settings
-			if err := json.Unmarshal([]byte(tt.rawJSON), &s); err != nil {
-				t.Fatalf("failed to unmarshal JSON: %v", err)
-			}
-
-			// Apply migration logic (same as Load() does)
-			if len(s.MarketplaceRepositories) == 0 {
-				var legacy legacySettings
-				if err := json.Unmarshal([]byte(tt.rawJSON), &legacy); err == nil && legacy.MarketplaceRepoURL != "" {
-					s.MarketplaceRepositories = []MarketplaceRepository{
-						{
-							URL:         legacy.MarketplaceRepoURL,
-							Private:     legacy.MarketplacePrivate,
-							AccessToken: legacy.MarketplaceAccessToken,
-						},
-					}
-				}
+			if err := unmarshalAndMigrate([]byte(tt.rawJSON), &s); err != nil {
+				t.Fatalf("unmarshalAndMigrate() failed: %v", err)
 			}
 
 			// Verify count
@@ -126,4 +112,57 @@ func TestConfigMigration(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestWithDefaultMarketplaceRepo verifies that the official litelens
+// marketplace is provisioned as a MarketplaceRepositories entry only when a
+// settings.json has never persisted that key — never on a config that has
+// already been saved under the new schema, even with the array empty (the
+// user deliberately removed every repository).
+func TestWithDefaultMarketplaceRepo(t *testing.T) {
+	t.Run("fresh install (no rawJSON) provisions the default", func(t *testing.T) {
+		s := withDefaultMarketplaceRepo(Settings{}, nil)
+		if len(s.MarketplaceRepositories) != 1 {
+			t.Fatalf("expected 1 provisioned repository, got %d", len(s.MarketplaceRepositories))
+		}
+		if s.MarketplaceRepositories[0].URL != GetMarketplaceBaseURL() {
+			t.Errorf("provisioned URL = %q; want %q", s.MarketplaceRepositories[0].URL, GetMarketplaceBaseURL())
+		}
+	})
+
+	t.Run("legacy config with no marketplace key provisions the default", func(t *testing.T) {
+		rawJSON := []byte(`{"accessToken": "ghp_general_token"}`)
+		s := withDefaultMarketplaceRepo(Settings{}, rawJSON)
+		if len(s.MarketplaceRepositories) != 1 {
+			t.Fatalf("expected 1 provisioned repository, got %d", len(s.MarketplaceRepositories))
+		}
+		if s.MarketplaceRepositories[0].URL != GetMarketplaceBaseURL() {
+			t.Errorf("provisioned URL = %q; want %q", s.MarketplaceRepositories[0].URL, GetMarketplaceBaseURL())
+		}
+	})
+
+	t.Run("saved config with an explicitly empty array is left empty", func(t *testing.T) {
+		rawJSON := []byte(`{"accessToken": "ghp_general_token", "marketplaceRepositories": []}`)
+		s := withDefaultMarketplaceRepo(Settings{}, rawJSON)
+		if len(s.MarketplaceRepositories) != 0 {
+			t.Errorf("expected the user's explicit empty repositories list to be respected, got %d entries", len(s.MarketplaceRepositories))
+		}
+	})
+
+	t.Run("saved config with a null array is left empty", func(t *testing.T) {
+		rawJSON := []byte(`{"accessToken": "ghp_general_token", "marketplaceRepositories": null}`)
+		s := withDefaultMarketplaceRepo(Settings{}, rawJSON)
+		if len(s.MarketplaceRepositories) != 0 {
+			t.Errorf("expected the user's explicit null repositories list to be respected, got %d entries", len(s.MarketplaceRepositories))
+		}
+	})
+
+	t.Run("settings already carrying repositories are left untouched", func(t *testing.T) {
+		s := withDefaultMarketplaceRepo(Settings{
+			MarketplaceRepositories: []MarketplaceRepository{{URL: "https://github.com/user/repo"}},
+		}, nil)
+		if len(s.MarketplaceRepositories) != 1 || s.MarketplaceRepositories[0].URL != "https://github.com/user/repo" {
+			t.Errorf("expected existing repositories to be left untouched, got %+v", s.MarketplaceRepositories)
+		}
+	})
 }

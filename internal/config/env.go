@@ -51,7 +51,7 @@ func GetReleasesBaseURL() string {
 // internal/plugin/download.go falls back to this only when the user hasn't
 // configured a per-instance marketplace repo URL in Settings.
 func GetMarketplaceBaseURL() string {
-	return getEnvOrDefault("MARKETPLACE_BASE_URL", "https://api.github.com/repos/litelensapp/litelens/releases")
+	return getEnvOrDefault("MARKETPLACE_BASE_URL", "https://api.github.com/repos/litelensapp/litelens-plugins/releases")
 }
 
 // IsPrivateRepoAccess reports whether GitHub release assets should be fetched

@@ -525,44 +525,6 @@ func TestVerifySHA256(t *testing.T) {
 	}
 }
 
-func TestDiscoverPluginIDs(t *testing.T) {
-	tests := []struct {
-		name    string
-		assets  map[string]string
-		wantIDs []string
-	}{
-		{
-			name: "discovers multiple plugins",
-			assets: map[string]string{
-				"litelens-plugin-helm-manifest.json":      "url1",
-				"litelens-plugin-kustomize-manifest.json": "url2",
-				"other-file.txt":                          "url3",
-			},
-			wantIDs: []string{"helm", "kustomize"},
-		},
-		{
-			name:    "empty assets",
-			assets:  map[string]string{},
-			wantIDs: []string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := DiscoverPluginIDs(tt.assets)
-			if len(result) != len(tt.wantIDs) {
-				t.Errorf("DiscoverPluginIDs() returned %d IDs; want %d", len(result), len(tt.wantIDs))
-				return
-			}
-			for i, id := range result {
-				if id != tt.wantIDs[i] {
-					t.Errorf("DiscoverPluginIDs()[%d] = %q; want %q", i, id, tt.wantIDs[i])
-				}
-			}
-		})
-	}
-}
-
 func TestManifestUnmarshal(t *testing.T) {
 	manifestJSON := []byte(`{
 		"id": "helm",
@@ -920,5 +882,79 @@ func TestExtractPreservesFilePermissions(t *testing.T) {
 
 	if info.Mode().Perm() != 0644 {
 		t.Errorf("file perms = %o; want 0644", info.Mode().Perm())
+	}
+}
+
+// TestDiscoverPluginIDs_InvalidIDsFiltered verifies that DiscoverPluginIDs validates
+// plugin IDs from the manifest index using ValidPluginID, excluding invalid IDs.
+// This prevents directory traversal and other injection attacks via attacker-controlled
+// index entries that don't match the safe plugin ID pattern.
+func TestDiscoverPluginIDs_InvalidIDsFiltered(t *testing.T) {
+	tests := []struct {
+		name       string
+		index      *dto.ManifestIndex
+		wantIDs    []string
+		wantCounts int
+	}{
+		{
+			name: "mixed valid and invalid IDs",
+			index: &dto.ManifestIndex{
+				ReleaseTag:  "v1.0.0",
+				GeneratedAt: "2026-08-21T00:00:00Z",
+				Plugins: []dto.Manifest{
+					{ID: "helm"},         // valid
+					{ID: "../../etc"},    // invalid (path traversal)
+					{ID: "flux"},         // valid
+					{ID: "my plugin"},    // invalid (space)
+					{ID: "kustomize"},    // valid
+					{ID: ""},             // invalid (empty)
+					{ID: ".app-name"},    // valid (leading dot allowed)
+					{ID: "test@command"}, // invalid (@ not allowed)
+				},
+			},
+			wantIDs:    []string{".app-name", "flux", "helm", "kustomize"}, // sorted, valid only
+			wantCounts: 4,
+		},
+		{
+			name: "all invalid IDs",
+			index: &dto.ManifestIndex{
+				Plugins: []dto.Manifest{
+					{ID: "../traversal"},
+					{ID: "spaces here"},
+					{ID: "special!char"},
+				},
+			},
+			wantIDs:    []string{},
+			wantCounts: 0,
+		},
+		{
+			name: "all valid IDs",
+			index: &dto.ManifestIndex{
+				Plugins: []dto.Manifest{
+					{ID: "alpha"},
+					{ID: "beta-1"},
+					{ID: "gamma_2"},
+					{ID: ".delta"},
+				},
+			},
+			wantIDs:    []string{".delta", "alpha", "beta-1", "gamma_2"},
+			wantCounts: 4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DiscoverPluginIDs(tt.index)
+
+			if len(result) != tt.wantCounts {
+				t.Errorf("DiscoverPluginIDs() returned %d IDs; want %d", len(result), tt.wantCounts)
+			}
+
+			for i, id := range result {
+				if i < len(tt.wantIDs) && id != tt.wantIDs[i] {
+					t.Errorf("DiscoverPluginIDs()[%d] = %q; want %q", i, id, tt.wantIDs[i])
+				}
+			}
+		})
 	}
 }

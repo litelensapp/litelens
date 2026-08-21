@@ -331,8 +331,8 @@ export const MarketplaceContent: FC = () => {
             )}
 
             <p className="text-muted-foreground text-xs">
-              Enter any marketplace source URL. Defaults to the official litelens marketplace if no
-              additional repositories are configured.
+              Enter any marketplace source URL. The official litelens marketplace is pre-added below
+              — remove it if you don't want plugins fetched from it.
             </p>
 
             {/* User-added repositories */}

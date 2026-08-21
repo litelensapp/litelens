@@ -406,8 +406,13 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 			return
 		}
 
-		// 2. Fetch and parse manifest
-		manifest, err := plugin.FetchManifest(ctx, assets, pluginID, token)
+		// 2. Fetch manifest index (the release's single source of truth for every plugin it publishes) and parse manifest
+		index, err := plugin.FetchManifestIndex(ctx, assets, token)
+		if err != nil {
+			loader.SetStatusWithError(dto.PluginStatusCrashed, fmt.Sprintf("fetch manifest index: %v", err))
+			return
+		}
+		manifest, err := plugin.FetchManifest(pluginID, index)
 		if err != nil {
 			loader.SetStatusWithError(dto.PluginStatusCrashed, fmt.Sprintf("fetch manifest: %v", err))
 			return
@@ -850,26 +855,23 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Prepare list of sources to fetch: default (baseURL="") + user repos.
-	// Settings.AccessToken is reserved for the app's own update-check downloads
-	// and must never be used as a fallback here: each marketplace repository
-	// uses its own configured AccessToken only (empty for the public default
-	// marketplace, or if the user left a private repo's token unset).
+	// Prepare list of sources to fetch from settings.MarketplaceRepositories.
+	// There is no implicit built-in default source here: config.Load provisions
+	// the official litelens marketplace (config.GetMarketplaceBaseURL) as the
+	// first MarketplaceRepositories entry on first run, so it already appears
+	// in repositories like any other entry. Once persisted, it's ordinary user
+	// settings — if the user edits or removes it, that choice is respected
+	// with no fallback to re-adding it here. Settings.AccessToken is reserved
+	// for the app's own update-check downloads and must never be used as a
+	// fallback here: each marketplace repository uses its own configured
+	// AccessToken only (empty if the user left a private repo's token unset).
 	type source struct {
-		sourceURL string // empty for default, repo URL for user-added
+		sourceURL string
 		token     string
 		private   bool
 	}
 
-	// Build list of sources: default (baseURL="") + non-disabled user repos.
-	sources := []source{
-		{
-			sourceURL: "",
-			token:     "",
-			private:   false,
-		},
-	}
-	// User-added repository sources (skip disabled ones)
+	sources := make([]source, 0, len(repositories))
 	for _, repo := range repositories {
 		if repo.Disabled {
 			continue
@@ -883,14 +885,14 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 
 	// Fetch all sources concurrently via channels
 	type fetchResult struct {
-		manifests []*dto.Manifest
-		sourceURL string
-		errors    map[string]string // keyed sourceLabel+":release" or sourceLabel+":"+pluginID
+		manifests   []*dto.Manifest
+		sourceIndex int
+		errors      map[string]string // keyed sourceLabel+":release" or sourceLabel+":"+pluginID
 	}
 
 	resultsChan := make(chan fetchResult, len(sources))
-	for _, src := range sources {
-		go func(src source) {
+	for i, src := range sources {
+		go func(sourceIndex int, src source) {
 			sourceLabel := src.sourceURL
 			if sourceLabel == "" {
 				sourceLabel = "default"
@@ -899,19 +901,30 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 			assets, _, err := plugin.FetchLatestRelease(ctx, src.sourceURL, src.token, src.private)
 			if err != nil {
 				resultsChan <- fetchResult{
-					manifests: nil,
-					sourceURL: src.sourceURL,
-					errors:    map[string]string{sourceLabel + ":release": err.Error()},
+					manifests:   nil,
+					sourceIndex: sourceIndex,
+					errors:      map[string]string{sourceLabel + ":release": err.Error()},
 				}
 				return
 			}
 
-			pluginIDs := plugin.DiscoverPluginIDs(assets)
+			// Fetch the manifest index — the release's single source of truth for every plugin it publishes
+			index, err := plugin.FetchManifestIndex(ctx, assets, src.token)
+			if err != nil {
+				resultsChan <- fetchResult{
+					manifests:   nil,
+					sourceIndex: sourceIndex,
+					errors:      map[string]string{sourceLabel + ":manifest-index": err.Error()},
+				}
+				return
+			}
+
+			pluginIDs := plugin.DiscoverPluginIDs(index)
 			manifests := make([]*dto.Manifest, 0, len(pluginIDs))
 			srcErrors := make(map[string]string)
 
 			for _, pluginID := range pluginIDs {
-				manifest, err := plugin.FetchManifest(ctx, assets, pluginID, src.token)
+				manifest, err := plugin.FetchManifest(pluginID, index)
 				if err != nil {
 					log.Printf("plugin marketplace: %s from %q: fetch manifest failed: %v", pluginID, src.sourceURL, err)
 					srcErrors[sourceLabel+":"+pluginID] = err.Error()
@@ -922,21 +935,40 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 			}
 
 			resultsChan <- fetchResult{
-				manifests: manifests,
-				sourceURL: src.sourceURL,
-				errors:    srcErrors,
+				manifests:   manifests,
+				sourceIndex: sourceIndex,
+				errors:      srcErrors,
 			}
-		}(src)
+		}(i, src)
 	}
 
-	// Collect results
-	allManifests := make([]*dto.Manifest, 0)
-	errors := make(map[string]string)
-
+	// Collect results. Results arrive in non-deterministic (goroutine
+	// completion) order, so buffer them keyed by source index and merge in
+	// configured source order below — default marketplace first, then
+	// user-added repositories in the order they're configured.
+	resultsBySourceIndex := make([]fetchResult, len(sources))
 	for range sources {
 		result := <-resultsChan
+		resultsBySourceIndex[result.sourceIndex] = result
+	}
+
+	// Merge in source order, deduplicating by plugin ID so the same plugin
+	// published by more than one configured source (e.g. a mirrored
+	// repository) is listed once, keeping the earliest (highest-priority)
+	// source's manifest.
+	allManifests := make([]*dto.Manifest, 0)
+	errors := make(map[string]string)
+	seenPluginIDs := make(map[string]bool)
+
+	for _, result := range resultsBySourceIndex {
 		maps.Copy(errors, result.errors)
-		allManifests = append(allManifests, result.manifests...)
+		for _, manifest := range result.manifests {
+			if seenPluginIDs[manifest.ID] {
+				continue
+			}
+			seenPluginIDs[manifest.ID] = true
+			allManifests = append(allManifests, manifest)
+		}
 	}
 
 	return &dto.MarketplaceResult{

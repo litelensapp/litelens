@@ -158,3 +158,10 @@ tool (
 	google.golang.org/protobuf/cmd/protoc-gen-go
 	honnef.co/go/tools/cmd/staticcheck
 )
+
+// TODO: temporary — packages/core/dto gained ManifestIndex/ManifestIndexEntry
+// (plugin marketplace manifest.json fast-path) that hasn't been tagged yet.
+// Before merging: tag packages/core as packages/core/v1.8.0, run
+// `go get github.com/litelensapp/litelens/packages/core@v1.8.0`, then remove
+// this replace directive (see .claude/memory/go_work_removal_todo.md).
+replace github.com/litelensapp/litelens/packages/core => ./packages/core
