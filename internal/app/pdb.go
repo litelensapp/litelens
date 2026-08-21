@@ -15,7 +15,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListPodDisruptionBudgets(namespace string) ([]dto.PodDisruptionBudget, error) {
+func (a *App) ListPodDisruptionBudgets(namespaces []string) ([]dto.PodDisruptionBudget, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -29,7 +29,7 @@ func (a *App) ListPodDisruptionBudgets(namespace string) ([]dto.PodDisruptionBud
 	if h.IsForbidden("pdbs") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListPodDisruptionBudgets(h.Factory.Policy().V1().PodDisruptionBudgets().Lister(), namespace)
+	result, err := kubeResources.ListPodDisruptionBudgets(h.Factory.Policy().V1().PodDisruptionBudgets().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListPodDisruptionBudgets: %v", err)
 		return []dto.PodDisruptionBudget{}, nil
@@ -63,7 +63,7 @@ func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisr
 	return result, nil
 }
 
-func (a *App) emitPodDisruptionBudgets(namespace string) {
+func (a *App) emitPodDisruptionBudgets(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -78,21 +78,21 @@ func (a *App) emitPodDisruptionBudgets(namespace string) {
 		return
 	}
 	lister := h.Factory.Policy().V1().PodDisruptionBudgets().Lister()
-	allData, err := kubeResources.ListPodDisruptionBudgets(lister, "")
+	allData, err := kubeResources.ListPodDisruptionBudgets(lister, nil)
 	if err != nil {
 		log.Printf("app: emitPodDisruptionBudgets: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "pdbs:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.PodDisruptionBudget, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "pdbs:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "pdbs:"+ns+":update", nsData)
 	}
 }
 
@@ -113,7 +113,7 @@ func (a *App) DeletePodDisruptionBudget(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitPodDisruptionBudgets(namespace)
+	a.emitPodDisruptionBudgets([]string{namespace})
 
 	return nil
 }
@@ -141,9 +141,11 @@ func (a *App) DeletePodDisruptionBudgets(items []dto.PodDisruptionBudgetRef) err
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitPodDisruptionBudgets(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitPodDisruptionBudgets(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d poddisruptionbudgets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -195,7 +197,7 @@ func (a *App) UpdatePDBYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update PodDisruptionBudget: %w", err)
 	}
 
-	a.emitPodDisruptionBudgets(namespace)
+	a.emitPodDisruptionBudgets([]string{namespace})
 
 	return nil
 }

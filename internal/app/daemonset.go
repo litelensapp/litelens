@@ -19,7 +19,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListDaemonSets(namespace string) ([]dto.DaemonSet, error) {
+func (a *App) ListDaemonSets(namespaces []string) ([]dto.DaemonSet, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -33,7 +33,7 @@ func (a *App) ListDaemonSets(namespace string) ([]dto.DaemonSet, error) {
 	if h.IsForbidden("daemonsets") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListDaemonSets(h.Factory.Apps().V1().DaemonSets().Lister(), namespace)
+	result, err := kubeResources.ListDaemonSets(h.Factory.Apps().V1().DaemonSets().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListDaemonSets: %v", err)
 		return []dto.DaemonSet{}, nil
@@ -137,7 +137,7 @@ func (a *App) DeleteDaemonSet(namespace, name string) error {
 		return fmt.Errorf("delete DaemonSet: %w", err)
 	}
 
-	a.emitDaemonSets(namespace)
+	a.emitDaemonSets([]string{namespace})
 
 	return nil
 }
@@ -165,9 +165,11 @@ func (a *App) DeleteDaemonSets(items []dto.DaemonSetRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitDaemonSets(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitDaemonSets(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d daemonsets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -175,7 +177,7 @@ func (a *App) DeleteDaemonSets(items []dto.DaemonSetRef) error {
 	return nil
 }
 
-func (a *App) emitDaemonSets(namespace string) {
+func (a *App) emitDaemonSets(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -190,21 +192,21 @@ func (a *App) emitDaemonSets(namespace string) {
 		return
 	}
 	lister := h.Factory.Apps().V1().DaemonSets().Lister()
-	allData, err := kubeResources.ListDaemonSets(lister, "")
+	allData, err := kubeResources.ListDaemonSets(lister, nil)
 	if err != nil {
 		log.Printf("app: emitDaemonSets: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "daemonsets:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.DaemonSet, 0)
 		for _, ds := range allData {
-			if ds.Namespace == namespace {
+			if ds.Namespace == ns {
 				nsData = append(nsData, ds)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "daemonsets:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "daemonsets:"+ns+":update", nsData)
 	}
 }
 
@@ -252,7 +254,7 @@ func (a *App) UpdateDaemonSetYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update DaemonSet: %w", err)
 	}
 
-	a.emitDaemonSets(namespace)
+	a.emitDaemonSets([]string{namespace})
 
 	return nil
 }

@@ -131,7 +131,7 @@ func TestToClusterRole_WithRules(t *testing.T) {
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
-				APIGroups: []string{""},
+				APIGroups: nil,
 				Resources: []string{"pods"},
 				Verbs:     []string{"get", "list"},
 			},

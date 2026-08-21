@@ -86,7 +86,7 @@ describe("useGetDeployments", () => {
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listDeploymentsMock).toHaveBeenCalledWith("default");
+    expect(listDeploymentsMock).toHaveBeenCalledWith(["default"]);
   });
 
   it("uses correct queryKey", () => {
@@ -100,7 +100,7 @@ describe("useGetDeployments", () => {
     expect(result.current).toBeDefined();
     expect(listDeploymentsMock).toHaveBeenCalled();
     const callArgs = listDeploymentsMock.mock.calls[0];
-    expect(callArgs[0]).toBe("ns1");
+    expect(callArgs[0]).toEqual(["ns1"]);
   });
 
   it("passes callback.select to useQuery", async () => {
@@ -164,7 +164,7 @@ describe("useGetPods", () => {
       }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listPodsMock).toHaveBeenCalledWith("kube-system");
+    expect(listPodsMock).toHaveBeenCalledWith(["kube-system"]);
   });
 
   it("returns isLoading=false when event-driven latestPods is populated even if query is refetching", async () => {

@@ -86,17 +86,24 @@ func toEndpoint(ep *corev1.Endpoints) dto.Endpoint {
 	}
 }
 
-func ListEndpoints(lister listerscorev1.EndpointsLister, namespace string) ([]dto.Endpoint, error) {
-	//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice (see ListEndpointSlices for the newer resource)
-	var eps []*corev1.Endpoints
-	var err error
-	if namespace == "" {
-		eps, err = lister.List(labels.Everything())
-	} else {
-		eps, err = lister.Endpoints(namespace).List(labels.Everything())
-	}
+func ListEndpoints(lister listerscorev1.EndpointsLister, namespaces []string) ([]dto.Endpoint, error) {
+	//nolint:SA1019 // legacy Endpoints API still supported alongside EndpointSlice (see ListEndpointSlices for the newer resource)
+	eps, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := eps[:0:0]
+		for _, ep := range eps {
+			if _, ok := nsSet[ep.Namespace]; ok {
+				filtered = append(filtered, ep)
+			}
+		}
+		eps = filtered
 	}
 	result := make([]dto.Endpoint, len(eps))
 	for i, ep := range eps {

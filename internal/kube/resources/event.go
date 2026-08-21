@@ -69,16 +69,23 @@ func GetEventByName(lister listerscorev1.EventLister, namespace, name string) (d
 	return toEvent(e), nil
 }
 
-func ListEvents(lister listerscorev1.EventLister, namespace string) ([]dto.Event, error) {
-	var events []*corev1.Event
-	var err error
-	if namespace == "" {
-		events, err = lister.List(labels.Everything())
-	} else {
-		events, err = lister.Events(namespace).List(labels.Everything())
-	}
+func ListEvents(lister listerscorev1.EventLister, namespaces []string) ([]dto.Event, error) {
+	events, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := events[:0:0]
+		for _, e := range events {
+			if _, ok := nsSet[e.Namespace]; ok {
+				filtered = append(filtered, e)
+			}
+		}
+		events = filtered
 	}
 	result := make([]dto.Event, len(events))
 	for i, e := range events {
@@ -87,8 +94,8 @@ func ListEvents(lister listerscorev1.EventLister, namespace string) ([]dto.Event
 	return result, nil
 }
 
-func ListWarningEvents(lister listerscorev1.EventLister, namespace string) ([]dto.Event, error) {
-	events, err := ListEvents(lister, namespace)
+func ListWarningEvents(lister listerscorev1.EventLister, namespaces []string) ([]dto.Event, error) {
+	events, err := ListEvents(lister, namespaces)
 	if err != nil {
 		return nil, err
 	}

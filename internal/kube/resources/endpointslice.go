@@ -95,16 +95,23 @@ func toEndpointSlice(es *discoveryv1.EndpointSlice) dto.EndpointSlice {
 	}
 }
 
-func ListEndpointSlices(lister discoveryv1listers.EndpointSliceLister, namespace string) ([]dto.EndpointSlice, error) {
-	var ess []*discoveryv1.EndpointSlice
-	var err error
-	if namespace == "" {
-		ess, err = lister.List(labels.Everything())
-	} else {
-		ess, err = lister.EndpointSlices(namespace).List(labels.Everything())
-	}
+func ListEndpointSlices(lister discoveryv1listers.EndpointSliceLister, namespaces []string) ([]dto.EndpointSlice, error) {
+	ess, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := ess[:0:0]
+		for _, es := range ess {
+			if _, ok := nsSet[es.Namespace]; ok {
+				filtered = append(filtered, es)
+			}
+		}
+		ess = filtered
 	}
 	result := make([]dto.EndpointSlice, len(ess))
 	for i, es := range ess {

@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_SERVICE_ACCOUNTS } from "../../api/api.const";
 import type { ServiceAccount } from "../../api/resources";
 import { ListServiceAccounts } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useServiceAccountsUpdateEvents } from "../async-events/useServiceAccountsUpdateEvents";
 
 export const useGetServiceAccounts = (
@@ -16,12 +13,11 @@ export const useGetServiceAccounts = (
   callback?: UseQueryCallback<ServiceAccount[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestServiceAccounts = useServiceAccountsUpdateEvents(effectiveNamespace);
+  const latestServiceAccounts = useServiceAccountsUpdateEvents(namespaces);
 
   const query = useQuery<ServiceAccount[], Error>({
     queryKey: [QUERY_KEY_SERVICE_ACCOUNTS, { context, namespaces }],
-    queryFn: () => ListServiceAccounts(effectiveNamespace),
+    queryFn: () => ListServiceAccounts(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

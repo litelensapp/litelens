@@ -36,7 +36,7 @@ func TestListStatefulSets_SingleNamespace(t *testing.T) {
 	ss := makeStatefulSet("db", "default")
 	lister := newStatefulSetLister(ss)
 
-	result, err := ListStatefulSets(lister, "default")
+	result, err := ListStatefulSets(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestListStatefulSets_EmptyNamespaceReturnsAll(t *testing.T) {
 	ss2 := makeStatefulSet("ss-b", "ns-b")
 	lister := newStatefulSetLister(ss1, ss2)
 
-	result, err := ListStatefulSets(lister, "")
+	result, err := ListStatefulSets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestListStatefulSets_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListStatefulSets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newStatefulSetLister()
 
-	result, err := ListStatefulSets(lister, "")
+	result, err := ListStatefulSets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

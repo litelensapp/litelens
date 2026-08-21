@@ -1,18 +1,46 @@
-import { startTransition, useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Endpoint } from "../../api/resources";
+import { mergeNamespaceScopedData } from "../../../../../shared/utils/eventMerging";
 
-// Data-only event hook: tracks the latest pushed endpoints in local state.
-// Called directly from endpoint data-access hooks (useGetEndpoints, useGetEndpointDetail, useGetEndpointYAML)
-// to merge event-driven data locally without cache-wide side effects.
-export function useEndpointsUpdateEvents(): Endpoint[] {
-  const [latestEndpoints, setLatestEndpoints] = useState<Endpoint[]>([]);
+export function useEndpointsUpdateEvents(namespaces: string[] = []): Endpoint[] {
+  const [latestEndpoints, setlatestEndpoints] = useState<Endpoint[]>([]);
+  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
+
+  // When namespace selection changes, filter down accumulated state to only selected namespaces.
+  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
+    setPrevNamespaces(namespaces);
+    if (namespaces.length > 0) {
+      const namespacesSet = new Set(namespaces);
+      setlatestEndpoints((prev) => prev.filter((item) => namespacesSet.has(item.Namespace)));
+    } else {
+      setlatestEndpoints([]);
+    }
+  }
+
   useEffect(() => {
-    return EventsOn("endpoints:update", (data: Endpoint[]) => {
-      startTransition(() => {
-        setLatestEndpoints(data);
+    if (namespaces.length === 0) {
+      return EventsOn("endpoints:update", (data: Endpoint[]) => {
+        startTransition(() => {
+          setlatestEndpoints(data);
+        });
       });
-    });
-  }, []);
+    }
+
+    const unsubscribers: Array<() => void> = [];
+    for (const ns of namespaces) {
+      const eventName = `endpoints:${ns}:update`;
+      const unsubscriber = EventsOn(eventName, (data: Endpoint[]) => {
+        startTransition(() => {
+          setlatestEndpoints((prev) => mergeNamespaceScopedData(prev, data, ns));
+        });
+      });
+      unsubscribers.push(unsubscriber);
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => unsub());
+    };
+  }, [namespaces]);
   return latestEndpoints;
 }

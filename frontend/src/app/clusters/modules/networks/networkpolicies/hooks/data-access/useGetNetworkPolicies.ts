@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_NETWORK_POLICIES } from "../../api/api.const";
 import type { NetworkPolicy } from "../../api/resources";
 import { ListNetworkPolicies } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useNetworkPoliciesUpdateEvents } from "../async-events/useNetworkPoliciesUpdateEvents";
 
 export const useGetNetworkPolicies = (
@@ -16,12 +13,11 @@ export const useGetNetworkPolicies = (
   callback?: UseQueryCallback<NetworkPolicy[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents();
+  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents(namespaces);
 
   const query = useQuery<NetworkPolicy[], Error>({
     queryKey: [QUERY_KEY_NETWORK_POLICIES, { context, namespaces }],
-    queryFn: () => ListNetworkPolicies(effectiveNamespace),
+    queryFn: () => ListNetworkPolicies(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

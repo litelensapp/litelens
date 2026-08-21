@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_CONFIGMAPS } from "../../api/api.const";
 import type { ConfigMap } from "../../api/resources";
 import { ListConfigMaps } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useConfigMapsUpdateEvents } from "../async-events/useConfigMapsUpdateEvents";
 
 export const useGetConfigMaps = (
@@ -16,12 +13,11 @@ export const useGetConfigMaps = (
   callback?: UseQueryCallback<ConfigMap[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestConfigMaps = useConfigMapsUpdateEvents(effectiveNamespace);
+  const latestConfigMaps = useConfigMapsUpdateEvents(namespaces);
 
   const query = useQuery<ConfigMap[], Error>({
     queryKey: [QUERY_KEY_CONFIGMAPS, { context, namespaces }],
-    queryFn: () => ListConfigMaps(effectiveNamespace),
+    queryFn: () => ListConfigMaps(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

@@ -7,7 +7,7 @@ import { GetServiceByName } from "../../api/resources";
 import { useServicesUpdateEvents } from "../async-events/useServicesUpdateEvents";
 
 export const useGetServiceDetail = (context: string, namespace: string, name: string) => {
-  const latestServices = useServicesUpdateEvents();
+  const latestServices = useServicesUpdateEvents([namespace]);
 
   const query = useQuery<Service, Error>({
     queryKey: [QUERY_KEY_SERVICE_DETAIL, { context, namespace, name }],

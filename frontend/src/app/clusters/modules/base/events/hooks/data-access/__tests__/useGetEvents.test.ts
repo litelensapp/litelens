@@ -82,7 +82,7 @@ describe("useGetEvents", () => {
       wrapper,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listEventsMock).toHaveBeenCalledWith("default");
+    expect(listEventsMock).toHaveBeenCalledWith(["default"]);
   });
 
   it("uses correct queryKey with context and namespace", () => {

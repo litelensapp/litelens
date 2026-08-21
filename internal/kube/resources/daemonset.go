@@ -100,16 +100,23 @@ func GetDaemonSetByName(lister listersappsv1.DaemonSetLister, namespace, name st
 	return toDaemonSet(ds), nil
 }
 
-func ListDaemonSets(lister listersappsv1.DaemonSetLister, namespace string) ([]dto.DaemonSet, error) {
-	var dss []*appsv1.DaemonSet
-	var err error
-	if namespace == "" {
-		dss, err = lister.List(labels.Everything())
-	} else {
-		dss, err = lister.DaemonSets(namespace).List(labels.Everything())
-	}
+func ListDaemonSets(lister listersappsv1.DaemonSetLister, namespaces []string) ([]dto.DaemonSet, error) {
+	dss, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := dss[:0:0]
+		for _, ds := range dss {
+			if _, ok := nsSet[ds.Namespace]; ok {
+				filtered = append(filtered, ds)
+			}
+		}
+		dss = filtered
 	}
 	result := make([]dto.DaemonSet, len(dss))
 	for i, ds := range dss {

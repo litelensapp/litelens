@@ -1,23 +1,39 @@
 import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 
-export function useWarningEventsUpdateEvents(namespace = ""): boolean {
+export function useWarningEventsUpdateEvents(namespaces: string[] = []): boolean {
   const [triggerRefresh, setTriggerRefresh] = useState(false);
-  const [prevNamespace, setPrevNamespace] = useState(namespace);
+  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
 
-  // Reset stale data from the previous namespace's channel before re-subscribing.
-  if (namespace !== prevNamespace) {
-    setPrevNamespace(namespace);
+  // When namespace selection changes, reset the trigger flag.
+  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
+    setPrevNamespaces(namespaces);
     setTriggerRefresh(false);
   }
 
   useEffect(() => {
-    const eventName = namespace ? `events:${namespace}:warning:update` : "events:warning:update";
-    return EventsOn(eventName, () => {
-      startTransition(() => {
-        setTriggerRefresh((prev) => !prev);
+    if (namespaces.length === 0) {
+      return EventsOn("events:warning:update", () => {
+        startTransition(() => {
+          setTriggerRefresh((prev) => !prev);
+        });
       });
-    });
-  }, [namespace]);
+    }
+
+    const unsubscribers: Array<() => void> = [];
+    for (const ns of namespaces) {
+      const eventName = `events:${ns}:warning:update`;
+      const unsubscriber = EventsOn(eventName, () => {
+        startTransition(() => {
+          setTriggerRefresh((prev) => !prev);
+        });
+      });
+      unsubscribers.push(unsubscriber);
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => unsub());
+    };
+  }, [namespaces]);
   return triggerRefresh;
 }

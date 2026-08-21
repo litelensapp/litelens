@@ -15,7 +15,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListEndpointSlices(namespace string) ([]dto.EndpointSlice, error) {
+func (a *App) ListEndpointSlices(namespaces []string) ([]dto.EndpointSlice, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -29,7 +29,7 @@ func (a *App) ListEndpointSlices(namespace string) ([]dto.EndpointSlice, error) 
 	if h.IsForbidden("endpointslices") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListEndpointSlices(h.Factory.Discovery().V1().EndpointSlices().Lister(), namespace)
+	result, err := kubeResources.ListEndpointSlices(h.Factory.Discovery().V1().EndpointSlices().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListEndpointSlices: %v", err)
 		return []dto.EndpointSlice{}, nil
@@ -76,7 +76,7 @@ func (a *App) DeleteEndpointSlice(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitEndpointSlices(namespace)
+	a.emitEndpointSlices([]string{namespace})
 
 	return nil
 }
@@ -104,9 +104,11 @@ func (a *App) DeleteEndpointSlices(items []dto.EndpointSliceRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitEndpointSlices(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitEndpointSlices(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d endpointslices: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -114,7 +116,7 @@ func (a *App) DeleteEndpointSlices(items []dto.EndpointSliceRef) error {
 	return nil
 }
 
-func (a *App) emitEndpointSlices(namespace string) {
+func (a *App) emitEndpointSlices(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -129,21 +131,21 @@ func (a *App) emitEndpointSlices(namespace string) {
 		return
 	}
 	lister := h.Factory.Discovery().V1().EndpointSlices().Lister()
-	allData, err := kubeResources.ListEndpointSlices(lister, "")
+	allData, err := kubeResources.ListEndpointSlices(lister, nil)
 	if err != nil {
 		log.Printf("app: emitEndpointSlices: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "endpointslices:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.EndpointSlice, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "endpointslices:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "endpointslices:"+ns+":update", nsData)
 	}
 }
 
@@ -191,7 +193,7 @@ func (a *App) UpdateEndpointSliceYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update EndpointSlice: %w", err)
 	}
 
-	a.emitEndpointSlices(namespace)
+	a.emitEndpointSlices([]string{namespace})
 
 	return nil
 }

@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_REPLICASETS } from "../../api/api.const";
 import type { ReplicaSet } from "../../api/resources";
 import { ListReplicaSets } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useReplicaSetsUpdateEvents } from "../async-events/useReplicaSetsUpdateEvents";
 
 export const useGetReplicaSets = (
@@ -16,12 +13,11 @@ export const useGetReplicaSets = (
   callback?: UseQueryCallback<ReplicaSet[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestReplicaSets = useReplicaSetsUpdateEvents();
+  const latestReplicaSets = useReplicaSetsUpdateEvents(namespaces);
 
   const query = useQuery<ReplicaSet[], Error>({
     queryKey: [QUERY_KEY_REPLICASETS, { context, namespaces }],
-    queryFn: () => ListReplicaSets(effectiveNamespace),
+    queryFn: () => ListReplicaSets(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

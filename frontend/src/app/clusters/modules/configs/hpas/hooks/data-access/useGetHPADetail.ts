@@ -8,7 +8,7 @@ import { useHPAsUpdateEvents } from "../async-events/useHPAsUpdateEvents";
 
 export const useGetHPADetail = (context: string, namespace: string, name: string) => {
   const queryClient = useQueryClient();
-  const latestHPAs = useHPAsUpdateEvents(namespace);
+  const latestHPAs = useHPAsUpdateEvents([namespace]);
 
   const query = useQuery<HPADetail, Error>({
     queryKey: [QUERY_KEY_HPA_DETAIL, { context, namespace, name }],

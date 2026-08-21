@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_DAEMONSETS } from "../../api/api.const";
 import type { DaemonSet } from "../../api/resources";
 import { ListDaemonSets } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useDaemonSetsUpdateEvents } from "../async-events/useDaemonSetsUpdateEvents";
 
 export const useGetDaemonSets = (
@@ -16,12 +13,11 @@ export const useGetDaemonSets = (
   callback?: UseQueryCallback<DaemonSet[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestDaemonSets = useDaemonSetsUpdateEvents();
+  const latestDaemonSets = useDaemonSetsUpdateEvents(namespaces);
 
   const query = useQuery<DaemonSet[], Error>({
     queryKey: [QUERY_KEY_DAEMONSETS, { context, namespaces }],
-    queryFn: () => ListDaemonSets(effectiveNamespace),
+    queryFn: () => ListDaemonSets(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

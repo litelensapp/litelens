@@ -173,7 +173,7 @@ describe("usePodsUpdateEvents", () => {
   });
 
   it("subscribes to the namespace-scoped channel when a namespace is passed", async () => {
-    const { result } = renderHook(() => usePodsUpdateEvents("kube-system"));
+    const { result } = renderHook(() => usePodsUpdateEvents(["kube-system"]));
     expect(eventsOnMock).toHaveBeenCalledWith("pods:kube-system:update", expect.any(Function));
 
     const payload: Pod[] = [
@@ -222,7 +222,7 @@ describe("usePodsUpdateEvents", () => {
 
   it("resets state and resubscribes when the namespace changes", async () => {
     const { result, rerender } = renderHook(({ namespace }) => usePodsUpdateEvents(namespace), {
-      initialProps: { namespace: "default" },
+      initialProps: { namespace: ["default"] },
     });
 
     const payload: Pod[] = [
@@ -268,7 +268,7 @@ describe("usePodsUpdateEvents", () => {
       expect(result.current).toEqual(payload);
     });
 
-    rerender({ namespace: "kube-system" });
+    rerender({ namespace: ["kube-system"] });
     expect(result.current).toEqual([]);
     expect(eventsOnMock).toHaveBeenCalledWith("pods:kube-system:update", expect.any(Function));
   });

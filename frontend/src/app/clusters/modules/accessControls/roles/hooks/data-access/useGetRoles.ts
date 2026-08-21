@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_ROLES } from "../../api/api.const";
 import type { Role } from "../../api/resources";
 import { ListRoles } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useRolesUpdateEvents } from "../async-events/useRolesUpdateEvents";
 
 export const useGetRoles = (
@@ -16,12 +13,11 @@ export const useGetRoles = (
   callback?: UseQueryCallback<Role[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestRoles = useRolesUpdateEvents(effectiveNamespace);
+  const latestRoles = useRolesUpdateEvents(namespaces);
 
   const query = useQuery<Role[], Error>({
     queryKey: [QUERY_KEY_ROLES, { context, namespaces }],
-    queryFn: () => ListRoles(effectiveNamespace),
+    queryFn: () => ListRoles(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

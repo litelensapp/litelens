@@ -52,7 +52,7 @@ func TestListEvents_SingleNamespace(t *testing.T) {
 	ev := makeEvent("my-event", "production", corev1.EventTypeNormal)
 	lister := newEventLister(ev)
 
-	result, err := ListEvents(lister, "production")
+	result, err := ListEvents(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestListEvents_EmptyNamespaceReturnsAll(t *testing.T) {
 	ev2 := makeEvent("ev-b", "ns-b", corev1.EventTypeNormal)
 	lister := newEventLister(ev1, ev2)
 
-	result, err := ListEvents(lister, "")
+	result, err := ListEvents(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestListEvents_SpecificNamespaceFilters(t *testing.T) {
 	ev2 := makeEvent("ev-b", "ns-b", corev1.EventTypeNormal)
 	lister := newEventLister(ev1, ev2)
 
-	result, err := ListEvents(lister, "ns-a")
+	result, err := ListEvents(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestListEvents_SpecificNamespaceFilters(t *testing.T) {
 func TestListEvents_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newEventLister()
 
-	result, err := ListEvents(lister, "default")
+	result, err := ListEvents(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestListEvents_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListEvents_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListEvents(&errorEventLister{err: sentinel}, "")
+	_, err := ListEvents(&errorEventLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -120,7 +120,7 @@ func TestListEvents_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListEvents_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListEvents(&errorEventLister{err: sentinel}, "default")
+	_, err := ListEvents(&errorEventLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -131,7 +131,7 @@ func TestListWarningEvents_FiltersWarnings(t *testing.T) {
 	warning := makeEvent("warning-event", "default", corev1.EventTypeWarning)
 	lister := newEventLister(normal, warning)
 
-	result, err := ListWarningEvents(lister, "default")
+	result, err := ListWarningEvents(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestListWarningEvents_FiltersWarnings(t *testing.T) {
 func TestListWarningEvents_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newEventLister()
 
-	result, err := ListWarningEvents(lister, "default")
+	result, err := ListWarningEvents(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

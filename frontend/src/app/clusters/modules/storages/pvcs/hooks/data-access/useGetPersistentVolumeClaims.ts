@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_PVCS } from "../../api/api.const";
 import type { PersistentVolumeClaim } from "../../api/resources";
 import { ListPersistentVolumeClaims } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { usePersistentVolumeClaimsUpdateEvents } from "../async-events/usePersistentVolumeClaimsUpdateEvents";
 
 export const useGetPersistentVolumeClaims = (
@@ -16,12 +13,11 @@ export const useGetPersistentVolumeClaims = (
   callback?: UseQueryCallback<PersistentVolumeClaim[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestPersistentVolumeClaims = usePersistentVolumeClaimsUpdateEvents(effectiveNamespace);
+  const latestPersistentVolumeClaims = usePersistentVolumeClaimsUpdateEvents(namespaces);
 
   const query = useQuery<PersistentVolumeClaim[], Error>({
     queryKey: [QUERY_KEY_PVCS, { context, namespaces }],
-    queryFn: () => ListPersistentVolumeClaims(effectiveNamespace),
+    queryFn: () => ListPersistentVolumeClaims(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

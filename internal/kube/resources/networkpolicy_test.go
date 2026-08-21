@@ -51,7 +51,7 @@ func TestListNetworkPolicies_SingleNamespace(t *testing.T) {
 	np := makeNetworkPolicy("test-np", "default")
 	lister := newNetworkPolicyLister(np)
 
-	result, err := ListNetworkPolicies(lister, "default")
+	result, err := ListNetworkPolicies(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestListNetworkPolicies_EmptyNamespaceReturnsAll(t *testing.T) {
 	np2 := makeNetworkPolicy("np-b", "ns-b")
 	lister := newNetworkPolicyLister(np1, np2)
 
-	result, err := ListNetworkPolicies(lister, "")
+	result, err := ListNetworkPolicies(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestListNetworkPolicies_SpecificNamespaceFilters(t *testing.T) {
 	np2 := makeNetworkPolicy("np-b", "ns-b")
 	lister := newNetworkPolicyLister(np1, np2)
 
-	result, err := ListNetworkPolicies(lister, "ns-a")
+	result, err := ListNetworkPolicies(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestListNetworkPolicies_SpecificNamespaceFilters(t *testing.T) {
 func TestListNetworkPolicies_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newNetworkPolicyLister()
 
-	result, err := ListNetworkPolicies(lister, "")
+	result, err := ListNetworkPolicies(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestListNetworkPolicies_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListNetworkPolicies_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListNetworkPolicies(&errorNetworkPolicyLister{err: sentinel}, "")
+	_, err := ListNetworkPolicies(&errorNetworkPolicyLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -119,7 +119,7 @@ func TestListNetworkPolicies_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListNetworkPolicies_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListNetworkPolicies(&errorNetworkPolicyLister{err: sentinel}, "default")
+	_, err := ListNetworkPolicies(&errorNetworkPolicyLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

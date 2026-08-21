@@ -12,7 +12,7 @@ export function useGetEndpointSliceYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestEndpointSlices = useEndpointSlicesUpdateEvents();
+  const latestEndpointSlices = useEndpointSlicesUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_ENDPOINT_SLICE_YAML, { context, namespace, name }],

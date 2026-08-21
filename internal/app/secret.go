@@ -16,7 +16,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListSecrets(namespace string) ([]dto.Secret, error) {
+func (a *App) ListSecrets(namespaces []string) ([]dto.Secret, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -30,7 +30,7 @@ func (a *App) ListSecrets(namespace string) ([]dto.Secret, error) {
 	if h.IsForbidden("secrets") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListSecrets(h.Factory.Core().V1().Secrets().Lister(), namespace)
+	result, err := kubeResources.ListSecrets(h.Factory.Core().V1().Secrets().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListSecrets: %v", err)
 		return []dto.Secret{}, nil
@@ -105,7 +105,7 @@ func (a *App) DeleteSecret(namespace, name string) error {
 		return fmt.Errorf("delete Secret: %w", err)
 	}
 
-	a.emitSecrets(namespace)
+	a.emitSecrets([]string{namespace})
 
 	return nil
 }
@@ -133,9 +133,11 @@ func (a *App) DeleteSecrets(items []dto.SecretRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitSecrets(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitSecrets(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d secrets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -143,7 +145,7 @@ func (a *App) DeleteSecrets(items []dto.SecretRef) error {
 	return nil
 }
 
-func (a *App) emitSecrets(namespace string) {
+func (a *App) emitSecrets(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -158,21 +160,21 @@ func (a *App) emitSecrets(namespace string) {
 		return
 	}
 	lister := h.Factory.Core().V1().Secrets().Lister()
-	allData, err := kubeResources.ListSecrets(lister, "")
+	allData, err := kubeResources.ListSecrets(lister, nil)
 	if err != nil {
 		log.Printf("app: emitSecrets: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "secrets:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Secret, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "secrets:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "secrets:"+ns+":update", nsData)
 	}
 }
 
@@ -220,7 +222,7 @@ func (a *App) UpdateSecretYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Secret: %w", err)
 	}
 
-	a.emitSecrets(namespace)
+	a.emitSecrets([]string{namespace})
 
 	return nil
 }

@@ -55,7 +55,7 @@ func TestListLeases_NameNamespace(t *testing.T) {
 	l := makeLease("my-lease", "kube-system")
 	lister := newLeaseLister(l)
 
-	result, err := ListLeases(lister, "kube-system")
+	result, err := ListLeases(lister, []string{"kube-system"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestListLeases_EmptyNamespaceReturnsAll(t *testing.T) {
 	l2 := makeLease("lease-b", "ns-b")
 	lister := newLeaseLister(l1, l2)
 
-	result, err := ListLeases(lister, "")
+	result, err := ListLeases(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestListLeases_SpecificNamespaceFilters(t *testing.T) {
 	l2 := makeLease("lease-b", "ns-b")
 	lister := newLeaseLister(l1, l2)
 
-	result, err := ListLeases(lister, "ns-a")
+	result, err := ListLeases(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestListLeases_Age_NonZeroTimestamp_IsNonEmpty(t *testing.T) {
 	l := makeLease("lease", "default")
 	lister := newLeaseLister(l)
 
-	result, err := ListLeases(lister, "default")
+	result, err := ListLeases(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestListLeases_Age_NonZeroTimestamp_IsNonEmpty(t *testing.T) {
 }
 
 func TestListLeases_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
-	result, err := ListLeases(newLeaseLister(), "")
+	result, err := ListLeases(newLeaseLister(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestListLeases_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
 
 func TestListLeases_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListLeases(&errorLeaseLister{err: sentinel}, "")
+	_, err := ListLeases(&errorLeaseLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -143,7 +143,7 @@ func TestListLeases_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListLeases_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListLeases(&errorLeaseLister{err: sentinel}, "default")
+	_, err := ListLeases(&errorLeaseLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -151,7 +151,7 @@ func TestListLeases_ErrorPropagation_NamespacedScope(t *testing.T) {
 
 func TestListLeases_WrongNamespace_ReturnsEmpty(t *testing.T) {
 	l := makeLease("lease-a", "ns-a")
-	result, err := ListLeases(newLeaseLister(l), "ns-b")
+	result, err := ListLeases(newLeaseLister(l), []string{"ns-b"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestListLeases_LargeSet_SortedByName(t *testing.T) {
 	for _, n := range names {
 		leases = append(leases, makeLease(n, "default"))
 	}
-	result, err := ListLeases(newLeaseLister(leases...), "default")
+	result, err := ListLeases(newLeaseLister(leases...), []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

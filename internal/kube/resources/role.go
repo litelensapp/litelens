@@ -88,16 +88,23 @@ func GetRoleByName(lister listersrbacv1.RoleLister, namespace, name string) (dto
 	return toRole(r), nil
 }
 
-func ListRoles(lister listersrbacv1.RoleLister, namespace string) ([]dto.Role, error) {
-	var roles []*rbacv1.Role
-	var err error
-	if namespace == "" {
-		roles, err = lister.List(labels.Everything())
-	} else {
-		roles, err = lister.Roles(namespace).List(labels.Everything())
-	}
+func ListRoles(lister listersrbacv1.RoleLister, namespaces []string) ([]dto.Role, error) {
+	roles, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := roles[:0:0]
+		for _, role := range roles {
+			if _, ok := nsSet[role.Namespace]; ok {
+				filtered = append(filtered, role)
+			}
+		}
+		roles = filtered
 	}
 	result := make([]dto.Role, len(roles))
 	for i, r := range roles {

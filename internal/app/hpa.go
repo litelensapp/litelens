@@ -41,7 +41,7 @@ func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
 	return result, nil
 }
 
-func (a *App) ListHPAs(namespace string) ([]dto.HPA, error) {
+func (a *App) ListHPAs(namespaces []string) ([]dto.HPA, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -55,7 +55,7 @@ func (a *App) ListHPAs(namespace string) ([]dto.HPA, error) {
 	if h.IsForbidden("hpa") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListHPAs(h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister(), namespace)
+	result, err := kubeResources.ListHPAs(h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListHPAs: %v", err)
 		return []dto.HPA{}, nil
@@ -63,7 +63,7 @@ func (a *App) ListHPAs(namespace string) ([]dto.HPA, error) {
 	return result, nil
 }
 
-func (a *App) emitHPAs(namespace string) {
+func (a *App) emitHPAs(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -78,21 +78,21 @@ func (a *App) emitHPAs(namespace string) {
 		return
 	}
 	lister := h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister()
-	allData, err := kubeResources.ListHPAs(lister, "")
+	allData, err := kubeResources.ListHPAs(lister, nil)
 	if err != nil {
 		log.Printf("app: emitHPAs: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "hpas:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.HPA, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "hpas:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "hpas:"+ns+":update", nsData)
 	}
 }
 
@@ -113,7 +113,7 @@ func (a *App) DeleteHPA(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitHPAs(namespace)
+	a.emitHPAs([]string{namespace})
 
 	return nil
 }
@@ -141,9 +141,11 @@ func (a *App) DeleteHPAs(items []dto.HPARef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitHPAs(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitHPAs(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d hpas: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -195,7 +197,7 @@ func (a *App) UpdateHPAYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update HPA: %w", err)
 	}
 
-	a.emitHPAs(namespace)
+	a.emitHPAs([]string{namespace})
 
 	return nil
 }

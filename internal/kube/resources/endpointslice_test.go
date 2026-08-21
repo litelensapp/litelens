@@ -52,7 +52,7 @@ func TestListEndpointSlices_SingleNamespace(t *testing.T) {
 	es := makeEndpointSlice("my-slice", "production")
 	lister := newEndpointSliceLister(es)
 
-	result, err := ListEndpointSlices(lister, "production")
+	result, err := ListEndpointSlices(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestListEndpointSlices_EmptyNamespaceReturnsAll(t *testing.T) {
 	es2 := makeEndpointSlice("es-b", "ns-b")
 	lister := newEndpointSliceLister(es1, es2)
 
-	result, err := ListEndpointSlices(lister, "")
+	result, err := ListEndpointSlices(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestListEndpointSlices_SpecificNamespaceFilters(t *testing.T) {
 	es2 := makeEndpointSlice("es-b", "ns-b")
 	lister := newEndpointSliceLister(es1, es2)
 
-	result, err := ListEndpointSlices(lister, "ns-a")
+	result, err := ListEndpointSlices(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestListEndpointSlices_SpecificNamespaceFilters(t *testing.T) {
 func TestListEndpointSlices_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newEndpointSliceLister()
 
-	result, err := ListEndpointSlices(lister, "default")
+	result, err := ListEndpointSlices(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestListEndpointSlices_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListEndpointSlices_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListEndpointSlices(&errorEndpointSliceLister{err: sentinel}, "")
+	_, err := ListEndpointSlices(&errorEndpointSliceLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -120,7 +120,7 @@ func TestListEndpointSlices_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListEndpointSlices_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListEndpointSlices(&errorEndpointSliceLister{err: sentinel}, "default")
+	_, err := ListEndpointSlices(&errorEndpointSliceLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

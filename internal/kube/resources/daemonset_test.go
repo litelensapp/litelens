@@ -36,7 +36,7 @@ func TestListDaemonSets_SingleNamespace(t *testing.T) {
 	ds := makeDaemonSet("my-daemon", "production")
 	lister := newDaemonSetLister(ds)
 
-	result, err := ListDaemonSets(lister, "production")
+	result, err := ListDaemonSets(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestListDaemonSets_EmptyNamespaceReturnsAll(t *testing.T) {
 	ds2 := makeDaemonSet("ds-b", "ns-b")
 	lister := newDaemonSetLister(ds1, ds2)
 
-	result, err := ListDaemonSets(lister, "")
+	result, err := ListDaemonSets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestListDaemonSets_SpecificNamespaceFilters(t *testing.T) {
 	ds2 := makeDaemonSet("ds-b", "ns-b")
 	lister := newDaemonSetLister(ds1, ds2)
 
-	result, err := ListDaemonSets(lister, "ns-a")
+	result, err := ListDaemonSets(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestListDaemonSets_SpecificNamespaceFilters(t *testing.T) {
 func TestListDaemonSets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newDaemonSetLister()
 
-	result, err := ListDaemonSets(lister, "default")
+	result, err := ListDaemonSets(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

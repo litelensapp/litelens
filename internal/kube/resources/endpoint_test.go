@@ -52,7 +52,7 @@ func TestListEndpoints_SingleNamespace(t *testing.T) {
 	ep := makeEndpoint("my-endpoints", "production")
 	lister := newEndpointLister(ep)
 
-	result, err := ListEndpoints(lister, "production")
+	result, err := ListEndpoints(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestListEndpoints_EmptyNamespaceReturnsAll(t *testing.T) {
 	ep2 := makeEndpoint("ep-b", "ns-b")
 	lister := newEndpointLister(ep1, ep2)
 
-	result, err := ListEndpoints(lister, "")
+	result, err := ListEndpoints(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestListEndpoints_SpecificNamespaceFilters(t *testing.T) {
 	ep2 := makeEndpoint("ep-b", "ns-b")
 	lister := newEndpointLister(ep1, ep2)
 
-	result, err := ListEndpoints(lister, "ns-a")
+	result, err := ListEndpoints(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestListEndpoints_SpecificNamespaceFilters(t *testing.T) {
 func TestListEndpoints_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newEndpointLister()
 
-	result, err := ListEndpoints(lister, "default")
+	result, err := ListEndpoints(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestListEndpoints_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListEndpoints_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListEndpoints(&errorEndpointLister{err: sentinel}, "")
+	_, err := ListEndpoints(&errorEndpointLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -120,7 +120,7 @@ func TestListEndpoints_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListEndpoints_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListEndpoints(&errorEndpointLister{err: sentinel}, "default")
+	_, err := ListEndpoints(&errorEndpointLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

@@ -12,7 +12,7 @@ export function useGetServiceYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestServices = useServicesUpdateEvents();
+  const latestServices = useServicesUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_SERVICE_YAML, { context, namespace, name }],

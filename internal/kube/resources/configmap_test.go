@@ -54,7 +54,7 @@ func TestListConfigMaps_SingleNamespace(t *testing.T) {
 	cm := makeConfigMap("my-config", "production")
 	lister := newConfigMapLister(cm)
 
-	result, err := ListConfigMaps(lister, "production")
+	result, err := ListConfigMaps(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestListConfigMaps_EmptyNamespaceReturnsAll(t *testing.T) {
 	cm2 := makeConfigMap("cm-b", "ns-b")
 	lister := newConfigMapLister(cm1, cm2)
 
-	result, err := ListConfigMaps(lister, "")
+	result, err := ListConfigMaps(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestListConfigMaps_SpecificNamespaceFilters(t *testing.T) {
 	cm2 := makeConfigMap("cm-b", "ns-b")
 	lister := newConfigMapLister(cm1, cm2)
 
-	result, err := ListConfigMaps(lister, "ns-a")
+	result, err := ListConfigMaps(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestListConfigMaps_SpecificNamespaceFilters(t *testing.T) {
 func TestListConfigMaps_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newConfigMapLister()
 
-	result, err := ListConfigMaps(lister, "default")
+	result, err := ListConfigMaps(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestListConfigMaps_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListConfigMaps_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, "")
+	_, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -122,7 +122,7 @@ func TestListConfigMaps_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListConfigMaps_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, "default")
+	_, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

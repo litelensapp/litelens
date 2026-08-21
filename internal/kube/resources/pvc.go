@@ -48,28 +48,43 @@ func toPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim, podNames []strin
 func ListPersistentVolumeClaims(
 	pvcLister listerscorev1.PersistentVolumeClaimLister,
 	podLister listerscorev1.PodLister,
-	namespace string,
+	namespaces []string,
 ) ([]dto.PersistentVolumeClaim, error) {
-	var pvcs []*corev1.PersistentVolumeClaim
-	var err error
-	if namespace == "" {
-		pvcs, err = pvcLister.List(labels.Everything())
-	} else {
-		pvcs, err = pvcLister.PersistentVolumeClaims(namespace).List(labels.Everything())
-	}
+	pvcs, err := pvcLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := pvcs[:0:0]
+		for _, pvc := range pvcs {
+			if _, ok := nsSet[pvc.Namespace]; ok {
+				filtered = append(filtered, pvc)
+			}
+		}
+		pvcs = filtered
 	}
 
 	// Build a map: namespace/claimName → []podName for fast lookup.
 	claimToPods := map[string][]string{}
-	var pods []*corev1.Pod
-	if namespace == "" {
-		pods, err = podLister.List(labels.Everything())
-	} else {
-		pods, err = podLister.Pods(namespace).List(labels.Everything())
-	}
+	pods, err := podLister.List(labels.Everything())
 	if err == nil {
+		if len(namespaces) > 0 {
+			nsSet := make(map[string]struct{}, len(namespaces))
+			for _, ns := range namespaces {
+				nsSet[ns] = struct{}{}
+			}
+			filtered := pods[:0:0]
+			for _, pod := range pods {
+				if _, ok := nsSet[pod.Namespace]; ok {
+					filtered = append(filtered, pod)
+				}
+			}
+			pods = filtered
+		}
 		for _, pod := range pods {
 			for _, vol := range pod.Spec.Volumes {
 				if vol.PersistentVolumeClaim != nil {

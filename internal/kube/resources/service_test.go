@@ -54,7 +54,7 @@ func TestListServices_SingleNamespace(t *testing.T) {
 	svc := makeService("svc-1", "default")
 	lister := newServiceLister(svc)
 
-	result, err := ListServices(lister, "default")
+	result, err := ListServices(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestListServices_EmptyNamespaceReturnsAll(t *testing.T) {
 	svc2 := makeService("svc-b", "ns-b")
 	lister := newServiceLister(svc1, svc2)
 
-	result, err := ListServices(lister, "")
+	result, err := ListServices(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestListServices_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListServices_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newServiceLister()
 
-	result, err := ListServices(lister, "")
+	result, err := ListServices(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestListServices_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListServices_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListServices(&errorServiceLister{err: sentinel}, "")
+	_, err := ListServices(&errorServiceLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -105,7 +105,7 @@ func TestListServices_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListServices_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListServices(&errorServiceLister{err: sentinel}, "default")
+	_, err := ListServices(&errorServiceLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

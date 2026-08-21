@@ -41,7 +41,7 @@ func (a *App) GetRoleByName(namespace, name string) (dto.Role, error) {
 	return result, nil
 }
 
-func (a *App) ListRoles(namespace string) ([]dto.Role, error) {
+func (a *App) ListRoles(namespaces []string) ([]dto.Role, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -57,7 +57,7 @@ func (a *App) ListRoles(namespace string) ([]dto.Role, error) {
 	}
 	result, err := kubeResources.ListRoles(
 		h.Factory.Rbac().V1().Roles().Lister(),
-		namespace,
+		namespaces,
 	)
 	if err != nil {
 		log.Printf("app: ListRoles: %v", err)
@@ -66,7 +66,7 @@ func (a *App) ListRoles(namespace string) ([]dto.Role, error) {
 	return result, nil
 }
 
-func (a *App) emitRoles(namespace string) {
+func (a *App) emitRoles(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -81,21 +81,21 @@ func (a *App) emitRoles(namespace string) {
 		return
 	}
 	lister := h.Factory.Rbac().V1().Roles().Lister()
-	allData, err := kubeResources.ListRoles(lister, "")
+	allData, err := kubeResources.ListRoles(lister, nil)
 	if err != nil {
 		log.Printf("app: emitRoles: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "roles:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Role, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "roles:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "roles:"+ns+":update", nsData)
 	}
 }
 
@@ -114,7 +114,7 @@ func (a *App) DeleteRole(namespace, name string) error {
 		return fmt.Errorf("delete Role: %w", err)
 	}
 
-	a.emitRoles(namespace)
+	a.emitRoles([]string{namespace})
 
 	return nil
 }
@@ -140,9 +140,11 @@ func (a *App) DeleteRoles(items []dto.RoleRef) error {
 		namespaces[ref.Namespace] = true
 	}
 
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitRoles(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitRoles(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d roles: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -194,7 +196,7 @@ func (a *App) UpdateRoleYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Role: %w", err)
 	}
 
-	a.emitRoles(namespace)
+	a.emitRoles([]string{namespace})
 
 	return nil
 }

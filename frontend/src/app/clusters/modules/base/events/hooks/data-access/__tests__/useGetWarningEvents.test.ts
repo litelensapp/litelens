@@ -88,7 +88,7 @@ describe("useGetWarningEvents", () => {
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listWarningEventsMock).toHaveBeenCalledWith("default");
+    expect(listWarningEventsMock).toHaveBeenCalledWith(["default"]);
   });
 
   it("uses correct queryKey with context, namespace, and triggerRefresh", async () => {
@@ -179,7 +179,7 @@ describe("useGetWarningEvents", () => {
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listWarningEventsMock).toHaveBeenCalledWith("kube-system");
+    expect(listWarningEventsMock).toHaveBeenCalledWith(["kube-system"]);
   });
 
   it("handles empty event list", async () => {

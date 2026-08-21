@@ -56,7 +56,7 @@ func TestListRoleBindings_SingleNamespace(t *testing.T) {
 	rb := makeRoleBinding("read-binding", "default")
 	lister := newRoleBindingLister(rb)
 
-	result, err := ListRoleBindings(lister, "default")
+	result, err := ListRoleBindings(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestListRoleBindings_EmptyNamespaceReturnsAll(t *testing.T) {
 	rb2 := makeRoleBinding("rb-b", "ns-b")
 	lister := newRoleBindingLister(rb1, rb2)
 
-	result, err := ListRoleBindings(lister, "")
+	result, err := ListRoleBindings(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestListRoleBindings_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListRoleBindings_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newRoleBindingLister()
 
-	result, err := ListRoleBindings(lister, "")
+	result, err := ListRoleBindings(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestListRoleBindings_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListRoleBindings_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListRoleBindings(&errorRoleBindingLister{err: sentinel}, "")
+	_, err := ListRoleBindings(&errorRoleBindingLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -107,7 +107,7 @@ func TestListRoleBindings_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListRoleBindings_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListRoleBindings(&errorRoleBindingLister{err: sentinel}, "default")
+	_, err := ListRoleBindings(&errorRoleBindingLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

@@ -12,7 +12,7 @@ export function useGetDaemonSetYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestDaemonSets = useDaemonSetsUpdateEvents();
+  const latestDaemonSets = useDaemonSetsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_DAEMONSET_YAML, { context, namespace, name }],

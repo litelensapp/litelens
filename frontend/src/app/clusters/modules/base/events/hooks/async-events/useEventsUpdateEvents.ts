@@ -1,28 +1,50 @@
 import { startTransition, useEffect, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import type { Event } from "../../api/resources";
+import { mergeNamespaceScopedData } from "../../../../../shared/utils/eventMerging";
 
 // Data-only event hook: tracks the latest pushed events in local state.
 // Called directly from event data-access hooks (useGetEvents, useGetEventDetail)
 // to merge event-driven data locally without cache-wide side effects.
 // Events have no YAML view (raw Kubernetes Events aren't edited), so no YAML hook to wire.
-export function useEventsUpdateEvents(namespace = ""): Event[] {
+export function useEventsUpdateEvents(namespaces: string[] = []): Event[] {
   const [latestEvents, setLatestEvents] = useState<Event[]>([]);
-  const [prevNamespace, setPrevNamespace] = useState(namespace);
+  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
 
-  // Reset stale data from the previous namespace's channel before re-subscribing.
-  if (namespace !== prevNamespace) {
-    setPrevNamespace(namespace);
-    setLatestEvents([]);
+  // When namespace selection changes, filter down accumulated state to only selected namespaces.
+  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
+    setPrevNamespaces(namespaces);
+    if (namespaces.length > 0) {
+      const namespacesSet = new Set(namespaces);
+      setLatestEvents((prev) => prev.filter((event) => namespacesSet.has(event.Namespace)));
+    } else {
+      setLatestEvents([]);
+    }
   }
 
   useEffect(() => {
-    const eventName = namespace ? `events:${namespace}:update` : "events:update";
-    return EventsOn(eventName, (data: Event[]) => {
-      startTransition(() => {
-        setLatestEvents(data);
+    if (namespaces.length === 0) {
+      return EventsOn("events:update", (data: Event[]) => {
+        startTransition(() => {
+          setLatestEvents(data);
+        });
       });
-    });
-  }, [namespace]);
+    }
+
+    const unsubscribers: Array<() => void> = [];
+    for (const ns of namespaces) {
+      const eventName = `events:${ns}:update`;
+      const unsubscriber = EventsOn(eventName, (data: Event[]) => {
+        startTransition(() => {
+          setLatestEvents((prev) => mergeNamespaceScopedData(prev, data, ns));
+        });
+      });
+      unsubscribers.push(unsubscriber);
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => unsub());
+    };
+  }, [namespaces]);
   return latestEvents;
 }

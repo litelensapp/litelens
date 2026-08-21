@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_INGRESSES } from "../../api/api.const";
 import type { Ingress } from "../../api/resources";
 import { ListIngresses } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useIngressesUpdateEvents } from "../async-events/useIngressesUpdateEvents";
 
 export const useGetIngresses = (
@@ -16,12 +13,11 @@ export const useGetIngresses = (
   callback?: UseQueryCallback<Ingress[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestIngresses = useIngressesUpdateEvents();
+  const latestIngresses = useIngressesUpdateEvents(namespaces);
 
   const query = useQuery<Ingress[], Error>({
     queryKey: [QUERY_KEY_INGRESSES, { context, namespaces }],
-    queryFn: () => ListIngresses(effectiveNamespace),
+    queryFn: () => ListIngresses(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_CRONJOBS } from "../../api/api.const";
 import type { CronJob } from "../../api/resources";
 import { ListCronJobs } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useCronJobsUpdateEvents } from "../async-events/useCronJobsUpdateEvents";
 
 export const useGetCronJobs = (
@@ -16,12 +13,11 @@ export const useGetCronJobs = (
   callback?: UseQueryCallback<CronJob[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestCronJobs = useCronJobsUpdateEvents();
+  const latestCronJobs = useCronJobsUpdateEvents(namespaces);
 
   const query = useQuery<CronJob[], Error>({
     queryKey: [QUERY_KEY_CRONJOBS, { context, namespaces }],
-    queryFn: () => ListCronJobs(effectiveNamespace),
+    queryFn: () => ListCronJobs(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

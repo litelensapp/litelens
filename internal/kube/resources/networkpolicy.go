@@ -29,16 +29,23 @@ func toNetworkPolicy(np *networkingv1.NetworkPolicy) dto.NetworkPolicy {
 	}
 }
 
-func ListNetworkPolicies(lister listersnetworkingv1.NetworkPolicyLister, namespace string) ([]dto.NetworkPolicy, error) {
-	var nps []*networkingv1.NetworkPolicy
-	var err error
-	if namespace == "" {
-		nps, err = lister.List(labels.Everything())
-	} else {
-		nps, err = lister.NetworkPolicies(namespace).List(labels.Everything())
-	}
+func ListNetworkPolicies(lister listersnetworkingv1.NetworkPolicyLister, namespaces []string) ([]dto.NetworkPolicy, error) {
+	nps, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := nps[:0:0]
+		for _, np := range nps {
+			if _, ok := nsSet[np.Namespace]; ok {
+				filtered = append(filtered, np)
+			}
+		}
+		nps = filtered
 	}
 	result := make([]dto.NetworkPolicy, len(nps))
 	for i, np := range nps {

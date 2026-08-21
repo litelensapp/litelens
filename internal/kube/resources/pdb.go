@@ -32,16 +32,23 @@ func toPodDisruptionBudget(pdb *policyv1.PodDisruptionBudget) dto.PodDisruptionB
 	}
 }
 
-func ListPodDisruptionBudgets(lister listerspolicyv1.PodDisruptionBudgetLister, namespace string) ([]dto.PodDisruptionBudget, error) {
-	var pdbs []*policyv1.PodDisruptionBudget
-	var err error
-	if namespace == "" {
-		pdbs, err = lister.List(labels.Everything())
-	} else {
-		pdbs, err = lister.PodDisruptionBudgets(namespace).List(labels.Everything())
-	}
+func ListPodDisruptionBudgets(lister listerspolicyv1.PodDisruptionBudgetLister, namespaces []string) ([]dto.PodDisruptionBudget, error) {
+	pdbs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := pdbs[:0:0]
+		for _, pdb := range pdbs {
+			if _, ok := nsSet[pdb.Namespace]; ok {
+				filtered = append(filtered, pdb)
+			}
+		}
+		pdbs = filtered
 	}
 	result := make([]dto.PodDisruptionBudget, len(pdbs))
 	for i, pdb := range pdbs {

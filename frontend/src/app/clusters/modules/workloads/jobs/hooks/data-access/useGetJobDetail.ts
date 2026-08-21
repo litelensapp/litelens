@@ -7,7 +7,7 @@ import { GetJobByName } from "../../api/resources";
 import { useJobsUpdateEvents } from "../async-events/useJobsUpdateEvents";
 
 export const useGetJobDetail = (context: string, namespace: string, name: string) => {
-  const latestJobs = useJobsUpdateEvents(namespace);
+  const latestJobs = useJobsUpdateEvents([namespace]);
 
   const query = useQuery<Job, Error>({
     queryKey: [QUERY_KEY_JOB_DETAIL, { context, namespace, name }],

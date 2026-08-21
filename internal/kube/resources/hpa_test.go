@@ -61,7 +61,7 @@ func TestListHPAs_SingleNamespace(t *testing.T) {
 	hpa := makeHPA("my-hpa", "production")
 	lister := newHPALister(hpa)
 
-	result, err := ListHPAs(lister, "production")
+	result, err := ListHPAs(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestListHPAs_EmptyNamespaceReturnsAll(t *testing.T) {
 	hpa2 := makeHPA("hpa-b", "ns-b")
 	lister := newHPALister(hpa1, hpa2)
 
-	result, err := ListHPAs(lister, "")
+	result, err := ListHPAs(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestListHPAs_SpecificNamespaceFilters(t *testing.T) {
 	hpa2 := makeHPA("hpa-b", "ns-b")
 	lister := newHPALister(hpa1, hpa2)
 
-	result, err := ListHPAs(lister, "ns-a")
+	result, err := ListHPAs(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestListHPAs_SpecificNamespaceFilters(t *testing.T) {
 func TestListHPAs_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newHPALister()
 
-	result, err := ListHPAs(lister, "default")
+	result, err := ListHPAs(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestListHPAs_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListHPAs_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListHPAs(&errorHPALister{err: sentinel}, "")
+	_, err := ListHPAs(&errorHPALister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -129,7 +129,7 @@ func TestListHPAs_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListHPAs_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListHPAs(&errorHPALister{err: sentinel}, "default")
+	_, err := ListHPAs(&errorHPALister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

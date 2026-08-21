@@ -60,16 +60,23 @@ func toIngress(ing *networkingv1.Ingress) dto.Ingress {
 	}
 }
 
-func ListIngresses(lister listersnetworkingv1.IngressLister, namespace string) ([]dto.Ingress, error) {
-	var ings []*networkingv1.Ingress
-	var err error
-	if namespace == "" {
-		ings, err = lister.List(labels.Everything())
-	} else {
-		ings, err = lister.Ingresses(namespace).List(labels.Everything())
-	}
+func ListIngresses(lister listersnetworkingv1.IngressLister, namespaces []string) ([]dto.Ingress, error) {
+	ings, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := ings[:0:0]
+		for _, ing := range ings {
+			if _, ok := nsSet[ing.Namespace]; ok {
+				filtered = append(filtered, ing)
+			}
+		}
+		ings = filtered
 	}
 	result := make([]dto.Ingress, len(ings))
 	for i, ing := range ings {

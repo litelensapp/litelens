@@ -12,7 +12,7 @@ export function useGetCronJobYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestCronJobs = useCronJobsUpdateEvents();
+  const latestCronJobs = useCronJobsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_CRONJOB_YAML, { context, namespace, name }],

@@ -12,7 +12,7 @@ export function useGetConfigMapYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestConfigMaps = useConfigMapsUpdateEvents(namespace);
+  const latestConfigMaps = useConfigMapsUpdateEvents([namespace]);
   const query = useQuery({
     queryKey: [QUERY_KEY_CONFIGMAP_YAML, { context, namespace, name }],
     queryFn: () => GetConfigMapYAML(namespace, name),

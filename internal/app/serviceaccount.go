@@ -41,7 +41,7 @@ func (a *App) GetServiceAccountByName(namespace, name string) (dto.ServiceAccoun
 	return result, nil
 }
 
-func (a *App) ListServiceAccounts(namespace string) ([]dto.ServiceAccount, error) {
+func (a *App) ListServiceAccounts(namespaces []string) ([]dto.ServiceAccount, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -57,7 +57,7 @@ func (a *App) ListServiceAccounts(namespace string) ([]dto.ServiceAccount, error
 	}
 	result, err := kubeResources.ListServiceAccounts(
 		h.Factory.Core().V1().ServiceAccounts().Lister(),
-		namespace,
+		namespaces,
 	)
 	if err != nil {
 		log.Printf("app: ListServiceAccounts: %v", err)
@@ -81,7 +81,7 @@ func (a *App) DeleteServiceAccount(namespace, name string) error {
 		return fmt.Errorf("delete ServiceAccount: %w", err)
 	}
 
-	a.emitServiceAccounts(namespace)
+	a.emitServiceAccounts([]string{namespace})
 
 	return nil
 }
@@ -109,9 +109,11 @@ func (a *App) DeleteServiceAccounts(items []dto.ServiceAccountRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitServiceAccounts(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitServiceAccounts(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d serviceaccounts: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -119,7 +121,7 @@ func (a *App) DeleteServiceAccounts(items []dto.ServiceAccountRef) error {
 	return nil
 }
 
-func (a *App) emitServiceAccounts(namespace string) {
+func (a *App) emitServiceAccounts(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -134,21 +136,21 @@ func (a *App) emitServiceAccounts(namespace string) {
 		return
 	}
 	lister := h.Factory.Core().V1().ServiceAccounts().Lister()
-	allData, err := kubeResources.ListServiceAccounts(lister, "")
+	allData, err := kubeResources.ListServiceAccounts(lister, nil)
 	if err != nil {
 		log.Printf("app: emitServiceAccounts: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "serviceaccounts:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.ServiceAccount, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "serviceaccounts:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "serviceaccounts:"+ns+":update", nsData)
 	}
 }
 
@@ -196,7 +198,7 @@ func (a *App) UpdateServiceAccountYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update ServiceAccount: %w", err)
 	}
 
-	a.emitServiceAccounts(namespace)
+	a.emitServiceAccounts([]string{namespace})
 
 	return nil
 }

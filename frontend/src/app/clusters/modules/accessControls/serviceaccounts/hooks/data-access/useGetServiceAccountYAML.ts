@@ -12,7 +12,7 @@ export function useGetServiceAccountYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestServiceAccounts = useServiceAccountsUpdateEvents(namespace);
+  const latestServiceAccounts = useServiceAccountsUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_SERVICE_ACCOUNT_YAML, { context, namespace, name }],

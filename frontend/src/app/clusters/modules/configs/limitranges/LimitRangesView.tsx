@@ -28,7 +28,6 @@ import { useDeleteLimitRange } from "./hooks/data-mutation/useDeleteLimitRange";
 import { useDeleteLimitRanges } from "./hooks/data-mutation/useDeleteLimitRanges";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
-import { getEffectiveNamespace } from "../../../shared/utils/namespaceFiltering";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { LimitRangeCreationModal } from "./components/LimitRangeCreationModal";
 import { LimitRangeDeleteConfirmationModal } from "./components/LimitRangeDeleteConfirmationModal";
@@ -264,7 +263,7 @@ export const LimitRangesView: FC = () => {
       <LimitRangeCreationModal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        activeNamespace={getEffectiveNamespace(namespaces)}
+        activeNamespace={namespaces.length === 1 ? namespaces[0] : ""}
         activeContext={activeContext}
       />
     </div>

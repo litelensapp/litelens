@@ -117,16 +117,23 @@ func GetCronJobByName(lister listersbatchv1.CronJobLister, namespace, name strin
 	return toCronJob(cj), nil
 }
 
-func ListCronJobs(lister listersbatchv1.CronJobLister, namespace string) ([]dto.CronJob, error) {
-	var cjs []*batchv1.CronJob
-	var err error
-	if namespace == "" {
-		cjs, err = lister.List(labels.Everything())
-	} else {
-		cjs, err = lister.CronJobs(namespace).List(labels.Everything())
-	}
+func ListCronJobs(lister listersbatchv1.CronJobLister, namespaces []string) ([]dto.CronJob, error) {
+	cjs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := cjs[:0:0]
+		for _, cj := range cjs {
+			if _, ok := nsSet[cj.Namespace]; ok {
+				filtered = append(filtered, cj)
+			}
+		}
+		cjs = filtered
 	}
 	result := make([]dto.CronJob, len(cjs))
 	for i, cj := range cjs {

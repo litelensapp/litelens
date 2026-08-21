@@ -547,16 +547,23 @@ func GetPodByName(lister listerscorev1.PodLister, namespace, name string) (dto.P
 	return toPod(pod, true), nil
 }
 
-func ListPods(lister listerscorev1.PodLister, namespace string) ([]dto.Pod, error) {
-	var pods []*corev1.Pod
-	var err error
-	if namespace == "" {
-		pods, err = lister.List(labels.Everything())
-	} else {
-		pods, err = lister.Pods(namespace).List(labels.Everything())
-	}
+func ListPods(lister listerscorev1.PodLister, namespaces []string) ([]dto.Pod, error) {
+	pods, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := pods[:0:0]
+		for _, p := range pods {
+			if _, ok := nsSet[p.Namespace]; ok {
+				filtered = append(filtered, p)
+			}
+		}
+		pods = filtered
 	}
 	result := make([]dto.Pod, len(pods))
 	for i, p := range pods {

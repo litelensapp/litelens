@@ -30,7 +30,7 @@ func (a *App) GetServiceByName(namespace, name string) (dto.Service, error) {
 	return result, nil
 }
 
-func (a *App) ListServices(namespace string) ([]dto.Service, error) {
+func (a *App) ListServices(namespaces []string) ([]dto.Service, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -44,7 +44,7 @@ func (a *App) ListServices(namespace string) ([]dto.Service, error) {
 	if h.IsForbidden("services") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListServices(h.Factory.Core().V1().Services().Lister(), namespace)
+	result, err := kubeResources.ListServices(h.Factory.Core().V1().Services().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListServices: %v", err)
 		return []dto.Service{}, nil
@@ -69,7 +69,7 @@ func (a *App) DeleteService(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitServices(namespace)
+	a.emitServices([]string{namespace})
 
 	return nil
 }
@@ -97,9 +97,11 @@ func (a *App) DeleteServices(items []dto.ServiceRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitServices(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitServices(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d services: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -107,7 +109,7 @@ func (a *App) DeleteServices(items []dto.ServiceRef) error {
 	return nil
 }
 
-func (a *App) emitServices(namespace string) {
+func (a *App) emitServices(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -122,21 +124,21 @@ func (a *App) emitServices(namespace string) {
 		return
 	}
 	lister := h.Factory.Core().V1().Services().Lister()
-	allData, err := kubeResources.ListServices(lister, "")
+	allData, err := kubeResources.ListServices(lister, nil)
 	if err != nil {
 		log.Printf("app: emitServices: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "services:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Service, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "services:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "services:"+ns+":update", nsData)
 	}
 }
 
@@ -184,7 +186,7 @@ func (a *App) UpdateServiceYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Service: %w", err)
 	}
 
-	a.emitServices(namespace)
+	a.emitServices([]string{namespace})
 
 	return nil
 }

@@ -7,7 +7,7 @@ import { GetCronJobByName } from "../../api/resources";
 import { useCronJobsUpdateEvents } from "../async-events/useCronJobsUpdateEvents";
 
 export const useGetCronJobDetail = (context: string, namespace: string, name: string) => {
-  const latestCronJobs = useCronJobsUpdateEvents();
+  const latestCronJobs = useCronJobsUpdateEvents([namespace]);
 
   const query = useQuery<CronJob, Error>({
     queryKey: [QUERY_KEY_CRONJOB_DETAIL, { context, namespace, name }],

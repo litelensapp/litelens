@@ -3,18 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_WARNING_EVENTS } from "../../api/api.const";
 import type { Event } from "../../api/resources";
 import { ListWarningEvents } from "../../api/resources";
-import { getEffectiveNamespace } from "../../../../../shared/utils/namespaceFiltering";
 import { useWarningEventsUpdateEvents } from "../async-events/useWarningEventsUpdateEvents";
 
 export const useGetWarningEvents = (input: { context: string; namespaces: string[] }) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const triggerRefresh = useWarningEventsUpdateEvents(effectiveNamespace);
+  const triggerRefresh = useWarningEventsUpdateEvents(namespaces);
 
   return useQuery<Event[], Error>({
     queryKey: [QUERY_KEY_WARNING_EVENTS, { context, namespaces }, triggerRefresh],
     queryFn: () =>
-      ListWarningEvents(effectiveNamespace).then((events) =>
+      ListWarningEvents(namespaces).then((events) =>
         events.toSorted((a, b) => b.CreatedAt - a.CreatedAt)
       ),
     ...DEFAULT_QUERY_OPTIONS,

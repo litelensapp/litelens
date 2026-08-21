@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_LEASES } from "../../api/api.const";
 import type { Lease } from "../../api/resources";
 import { ListLeases } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useLeasesUpdateEvents } from "../async-events/useLeasesUpdateEvents";
 
 export const useGetLeases = (
@@ -16,12 +13,11 @@ export const useGetLeases = (
   callback?: UseQueryCallback<Lease[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestLeases = useLeasesUpdateEvents(effectiveNamespace);
+  const latestLeases = useLeasesUpdateEvents(namespaces);
 
   const query = useQuery<Lease[], Error>({
     queryKey: [QUERY_KEY_LEASES, { context, namespaces }],
-    queryFn: () => ListLeases(effectiveNamespace),
+    queryFn: () => ListLeases(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

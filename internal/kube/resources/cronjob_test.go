@@ -54,7 +54,7 @@ func TestListCronJobs_SingleNamespace(t *testing.T) {
 	cj := makeCronJob("my-cronjob", "production")
 	lister := newCronJobLister(cj)
 
-	result, err := ListCronJobs(lister, "production")
+	result, err := ListCronJobs(lister, []string{"production"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestListCronJobs_EmptyNamespaceReturnsAll(t *testing.T) {
 	cj2 := makeCronJob("cj-b", "ns-b")
 	lister := newCronJobLister(cj1, cj2)
 
-	result, err := ListCronJobs(lister, "")
+	result, err := ListCronJobs(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestListCronJobs_SpecificNamespaceFilters(t *testing.T) {
 	cj2 := makeCronJob("cj-b", "ns-b")
 	lister := newCronJobLister(cj1, cj2)
 
-	result, err := ListCronJobs(lister, "ns-a")
+	result, err := ListCronJobs(lister, []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestListCronJobs_SpecificNamespaceFilters(t *testing.T) {
 func TestListCronJobs_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newCronJobLister()
 
-	result, err := ListCronJobs(lister, "default")
+	result, err := ListCronJobs(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestListCronJobs_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListCronJobs_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListCronJobs(&errorCronJobLister{err: sentinel}, "")
+	_, err := ListCronJobs(&errorCronJobLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -122,7 +122,7 @@ func TestListCronJobs_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListCronJobs_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListCronJobs(&errorCronJobLister{err: sentinel}, "default")
+	_, err := ListCronJobs(&errorCronJobLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

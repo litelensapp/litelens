@@ -52,7 +52,7 @@ func TestListResourceQuotas_SingleNamespace(t *testing.T) {
 	rq := makeResourceQuota("quota-1", "default")
 	lister := newResourceQuotaLister(rq)
 
-	result, err := ListResourceQuotas(lister, "default")
+	result, err := ListResourceQuotas(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestListResourceQuotas_EmptyNamespaceReturnsAll(t *testing.T) {
 	rq2 := makeResourceQuota("quota-b", "ns-b")
 	lister := newResourceQuotaLister(rq1, rq2)
 
-	result, err := ListResourceQuotas(lister, "")
+	result, err := ListResourceQuotas(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestListResourceQuotas_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListResourceQuotas_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newResourceQuotaLister()
 
-	result, err := ListResourceQuotas(lister, "")
+	result, err := ListResourceQuotas(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestListResourceQuotas_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListResourceQuotas_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListResourceQuotas(&errorResourceQuotaLister{err: sentinel}, "")
+	_, err := ListResourceQuotas(&errorResourceQuotaLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -103,7 +103,7 @@ func TestListResourceQuotas_ErrorPropagation_ClusterScope(t *testing.T) {
 
 func TestListResourceQuotas_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListResourceQuotas(&errorResourceQuotaLister{err: sentinel}, "default")
+	_, err := ListResourceQuotas(&errorResourceQuotaLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

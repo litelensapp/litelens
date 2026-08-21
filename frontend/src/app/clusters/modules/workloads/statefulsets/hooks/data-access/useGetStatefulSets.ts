@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_STATEFULSETS } from "../../api/api.const";
 import type { StatefulSet } from "../../api/resources";
 import { ListStatefulSets } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useStatefulSetsUpdateEvents } from "../async-events/useStatefulSetsUpdateEvents";
 
 export const useGetStatefulSets = (
@@ -16,12 +13,11 @@ export const useGetStatefulSets = (
   callback?: UseQueryCallback<StatefulSet[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestStatefulSets = useStatefulSetsUpdateEvents();
+  const latestStatefulSets = useStatefulSetsUpdateEvents(namespaces);
 
   const query = useQuery<StatefulSet[], Error>({
     queryKey: [QUERY_KEY_STATEFULSETS, { context, namespaces }],
-    queryFn: () => ListStatefulSets(effectiveNamespace),
+    queryFn: () => ListStatefulSets(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

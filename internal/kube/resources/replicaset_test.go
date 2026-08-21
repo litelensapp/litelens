@@ -36,7 +36,7 @@ func TestListReplicaSets_SingleNamespace(t *testing.T) {
 	rs := makeReplicaSet("rs-1", "default")
 	lister := newReplicaSetLister(rs)
 
-	result, err := ListReplicaSets(lister, "default")
+	result, err := ListReplicaSets(lister, []string{"default"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestListReplicaSets_EmptyNamespaceReturnsAll(t *testing.T) {
 	rs2 := makeReplicaSet("rs-b", "ns-b")
 	lister := newReplicaSetLister(rs1, rs2)
 
-	result, err := ListReplicaSets(lister, "")
+	result, err := ListReplicaSets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestListReplicaSets_EmptyNamespaceReturnsAll(t *testing.T) {
 func TestListReplicaSets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	lister := newReplicaSetLister()
 
-	result, err := ListReplicaSets(lister, "")
+	result, err := ListReplicaSets(lister, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

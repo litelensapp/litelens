@@ -7,7 +7,7 @@ import { GetEventByName } from "../../api/resources";
 import { useEventsUpdateEvents } from "../async-events/useEventsUpdateEvents";
 
 export const useGetEventDetail = (context: string, namespace: string, name: string) => {
-  const latestEvents = useEventsUpdateEvents(namespace);
+  const latestEvents = useEventsUpdateEvents([namespace]);
 
   const query = useQuery<Event, Error>({
     queryKey: [QUERY_KEY_EVENT_DETAIL, { context, namespace, name }],

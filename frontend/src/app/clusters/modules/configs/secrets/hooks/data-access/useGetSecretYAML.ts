@@ -7,7 +7,7 @@ import { useSecretsUpdateEvents } from "../async-events/useSecretsUpdateEvents";
 
 export function useGetSecretYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestSecrets = useSecretsUpdateEvents(namespace);
+  const latestSecrets = useSecretsUpdateEvents([namespace]);
   const query = useQuery({
     queryKey: [QUERY_KEY_SECRET_YAML, { context, namespace, name }],
     queryFn: () => GetSecretYAML(namespace, name),

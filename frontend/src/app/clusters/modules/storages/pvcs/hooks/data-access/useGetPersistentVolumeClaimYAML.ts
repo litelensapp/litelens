@@ -12,7 +12,7 @@ export function useGetPersistentVolumeClaimYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestPVCs = usePersistentVolumeClaimsUpdateEvents(namespace);
+  const latestPVCs = usePersistentVolumeClaimsUpdateEvents([namespace]);
   const query = useQuery({
     queryKey: [QUERY_KEY_PERSISTENTVOLUMECLAIM_YAML, { context, namespace, name }],
     queryFn: () => GetPersistentVolumeClaimYAML(namespace, name),

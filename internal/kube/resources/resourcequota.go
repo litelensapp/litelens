@@ -17,16 +17,23 @@ func toResourceQuota(rq *corev1.ResourceQuota) dto.ResourceQuota {
 	}
 }
 
-func ListResourceQuotas(lister listerscorev1.ResourceQuotaLister, namespace string) ([]dto.ResourceQuota, error) {
-	var rqs []*corev1.ResourceQuota
-	var err error
-	if namespace == "" {
-		rqs, err = lister.List(labels.Everything())
-	} else {
-		rqs, err = lister.ResourceQuotas(namespace).List(labels.Everything())
-	}
+func ListResourceQuotas(lister listerscorev1.ResourceQuotaLister, namespaces []string) ([]dto.ResourceQuota, error) {
+	rqs, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := rqs[:0:0]
+		for _, rq := range rqs {
+			if _, ok := nsSet[rq.Namespace]; ok {
+				filtered = append(filtered, rq)
+			}
+		}
+		rqs = filtered
 	}
 	result := make([]dto.ResourceQuota, len(rqs))
 	for i, rq := range rqs {

@@ -60,7 +60,7 @@ func makePod(name, namespace string) *corev1.Pod {
 func TestListPods_EmptyNamespace_ReturnsAll(t *testing.T) {
 	p1 := makePod("pod-a", "ns-a")
 	p2 := makePod("pod-b", "ns-b")
-	result, err := ListPods(newPodLister(p1, p2), "")
+	result, err := ListPods(newPodLister(p1, p2), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestListPods_EmptyNamespace_ReturnsAll(t *testing.T) {
 func TestListPods_SpecificNamespace_Filters(t *testing.T) {
 	p1 := makePod("pod-a", "ns-a")
 	p2 := makePod("pod-b", "ns-b")
-	result, err := ListPods(newPodLister(p1, p2), "ns-a")
+	result, err := ListPods(newPodLister(p1, p2), []string{"ns-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestListPods_SpecificNamespace_Filters(t *testing.T) {
 // TestListPods_ErrorPropagation_GlobalScope verifies errors from the cluster-scope lister are returned.
 func TestListPods_ErrorPropagation_GlobalScope(t *testing.T) {
 	sentinel := errors.New("lister unavailable")
-	_, err := ListPods(&errorPodLister{err: sentinel}, "")
+	_, err := ListPods(&errorPodLister{err: sentinel}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}
@@ -764,7 +764,7 @@ func TestToPod_TerminationGracePeriod(t *testing.T) {
 
 // TestListPods_EmptyLister_ReturnsNonNilEmptySlice verifies empty lister yields a non-nil slice.
 func TestListPods_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
-	result, err := ListPods(newPodLister(), "")
+	result, err := ListPods(newPodLister(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -779,7 +779,7 @@ func TestListPods_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
 // TestListPods_ErrorPropagation_NamespacedScope verifies namespaced lister errors propagate.
 func TestListPods_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListPods(&errorPodLister{err: sentinel}, "default")
+	_, err := ListPods(&errorPodLister{err: sentinel}, []string{"default"})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error; got %v", err)
 	}

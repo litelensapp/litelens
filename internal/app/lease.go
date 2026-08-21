@@ -15,7 +15,7 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListLeases(namespace string) ([]dto.Lease, error) {
+func (a *App) ListLeases(namespaces []string) ([]dto.Lease, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -29,7 +29,7 @@ func (a *App) ListLeases(namespace string) ([]dto.Lease, error) {
 	if h.IsForbidden("leases") {
 		return nil, nil
 	}
-	result, err := kubeResources.ListLeases(h.Factory.Coordination().V1().Leases().Lister(), namespace)
+	result, err := kubeResources.ListLeases(h.Factory.Coordination().V1().Leases().Lister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListLeases: %v", err)
 		return []dto.Lease{}, nil
@@ -74,7 +74,7 @@ func (a *App) DeleteLease(namespace, name string) error {
 		return fmt.Errorf("delete Lease: %w", err)
 	}
 
-	a.emitLeases(namespace)
+	a.emitLeases([]string{namespace})
 
 	return nil
 }
@@ -101,9 +101,11 @@ func (a *App) DeleteLeases(items []dto.LeaseRef) error {
 	}
 
 	// Emit updates for each unique namespace touched
+	touchedNamespaces := make([]string, 0, len(namespaces))
 	for ns := range namespaces {
-		a.emitLeases(ns)
+		touchedNamespaces = append(touchedNamespaces, ns)
 	}
+	a.emitLeases(touchedNamespaces)
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d leases: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -111,7 +113,7 @@ func (a *App) DeleteLeases(items []dto.LeaseRef) error {
 	return nil
 }
 
-func (a *App) emitLeases(namespace string) {
+func (a *App) emitLeases(namespaces []string) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	a.mu.RUnlock()
@@ -126,21 +128,21 @@ func (a *App) emitLeases(namespace string) {
 		return
 	}
 	lister := h.Factory.Coordination().V1().Leases().Lister()
-	allData, err := kubeResources.ListLeases(lister, "")
+	allData, err := kubeResources.ListLeases(lister, nil)
 	if err != nil {
 		log.Printf("app: emitLeases: %v", err)
 		return
 	}
 	runtime.EventsEmit(a.ctx, "leases:update", allData)
-	if namespace != "" {
+	for _, ns := range namespaces {
 		// Filter already-fetched cluster-wide data instead of re-listing
 		nsData := make([]dto.Lease, 0)
 		for _, item := range allData {
-			if item.Namespace == namespace {
+			if item.Namespace == ns {
 				nsData = append(nsData, item)
 			}
 		}
-		runtime.EventsEmit(a.ctx, "leases:"+namespace+":update", nsData)
+		runtime.EventsEmit(a.ctx, "leases:"+ns+":update", nsData)
 	}
 }
 
@@ -188,7 +190,7 @@ func (a *App) UpdateLeaseYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Lease: %w", err)
 	}
 
-	a.emitLeases(namespace)
+	a.emitLeases([]string{namespace})
 
 	return nil
 }

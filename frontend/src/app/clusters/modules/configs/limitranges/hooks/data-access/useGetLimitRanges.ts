@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_LIMIT_RANGES } from "../../api/api.const";
 import type { LimitRange } from "../../api/resources";
 import { ListLimitRanges } from "../../api/resources";
-import {
-  getEffectiveNamespace,
-  filterByNamespaces,
-} from "../../../../../shared/utils/namespaceFiltering";
+import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useLimitRangesUpdateEvents } from "../async-events/useLimitRangesUpdateEvents";
 
 export const useGetLimitRanges = (
@@ -16,12 +13,11 @@ export const useGetLimitRanges = (
   callback?: UseQueryCallback<LimitRange[]>
 ) => {
   const { context, namespaces } = input;
-  const effectiveNamespace = getEffectiveNamespace(namespaces);
-  const latestLimitRanges = useLimitRangesUpdateEvents(effectiveNamespace);
+  const latestLimitRanges = useLimitRangesUpdateEvents(namespaces);
 
   const query = useQuery<LimitRange[], Error>({
     queryKey: [QUERY_KEY_LIMIT_RANGES, { context, namespaces }],
-    queryFn: () => ListLimitRanges(effectiveNamespace),
+    queryFn: () => ListLimitRanges(namespaces),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

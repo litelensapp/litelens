@@ -161,16 +161,23 @@ func GetDeploymentByName(lister listersappsv1.DeploymentLister, namespace, name 
 	return toDeployment(dep), nil
 }
 
-func ListDeployments(lister listersappsv1.DeploymentLister, namespace string) ([]dto.Deployment, error) {
-	var deps []*appsv1.Deployment
-	var err error
-	if namespace == "" {
-		deps, err = lister.List(labels.Everything())
-	} else {
-		deps, err = lister.Deployments(namespace).List(labels.Everything())
-	}
+func ListDeployments(lister listersappsv1.DeploymentLister, namespaces []string) ([]dto.Deployment, error) {
+	deps, err := lister.List(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := deps[:0:0]
+		for _, dep := range deps {
+			if _, ok := nsSet[dep.Namespace]; ok {
+				filtered = append(filtered, dep)
+			}
+		}
+		deps = filtered
 	}
 	result := make([]dto.Deployment, len(deps))
 	for i, d := range deps {

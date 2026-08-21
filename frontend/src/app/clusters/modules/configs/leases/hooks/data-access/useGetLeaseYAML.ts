@@ -7,7 +7,7 @@ import { useLeasesUpdateEvents } from "../async-events/useLeasesUpdateEvents";
 
 export function useGetLeaseYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestLeases = useLeasesUpdateEvents(namespace);
+  const latestLeases = useLeasesUpdateEvents([namespace]);
 
   const query = useQuery({
     queryKey: [QUERY_KEY_LEASE_YAML, { context, namespace, name }],
