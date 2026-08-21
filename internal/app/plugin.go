@@ -567,6 +567,7 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 		activeContextName := a.activeContext
 		a.mu.RUnlock()
 
+		launchFailed := false
 		if activeContextName != "" {
 			// Active context exists; resolve kubeconfig and launch now.
 			// A failure here is not install failure — the binary and metadata are
@@ -577,12 +578,17 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 				if a.grpcServerCfg != nil {
 					loader.SetHostGRPCPort(a.grpcServerCfg.Port())
 				}
-				_ = loader.Launch(ctx, kubeconfigPath)
+				if launchErr := loader.Launch(ctx, kubeconfigPath); launchErr != nil {
+					fmt.Printf("plugin %q: post-install launch failed: %v\n", pluginID, launchErr)
+					launchFailed = true
+				}
 			}
 		}
 		// If no active context, skip launch; helmPluginClient will do lazy launch on first use
 
-		loader.SetStatus(dto.PluginStatusReady)
+		if !launchFailed {
+			loader.SetStatus(dto.PluginStatusReady)
+		}
 	}()
 
 	return nil
@@ -640,13 +646,16 @@ func (a *App) RemovePlugin(pluginID string) error {
 		return fmt.Errorf("plugin %q is not installed", pluginID)
 	}
 
-	// Shutdown the plugin if a loader exists
+	// Shutdown the plugin if a loader exists, while holding the lock to prevent
+	// prewarmRestoredPlugins from snapshotting a loader mid-shutdown
+	a.pluginsMu.Lock()
 	if loaderExists && loader != nil {
 		if err := loader.Shutdown(); err != nil {
 			// Log but don't fail — we still want to delete the files
 			fmt.Printf("plugin shutdown warning: %v\n", err)
 		}
 	}
+	a.pluginsMu.Unlock()
 
 	// Delete the plugin directory recursively (works whether loader exists or not)
 	var removeErr error

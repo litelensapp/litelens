@@ -61,7 +61,9 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 			return nil
 		}
 		// Stale lock, delete it
-		_ = os.Remove(pl.lockFilePath)
+		if err := os.Remove(pl.lockFilePath); err != nil && !os.IsNotExist(err) {
+			fmt.Printf("plugin %q: failed to remove stale lock file %q: %v\n", pl.id, pl.lockFilePath, err)
+		}
 	}
 
 	// Spawn plugin process with kubeconfig argument
@@ -317,5 +319,12 @@ func (pl *PluginLoader) Shutdown() error {
 	}
 
 	_ = os.Remove(pl.lockFilePath)
+
+	// Reset state to allow relaunch
+	pl.pid = 0
+	pl.processCmd = nil
+	pl.status = dto.PluginStatusNotInstalled
+	pl.lastError = ""
+
 	return nil
 }
