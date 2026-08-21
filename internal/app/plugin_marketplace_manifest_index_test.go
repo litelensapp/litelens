@@ -307,8 +307,7 @@ func TestGetPluginsFromMarketplace_ManifestIndex(t *testing.T) {
 // whose release has no manifest.json asset surfaces a per-source error
 // without affecting other sources' results.
 func TestGetPluginsFromMarketplace_ManifestIndexMissing(t *testing.T) {
-	var server *httptest.Server
-	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/test/plugins/releases/latest" {
 			release := dto.GitHubRelease{TagName: "v1.0.0"}
 			w.Header().Set("Content-Type", "application/json")
