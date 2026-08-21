@@ -151,19 +151,6 @@ export const PluginCard: FC<PluginCardProps> = ({
                   </TooltipContent>
                 </Tooltip>
               )}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Badge className="border border-amber-200 bg-amber-50 text-amber-900">
-                      Unsigned
-                    </Badge>
-                  }
-                />
-                <TooltipContent>
-                  This plugin is not digitally signed. Install only if you trust the litelens
-                  project.
-                </TooltipContent>
-              </Tooltip>
             </div>
             {(installStatus === "READY" || installStatus === "CRASHED" || isPluginDisabled) && (
               <>
