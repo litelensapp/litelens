@@ -159,9 +159,10 @@ tool (
 	honnef.co/go/tools/cmd/staticcheck
 )
 
-// TODO: temporary — packages/core/dto gained ManifestIndex/ManifestIndexEntry
-// (plugin marketplace manifest.json fast-path) that hasn't been tagged yet.
-// Before merging: tag packages/core as packages/core/v1.8.0, run
-// `go get github.com/litelensapp/litelens/packages/core@v1.8.0`, then remove
-// this replace directive (see .claude/memory/go_work_removal_todo.md).
+// packages/core is the host's own extension surface (mirrors @litelens/core
+// on the frontend, resolved via pnpm workspace:*) — host and packages/core
+// always ship from the same commit, so this app always builds against local
+// source rather than a tagged version. Only external plugin repos consume
+// packages/core via a real pinned tag; this replace directive does not apply
+// to them. See .claude/memory/go_work_removal_todo.md.
 replace github.com/litelensapp/litelens/packages/core => ./packages/core
