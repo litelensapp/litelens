@@ -1,29 +1,25 @@
 import {
   Button,
   CheckCircle2Icon,
+  cn,
   ConfirmationModal,
-  Divider,
   EyeIcon,
   EyeOffIcon,
-  FolderSyncIcon,
   Input,
   KeyIcon,
   LockIcon,
   LockOpenIcon,
-  SaveIcon,
-  Switch,
-  cn,
   renderErrorToast,
   renderSuccessToast,
+  SaveIcon,
+  Switch,
   XIcon,
 } from "@litelens/design-system";
-import { FC, useEffect, useRef, useState } from "react";
 import type { config } from "@wailsjs/go/models";
+import { FC, useEffect, useRef, useState } from "react";
 import { useGetSettings } from "../hooks/data-access/useGetSettings";
-import { useSectionSaveState, saveLabel } from "../hooks/useSectionSaveState";
-import { usePickPluginsDir } from "../hooks/data-mutation/usePickPluginsDir";
-import { useSavePluginsDir } from "../hooks/data-mutation/useSavePluginsDir";
 import { useSaveMarketplaceRepositories } from "../hooks/data-mutation/useSaveMarketplaceRepositories";
+import { saveLabel, useSectionSaveState } from "../hooks/useSectionSaveState";
 import { TokenModal } from "./TokenModal";
 
 interface MarketplaceRow {
@@ -39,13 +35,9 @@ interface MarketplaceRow {
 
 export const MarketplaceContent: FC = () => {
   const { data: settings, isFetching: isFetchingSettings } = useGetSettings();
-  const { mutateAsync: savePluginsDir } = useSavePluginsDir();
   const { mutateAsync: saveMarketplaceRepositories } = useSaveMarketplaceRepositories();
-  const [pluginsDirStatus, setPluginsDirStatus] = useSectionSaveState();
   const [repoStatus, setRepoStatus] = useSectionSaveState();
-  const { mutateAsync: pickPluginsDir } = usePickPluginsDir();
 
-  const [pluginsDir, setPluginsDir] = useState("");
   const [rows, setRows] = useState<MarketplaceRow[]>([]);
   const [nextRowId, setNextRowId] = useState(1);
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
@@ -58,7 +50,6 @@ export const MarketplaceContent: FC = () => {
   useEffect(() => {
     if (!settings || isFetchingSettings || initializedRef.current) return;
     initializedRef.current = true;
-    setPluginsDir(settings.pluginsDir ?? "");
 
     // Initialize rows from settings.marketplaceRepositories
     const initialRows: MarketplaceRow[] = (settings.marketplaceRepositories ?? []).map(
@@ -76,13 +67,6 @@ export const MarketplaceContent: FC = () => {
     setRows(initialRows);
     setNextRowId((initialRows.length || 0) + 1);
   }, [settings, isFetchingSettings]);
-
-  async function handleBrowse() {
-    const picked = await pickPluginsDir().catch(() => "");
-    if (!picked) return;
-    initializedRef.current = true;
-    setPluginsDir(picked);
-  }
 
   function handleUrlChange(rowId: number, value: string) {
     initializedRef.current = true;
@@ -226,20 +210,6 @@ export const MarketplaceContent: FC = () => {
     }, 0);
   }
 
-  async function handleSavePluginsDir() {
-    setPluginsDirStatus("saving");
-    try {
-      await savePluginsDir(pluginsDir);
-      setPluginsDirStatus("saved");
-      renderSuccessToast({
-        title: "Marketplace settings saved",
-        description: "Plugins directory configuration has been updated.",
-      });
-    } catch {
-      setPluginsDirStatus("error");
-    }
-  }
-
   function handleMarketplaceFormSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     handleSaveMarketplaceRepo();
@@ -274,41 +244,6 @@ export const MarketplaceContent: FC = () => {
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-hidden">
         <div className="flex min-h-0 flex-1 flex-col gap-6">
-          <div className="flex max-w-3xl flex-col gap-2">
-            <p className="text-left text-xs font-semibold uppercase tracking-wider">
-              Plugins Directory
-            </p>
-            <div className="flex items-end gap-2">
-              <Input
-                value={pluginsDir}
-                onChange={(e) => {
-                  initializedRef.current = true;
-                  setPluginsDir(e.target.value);
-                }}
-                placeholder="~/.litelens/plugins"
-                aria-label="Plugins directory path"
-                className="flex-1 font-mono text-sm"
-              />
-              <Button onClick={handleBrowse} className="w-fit">
-                <FolderSyncIcon className="size-4" />
-                Browse
-              </Button>
-              <Button
-                onClick={handleSavePluginsDir}
-                disabled={pluginsDirStatus === "saving" || !settings}
-                className="w-fit"
-              >
-                <SaveIcon className="size-3.5" />
-                {saveLabel(pluginsDirStatus)}
-              </Button>
-            </div>
-            {pluginsDirStatus === "error" && (
-              <p className="text-destructive text-xs">Failed to save. Please try again.</p>
-            )}
-          </div>
-
-          <Divider />
-
           <form
             className="flex min-h-0 max-w-4xl flex-1 flex-col gap-4"
             onSubmit={handleMarketplaceFormSubmit}

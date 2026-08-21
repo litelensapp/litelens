@@ -29,7 +29,6 @@ vi.mock("@litelens/design-system", async (importOriginal) => {
 
 // Mock hooks for content components
 const useGetDefaultShellMock = vi.hoisted(() => vi.fn());
-const usePickPluginsDirMock = vi.hoisted(() => vi.fn());
 const useMergeSettingsOnSaveMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../hooks/useMergeSettingsOnSave", () => ({
@@ -38,10 +37,6 @@ vi.mock("../hooks/useMergeSettingsOnSave", () => ({
 
 vi.mock("../hooks/data-access/useGetDefaultShell", () => ({
   useGetDefaultShell: useGetDefaultShellMock,
-}));
-
-vi.mock("../hooks/data-mutation/usePickPluginsDir", () => ({
-  usePickPluginsDir: usePickPluginsDirMock,
 }));
 
 // Stub heavy content components so each section test is isolated
@@ -102,7 +97,6 @@ beforeEach(() => {
   saveSettingsMock.mockResolvedValue(undefined);
   useGetSettingsMock.mockReturnValue({ data: undefined });
   useGetDefaultShellMock.mockReturnValue({ data: "/bin/zsh" });
-  usePickPluginsDirMock.mockReturnValue({ mutateAsync: vi.fn() });
   useMergeSettingsOnSaveMock.mockReturnValue(vi.fn().mockResolvedValue(undefined));
 });
 
@@ -228,7 +222,6 @@ describe("SettingsView", () => {
           shellPath: "",
           kubeconfigPaths: [],
           locale: "UTC",
-          pluginsDir: "/custom/plugins",
           marketplaceRepositories: [
             {
               url: "https://github.com/test/marketplace",
@@ -264,7 +257,6 @@ describe("SettingsView", () => {
           shellPath: "",
           kubeconfigPaths: [],
           locale: "UTC",
-          pluginsDir: "/custom/plugins",
           marketplaceRepositories: [
             {
               url: "https://github.com/test/marketplace",

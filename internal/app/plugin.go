@@ -19,14 +19,8 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// pluginsRootDir returns the directory all installed plugins live under. If a custom
-// plugins directory is configured in settings, returns that; otherwise returns ~/.litelens/plugins.
+// pluginsRootDir returns the directory all installed plugins live under: ~/.litelens/plugins.
 func (a *App) pluginsRootDir() string {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	if a.settings.PluginsDir != "" {
-		return a.settings.PluginsDir
-	}
 	return storage.Dir("plugins")
 }
 
@@ -187,40 +181,6 @@ func (a *App) prewarmRestoredPlugins(contextName string) {
 			_ = loader.Launch(context.Background(), kubeconfigPath)
 		}
 	}
-}
-
-// pluginOperationInProgress reports whether any installed plugin is currently
-// installing, or any removal is in flight — used to block plugins-directory
-// changes that would race with a concurrent install/remove.
-func (a *App) pluginOperationInProgress() bool {
-	a.pluginsMu.RLock()
-	defer a.pluginsMu.RUnlock()
-	for _, loader := range a.pluginLoaders {
-		if loader.Status() == dto.PluginStatusInstalling {
-			return true
-		}
-	}
-	return len(a.removingPluginIDs) > 0
-}
-
-// onPluginsDirChanged rebuilds a.pluginLoaders after the configured plugins
-// directory changes: it gracefully shuts down every loader created against
-// the OLD directory (their baked-in binaryPath is now stale) and rescans the
-// NEW root via restoreInstalledPlugins. Callers must invoke this only after
-// confirming (via pluginOperationInProgress) that no install/removal is
-// in flight, and must not hold a.mu when calling this (restoreInstalledPlugins
-// -> pluginsRootDir() acquires a.mu.RLock()).
-func (a *App) onPluginsDirChanged() {
-	a.pluginsMu.Lock()
-	for _, loader := range a.pluginLoaders {
-		if err := loader.Shutdown(); err != nil {
-			log.Printf("plugin shutdown during directory change failed: %v", err)
-		}
-	}
-	a.pluginLoaders = make(map[string]*plugin.PluginLoader)
-	a.pluginsMu.Unlock()
-
-	a.restoreInstalledPlugins()
 }
 
 // GetInstalledPlugins returns the full status info (as returned by GetInstalledPlugin)

@@ -21,7 +21,6 @@ vi.mock("@wailsjs/go/app/App", () => ({
 interface TestSettings extends Partial<config.Settings> {
   shellPath?: string;
   accessToken?: string;
-  pluginsDir?: string;
   marketplaceRepositories?: config.MarketplaceRepository[];
   kubeconfigPaths?: string[];
   locale?: string;
@@ -31,7 +30,6 @@ function makeMockSettings(overrides?: TestSettings): config.Settings {
   const base = {
     shellPath: "/bin/bash",
     accessToken: "existing_token",
-    pluginsDir: "/default/plugins",
     marketplaceRepositories: [
       {
         url: "https://github.com/default/marketplace",
@@ -94,7 +92,6 @@ describe("useMergeSettingsOnSave", () => {
       const cachedSettings = makeMockSettings({
         shellPath: "/bin/bash",
         accessToken: "saved_token",
-        pluginsDir: "/custom/plugins",
       });
       client.setQueryData([QUERY_KEY_SETTINGS], cachedSettings);
 
@@ -109,7 +106,6 @@ describe("useMergeSettingsOnSave", () => {
       const savedSettings = saveSettingsMock.mock.calls[0][0];
       expect(savedSettings.shellPath).toBe("/bin/bash");
       expect(savedSettings.accessToken).toBe("saved_token");
-      expect(savedSettings.pluginsDir).toBe("/custom/plugins");
       expect(savedSettings.locale).toBe("PST");
     });
   });
@@ -124,7 +120,6 @@ describe("useMergeSettingsOnSave", () => {
       const completeSettings = makeMockSettings({
         shellPath: "/bin/zsh",
         accessToken: "existing_token",
-        pluginsDir: "/existing/plugins",
         marketplaceRepositories: [
           {
             url: "https://github.com/existing/marketplace",
@@ -157,7 +152,6 @@ describe("useMergeSettingsOnSave", () => {
 
       // But ALL other fields from the backend are preserved (not wiped to zero-value)
       expect(savedSettings.accessToken).toBe("existing_token");
-      expect(savedSettings.pluginsDir).toBe("/existing/plugins");
       expect(savedSettings.marketplaceRepositories?.[0]?.url).toBe(
         "https://github.com/existing/marketplace"
       );
@@ -243,7 +237,6 @@ describe("useMergeSettingsOnSave", () => {
       const { wrapper, client } = makeWrapper();
       const cachedSettings = makeMockSettings({
         shellPath: "/bin/zsh",
-        pluginsDir: "/default/plugins",
         marketplaceRepositories: [
           {
             url: "https://github.com/default/marketplace",
@@ -260,7 +253,6 @@ describe("useMergeSettingsOnSave", () => {
 
       await act(async () => {
         await result.current({
-          pluginsDir: "/custom/plugins",
           marketplaceRepositories: [
             {
               url: "https://github.com/custom/marketplace",
@@ -275,7 +267,6 @@ describe("useMergeSettingsOnSave", () => {
 
       const savedSettings = saveSettingsMock.mock.calls[0][0];
       expect(savedSettings.shellPath).toBe("/bin/zsh");
-      expect(savedSettings.pluginsDir).toBe("/custom/plugins");
       expect(savedSettings.marketplaceRepositories?.[0]?.url).toBe(
         "https://github.com/custom/marketplace"
       );
@@ -371,7 +362,6 @@ describe("useMergeSettingsOnSave", () => {
             disabled: false,
           },
         ],
-        pluginsDir: "/old/plugins",
       });
       client.setQueryData([QUERY_KEY_SETTINGS], cachedSettings);
 
@@ -396,7 +386,6 @@ describe("useMergeSettingsOnSave", () => {
       expect(savedSettings.marketplaceRepositories?.[0]?.url).toBe(
         "https://github.com/old/marketplace"
       );
-      expect(savedSettings.pluginsDir).toBe("/old/plugins");
     });
   });
 
