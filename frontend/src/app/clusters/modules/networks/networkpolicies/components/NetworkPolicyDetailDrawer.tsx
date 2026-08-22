@@ -81,7 +81,7 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
         <span className="text-body font-mono">{np.Name}</span>
 
         <span className="text-h3 text-muted-foreground">Namespace</span>
-        <span className="text-body text-success font-mono">{np.Namespace}</span>
+        <span className="text-body font-mono text-success">{np.Namespace}</span>
 
         <span className="text-h3 text-muted-foreground">Labels</span>
         <div className="flex flex-wrap gap-1">
@@ -107,7 +107,7 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
 
         {(np.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {np.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -129,27 +129,27 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
       </div>
 
       {/* Ingress */}
-      <SectionDivider label="Ingress" className="uppercase tracking-wide" />
+      <SectionDivider label="Ingress" className="tracking-wide uppercase" />
       {(() => {
         const rules = (np.IngressRules ?? []).filter(
           (r) => (r.Ports?.length ?? 0) > 0 || (r.From?.length ?? 0) > 0
         );
         return rules.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-2 text-xs">No ingress rules</p>
+          <p className="px-4 py-2 text-xs text-muted-foreground">No ingress rules</p>
         ) : (
           rules.map((rule) => {
             const ruleKey = `${(rule.Ports ?? []).join(",")}::${(rule.From ?? []).map(peerKey).join(",")}`;
             return (
-              <div key={ruleKey} className="border-muted/40 border-t first:border-0">
+              <div key={ruleKey} className="border-t border-muted/40 first:border-0">
                 <div className="p-4">
                   {rule.Ports && rule.Ports.length > 0 && (
                     <div className="mb-3">
-                      <p className="text-muted-foreground mb-2 text-xs font-semibold">Ports</p>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Ports</p>
                       <div className="flex flex-wrap gap-1">
                         {rule.Ports.map((port) => (
                           <span
                             key={port}
-                            className="bg-muted/40 rounded px-2 py-1 font-mono text-xs"
+                            className="rounded bg-muted/40 px-2 py-1 font-mono text-xs"
                           >
                             {port}
                           </span>
@@ -159,7 +159,7 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
                   )}
                   {rule.From && rule.From.length > 0 && (
                     <div>
-                      <p className="text-muted-foreground mb-2 text-xs font-semibold">From</p>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">From</p>
                       <div className="flex flex-col gap-2">
                         {rule.From.map((peer) => (
                           <PeerBlock key={peerKey(peer)} peer={peer} />
@@ -175,27 +175,27 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
       })()}
 
       {/* Egress */}
-      <SectionDivider label="Egress" className="uppercase tracking-wide" />
+      <SectionDivider label="Egress" className="tracking-wide uppercase" />
       {(() => {
         const rules = (np.EgressRules ?? []).filter(
           (r) => (r.Ports?.length ?? 0) > 0 || (r.To?.length ?? 0) > 0
         );
         return rules.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-2 text-xs">No egress rules</p>
+          <p className="px-4 py-2 text-xs text-muted-foreground">No egress rules</p>
         ) : (
           rules.map((rule) => {
             const ruleKey = `${(rule.Ports ?? []).join(",")}::${(rule.To ?? []).map(peerKey).join(",")}`;
             return (
-              <div key={ruleKey} className="border-muted/40 border-t first:border-0">
+              <div key={ruleKey} className="border-t border-muted/40 first:border-0">
                 <div className="p-4">
                   {rule.Ports && rule.Ports.length > 0 && (
                     <div className="mb-3">
-                      <p className="text-muted-foreground mb-2 text-xs font-semibold">Ports</p>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Ports</p>
                       <div className="flex flex-wrap gap-1">
                         {rule.Ports.map((port) => (
                           <span
                             key={port}
-                            className="bg-muted/40 rounded px-2 py-1 font-mono text-xs"
+                            className="rounded bg-muted/40 px-2 py-1 font-mono text-xs"
                           >
                             {port}
                           </span>
@@ -205,7 +205,7 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
                   )}
                   {rule.To && rule.To.length > 0 && (
                     <div>
-                      <p className="text-muted-foreground mb-2 text-xs font-semibold">To</p>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">To</p>
                       <div className="flex flex-col gap-2">
                         {rule.To.map((peer) => (
                           <PeerBlock key={peerKey(peer)} peer={peer} />

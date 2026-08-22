@@ -37,9 +37,9 @@ export const PluginCardFallback: FC<PluginCardFallbackProps> = ({
   };
 
   return (
-    <div className="border-border border-3 max-w-sm overflow-hidden rounded-lg opacity-60 shadow-sm">
+    <div className="max-w-sm overflow-hidden rounded-lg border-3 border-border opacity-60 shadow-sm">
       {/* Header */}
-      <div className="border-border border-b px-4 py-3">
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <PluginLogo
@@ -86,15 +86,15 @@ export const PluginCardFallback: FC<PluginCardFallbackProps> = ({
       </div>
 
       {/* Metadata */}
-      <div className="border-border border-b px-4 py-3">
-        <div className="text-caption text-muted-foreground flex items-center justify-between">
+      <div className="border-b border-border px-4 py-3">
+        <div className="text-caption flex items-center justify-between text-muted-foreground">
           <div>{status.installedVersion ? `v${status.installedVersion}` : "(version unknown)"}</div>
           <div>{status.size ? formatBytes(status.size) : null}</div>
         </div>
       </div>
 
       {/* Footer with remove button */}
-      <div className="border-border border-t px-4 py-3">
+      <div className="border-t border-border px-4 py-3">
         <Button
           variant="destructive"
           className="w-full"

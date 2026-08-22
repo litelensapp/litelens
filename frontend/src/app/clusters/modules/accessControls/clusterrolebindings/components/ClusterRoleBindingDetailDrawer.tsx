@@ -73,7 +73,7 @@ const ClusterRoleBindingOverviewTab: FC<{ crb: ClusterRoleBinding }> = ({ crb })
 
         {(crb.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {crb.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -83,7 +83,7 @@ const ClusterRoleBindingOverviewTab: FC<{ crb: ClusterRoleBinding }> = ({ crb })
         )}
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-muted-foreground shrink-0 text-xs">Reference</span>
+          <span className="shrink-0 text-xs text-muted-foreground">Reference</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 
@@ -104,7 +104,7 @@ const ClusterRoleBindingOverviewTab: FC<{ crb: ClusterRoleBinding }> = ({ crb })
                     {crb.RoleRefName}
                   </ResourceLink>
                 </TableCell>
-                <TableCell className="text-muted-foreground font-mono text-xs">
+                <TableCell className="font-mono text-xs text-muted-foreground">
                   {crb.RoleRefGroup || "—"}
                 </TableCell>
               </TableRow>
@@ -113,7 +113,7 @@ const ClusterRoleBindingOverviewTab: FC<{ crb: ClusterRoleBinding }> = ({ crb })
         </div>
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-muted-foreground shrink-0 text-xs">Bindings</span>
+          <span className="shrink-0 text-xs text-muted-foreground">Bindings</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 

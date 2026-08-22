@@ -26,7 +26,7 @@ export const EventsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Events</span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {events.length} item{events.length !== 1 ? "s" : ""}
         </span>
         <div className="ml-auto flex items-center gap-2">

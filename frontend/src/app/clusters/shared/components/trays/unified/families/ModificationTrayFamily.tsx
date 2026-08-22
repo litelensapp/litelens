@@ -15,7 +15,7 @@ export const ModificationTrayFamily: FC<UnifiedTrayContentProps> = ({
     MODIFICATION_TRAY_CONTENT_REGISTRY[tab.kind as keyof typeof MODIFICATION_TRAY_CONTENT_REGISTRY];
   if (!Content) {
     return (
-      <div className="text-destructive p-4 text-xs">
+      <div className="p-4 text-xs text-destructive">
         Unknown modification resource kind: {tab.kind}
       </div>
     );

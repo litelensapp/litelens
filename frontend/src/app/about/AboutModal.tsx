@@ -61,11 +61,11 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
       }}
     >
       <DialogContent aria-label="About Litelens" size="sm">
-        <div className="flex flex-col items-center px-8 pb-6 pt-8 text-center">
+        <div className="flex flex-col items-center px-8 pt-8 pb-6 text-center">
           <img src={logo} alt="Litelens" className="mb-4 h-16 w-16 rounded-2xl" />
 
           <h1 className="text-lg font-semibold">Litelens</h1>
-          <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
             {payload.version}
             {payload.installSource && <> · {payload.installSource}</>}
           </p>
@@ -74,13 +74,13 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
 
           {/* Built with */}
           <div className="w-full text-left">
-            <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">
+            <p className="mb-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
               Built with
             </p>
             <div className="flex flex-col gap-1">
               {runtimeTech.map(({ label, version }) => (
                 <div key={label} className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-xs">{label}</span>
+                  <span className="text-xs text-muted-foreground">{label}</span>
                   <span className="font-mono text-xs">{version}</span>
                 </div>
               ))}
@@ -91,7 +91,7 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
 
           {/* Author */}
           <div className="w-full text-left">
-            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+            <p className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
               Author
             </p>
             <p className="text-sm font-medium">{import.meta.env.VITE_AUTHOR_NAME || "-"}</p>
@@ -99,7 +99,7 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
               <Button
                 variant="link"
                 onClick={() => openBrowserURL(import.meta.env.VITE_AUTHOR_URL)}
-                className="text-muted-foreground hover:text-foreground mt-0.5 h-auto p-0 font-mono text-xs underline-offset-2"
+                className="mt-0.5 h-auto p-0 font-mono text-xs text-muted-foreground underline-offset-2 hover:text-foreground"
               >
                 {import.meta.env.VITE_AUTHOR_URL.replace(/^https?:\/\//, "")}
               </Button>
@@ -114,24 +114,24 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
 
               {/* Storage */}
               <div className="w-full text-left">
-                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">
+                <p className="mb-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                   Storage
                 </p>
                 <div className="flex flex-col gap-1">
                   {hasAppSize && (
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-xs">App</span>
+                      <span className="text-xs text-muted-foreground">App</span>
                       <span className="font-mono text-xs">{formatBytes(appSizeBytes)}</span>
                     </div>
                   )}
                   {installedPlugins.map((p) => (
                     <div key={p.pluginId} className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-xs">{p.pluginId} (plugin)</span>
+                      <span className="text-xs text-muted-foreground">{p.pluginId} (plugin)</span>
                       <span className="font-mono text-xs">{formatBytes(p.size ?? 0)}</span>
                     </div>
                   ))}
-                  <div className="border-muted/50 flex items-center justify-between border-t pt-1">
-                    <span className="text-muted-foreground text-xs font-medium">Total</span>
+                  <div className="flex items-center justify-between border-t border-muted/50 pt-1">
+                    <span className="text-xs font-medium text-muted-foreground">Total</span>
                     <span className="font-mono text-xs font-medium">{formatBytes(totalBytes)}</span>
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import { NavItem } from "@litelens/core";
 import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
+import { unregisterStylesheets } from "../plugins/hooks/registry/stylesheet/pluginStylesheetRegistry";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
@@ -9,9 +10,13 @@ import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-acces
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { NavSidebar } from "./NavSidebar";
 import { usePluginNavEntries } from "./plugins/hooks/registry/nav/usePluginNavEntries";
+import { unregisterNavEntry } from "./plugins/hooks/registry/nav/pluginNavRegistry";
+import { unregisterEvents } from "./plugins/hooks/registry/event/pluginEventRegistry";
+import { unregisterTrayFamilies } from "./plugins/hooks/registry/tray/pluginTrayRegistry";
 import { usePluginTrayFamilies } from "./plugins/hooks/registry/tray/usePluginTrayFamilies";
 import { PluginEventsSubscriber } from "./plugins/PluginEventsSubscriber";
 import { PluginResourceView } from "./plugins/PluginResourceView";
+import { unregisterView } from "./plugins/hooks/registry/view/pluginViewRegistry";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
@@ -238,11 +243,12 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   );
 
   // Nav data comes from usePluginNavEntries reading pluginNavRegistry, which
-  // each plugin's own PluginView populates via useRegisterNavEntry() on mount
-  // (below, in JSX every non-uninstalled plugin is always mounted, hidden
-  // when inactive — see PluginResourceView) — the plugin pushes its own nav
-  // entry rather than the host reading a static export or importing any
-  // plugin-specific nav contract.
+  // each plugin populates by calling clusterWideAPI.registerNavEntry() at
+  // module scope (mirrors clusterWideAPI.registerViews — see
+  // PluginResourceView) — the plugin pushes its own nav entry rather than the
+  // host reading a static export or importing any plugin-specific nav
+  // contract. Unregistration is host-driven (below), not tied to a
+  // component's mount lifecycle.
   const pluginNavData = usePluginNavEntries();
   // Plugin groups registered with defaultOpen expand the first time they're
   // seen (e.g. right after install). Tracked separately from openGroups so a
@@ -260,12 +266,8 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
       }
       return acc;
     }, []);
-
     if (toSeed.length === 0) return;
-
-    for (const id of toSeed) {
-      seededDefaultOpenGroups.current.add(id);
-    }
+    for (const id of toSeed) seededDefaultOpenGroups.current.add(id);
     setOpenGroups((prev) => new Set([...prev, ...toSeed]));
   }, [pluginNavEntries]);
   const { pluginStatuses } = useGetInstalledPlugins();
@@ -273,10 +275,29 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     () => pluginStatuses.filter((s) => s.status !== "NOT_INSTALLED"),
     [pluginStatuses]
   );
+  // Track previous plugin IDs to detect uninstalls and unregister their views
+  const prevMountedPluginIds = useRef(new Set<string>());
+  useEffect(() => {
+    const currentIds = new Set(mountedPlugins.map((p) => p.pluginId));
+    const prevIds = prevMountedPluginIds.current;
+    // Unregister any plugins that are no longer mounted (e.g., uninstalled)
+    for (const id of prevIds) {
+      if (!currentIds.has(id)) {
+        unregisterView(id);
+        unregisterNavEntry(id);
+        unregisterTrayFamilies(id);
+        unregisterEvents(id);
+        unregisterStylesheets(id);
+      }
+    }
+    prevMountedPluginIds.current = currentIds;
+  }, [mountedPlugins]);
   // Tray families come from usePluginTrayFamilies reading pluginTrayRegistry,
-  // which each plugin's own PluginView populates via useRegisterTrayFamilies()
-  // on mount (mirrors the nav-entry mechanism above) — the plugin pushes its
-  // own tray-family components rather than the host reading a static export.
+  // which each plugin populates by calling clusterWideAPI.registerTrayFamilies()
+  // at module scope (mirrors registerViews/registerNavEntry above) — the
+  // plugin pushes its own tray-family components rather than the host reading
+  // a static export. Unregistration is host-driven (above), not tied to a
+  // component's mount lifecycle.
   const pluginTrayRegistry = usePluginTrayFamilies();
   const mergedResourceLabels = useMemo(
     () => ({ ...RESOURCE_LABEL, ...pluginNavData.resourceLabels }),
@@ -351,7 +372,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
         {/* Content */}
         <main className="flex-1 overflow-auto p-4">
           <ErrorBoundary>
-            <Suspense fallback={<div className="text-muted-foreground p-4 text-sm">Loading…</div>}>
+            <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
               {activeResource === "overview" && (
                 <OverviewView onNavigateToView={setActiveResource} />
               )}
@@ -399,6 +420,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
                   pluginId={status.pluginId}
                   pluginName={status.name}
                   isActive={pluginNavData.viewTypeToPluginId[activeResource] === status.pluginId}
+                  activeResource={activeResource}
                   onGoToMarketplace={onOpenMarketplace}
                 />
               ))}

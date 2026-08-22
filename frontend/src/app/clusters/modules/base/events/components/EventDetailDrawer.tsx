@@ -78,7 +78,7 @@ const EventDrawerBody: FC<
 
           {(event.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -90,7 +90,7 @@ const EventDrawerBody: FC<
           )}
 
           <span className="text-h3 text-muted-foreground">Message</span>
-          <span className="text-body wrap-break-word overflow-x-auto font-mono">
+          <span className="text-body overflow-x-auto font-mono wrap-break-word">
             {event.Message}
           </span>
 
@@ -106,7 +106,7 @@ const EventDrawerBody: FC<
               {event.FirstSeen} ago ({formatTs(event.FirstSeenAt)})
             </span>
           ) : (
-            <span className="text-muted-foreground font-mono">—</span>
+            <span className="font-mono text-muted-foreground">—</span>
           )}
 
           <span className="text-h3 text-muted-foreground">Last seen</span>
@@ -115,7 +115,7 @@ const EventDrawerBody: FC<
               {event.LastSeen} ago ({formatTs(event.LastSeenAt)})
             </span>
           ) : (
-            <span className="text-muted-foreground font-mono">—</span>
+            <span className="font-mono text-muted-foreground">—</span>
           )}
 
           <span className="text-h3 text-muted-foreground">Count</span>
@@ -130,7 +130,7 @@ const EventDrawerBody: FC<
         {/* Involved object section */}
         <SectionDivider
           label="Involved object"
-          className="bg-muted/50 border-y-0 uppercase tracking-wide"
+          className="border-y-0 bg-muted/50 tracking-wide uppercase"
         />
         <Table>
           <TableHeader>

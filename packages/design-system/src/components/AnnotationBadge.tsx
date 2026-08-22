@@ -29,7 +29,7 @@ export const AnnotationBadge: FC<Props> = ({ label }) => {
     <Tooltip>
       <TooltipTrigger className="text-left">{badge}</TooltipTrigger>
       <TooltipContent>
-        <span className="break-all font-mono">{label}</span>
+        <span className="font-mono break-all">{label}</span>
       </TooltipContent>
     </Tooltip>
   );

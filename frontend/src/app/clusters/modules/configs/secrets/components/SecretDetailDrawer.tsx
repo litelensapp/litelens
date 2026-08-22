@@ -76,11 +76,11 @@ const SecretValueField: FC<{
           value={name}
           placeholder="key name"
           onChange={(e) => onKeyChange(e.target.value)}
-          className="placeholder:text-muted-foreground/50 max-w-48 font-mono text-xs font-semibold"
+          className="max-w-48 font-mono text-xs font-semibold placeholder:text-muted-foreground/50"
           aria-label="New secret key"
         />
       ) : (
-        <p className="text-muted-foreground font-mono text-xs font-semibold">{name}</p>
+        <p className="font-mono text-xs font-semibold text-muted-foreground">{name}</p>
       )}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -102,7 +102,7 @@ const SecretValueField: FC<{
             aria-label="CopyIcon value"
           >
             {isCopied ? (
-              <CheckIcon className="text-success h-3.5 w-3.5" />
+              <CheckIcon className="h-3.5 w-3.5 text-success" />
             ) : (
               <CopyIcon className="h-3.5 w-3.5" />
             )}
@@ -338,7 +338,7 @@ const SecretOverviewTab: FC<{ secret: SecretDetail }> = ({ secret }) => {
           <form onSubmit={handleSubmit}>
             <SectionDivider
               label="Data"
-              className="bg-muted/50 border-y-0 border-t uppercase tracking-wide"
+              className="border-y-0 border-t bg-muted/50 tracking-wide uppercase"
             />
 
             <div className="flex flex-col px-4 pb-4">

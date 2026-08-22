@@ -8,13 +8,13 @@ export const ManagedFieldBlock: FC<{ mf: ManagedField }> = ({ mf }) => {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono">
+        <span className="font-mono text-muted-foreground">
           {mf.Manager}: {mf.Operation}
         </span>
         <Button
           variant="link"
           size="xs"
-          className="text-info h-auto w-fit p-0"
+          className="h-auto w-fit p-0 text-info"
           aria-expanded={show}
           onClick={() => setShow((v) => !v)}
         >

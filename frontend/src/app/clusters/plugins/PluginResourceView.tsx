@@ -1,31 +1,41 @@
 import { FC, lazy, Suspense, useMemo } from "react";
 import { PluginNotInstalledEmptyState } from "../../marketplace/components/PluginNotInstalledEmptyState";
+import { ensurePluginStylesheet } from "../../plugins/utils/ensurePluginStylesheet";
 import { useGetInstalledPlugin } from "./hooks/useGetInstalledPlugin";
 import { PluginCrashedError } from "./components/PluginCrashedError";
 import { PluginDisabledEmptyState } from "./components/PluginDisabledEmptyState";
 import { PluginErrorBoundary } from "./components/PluginErrorBoundary";
 import { PluginLoadingFallback } from "./components/PluginLoadingFallback";
-import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
+import { getViewAssets } from "./hooks/registry/view/pluginViewRegistry";
 
 /**
- * Props passed to the dynamically-imported plugin's PluginView component.
- * Must be kept in sync with the plugin's export by hand, since the plugin bundle
- * is loaded at runtime via import() and cannot be statically type-checked. Plugins
- * source all cluster-scoped capabilities themselves via @litelens/core's
- * useClusterWideAPI(), so this component takes no props today.
+ * Props passed to the dynamically-imported plugin's wrapper component (see
+ * PluginViewDynamic below). Must be kept in sync with PluginViewDynamic's
+ * usage by hand, since the plugin bundle is loaded at runtime via import()
+ * and cannot be statically type-checked.
  */
-type PluginViewProps = Record<string, never>;
+interface PluginViewsProps {
+  activeResource: string;
+}
 
 interface PluginResourceViewProps {
   pluginId: string;
   pluginName: string;
   /**
    * Whether the currently active resource belongs to this plugin. A READY
-   * plugin's view stays mounted (just visually hidden) even when inactive —
-   * that's how it registers its own nav entry (via useRegisterNavEntry inside
-   * the plugin's own PluginView) before the user has ever navigated to it.
+   * plugin's views stay mounted (just visually hidden) even when inactive.
+   * Its nav entry is registered as soon as the plugin's module is imported
+   * (via clusterWideAPI.registerNavEntry(), mirroring registerViews), so it
+   * appears in the sidebar before the user has ever navigated to it.
    */
   isActive: boolean;
+  /**
+   * The app's current resource name, e.g. "helm-charts". Matched against
+   * each of the plugin's registerViews() `name`s to pick which one of the
+   * plugin's (possibly several) views is visible — the plugin itself no
+   * longer needs to switch on the active resource.
+   */
+  activeResource: string;
   onGoToMarketplace: () => void;
 }
 
@@ -33,6 +43,7 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
   pluginId,
   pluginName,
   isActive,
+  activeResource,
   onGoToMarketplace,
 }) => {
   const { status: pluginStatus, bundleChecksum } = useGetInstalledPlugin(pluginId, {
@@ -49,21 +60,44 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
   // component and remount/re-import the plugin on every tick.
   const PluginViewDynamic = useMemo(
     () =>
-      lazy(() =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        import(/* @vite-ignore */ pluginAssetUrl as any).then((m: any) => {
-          ensurePluginStylesheet(pluginId, m.PLUGIN_STYLES);
-          return { default: m.PluginView as FC<PluginViewProps> };
-        })
-      ),
+      lazy(async () => {
+        // Runtime plugin bundle URL served from the Go backend, not a build-time
+        // module Vite can statically analyze.
+        await import(/* @vite-ignore */ pluginAssetUrl);
+        const assets = getViewAssets().filter((a) => a.pluginId === pluginId);
+        if (!assets.length) throw new Error(`Plugin ${pluginId} did not register a view`);
+        const stylesheets = assets
+          .map((a) => a.stylesheet)
+          .filter((s): s is Promise<{ default: string }> => !!s);
+        await ensurePluginStylesheet(pluginId, stylesheets);
+
+        // Every registered view stays mounted (hidden via display:contents
+        // toggling, same trick as the outer wrapper below) so switching
+        // between a plugin's own resources doesn't remount its views.
+        const PluginViews: FC<PluginViewsProps> = ({ activeResource }) => (
+          <>
+            {assets.map((asset) => (
+              <div
+                key={asset.name}
+                className={asset.name === activeResource ? "contents" : "hidden"}
+              >
+                <asset.component />
+              </div>
+            ))}
+          </>
+        );
+        return { default: PluginViews };
+      }),
     [pluginAssetUrl, pluginId]
   );
 
   // READY plugins mount unconditionally (kept alive even while another
-  // resource is active) so the plugin's own PluginView can call
-  // useRegisterNavEntry() and push its sidebar entry into the host before
-  // the user has ever navigated to it — no separate host-known contract
-  // needed beyond the existing PLUGIN_VIEW/PLUGIN_STYLES exports.
+  // resource is active) so the plugin's own PluginView can use hooks that
+  // require an active mount, e.g. clusterWideAPI.useExposeProperties(),
+  // before the user has ever navigated to it. (Nav entries, tray families,
+  // and event handlers are registered earlier still, at module-import time
+  // via clusterWideAPI.registerNavEntry()/registerTrayFamilies()/
+  // registerEvents() — see PluginViewDynamic above.)
   if (pluginStatus === "READY") {
     return (
       <PluginErrorBoundary onGoToMarketplace={onGoToMarketplace}>
@@ -77,7 +111,7 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
             {/* PluginViewDynamic is memoized on pluginAssetUrl (see above),
                 not recreated on every render — safe despite the static-components rule. */}
             {/* eslint-disable-next-line react-hooks/static-components */}
-            <PluginViewDynamic />
+            <PluginViewDynamic activeResource={activeResource} />
           </div>
         </Suspense>
       </PluginErrorBoundary>

@@ -4,7 +4,6 @@ type Listener = () => void;
 
 export interface RegisteredNavEntry {
   pluginId: string;
-  pluginName: string;
   navEntry: NavEntry<string>;
 }
 
@@ -18,12 +17,8 @@ const listeners = new Set<Listener>();
 // rebuild it when the registry actually changes.
 let snapshot: RegisteredNavEntry[] = [];
 
-export function registerNavEntry(
-  pluginId: string,
-  pluginName: string,
-  navEntry: NavEntry<string>
-): void {
-  registry.set(pluginId, { pluginId, pluginName, navEntry });
+export function registerNavEntry(pluginId: string, navEntry: NavEntry<string>): void {
+  registry.set(pluginId, { pluginId, navEntry });
   notify();
 }
 

@@ -237,7 +237,7 @@ function TextareaYaml({
   };
 
   const highlightRows = lines.map((line, i) => (
-    <div key={lineStarts[i]} className="whitespace-pre leading-5">
+    <div key={lineStarts[i]} className="leading-5 whitespace-pre">
       <YamlLine
         line={line}
         searchTerm={searchTerm}
@@ -261,12 +261,12 @@ function TextareaYaml({
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="absolute right-1 top-1 z-10"
+        className="absolute top-1 right-1 z-10"
         onClick={() => copy(text)}
         aria-label="Copy value"
       >
         {isCopied ? (
-          <CheckIcon className="text-success h-3.5 w-3.5" />
+          <CheckIcon className="h-3.5 w-3.5 text-success" />
         ) : (
           <CopyIcon className="h-3.5 w-3.5" style={{ color: YC.lineNum }} />
         )}
@@ -277,7 +277,7 @@ function TextareaYaml({
         <div className="flex h-full">
           <div
             ref={gutterRef}
-            className="select-none overflow-hidden py-1 pl-2 pr-3 text-right font-mono text-xs leading-5"
+            className="overflow-hidden py-1 pr-3 pl-2 text-right font-mono text-xs leading-5 select-none"
             style={gutterStyle}
           >
             {gutterLines}
@@ -286,7 +286,7 @@ function TextareaYaml({
             <div
               ref={highlightRef}
               aria-hidden
-              className="pointer-events-none absolute inset-0 overflow-hidden py-1 pl-4 pr-4"
+              className="pointer-events-none absolute inset-0 overflow-hidden py-1 pr-4 pl-4"
             >
               {highlightRows}
             </div>
@@ -297,7 +297,7 @@ function TextareaYaml({
               wrap="off"
               data-yaml-editor
               aria-label={ariaLabel}
-              className="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent py-1 pl-4 pr-4 font-mono text-xs leading-5 outline-none"
+              className="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent py-1 pr-4 pl-4 font-mono text-xs leading-5 outline-none"
               style={{ color: "transparent", caretColor: YC.default }}
             />
           </div>
@@ -306,7 +306,7 @@ function TextareaYaml({
         // Read-only mode: outer flex container scrolls everything together
         <div className="flex h-full overflow-auto" data-yaml-scroll>
           <div
-            className="select-none py-1 pl-2 pr-3 text-right font-mono text-xs leading-5"
+            className="py-1 pr-3 pl-2 text-right font-mono text-xs leading-5 select-none"
             style={gutterStyle}
           >
             {gutterLines}
@@ -315,7 +315,7 @@ function TextareaYaml({
             {lines.map((line, i) => (
               <div
                 key={lineStarts[i]}
-                className="whitespace-pre pl-4 pr-4 leading-5 hover:bg-white/5"
+                className="pr-4 pl-4 leading-5 whitespace-pre hover:bg-white/5"
               >
                 <YamlLine
                   line={line}
@@ -355,18 +355,18 @@ function TextareaCode({
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="absolute right-1 top-1 z-10"
+        className="absolute top-1 right-1 z-10"
         onClick={() => copy(text)}
         aria-label="Copy value"
       >
         {isCopied ? (
-          <CheckIcon className="text-success h-3.5 w-3.5" />
+          <CheckIcon className="h-3.5 w-3.5 text-success" />
         ) : (
           <CopyIcon className="h-3.5 w-3.5" />
         )}
       </Button>
       <div className="flex">
-        <div className="select-none border-r border-zinc-800 py-2">
+        <div className="border-r border-zinc-800 py-2 select-none">
           {lines.map((line, i) => (
             <div
               key={`${i}-${line}`}
@@ -382,7 +382,7 @@ function TextareaCode({
             <pre className="flex flex-col py-2">
               {lines.map((line, i) => (
                 <span key={`${i}-${line}`} className="flex">
-                  <span className="whitespace-pre pl-3 font-mono text-xs leading-5 text-zinc-200">
+                  <span className="pl-3 font-mono text-xs leading-5 whitespace-pre text-zinc-200">
                     {line || " "}
                   </span>
                 </span>

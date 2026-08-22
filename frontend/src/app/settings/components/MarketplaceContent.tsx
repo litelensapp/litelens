@@ -249,7 +249,7 @@ export const MarketplaceContent: FC = () => {
             onSubmit={handleMarketplaceFormSubmit}
           >
             <div className="flex items-center gap-4">
-              <p className="text-left text-xs font-semibold uppercase tracking-wider">
+              <p className="text-left text-xs font-semibold tracking-wider uppercase">
                 Marketplace Repository URLs
               </p>
               <Button type="submit" size="sm" disabled={repoStatus === "saving" || !settings}>
@@ -262,10 +262,10 @@ export const MarketplaceContent: FC = () => {
             </div>
 
             {repoStatus === "error" && (
-              <p className="text-destructive text-xs">Failed to save. Please try again.</p>
+              <p className="text-xs text-destructive">Failed to save. Please try again.</p>
             )}
 
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Enter any marketplace source URL. The official litelens marketplace is pre-added below
               — remove it if you don't want plugins fetched from it.
             </p>
@@ -305,7 +305,7 @@ export const MarketplaceContent: FC = () => {
                           disabled={row.locked}
                         >
                           <div className="flex items-center gap-1">
-                            <KeyIcon className="text-muted-foreground size-4" />
+                            <KeyIcon className="size-4 text-muted-foreground" />
                             {row.tokenSaved && (
                               <CheckCircle2Icon className="size-3 text-green-500" />
                             )}
@@ -371,7 +371,7 @@ export const MarketplaceContent: FC = () => {
                         {row.locked ? (
                           <LockIcon className="size-4" />
                         ) : (
-                          <LockOpenIcon className="text-muted-foreground size-4" />
+                          <LockOpenIcon className="size-4 text-muted-foreground" />
                         )}
                       </Button>
                     </div>

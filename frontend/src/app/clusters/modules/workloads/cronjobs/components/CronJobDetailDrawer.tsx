@@ -73,7 +73,7 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
 
         {(cj.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {cj.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -124,7 +124,7 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
 
         <SectionDivider
           label="Template"
-          className="bg-muted/50 col-span-2 -mx-4 border-y-0 uppercase tracking-wide"
+          className="col-span-2 -mx-4 border-y-0 bg-muted/50 tracking-wide uppercase"
         />
 
         <span className="text-h3 text-muted-foreground">Parallelism</span>
@@ -236,7 +236,7 @@ const CronJobJobsTab: FC<{ cj: CronJob }> = ({ cj }) => {
         <TableBody>
           {jobs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground py-12 text-center text-xs">
+              <TableCell colSpan={5} className="py-12 text-center text-xs text-muted-foreground">
                 Item list is empty
               </TableCell>
             </TableRow>

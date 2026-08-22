@@ -74,7 +74,7 @@ export const AppContent: FC = () => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex max-w-sm flex-col gap-2">
-        <div id="tz-label" className="text-left text-xs font-semibold uppercase tracking-wider">
+        <div id="tz-label" className="text-left text-xs font-semibold tracking-wider uppercase">
           Locale Timezone
         </div>
         <TimezoneSelect
@@ -86,7 +86,7 @@ export const AppContent: FC = () => {
 
       <div className="flex max-w-lg flex-col gap-2">
         <label
-          className="text-left text-xs font-semibold uppercase tracking-wider"
+          className="text-left text-xs font-semibold tracking-wider uppercase"
           htmlFor="shell-path"
         >
           Terminal Shell Path
@@ -109,13 +109,13 @@ export const AppContent: FC = () => {
           </Button>
         </div>
         {shellPathStatus === "error" && (
-          <p className="text-destructive text-xs">Failed to save. Please try again.</p>
+          <p className="text-xs text-destructive">Failed to save. Please try again.</p>
         )}
       </div>
 
       <div className="flex max-w-lg flex-col gap-2">
         <label
-          className="text-left text-xs font-semibold uppercase tracking-wider"
+          className="text-left text-xs font-semibold tracking-wider uppercase"
           htmlFor="app-directory"
         >
           App Directory

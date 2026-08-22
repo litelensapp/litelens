@@ -50,7 +50,7 @@ export const TokenModal: FC<TokenModalProps> = ({
       <div className="flex flex-col gap-3">
         <label
           htmlFor="marketplace-access-token"
-          className="text-xs font-semibold uppercase tracking-wider"
+          className="text-xs font-semibold tracking-wider uppercase"
         >
           Access Token
         </label>
@@ -73,7 +73,7 @@ export const TokenModal: FC<TokenModalProps> = ({
                 setReplacing(false);
                 setToken("");
               }}
-              className="text-muted-foreground shrink-0"
+              className="shrink-0 text-muted-foreground"
             >
               Cancel
             </Button>
@@ -86,14 +86,14 @@ export const TokenModal: FC<TokenModalProps> = ({
                   setReplacing(true);
                   setToken(savedToken ?? "");
                 }}
-                className="text-muted-foreground shrink-0"
+                className="shrink-0 text-muted-foreground"
               >
                 Replace
               </Button>
             )
           )}
         </div>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Required for access to private marketplace repositories.
         </p>
       </div>

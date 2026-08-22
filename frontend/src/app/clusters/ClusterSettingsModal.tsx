@@ -150,10 +150,10 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2">
             <div className="flex flex-col gap-1">
-              <span className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider">
+              <span className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Kubeconfig
               </span>
-              <p className="text-foreground truncate font-mono text-xs" title={kubeconfigPath}>
+              <p className="truncate font-mono text-xs text-foreground" title={kubeconfigPath}>
                 {kubeconfigPath || "-"}
               </p>
             </div>
@@ -163,7 +163,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="cluster-proxy"
-                className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider"
+                className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
               >
                 HTTP Proxy
               </label>
@@ -177,7 +177,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
                 className="font-mono"
               />
             </div>
-            <p className="text-muted-foreground text-left text-xs">
+            <p className="text-left text-xs text-muted-foreground">
               Applied to both HTTP and HTTPS traffic. Takes effect on the next connection.
             </p>
 
@@ -186,7 +186,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="cluster-manual-namespace"
-                className="text-muted-foreground text-left text-xs font-semibold uppercase tracking-wider"
+                className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
               >
                 Default Namespaces
               </label>
@@ -207,18 +207,18 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
                   aria-label="Add namespace"
                   onClick={addManualNamespace}
                   disabled={!manualNamespace.trim()}
-                  className="absolute right-0.5 top-1/2 -translate-y-1/2"
+                  className="absolute top-1/2 right-0.5 -translate-y-1/2"
                 >
                   <CornerDownLeftIcon className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-muted-foreground text-left text-xs">
+              <p className="text-left text-xs text-muted-foreground">
                 This setting is useful for manually specifying which namespaces you have access to.
                 This is useful when you do not have permissions to list namespaces.
               </p>
 
               {namespacesError ? (
-                <p className="text-destructive text-xs">
+                <p className="text-xs text-destructive">
                   Failed to load namespaces. Please try again.
                 </p>
               ) : (
@@ -231,7 +231,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
               )}
 
               {selectedNamespaces.length > 0 && (
-                <div className="bg-muted/40 flex max-h-80 flex-col gap-1 overflow-y-auto rounded-md p-1">
+                <div className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-md bg-muted/40 p-1">
                   {selectedNamespaces
                     .slice()
                     .sort()
@@ -240,7 +240,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
                         key={ns}
                         className="flex items-center justify-between gap-2 rounded px-2 py-1.5"
                       >
-                        <span className="text-foreground truncate text-sm">{ns}</span>
+                        <span className="truncate text-sm text-foreground">{ns}</span>
                         <Button
                           type="button"
                           variant="ghost"
@@ -254,14 +254,14 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
                     ))}
                 </div>
               )}
-              <p className="text-muted-foreground text-left text-xs">
+              <p className="text-left text-xs text-muted-foreground">
                 Select namespaces to use as the default filter when connecting to this context.
                 Leave empty for all namespaces.
               </p>
             </div>
 
             {status === "error" && (
-              <p className="text-destructive text-xs">Failed to save. Please try again.</p>
+              <p className="text-xs text-destructive">Failed to save. Please try again.</p>
             )}
           </div>
 

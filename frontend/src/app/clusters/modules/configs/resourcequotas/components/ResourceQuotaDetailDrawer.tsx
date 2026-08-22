@@ -73,7 +73,7 @@ const ResourceQuotaOverviewTab: FC<{ rq: ResourceQuotaDetail }> = ({ rq }) => {
 
         {quotaEntries.length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-1">Quotas</span>
+            <span className="text-h3 self-start pt-1 text-muted-foreground">Quotas</span>
             <div className="flex flex-col gap-2">
               {quotaEntries.map(([resource, hard]) => {
                 const used = rq.Used?.[resource] ?? "0";
@@ -91,8 +91,8 @@ const ResourceQuotaOverviewTab: FC<{ rq: ResourceQuotaDetail }> = ({ rq }) => {
                         {used} / {hard}
                       </span>
                     </div>
-                    <div className="bg-muted mt-1 h-0.5 w-full rounded-full">
-                      <div className="bg-primary h-0.5 rounded-full" style={{ width: `${pct}%` }} />
+                    <div className="mt-1 h-0.5 w-full rounded-full bg-muted">
+                      <div className="h-0.5 rounded-full bg-primary" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );

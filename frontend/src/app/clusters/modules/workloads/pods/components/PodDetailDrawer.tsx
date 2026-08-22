@@ -99,13 +99,13 @@ const InitContainerBlock: FC<{ icd: PodContainerDetail }> = ({ icd }) => {
 
       <div className="grid grid-cols-[140px_1fr] gap-y-1.5">
         <span className="text-h3 text-muted-foreground">Image</span>
-        <span className="text-body break-all font-mono">{icd.Image}</span>
+        <span className="text-body font-mono break-all">{icd.Image}</span>
 
         <span className="text-h3 text-muted-foreground">Environment</span>
         {(icd.EnvVars ?? []).length > 0 ? (
           <div className="flex flex-col gap-0.5">
             {icd.EnvVars.map((e) => (
-              <span key={e} className="text-body break-all font-mono">
+              <span key={e} className="text-body font-mono break-all">
                 {e}
               </span>
             ))}
@@ -121,7 +121,7 @@ const InitContainerBlock: FC<{ icd: PodContainerDetail }> = ({ icd }) => {
               {icd.Mounts.map((m) => (
                 <div key={m.Path} className="flex flex-col">
                   <span className="text-body font-mono">{m.Path}</span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-xs text-muted-foreground">
                     from {m.Name} ({m.ReadOnly ? "ro" : "rw"})
                   </span>
                 </div>
@@ -133,7 +133,7 @@ const InitContainerBlock: FC<{ icd: PodContainerDetail }> = ({ icd }) => {
         {(icd.Command ?? []).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Command</span>
-            <pre className="bg-muted/30 whitespace-pre-wrap break-all rounded p-2 font-mono text-xs">
+            <pre className="rounded bg-muted/30 p-2 font-mono text-xs break-all whitespace-pre-wrap">
               {icd.Command.join(" ")}
             </pre>
           </>
@@ -142,7 +142,7 @@ const InitContainerBlock: FC<{ icd: PodContainerDetail }> = ({ icd }) => {
         {(icd.Args ?? []).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Arguments</span>
-            <pre className="bg-muted/30 whitespace-pre-wrap break-all rounded p-2 font-mono text-xs">
+            <pre className="rounded bg-muted/30 p-2 font-mono text-xs break-all whitespace-pre-wrap">
               {icd.Args.join(" ")}
             </pre>
           </>
@@ -184,7 +184,7 @@ const ContainerBlock: FC<{
         )}
 
         <span className="text-h3 text-muted-foreground">Image</span>
-        <span className="text-body break-all font-mono">{cd.Image}</span>
+        <span className="text-body font-mono break-all">{cd.Image}</span>
 
         <span className="text-h3 text-muted-foreground">Ports</span>
         {(cd.Ports ?? []).length > 0 ? (
@@ -223,7 +223,7 @@ const ContainerBlock: FC<{
         {(cd.EnvVars ?? []).length > 0 ? (
           <div className="flex flex-col gap-0.5">
             {cd.EnvVars.map((e) => (
-              <span key={e} className="text-body break-all font-mono">
+              <span key={e} className="text-body font-mono break-all">
                 {e}
               </span>
             ))}
@@ -239,7 +239,7 @@ const ContainerBlock: FC<{
               {cd.Mounts.map((m) => (
                 <div key={m.Path} className="flex flex-col">
                   <span className="text-body font-mono">{m.Path}</span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-xs text-muted-foreground">
                     from {m.Name} ({m.ReadOnly ? "ro" : "rw"})
                   </span>
                 </div>
@@ -255,7 +255,7 @@ const ContainerBlock: FC<{
               <>
                 <span className="text-h3 text-muted-foreground">Liveness</span>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-body break-all font-mono">{label}</span>
+                  <span className="text-body font-mono break-all">{label}</span>
                   <div className="mt-0.5 flex flex-wrap gap-1">
                     {params.map((p) => (
                       <Badge key={p} variant="secondary" className="text-xs">
@@ -275,7 +275,7 @@ const ContainerBlock: FC<{
               <>
                 <span className="text-h3 text-muted-foreground">Readiness</span>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-body break-all font-mono">{label}</span>
+                  <span className="text-body font-mono break-all">{label}</span>
                   <div className="mt-0.5 flex flex-wrap gap-1">
                     {params.map((p) => (
                       <Badge key={p} variant="secondary" className="text-xs">
@@ -295,7 +295,7 @@ const ContainerBlock: FC<{
               <>
                 <span className="text-muted-foreground">Startup</span>
                 <div className="flex flex-col gap-0.5">
-                  <span className="break-all font-mono text-xs">{label}</span>
+                  <span className="font-mono text-xs break-all">{label}</span>
                   <div className="mt-0.5 flex flex-wrap gap-1">
                     {params.map((p) => (
                       <Badge key={p} variant="secondary" className="text-xs">
@@ -311,7 +311,7 @@ const ContainerBlock: FC<{
         {(cd.Command ?? []).length > 0 && (
           <>
             <span className="text-muted-foreground">Command</span>
-            <pre className="bg-muted/30 whitespace-pre-wrap break-all rounded p-2 font-mono text-xs">
+            <pre className="rounded bg-muted/30 p-2 font-mono text-xs break-all whitespace-pre-wrap">
               {cd.Command.join(" ")}
             </pre>
           </>
@@ -385,7 +385,7 @@ function sourceLabel(type: string): string {
 const VolumeBlock: FC<{ v: PodVolume }> = ({ v }) => (
   <div className="rounded-md border text-xs">
     <div className="flex items-center gap-2 border-b px-3 py-2">
-      <DatabaseIcon className="text-muted-foreground size-3.5 shrink-0" />
+      <DatabaseIcon className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="font-mono font-semibold">{v.Name}</span>
     </div>
     <div className="divide-y">
@@ -570,7 +570,7 @@ const PodOverviewTab: FC<{
                 <Button
                   variant="link"
                   size="xs"
-                  className="text-info h-auto w-fit gap-1 p-0"
+                  className="h-auto w-fit gap-1 p-0 text-info"
                   aria-expanded={showTolerations}
                   onClick={() => setShowTolerations((v) => !v)}
                 >
@@ -619,7 +619,7 @@ const PodOverviewTab: FC<{
                   <Button
                     variant="link"
                     size="xs"
-                    className="text-info h-auto w-fit gap-1 p-0"
+                    className="h-auto w-fit gap-1 p-0 text-info"
                     aria-expanded={showAffinities}
                     onClick={() => setShowAffinities((v) => !v)}
                   >
@@ -661,7 +661,7 @@ const PodOverviewTab: FC<{
 
             {(pod.ManagedFields ?? []).length > 0 && (
               <>
-                <span className="text-muted-foreground self-start pt-0.5">Managed Fields</span>
+                <span className="self-start pt-0.5 text-muted-foreground">Managed Fields</span>
                 <div className="flex min-w-0 flex-col gap-2">
                   {pod.ManagedFields.map((mf) => (
                     <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -687,7 +687,7 @@ const PodOverviewTab: FC<{
               <Separator />
               <SectionDivider
                 label="Init Containers"
-                className="bg-muted/50 border-y-0 uppercase tracking-wide"
+                className="border-y-0 bg-muted/50 tracking-wide uppercase"
               />
               <div className="flex flex-col gap-2 p-4">
                 {pod.InitContainerDetails.map((icd) => (
@@ -702,7 +702,7 @@ const PodOverviewTab: FC<{
               <Separator />
               <SectionDivider
                 label="Containers"
-                className="bg-muted/50 border-y-0 uppercase tracking-wide"
+                className="border-y-0 bg-muted/50 tracking-wide uppercase"
               />
               <div className="flex flex-col gap-2 p-4">
                 {pod.ContainerDetails.map((cd) => (
@@ -724,7 +724,7 @@ const PodOverviewTab: FC<{
               <Separator />
               <SectionDivider
                 label="Volumes"
-                className="bg-muted/50 border-y-0 uppercase tracking-wide"
+                className="border-y-0 bg-muted/50 tracking-wide uppercase"
               />
               <div className="flex flex-col gap-2 p-4">
                 {pod.Volumes.map((v) => (

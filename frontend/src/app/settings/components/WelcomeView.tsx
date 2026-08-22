@@ -12,27 +12,27 @@ const FEATURES = [
 export const WelcomeView: FC = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-10 p-10">
     <div className="flex flex-col items-center gap-2 text-center">
-      <div className="bg-primary/10 text-primary mb-2 flex h-16 w-16 items-center justify-center rounded-2xl">
+      <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <img src={logo} alt="Litelens" className="mb-4 h-16 w-16 rounded-2xl" />
       </div>
-      <h1 className="text-foreground text-2xl font-bold tracking-tight">Litelens</h1>
-      <p className="text-muted-foreground text-sm">Lightweight Kubernetes Cluster Manager</p>
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">Litelens</h1>
+      <p className="text-sm text-muted-foreground">Lightweight Kubernetes Cluster Manager</p>
     </div>
 
     <div className="text-center">
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         Select a cluster from the sidebar to connect and start exploring.
       </p>
     </div>
 
     <div className="grid w-full max-w-lg grid-cols-2 gap-3">
       {FEATURES.map(({ icon: Icon, label, desc }) => (
-        <div key={label} className="bg-muted/30 border-border rounded-lg border p-4">
+        <div key={label} className="rounded-lg border border-border bg-muted/30 p-4">
           <div className="mb-2 flex items-center gap-2">
-            <Icon className="text-primary h-4 w-4 shrink-0" />
-            <span className="text-foreground text-sm font-medium">{label}</span>
+            <Icon className="h-4 w-4 shrink-0 text-primary" />
+            <span className="text-sm font-medium text-foreground">{label}</span>
           </div>
-          <p className="text-muted-foreground text-left text-xs">{desc}</p>
+          <p className="text-left text-xs text-muted-foreground">{desc}</p>
         </div>
       ))}
     </div>

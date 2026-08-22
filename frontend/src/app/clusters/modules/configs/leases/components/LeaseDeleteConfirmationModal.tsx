@@ -34,14 +34,14 @@ export const LeaseDeleteConfirmationModal: FC<LeaseDeleteConfirmationModalProps>
         title: (
           <>
             Delete Lease:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{namespace}</span>. Active
+            <span className="font-mono font-medium text-foreground">{name}</span> from namespace{" "}
+            <span className="font-mono font-medium text-foreground">{namespace}</span>. Active
             leases may be renewed. This action cannot be undone.
           </>
         ),
@@ -57,7 +57,7 @@ export const LeaseDeleteConfirmationModal: FC<LeaseDeleteConfirmationModalProps>
         return (
           <>
             This will permanently delete {count} lease{count === 1 ? "" : "s"} from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{nsName}</span>. Active leases
+            <span className="font-mono font-medium text-foreground">{nsName}</span>. Active leases
             may be renewed. This action cannot be undone.
           </>
         );

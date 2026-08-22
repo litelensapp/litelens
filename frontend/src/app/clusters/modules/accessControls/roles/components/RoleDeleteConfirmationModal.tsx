@@ -33,14 +33,14 @@ export const RoleDeleteConfirmationModal: FC<RoleDeleteConfirmationModalProps> =
       return {
         title: (
           <>
-            Delete Role: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            Delete Role: <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{namespace}</span>. This action
+            <span className="font-mono font-medium text-foreground">{name}</span> from namespace{" "}
+            <span className="font-mono font-medium text-foreground">{namespace}</span>. This action
             cannot be undone.
           </>
         ),
@@ -56,7 +56,7 @@ export const RoleDeleteConfirmationModal: FC<RoleDeleteConfirmationModalProps> =
         return (
           <>
             This will permanently delete {count} role{count === 1 ? "" : "s"} from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{nsName}</span>. This action
+            <span className="font-mono font-medium text-foreground">{nsName}</span>. This action
             cannot be undone.
           </>
         );

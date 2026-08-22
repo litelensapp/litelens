@@ -61,7 +61,7 @@ const ReplicaSetTableCtaButtons: FC<ReplicaSetTableCtaButtonsProps> = ({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Actions"
-          className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex size-6 cursor-pointer items-center justify-center rounded-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           onClick={(e) => e.stopPropagation()}
           disabled={isScalePending}
         >
@@ -138,7 +138,7 @@ export const ReplicaSetsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Replica Sets</span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {replicasets.length} item{replicasets.length == 1 ? "" : "s"}
         </span>
         <div className="ml-auto flex items-center gap-4">
@@ -158,7 +158,7 @@ export const ReplicaSetsView: FC = () => {
       </div>
 
       <Table containerClassName="flex-1 overflow-y-auto">
-        <TableHeader className="bg-background z-sticky sticky top-0">
+        <TableHeader className="z-sticky sticky top-0 bg-background">
           <TableRow>
             <TableHead className="w-12">
               <Checkbox

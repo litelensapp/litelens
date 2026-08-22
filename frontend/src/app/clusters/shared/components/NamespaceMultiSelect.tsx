@@ -65,7 +65,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
       <button
         type="button"
         disabled
-        className="text-muted-foreground border-input bg-background inline-flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm"
+        className="inline-flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground"
       >
         No namespaces available
       </button>
@@ -77,8 +77,8 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
-          "border-input bg-background text-foreground inline-flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm font-medium",
-          "hover:bg-accent/50 focus:ring-ring focus:outline-none focus:ring-2 focus:ring-offset-2",
+          "inline-flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground",
+          "hover:bg-accent/50 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none",
           disabled && "cursor-not-allowed opacity-50"
         )}
         aria-label="Namespace filter"
@@ -106,7 +106,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
           {sortedNamespaces.map((ns) => (
             <div
               key={ns}
-              className="hover:bg-accent/50 flex items-center gap-2 rounded px-2 py-1.5"
+              className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/50"
             >
               <Checkbox
                 checked={selectedNamespaces.has(ns)}
@@ -115,7 +115,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
               />
               <label
                 htmlFor={`ns-${ns}`}
-                className="flex-1 cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                className="flex-1 cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
                 {ns}
               </label>

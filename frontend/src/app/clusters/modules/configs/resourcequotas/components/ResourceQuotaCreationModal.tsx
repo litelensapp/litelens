@@ -145,7 +145,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
     >
       {/* Name input */}
       <div className="flex flex-col gap-2">
-        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Name
         </span>
         <Input
@@ -158,7 +158,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
 
       {/* Namespace section */}
       <div className="flex flex-col gap-2">
-        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Namespace
         </span>
         <Select
@@ -182,7 +182,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
       {/* Values section */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+          <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             Values
           </span>
           <Button
@@ -196,7 +196,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
             <PlusIcon className="size-3.5" />
           </Button>
         </div>
-        <div className="max-h-100 flex flex-col gap-2 overflow-y-auto">
+        <div className="flex max-h-100 flex-col gap-2 overflow-y-auto">
           {quotaRows.map((row) => (
             <div key={row.id} className="flex items-center gap-2">
               <Select
@@ -232,7 +232,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="text-muted-foreground hover:text-destructive shrink-0"
+                className="shrink-0 text-muted-foreground hover:text-destructive"
                 aria-label="Remove quota row"
                 onClick={() => handleDeleteRow(row.id)}
                 disabled={isPending || quotaRows.length === 1}

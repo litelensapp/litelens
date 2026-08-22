@@ -33,31 +33,31 @@ const IngressRulesSection: FC<{ rules: IngressRule[] }> = ({ rules }) => (
     {rules.map((rule) => (
       <div
         key={`${rule.Host || "*"}::${(rule.Paths ?? []).map((p) => p.Path).join(",")}`}
-        className="border-muted/40 border-t first:border-t-0"
+        className="border-t border-muted/40 first:border-t-0"
       >
         <div className="px-4 py-2">
-          <p className="text-muted-foreground mb-2 text-xs font-semibold">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
             Host: {rule.Host || "*"}
           </p>
           {rule.Paths && rule.Paths.length > 0 ? (
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-muted/40 border-b">
-                  <th className="text-muted-foreground py-1 pr-4 text-left font-semibold">Path</th>
-                  <th className="text-muted-foreground py-1 pr-4 text-left font-semibold">Link</th>
-                  <th className="text-muted-foreground py-1 text-left font-semibold">Backends</th>
+                <tr className="border-b border-muted/40">
+                  <th className="py-1 pr-4 text-left font-semibold text-muted-foreground">Path</th>
+                  <th className="py-1 pr-4 text-left font-semibold text-muted-foreground">Link</th>
+                  <th className="py-1 text-left font-semibold text-muted-foreground">Backends</th>
                 </tr>
               </thead>
               <tbody>
                 {rule.Paths.map((path) => (
-                  <tr key={path.Path} className="border-muted/40 border-b last:border-b-0">
+                  <tr key={path.Path} className="border-b border-muted/40 last:border-b-0">
                     <td className="py-1 pr-4 font-mono">{path.Path}</td>
                     <td className="py-1 pr-4">
                       <a
                         href={`http://${rule.Host}${path.Path}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-info font-mono hover:underline"
+                        className="font-mono text-info hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
                         http://{rule.Host}
@@ -70,7 +70,7 @@ const IngressRulesSection: FC<{ rules: IngressRule[] }> = ({ rules }) => (
               </tbody>
             </table>
           ) : (
-            <span className="text-muted-foreground text-xs">No paths configured</span>
+            <span className="text-xs text-muted-foreground">No paths configured</span>
           )}
         </div>
       </div>

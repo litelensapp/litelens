@@ -20,6 +20,9 @@
   "exports": {
     ".": {
       "import": "./dist/index.js"
+    },
+    "./tsup-preset": {
+      "import": "./dist/tsup-preset.js"
     }
   },
   "scripts": {
@@ -29,17 +32,23 @@
     "test:coverage": "vitest run --coverage"
   },
   "peerDependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "esbuild-visualizer": "^0.7.0",
+    "tsup": "^8.5.1"
+  },
   "devDependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "jsdom": "catalog:",
-    "tsup": "^8.5.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

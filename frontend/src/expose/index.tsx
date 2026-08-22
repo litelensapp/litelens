@@ -1,10 +1,24 @@
-import * as Core from "@litelens/core";
 import * as DesignSystem from "@litelens/design-system";
 import * as ReactQuery from "@tanstack/react-query";
 import * as React from "react";
 import * as ReactDom from "react-dom";
 import * as ReactJsxRuntime from "react/jsx-runtime";
-import { useClusterWideAPI } from "./hooks/useClusterWideAPI";
+import { registerEvents } from "../app/clusters/plugins/hooks/registry/event/pluginEventRegistry";
+import { registerNavEntry } from "../app/clusters/plugins/hooks/registry/nav/pluginNavRegistry";
+import { registerTrayFamilies } from "../app/clusters/plugins/hooks/registry/tray/pluginTrayRegistry";
+import { registerViews } from "../app/clusters/plugins/hooks/registry/view/pluginViewRegistry";
+import { registerStylesheets } from "../app/plugins/hooks/registry/stylesheet/pluginStylesheetRegistry";
+import { queryClient } from "../queryClient";
+import { useExposeMethods } from "./hooks/useExposeMethods";
+import { useExposeProperties } from "./hooks/useExposeProperties";
+
+// Exposed via appWideAPI.getQueryClient() so plugin code that isn't a
+// mounted React component (e.g. index.ts's module-scope registration calls)
+// can still build event handlers that invalidate queries, without needing
+// useQueryClient()'s React context.
+function getQueryClient(): typeof queryClient {
+  return queryClient;
+}
 
 // Expose the host's own singleton module instances so dynamically-imported
 // plugin bundles (built with react/react-dom/@litelens/design-system marked
@@ -21,7 +35,20 @@ declare global {
       reactDom: typeof ReactDom;
       reactJsxRuntime: typeof ReactJsxRuntime;
       designSystem: typeof DesignSystem;
-      core: typeof Core;
+      core: {
+        appWideAPI: {
+          registerStylesheets: typeof registerStylesheets;
+          getQueryClient: typeof getQueryClient;
+        };
+        clusterWideAPI: {
+          useExposeProperties: typeof useExposeProperties;
+          useExposeMethods: typeof useExposeMethods;
+          registerViews: typeof registerViews;
+          registerNavEntry: typeof registerNavEntry;
+          registerTrayFamilies: typeof registerTrayFamilies;
+          registerEvents: typeof registerEvents;
+        };
+      };
       reactQuery: typeof ReactQuery;
     };
   }
@@ -33,8 +60,18 @@ window.__LITELENS_VENDOR__ = {
   reactJsxRuntime: ReactJsxRuntime,
   designSystem: DesignSystem,
   core: {
-    ...Core,
-    useClusterWideAPI,
+    appWideAPI: {
+      registerStylesheets,
+      getQueryClient,
+    },
+    clusterWideAPI: {
+      useExposeProperties,
+      useExposeMethods,
+      registerViews,
+      registerNavEntry,
+      registerTrayFamilies,
+      registerEvents,
+    },
   },
   reactQuery: ReactQuery,
 };

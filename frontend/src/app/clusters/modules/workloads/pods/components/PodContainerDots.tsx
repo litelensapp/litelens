@@ -36,7 +36,7 @@ export const PodContainerDots: FC<{
 
   return (
     <div className="flex items-center gap-1">
-      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <TooltipProvider>
         <div className="flex gap-1">
           {allContainers.map((c, i) => {
@@ -54,9 +54,9 @@ export const PodContainerDots: FC<{
                   render={
                     <span
                       className={cn(
-                        "rounded-xs inline-block h-2.5 w-2.5",
+                        "inline-block h-2.5 w-2.5 rounded-xs",
                         containerDotColorClass(c.Status, c.Ready) ??
-                          "border-muted-foreground/40 border"
+                          "border border-muted-foreground/40"
                       )}
                     />
                   }
@@ -68,10 +68,10 @@ export const PodContainerDots: FC<{
                       <div className="grid grid-cols-[160px_1fr] gap-2 text-xs">
                         {fields.map(([fLabel, fValue]) => (
                           <div key={fLabel} className="contents">
-                            <span className="text-muted-foreground text-right font-mono">
+                            <span className="text-right font-mono text-muted-foreground">
                               {fLabel}
                             </span>
-                            <span className="wrap-anywhere font-mono">{fValue}</span>
+                            <span className="font-mono wrap-anywhere">{fValue}</span>
                           </div>
                         ))}
                       </div>

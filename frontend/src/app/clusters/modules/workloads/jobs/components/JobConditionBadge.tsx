@@ -56,7 +56,7 @@ export const JobConditionBadge: FC<{ condition: string | JobCondition }> = ({ co
         <div className="grid grid-cols-[160px_1fr] gap-2 text-xs">
           {fields.map(([label, value]) => (
             <div key={label} className="contents">
-              <span className="text-muted-foreground text-right font-mono">{label}</span>
+              <span className="text-right font-mono text-muted-foreground">{label}</span>
               <span className="font-mono">{value}</span>
             </div>
           ))}

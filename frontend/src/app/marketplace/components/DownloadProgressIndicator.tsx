@@ -14,7 +14,7 @@ export const DownloadProgressIndicator: FC<DownloadProgressIndicatorProps> = ({
   if (!isVisible) return null;
   return (
     <div className="w-full">
-      <div className="bg-muted h-0.5 overflow-hidden rounded-full">
+      <div className="h-0.5 overflow-hidden rounded-full bg-muted">
         {isVerifying ? (
           // Pulse animation while verifying
           <div className="h-full animate-pulse bg-amber-500" />
@@ -27,9 +27,9 @@ export const DownloadProgressIndicator: FC<DownloadProgressIndicatorProps> = ({
         )}
       </div>
       {!isVerifying && progress > 0 && (
-        <div className="text-muted-foreground mt-1 text-xs">{Math.round(progress)}%</div>
+        <div className="mt-1 text-xs text-muted-foreground">{Math.round(progress)}%</div>
       )}
-      {isVerifying && <div className="text-muted-foreground mt-1 text-xs">Verifying...</div>}
+      {isVerifying && <div className="mt-1 text-xs text-muted-foreground">Verifying...</div>}
     </div>
   );
 };

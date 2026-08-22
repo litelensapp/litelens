@@ -29,7 +29,7 @@ export const ResourceBulkDeletionButton: FC<ResourceBulkDeletionButtonProps> = (
         >
           <MinusIcon className="size-3.5" />
           {count > 0 && (
-            <span className="bg-destructive absolute -right-2.5 -top-2.5 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white">
+            <span className="absolute -top-2.5 -right-2.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
               {count}
             </span>
           )}

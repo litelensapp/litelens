@@ -172,16 +172,16 @@ const HPAOverviewTab: FC<{ hpa: HPADetail }> = ({ hpa }) => {
 
       <SectionDivider
         label="Metrics"
-        className="bg-muted/50 border-y-0 border-t uppercase tracking-wide"
+        className="border-y-0 border-t bg-muted/50 tracking-wide uppercase"
       />
 
       {(hpa.Metrics ?? []).length === 0 ? (
-        <span className="text-muted-foreground px-4 py-2 text-xs">—</span>
+        <span className="px-4 py-2 text-xs text-muted-foreground">—</span>
       ) : (
         <div className="flex flex-col px-4 py-2">
           <div className="grid grid-cols-[1fr_120px] gap-x-4 border-b border-zinc-800 pb-2">
-            <span className="text-muted-foreground text-xs font-semibold">Name</span>
-            <span className="text-muted-foreground text-right text-xs font-semibold">
+            <span className="text-xs font-semibold text-muted-foreground">Name</span>
+            <span className="text-right text-xs font-semibold text-muted-foreground">
               Current / Target
             </span>
           </div>

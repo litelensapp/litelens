@@ -8,7 +8,7 @@
   },
   "packageManager": "pnpm@11.10.0",
   "scripts": {
-    "dev": "pnpm --filter litelens-frontend run dev",
+    "dev": "go tool wails dev",
     "build:ds": "pnpm --filter @litelens/design-system run build",
     "build:report:fe": "pnpm --filter litelens-frontend --filter @litelens/design-system run build:report",
     "build:app": "bash scripts/build.sh",

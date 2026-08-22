@@ -159,7 +159,7 @@ const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
 
         {(rs.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {rs.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -196,7 +196,7 @@ const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
             <span className="text-h3 text-muted-foreground">Images</span>
             <div className="flex flex-col gap-0.5">
               {rs.Images.map((img, i) => (
-                <span key={`${img}-${i}`} className="text-body break-all font-mono">
+                <span key={`${img}-${i}`} className="text-body font-mono break-all">
                   {img}
                 </span>
               ))}
@@ -254,7 +254,7 @@ const ReplicaSetPodsTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
         <TableBody>
           {pods.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground py-12 text-center text-xs">
+              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
                 Item list is empty
               </TableCell>
             </TableRow>

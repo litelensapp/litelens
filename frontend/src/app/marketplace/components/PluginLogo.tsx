@@ -9,7 +9,7 @@ const PluginLogoFallback: FC<{ size: string; overlay?: boolean }> = ({ size, ove
       overlay ? "absolute inset-0" : cn("shrink-0", size)
     )}
   >
-    <PlugIcon className="text-muted-foreground size-4" />
+    <PlugIcon className="size-4 text-muted-foreground" />
   </div>
 );
 

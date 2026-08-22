@@ -72,7 +72,7 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
         className="w-full justify-between font-normal"
       >
         <span className="truncate">{value}</span>
-        <ChevronDownIcon className="text-muted-foreground size-4 shrink-0" />
+        <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
       </Button>
 
       {open &&
@@ -87,11 +87,11 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
               width: dropdownRect.width,
               zIndex: 50,
             }}
-            className="bg-popover text-popover-foreground ring-foreground/10 flex flex-col overflow-hidden rounded-lg shadow-md ring-1"
+            className="flex flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10"
           >
             <div className="border-b p-1.5">
               <div className="relative">
-                <SearchIcon className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={searchRef}
                   value={search}
@@ -106,7 +106,7 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
                 not a candidate for <datalist>/<option>. */}
             <div role="listbox" aria-label="Timezone" className="max-h-56 overflow-y-auto p-1">
               {filtered.length === 0 ? (
-                <p className="text-muted-foreground px-3 py-4 text-center text-sm">
+                <p className="px-3 py-4 text-center text-sm text-muted-foreground">
                   No timezone found.
                 </p>
               ) : (

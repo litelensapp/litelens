@@ -20,13 +20,13 @@ export const PriorityClassDeleteConfirmationModal: FC<
         title: (
           <>
             Delete PriorityClass:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span>. Pods using this
+            <span className="font-mono font-medium text-foreground">{name}</span>. Pods using this
             PriorityClass will retain their priority but cannot be created. This action cannot be
             undone.
           </>

@@ -29,7 +29,7 @@ export const SecretModificationConfirmationModal: FC<SecretModificationConfirmat
       open={open}
       title={
         <>
-          Update Secret: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+          Update Secret: <span className="font-mono font-normal text-muted-foreground">{name}</span>
         </>
       }
       description={
@@ -37,7 +37,7 @@ export const SecretModificationConfirmationModal: FC<SecretModificationConfirmat
           <p>The following changes will be applied to this secret:</p>
           {editedKeys.length > 0 && (
             <div className="flex flex-col gap-1">
-              <p className="text-foreground font-medium">Modified keys</p>
+              <p className="font-medium text-foreground">Modified keys</p>
               <ul className="flex flex-col gap-0.5">
                 {editedKeys.map((k) => (
                   <li key={k} className="font-mono text-xs">
@@ -49,7 +49,7 @@ export const SecretModificationConfirmationModal: FC<SecretModificationConfirmat
           )}
           {validNew.length > 0 && (
             <div className="flex flex-col gap-1">
-              <p className="text-foreground font-medium">New keys</p>
+              <p className="font-medium text-foreground">New keys</p>
               <ul className="flex flex-col gap-0.5">
                 {validNew.map((e) => (
                   <li key={e.key} className="font-mono text-xs">
@@ -61,10 +61,10 @@ export const SecretModificationConfirmationModal: FC<SecretModificationConfirmat
           )}
           {deletedKeys.length > 0 && (
             <div className="flex flex-col gap-1">
-              <p className="text-destructive font-medium">Deleted keys</p>
+              <p className="font-medium text-destructive">Deleted keys</p>
               <ul className="flex flex-col gap-0.5">
                 {deletedKeys.map((k) => (
-                  <li key={k} className="text-destructive font-mono text-xs line-through">
+                  <li key={k} className="font-mono text-xs text-destructive line-through">
                     {k}
                   </li>
                 ))}

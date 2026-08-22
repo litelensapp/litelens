@@ -7,13 +7,13 @@ interface Props {
 }
 
 export const AppFooter: FC<Props> = ({ updateInfo, onUpdateClick }) => (
-  <footer className="bg-background flex shrink-0 items-center border-t px-3 py-2">
+  <footer className="flex shrink-0 items-center border-t bg-background px-3 py-2">
     {updateInfo && (
       <div className="ml-auto">
         <Tooltip>
           <TooltipTrigger
             onClick={onUpdateClick}
-            className="text-primary flex items-center gap-1.5 text-xs underline-offset-2 hover:underline"
+            className="flex items-center gap-1.5 text-xs text-primary underline-offset-2 hover:underline"
           >
             <InfoIcon className="size-3.5" />
             Update available

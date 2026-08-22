@@ -68,7 +68,7 @@ export const JobModificationTray: FC<ModificationTrayContentProps> = ({
 
   if (!tab.namespace) {
     return (
-      <p className="text-destructive p-4 text-xs">Job namespace is required but not provided.</p>
+      <p className="p-4 text-xs text-destructive">Job namespace is required but not provided.</p>
     );
   }
 
@@ -110,14 +110,14 @@ export const JobModificationTray: FC<ModificationTrayContentProps> = ({
           <div className="flex flex-col gap-2 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Fragment key={i}>
-                <div className="bg-muted h-4 w-full animate-pulse rounded" />
+                <div className="h-4 w-full animate-pulse rounded bg-muted" />
               </Fragment>
             ))}
           </div>
         ) : isError ? (
-          <p className="text-destructive p-4 text-xs">Failed to load YAML: {String(error)}</p>
+          <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
-          <p className="text-muted-foreground p-4 text-xs">No YAML available for this Job.</p>
+          <p className="p-4 text-xs text-muted-foreground">No YAML available for this Job.</p>
         ) : (
           <Textarea
             variant="yaml"

@@ -32,14 +32,14 @@ export const ResourceLink: FC<ResourceLinkProps> = ({
       variant="link"
       type="button"
       size="xs"
-      className={cn("text-info h-auto w-fit p-0", className)}
+      className={cn("h-auto w-fit p-0 text-info", className)}
       onClick={onClick}
     >
       {truncate ? (
         <span
           ref={ref}
           className={cn(
-            "max-w-65 inline-block truncate group-hover/button:[box-shadow:0_1px_0_0_currentColor]",
+            "inline-block max-w-65 truncate group-hover/button:[box-shadow:0_1px_0_0_currentColor]",
             truncateTextClassName
           )}
         >
@@ -50,9 +50,9 @@ export const ResourceLink: FC<ResourceLinkProps> = ({
       )}
     </Button>
   ) : (
-    <span className={cn("text-info cursor-default", className)}>
+    <span className={cn("cursor-default text-info", className)}>
       {truncate ? (
-        <span ref={ref} className={cn("max-w-65 inline-block truncate", truncateTextClassName)}>
+        <span ref={ref} className={cn("inline-block max-w-65 truncate", truncateTextClassName)}>
           {children}
         </span>
       ) : (
@@ -67,7 +67,7 @@ export const ResourceLink: FC<ResourceLinkProps> = ({
     <Tooltip>
       <TooltipTrigger render={inner} />
       <TooltipContent>
-        <span className="break-all font-mono">{children}</span>
+        <span className="font-mono break-all">{children}</span>
       </TooltipContent>
     </Tooltip>
   );

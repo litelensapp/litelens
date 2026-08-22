@@ -111,7 +111,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
 
           {(deployment.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -164,7 +164,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
               <Button
                 variant="link"
                 size="xs"
-                className="text-info h-auto w-fit gap-1 p-0"
+                className="h-auto w-fit gap-1 p-0 text-info"
                 aria-expanded={showTolerations}
                 onClick={() => setShowTolerations((v) => !v)}
               >
@@ -213,7 +213,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
                 <Button
                   variant="link"
                   size="xs"
-                  className="text-info h-auto w-fit gap-1 p-0"
+                  className="h-auto w-fit gap-1 p-0 text-info"
                   aria-expanded={showAffinities}
                   onClick={() => setShowAffinities((v) => !v)}
                 >
@@ -242,7 +242,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
             <Separator />
             <SectionDivider
               label="Deploy Revisions"
-              className="bg-muted/50 border-y-0 uppercase tracking-wide"
+              className="border-y-0 bg-muted/50 tracking-wide uppercase"
             />
             <Table>
               <TableHeader>
@@ -332,7 +332,7 @@ const DeploymentPodsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
         <TableBody>
           {pods.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground py-12 text-center text-xs">
+              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
                 Item list is empty
               </TableCell>
             </TableRow>

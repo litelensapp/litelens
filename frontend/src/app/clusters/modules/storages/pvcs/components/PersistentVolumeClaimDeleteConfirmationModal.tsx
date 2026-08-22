@@ -21,7 +21,7 @@ export const PersistentVolumeClaimDeleteConfirmationModal: FC<
         title: (
           <>
             Delete PersistentVolumeClaim:{" "}
-            <span className="text-muted-foreground font-mono font-normal">
+            <span className="font-mono font-normal text-muted-foreground">
               {namespace}/{name}
             </span>
           </>
@@ -29,7 +29,7 @@ export const PersistentVolumeClaimDeleteConfirmationModal: FC<
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">
+            <span className="font-mono font-medium text-foreground">
               {namespace}/{name}
             </span>
             . This action cannot be undone.

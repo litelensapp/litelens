@@ -52,7 +52,7 @@ const DaemonSetTableCtaButtons: FC<DaemonSetTableCtaButtonsProps> = ({ namespace
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Actions"
-          className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
+          className="flex size-6 cursor-pointer items-center justify-center rounded-sm hover:bg-accent"
           onClick={(e) => e.stopPropagation()}
           disabled={isPending || isDeletePending}
         >
@@ -119,7 +119,7 @@ export const DaemonSetsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Daemon Sets</span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {daemonsets.length} item{daemonsets.length !== 1 ? "s" : ""}
         </span>
         <div className="ml-auto flex items-center gap-4">
@@ -139,7 +139,7 @@ export const DaemonSetsView: FC = () => {
       </div>
 
       <Table containerClassName="flex-1 overflow-y-auto">
-        <TableHeader className="bg-background z-sticky sticky top-0">
+        <TableHeader className="z-sticky sticky top-0 bg-background">
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
@@ -229,7 +229,7 @@ export const DaemonSetsView: FC = () => {
                   <TableCell className="text-xs">{ds.Pods}</TableCell>
                   <TableCell>
                     {!ds.NodeSelector || ds.NodeSelector === "<none>" ? (
-                      <span className="text-muted-foreground text-xs">—</span>
+                      <span className="text-xs text-muted-foreground">—</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {ds.NodeSelector.split(",").map((s) => (

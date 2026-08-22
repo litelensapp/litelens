@@ -10,7 +10,7 @@ export const ButtonGroup: FC<ButtonGroupProps> = ({ children, className }) => (
   <div
     data-slot="button-group"
     className={cn(
-      "flex -space-x-px [&>button:first-child]:rounded-l-lg [&>button:focus-visible]:z-10 [&>button:last-child]:rounded-r-lg [&>button]:rounded-none",
+      "flex -space-x-px [&>button]:rounded-none [&>button:first-child]:rounded-l-lg [&>button:focus-visible]:z-10 [&>button:last-child]:rounded-r-lg",
       className
     )}
   >

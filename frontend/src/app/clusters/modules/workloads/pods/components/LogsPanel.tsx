@@ -31,11 +31,11 @@ export const LogsPanel = ({ containerRef, status, error, wrap }: LogsPanelProps)
         <div ref={containerRef} className="absolute inset-0" />
         {status === "connecting" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <span className="text-muted-foreground animate-pulse text-xs">Connecting…</span>
+            <span className="animate-pulse text-xs text-muted-foreground">Connecting…</span>
           </div>
         )}
         {status === "error" && error && (
-          <div className="bg-destructive/80 text-destructive absolute bottom-0 left-0 right-0 px-3 py-2 text-xs">
+          <div className="absolute right-0 bottom-0 left-0 bg-destructive/80 px-3 py-2 text-xs text-destructive">
             {error}
           </div>
         )}

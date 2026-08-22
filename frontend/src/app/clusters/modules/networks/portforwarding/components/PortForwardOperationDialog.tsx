@@ -190,7 +190,7 @@ export const PortForwardOperationDialog: FC<PortForwardOperationDialogProps> = (
             </div>
           </div>
 
-          {pfError && <p className="text-destructive text-xs">{pfError}</p>}
+          {pfError && <p className="text-xs text-destructive">{pfError}</p>}
         </div>
 
         <DialogFooter>

@@ -82,7 +82,7 @@ const DaemonSetOverviewTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
 
         {(ds.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {ds.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -114,7 +114,7 @@ const DaemonSetOverviewTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
             <span className="text-h3 text-muted-foreground">Images</span>
             <div className="flex flex-col gap-0.5">
               {ds.Images.map((img) => (
-                <span key={img} className="text-body break-all font-mono">
+                <span key={img} className="text-body font-mono break-all">
                   {img}
                 </span>
               ))}
@@ -173,7 +173,7 @@ const DaemonSetPodsTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
         <TableBody>
           {pods.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground py-12 text-center text-xs">
+              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
                 Item list is empty
               </TableCell>
             </TableRow>

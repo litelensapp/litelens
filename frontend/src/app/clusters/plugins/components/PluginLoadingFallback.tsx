@@ -11,7 +11,7 @@ export const PluginLoadingFallback: FC = () => {
       </Table>
       <div className="flex flex-col items-center gap-3 py-8">
         <LoadingSpinner />
-        <p className="text-muted-foreground text-sm">Installing plugin...</p>
+        <p className="text-sm text-muted-foreground">Installing plugin...</p>
       </div>
     </div>
   );

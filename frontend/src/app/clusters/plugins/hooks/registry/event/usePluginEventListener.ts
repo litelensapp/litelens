@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
-import { clearRegistry, getHandler } from "./clusterWideEventRegistry";
+import { getHandler } from "./pluginEventRegistry";
 
 interface PluginEventPayload {
   pluginId: string;
@@ -8,9 +8,8 @@ interface PluginEventPayload {
   payload: unknown;
 }
 
-export function useClusterWideEventListener(): void {
+export function usePluginEventListener(): void {
   useEffect(() => {
-    clearRegistry();
     return EventsOn("plugin:event", (eventPayload: unknown) => {
       const payload = eventPayload as PluginEventPayload;
       const handler = getHandler(payload.eventName);

@@ -46,7 +46,7 @@ const PriorityClassTableCtaButtons: FC<PriorityClassTableCtaButtonsProps> = ({ n
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Actions"
-          className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
+          className="flex size-6 cursor-pointer items-center justify-center rounded-sm hover:bg-accent"
           onClick={(e) => e.stopPropagation()}
         >
           <MoreVerticalIcon className="size-3.5" />
@@ -129,7 +129,7 @@ export const PriorityClassesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Priority Classes</span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {priorityClasses.length} item{priorityClasses.length === 1 ? "" : "s"}
         </span>
         <div className="ml-auto flex items-center gap-4">
@@ -149,7 +149,7 @@ export const PriorityClassesView: FC = () => {
       </div>
 
       <Table containerClassName="flex-1 overflow-y-auto">
-        <TableHeader className="bg-background z-sticky sticky top-0">
+        <TableHeader className="z-sticky sticky top-0 bg-background">
           <TableRow>
             <TableHead className="w-8">
               <Checkbox
@@ -198,7 +198,7 @@ export const PriorityClassesView: FC = () => {
                 <TableCell className="font-mono text-xs">{pc.Value}</TableCell>
                 <TableCell className="text-xs">
                   {pc.GlobalDefault ? (
-                    <Badge className="bg-success hover:bg-success text-white">true</Badge>
+                    <Badge className="bg-success text-white hover:bg-success">true</Badge>
                   ) : (
                     <Badge className="bg-zinc-700 text-white hover:bg-zinc-700">false</Badge>
                   )}

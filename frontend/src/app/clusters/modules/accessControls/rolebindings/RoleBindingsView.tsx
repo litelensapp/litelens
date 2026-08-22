@@ -47,7 +47,7 @@ const RoleBindingTableCtaButtons: FC<{ namespace: string; name: string }> = ({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Actions"
-          className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
+          className="flex size-6 cursor-pointer items-center justify-center rounded-sm hover:bg-accent"
           onClick={(e) => e.stopPropagation()}
         >
           <MoreVerticalIcon className="size-3.5" />
@@ -99,7 +99,7 @@ export const RoleBindingsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Role Bindings</span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {roleBindings.length} item{roleBindings.length !== 1 ? "s" : ""}
         </span>
         <div className="ml-auto flex items-center gap-4">
@@ -119,7 +119,7 @@ export const RoleBindingsView: FC = () => {
       </div>
 
       <Table containerClassName="flex-1 overflow-y-auto">
-        <TableHeader className="bg-background z-sticky sticky top-0">
+        <TableHeader className="z-sticky sticky top-0 bg-background">
           <TableRow>
             <TableHead className="w-12">
               <Checkbox

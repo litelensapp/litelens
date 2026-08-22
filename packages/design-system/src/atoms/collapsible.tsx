@@ -14,7 +14,7 @@ function CollapsiblePanel({ className, ...props }: CollapsiblePrimitive.Panel.Pr
     <CollapsiblePrimitive.Panel
       data-slot="collapsible-panel"
       className={cn(
-        "transition-height h-(--collapsible-panel-height) data-ending-style:h-0 data-starting-style:h-0 overflow-hidden",
+        "transition-height h-(--collapsible-panel-height) overflow-hidden data-ending-style:h-0 data-starting-style:h-0",
         className
       )}
       {...props}

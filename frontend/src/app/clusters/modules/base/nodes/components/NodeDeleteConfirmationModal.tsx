@@ -25,13 +25,13 @@ export const NodeDeleteConfirmationModal: FC<NodeDeleteConfirmationModalProps> =
       return {
         title: (
           <>
-            Delete Node: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            Delete Node: <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> and evict all Pods
+            <span className="font-mono font-medium text-foreground">{name}</span> and evict all Pods
             running on it. This action cannot be undone.
           </>
         ),

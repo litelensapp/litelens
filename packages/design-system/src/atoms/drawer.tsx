@@ -27,7 +27,7 @@ function DrawerPopup({ className, ...props }: DrawerPrimitive.Popup.Props) {
     <DrawerPrimitive.Popup
       data-slot="drawer-popup"
       className={cn(
-        "bg-background text-foreground data-ending-style:h-0 data-starting-style:h-0 pointer-events-auto flex w-full flex-col border-t shadow-[0_-4px_24px_rgba(0,0,0,0.15)] transition-[height] duration-150 ease-in-out",
+        "pointer-events-auto flex w-full flex-col border-t bg-background text-foreground shadow-[0_-4px_24px_rgba(0,0,0,0.15)] transition-[height] duration-150 ease-in-out data-ending-style:h-0 data-starting-style:h-0",
         className
       )}
       {...props}
