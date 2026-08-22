@@ -8,7 +8,7 @@ export interface ResourceDetailEmptyBodyProps {
 }
 
 export const ResourceDetailEmptyBody: FC<ResourceDetailEmptyBodyProps> = ({ resourceKind }) => (
-  <p className="text-muted-foreground p-4 text-xs">
+  <p className="p-4 text-xs text-muted-foreground">
     There are no information for this {resourceKind}.
   </p>
 );
@@ -34,7 +34,7 @@ export const ResourceDetailDrawer: FC<ResourceDetailDrawerProps> = ({
     >
       <SheetContent
         side="right"
-        className={cn("w-200 sm:max-w-200 flex flex-col gap-0 p-0", className)}
+        className={cn("flex w-200 flex-col gap-0 p-0 sm:max-w-200", className)}
       >
         {children}
       </SheetContent>

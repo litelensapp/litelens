@@ -121,12 +121,12 @@ export const PluginCard: FC<PluginCardProps> = ({
   return (
     <div
       className={cn(
-        "border-border bg-secondary-surface border-3 shadow-depth-1 transition-interactive max-w-md overflow-hidden rounded-lg",
-        !isPluginDisabled && "hover:border-ring hover:shadow-depth-2"
+        "shadow-depth-1 transition-interactive max-w-md overflow-hidden rounded-lg border-3 border-border bg-secondary-surface",
+        !isPluginDisabled && "hover:shadow-depth-2 hover:border-ring"
       )}
     >
       {/* Header */}
-      <div className="border-border border-b px-4 py-3">
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <PluginLogo
@@ -209,17 +209,17 @@ export const PluginCard: FC<PluginCardProps> = ({
       {/* Content wrapper — dimmed if plugin is disabled */}
       <div className={cn("pointer-events-none", isPluginDisabled && "opacity-50")}>
         {/* Description */}
-        <div className="border-border border-b px-4 py-3">
+        <div className="border-b border-border px-4 py-3">
           <p className="text-body text-muted-foreground">{plugin.description}</p>
         </div>
 
         {/* Metadata */}
-        <div className="border-border border-b px-4 py-3">
-          <div className="text-caption text-muted-foreground flex items-center justify-between">
+        <div className="border-b border-border px-4 py-3">
+          <div className="text-caption flex items-center justify-between text-muted-foreground">
             {installStatus === "INSTALLING" && !installedVersion ? (
               <>
-                <div className="bg-muted h-4 w-24 animate-pulse rounded-sm" />
-                <div className="bg-muted h-4 w-12 animate-pulse rounded-sm" />
+                <div className="h-4 w-24 animate-pulse rounded-sm bg-muted" />
+                <div className="h-4 w-12 animate-pulse rounded-sm bg-muted" />
               </>
             ) : (
               <>
@@ -237,7 +237,7 @@ export const PluginCard: FC<PluginCardProps> = ({
         </div>
 
         {/* Compatibility chips */}
-        <div className="border-border border-b px-4 py-3">
+        <div className="border-b border-border px-4 py-3">
           <div className="flex flex-wrap gap-2">
             {OS_CHIPS.map(({ key, label }) => {
               const archs = plugin.os[key];
@@ -258,11 +258,11 @@ export const PluginCard: FC<PluginCardProps> = ({
       </div>
 
       {/* Footer with CTA button */}
-      <div className="border-border border-t px-4 py-3">
+      <div className="border-t border-border px-4 py-3">
         {isPluginDisabled ? (
-          <div className="text-muted-foreground text-sm">Plugin disabled</div>
+          <div className="text-sm text-muted-foreground">Plugin disabled</div>
         ) : isDisabled ? (
-          <div className="text-muted-foreground text-sm">
+          <div className="text-sm text-muted-foreground">
             Requires app {plugin.minimumHostVersion}–{plugin.maximumHostVersion} (you have{" "}
             {hostVersion})
           </div>

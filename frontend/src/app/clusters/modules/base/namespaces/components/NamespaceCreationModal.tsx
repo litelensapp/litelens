@@ -40,7 +40,7 @@ export const NamespaceCreationModal: FC<NamespaceCreationModalProps> = ({ open, 
       onSubmit={handleCreate}
     >
       <div className="flex flex-col gap-2">
-        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Name
         </span>
         <Input

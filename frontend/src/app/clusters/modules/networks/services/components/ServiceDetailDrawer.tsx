@@ -110,7 +110,7 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
 
           {(svc.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -144,7 +144,7 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
 
         {/* Connection section */}
         <Separator />
-        <SectionDivider label="Connection" className="bg-muted/50 border-y-0 tracking-wide" />
+        <SectionDivider label="Connection" className="border-y-0 bg-muted/50 tracking-wide" />
         <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 px-4 py-3">
           <span className="text-h3 text-muted-foreground">Cluster IP</span>
           <span className="text-body font-mono">{svc.ClusterIP}</span>
@@ -211,7 +211,7 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
 
         {/* Endpoint Slices section */}
         <Separator />
-        <SectionDivider label="Endpoint Slices" className="bg-muted/50 border-y-0 tracking-wide" />
+        <SectionDivider label="Endpoint Slices" className="border-y-0 bg-muted/50 tracking-wide" />
         <Table>
           <TableHeader>
             <TableRow>
@@ -223,7 +223,7 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell colSpan={4} className="text-muted-foreground py-6 text-center text-xs">
+              <TableCell colSpan={4} className="py-6 text-center text-xs text-muted-foreground">
                 Not available
               </TableCell>
             </TableRow>

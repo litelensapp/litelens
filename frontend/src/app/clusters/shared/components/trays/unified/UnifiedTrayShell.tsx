@@ -19,7 +19,7 @@ function getTabLabelAndIcon(tab: UnifiedTrayTab) {
     if (tab.family === "modification") {
       return {
         label: `${tab.kind}: ${tab.name}`,
-        icon: <PencilIcon className="text-muted-foreground size-3.5 shrink-0" />,
+        icon: <PencilIcon className="size-3.5 shrink-0 text-muted-foreground" />,
       };
     }
     const Icon = tab.mode === "logs" ? ScrollTextIcon : TerminalIcon;

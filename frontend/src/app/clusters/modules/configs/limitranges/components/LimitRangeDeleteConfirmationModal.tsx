@@ -34,14 +34,14 @@ export const LimitRangeDeleteConfirmationModal: FC<LimitRangeDeleteConfirmationM
         title: (
           <>
             Delete LimitRange:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{lrName}</span>
+            <span className="font-mono font-normal text-muted-foreground">{lrName}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{lrName}</span> from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{lrNamespace}</span>. All
+            <span className="font-mono font-medium text-foreground">{lrName}</span> from namespace{" "}
+            <span className="font-mono font-medium text-foreground">{lrNamespace}</span>. All
             associated resources will be removed.
           </>
         ),
@@ -57,7 +57,7 @@ export const LimitRangeDeleteConfirmationModal: FC<LimitRangeDeleteConfirmationM
         return (
           <>
             This will permanently delete {count} limitrange{count === 1 ? "" : "s"} from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{nsName}</span>. All associated
+            <span className="font-mono font-medium text-foreground">{nsName}</span>. All associated
             resources will be removed.
           </>
         );

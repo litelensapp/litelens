@@ -75,14 +75,14 @@ const LimitRangeOverviewTab: FC<{ lr: LimitRangeDetail }> = ({ lr }) => {
             limitType === "PersistentVolumeClaim" ? "PVC Limits" : `${limitType} Limits`;
           return (
             <Fragment key={limitType}>
-              <span className="text-h3 text-muted-foreground self-start pt-1">{label}</span>
+              <span className="text-h3 self-start pt-1 text-muted-foreground">{label}</span>
               <div className="flex flex-col">
                 {Object.entries(lr.Limits[limitType]).map(([resource, valueTypes]) => (
                   <div
                     key={resource}
-                    className="border-muted flex items-start gap-3 border-b py-2 last:border-b-0"
+                    className="flex items-start gap-3 border-b border-muted py-2 last:border-b-0"
                   >
-                    <span className="text-caption text-muted-foreground w-32 shrink-0 whitespace-nowrap">
+                    <span className="text-caption w-32 shrink-0 whitespace-nowrap text-muted-foreground">
                       {resource}
                     </span>
                     <div className="flex flex-wrap gap-1">
@@ -91,7 +91,7 @@ const LimitRangeOverviewTab: FC<{ lr: LimitRangeDetail }> = ({ lr }) => {
                           ? [
                               <span
                                 key={vt}
-                                className="bg-muted text-caption text-muted-foreground rounded-md px-2 py-0.5"
+                                className="text-caption rounded-md bg-muted px-2 py-0.5 text-muted-foreground"
                               >
                                 {vt === "DefaultRequest" ? "defaultRequest" : vt.toLowerCase()}:
                                 {valueTypes[vt]}

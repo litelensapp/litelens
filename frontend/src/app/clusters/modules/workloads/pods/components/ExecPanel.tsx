@@ -15,12 +15,12 @@ export const ExecPanel = ({ containerRef, status, error, reconnect }: ExecPanelP
       <div ref={containerRef} className="absolute inset-0" />
       {status === "connecting" && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <span className="text-muted-foreground animate-pulse text-xs">Connecting…</span>
+          <span className="animate-pulse text-xs text-muted-foreground">Connecting…</span>
         </div>
       )}
       {status === "error" && error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
-          <span className="text-destructive text-xs">{error}</span>
+          <span className="text-xs text-destructive">{error}</span>
           <Button variant="ghost" size="xs" onClick={reconnect}>
             <RotateCcwIcon className="size-3.5" />
             Reconnect
@@ -28,7 +28,7 @@ export const ExecPanel = ({ containerRef, status, error, reconnect }: ExecPanelP
         </div>
       )}
       {status === "closed" && (
-        <div className="bg-muted/80 text-muted-foreground absolute bottom-0 left-0 right-0 px-3 py-2 text-center text-xs">
+        <div className="absolute right-0 bottom-0 left-0 bg-muted/80 px-3 py-2 text-center text-xs text-muted-foreground">
           Session closed
         </div>
       )}

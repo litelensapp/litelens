@@ -34,14 +34,14 @@ export const StatefulSetDeleteConfirmationModal: FC<StatefulSetDeleteConfirmatio
         title: (
           <>
             Delete StatefulSet:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{namespace}</span> and all its
+            <span className="font-mono font-medium text-foreground">{name}</span> from namespace{" "}
+            <span className="font-mono font-medium text-foreground">{namespace}</span> and all its
             associated Pods (cascading delete). This action cannot be undone.
           </>
         ),
@@ -57,7 +57,7 @@ export const StatefulSetDeleteConfirmationModal: FC<StatefulSetDeleteConfirmatio
         return (
           <>
             This will permanently delete {count} statefulset{count === 1 ? "" : "s"} from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{nsName}</span> and all their
+            <span className="font-mono font-medium text-foreground">{nsName}</span> and all their
             associated Pods (cascading delete). This action cannot be undone.
           </>
         );

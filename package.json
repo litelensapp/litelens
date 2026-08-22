@@ -8,7 +8,7 @@
   },
   "packageManager": "pnpm@11.10.0",
   "scripts": {
-    "dev": "pnpm --filter litelens-frontend run dev",
+    "dev": "go tool wails dev",
     "build:ds": "pnpm --filter @litelens/design-system run build",
     "build:report:fe": "pnpm --filter litelens-frontend --filter @litelens/design-system run build:report",
     "build:app": "bash scripts/build.sh",
@@ -27,19 +27,21 @@
     "test:be": " go test -race -v ./internal/...",
     "test:be:coverage": "go test -race -v -cover -coverprofile=coverage.out ./internal/...",
     "prepare": "husky",
-    "upgrade:all": "pnpm up -S -r"
+    "upgrade:all:fe": "ncu -u -t minor --dep prod,dev,optional --workspaces --root && pnpm install",
+    "upgrade:all:be": "go get -u -t ./... && go mod tidy && go get -C packages/core -u -t ./... && go mod tidy -C packages/core"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.2.0",
-    "eslint": "^10.8.1",
+    "eslint": "^10.9.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "npm-check-updates": "^23.0.2",
     "prettier": "^3.9.6",
-    "prettier-plugin-tailwindcss": "^0.6.14",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript-eslint": "^8.67.0"
   }
 }

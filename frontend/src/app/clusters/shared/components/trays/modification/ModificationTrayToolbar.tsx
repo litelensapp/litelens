@@ -40,16 +40,16 @@ export const ModificationTrayToolbar: FC<ModificationTrayToolbarProps> = ({
 }) => (
   <div className={cn("flex h-10 shrink-0 items-center gap-3 border-b px-4", collapsed && "hidden")}>
     {/* Kind chip */}
-    <span className="text-muted-foreground text-xs">Kind</span>
-    <span className="bg-muted text-foreground rounded px-2 py-0.5 font-mono text-xs">{kind}</span>
+    <span className="text-xs text-muted-foreground">Kind</span>
+    <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground">{kind}</span>
 
     {/* Name chip */}
-    <span className="text-muted-foreground text-xs">Name</span>
-    <span className="bg-muted text-foreground rounded px-2 py-0.5 font-mono text-xs">{name}</span>
+    <span className="text-xs text-muted-foreground">Name</span>
+    <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground">{name}</span>
 
     {/* Namespace chip — cluster-scoped resources repeat name */}
-    <span className="text-muted-foreground text-xs">Namespace</span>
-    <span className="bg-muted text-foreground rounded px-2 py-0.5 font-mono text-xs">
+    <span className="text-xs text-muted-foreground">Namespace</span>
+    <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
       {namespace ?? name}
     </span>
 

@@ -14,7 +14,7 @@ interface ResourceCellProps {
 
 export const ResourceCell: FC<ResourceCellProps> = ({ label, percent }) => (
   <div className="flex min-w-36 flex-col gap-1">
-    <div className="bg-muted h-1.5 w-full rounded-full">
+    <div className="h-1.5 w-full rounded-full bg-muted">
       {percent > 0 && (
         <div
           className={cn("transition-interactive h-full rounded-full", barColor(percent))}
@@ -22,6 +22,6 @@ export const ResourceCell: FC<ResourceCellProps> = ({ label, percent }) => (
         />
       )}
     </div>
-    <span className="text-muted-foreground text-xs">{label}</span>
+    <span className="text-xs text-muted-foreground">{label}</span>
   </div>
 );

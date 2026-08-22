@@ -26,7 +26,7 @@ export const EventsTable: FC<EventsTableProps> = ({ events }) => {
 
   return (
     <Table containerClassName="flex-1 overflow-y-auto">
-      <TableHeader className="bg-background z-sticky sticky top-0">
+      <TableHeader className="z-sticky sticky top-0 bg-background">
         <TableRow>
           <TableHead className="w-10">#</TableHead>
           <TableHead className="w-20">Type</TableHead>
@@ -59,7 +59,7 @@ export const EventsTable: FC<EventsTableProps> = ({ events }) => {
               className="cursor-pointer"
               onClick={() => onToggleEventDetail(e.Namespace, e.Name)}
             >
-              <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
               <TableCell>
                 <EventTypeBadge type={e.Type} />
               </TableCell>

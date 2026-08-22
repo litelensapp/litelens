@@ -54,7 +54,7 @@ export const TrayTabBar: FC<TrayTabBarProps> = memo(
         {/* Tab bar row */}
         <div className="flex min-w-0 shrink-0 items-center justify-between border-b">
           {/* Left section: tabs */}
-          <div className="scrollbar-none min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+          <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <TabsList
               className="w-max gap-0 rounded-none bg-transparent p-0"
               variant="line"
@@ -68,7 +68,7 @@ export const TrayTabBar: FC<TrayTabBarProps> = memo(
                     "group shrink-0 rounded-none bg-transparent px-3 text-xs shadow-none",
                     "flex cursor-pointer items-center gap-1.5 transition-colors",
                     "text-muted-foreground hover:text-foreground",
-                    "data-active:text-foreground data-active:font-medium data-active:bg-transparent data-active:shadow-none"
+                    "data-active:bg-transparent data-active:font-medium data-active:text-foreground data-active:shadow-none"
                   )}
                 >
                   {tab.icon}

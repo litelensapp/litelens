@@ -49,7 +49,7 @@ const CronJobTableCtaButtons: FC<CronJobTableCtaButtonsProps> = ({ namespace, na
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Actions"
-          className="hover:bg-accent flex size-6 cursor-pointer items-center justify-center rounded-sm"
+          className="flex size-6 cursor-pointer items-center justify-center rounded-sm hover:bg-accent"
           onClick={(e) => e.stopPropagation()}
         >
           <MoreVerticalIcon className="size-3.5" />
@@ -102,7 +102,7 @@ export const CronJobsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Cron Jobs</span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {cronjobs.length} item{cronjobs.length === 1 ? "" : "s"}
         </span>
         <div className="ml-auto flex items-center gap-4">
@@ -122,7 +122,7 @@ export const CronJobsView: FC = () => {
       </div>
 
       <Table containerClassName="flex-1 overflow-y-auto">
-        <TableHeader className="bg-background z-sticky sticky top-0">
+        <TableHeader className="z-sticky sticky top-0 bg-background">
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
@@ -219,14 +219,14 @@ export const CronJobsView: FC = () => {
                   </TableCell>
                 )}
                 <TableCell className="font-mono text-xs">{cj.Schedule}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">
+                <TableCell className="text-xs text-muted-foreground">
                   {cj.Timezone || "—"}
                 </TableCell>
                 <TableCell className="text-xs">
                   <CronJobResumedBadge resumed={!cj.Suspend} />
                 </TableCell>
                 <TableCell className="text-xs">{cj.Active}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">
+                <TableCell className="text-xs text-muted-foreground">
                   {cj.LastSchedule || "—"}
                 </TableCell>
                 <TableCell className="text-xs">{cj.Age}</TableCell>

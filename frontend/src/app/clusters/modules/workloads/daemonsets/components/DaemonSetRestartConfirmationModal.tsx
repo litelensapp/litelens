@@ -21,13 +21,13 @@ export const DaemonSetRestartConfirmationModal: FC<DaemonSetRestartConfirmationM
     title={
       <>
         Restart DaemonSet:{" "}
-        <span className="text-muted-foreground font-mono font-normal">{name}</span>
+        <span className="font-mono font-normal text-muted-foreground">{name}</span>
       </>
     }
     description={
       <>
         This will trigger a rolling restart of{" "}
-        <span className="text-foreground font-mono font-medium">{name}</span>. All pods will be
+        <span className="font-mono font-medium text-foreground">{name}</span>. All pods will be
         replaced progressively.
       </>
     }

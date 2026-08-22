@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 )
 
@@ -162,6 +163,9 @@ func Test_GetReleasesBaseURL_SpecialCharactersInURL(t *testing.T) {
 // Test_IsMarketplaceEnabled_DefaultAndOverride verifies default (false) vs. override behavior.
 func Test_IsMarketplaceEnabled_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
+		t.Setenv("MARKETPLACE_ENABLED", "")
+		os.Unsetenv("MARKETPLACE_ENABLED")
+
 		result := IsMarketplaceEnabled()
 		if result != false {
 			t.Errorf("expected default false for unset MARKETPLACE_ENABLED, got %v", result)

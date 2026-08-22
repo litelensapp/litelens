@@ -58,14 +58,14 @@ export const ConnectingView: FC<ConnectingViewProps> = ({
           {clusterInitials(contextName)}
         </div>
         <div className="text-center">
-          <p className="text-foreground font-semibold">{contextName}</p>
-          <p className="text-muted-foreground text-sm">{statusLabel}</p>
+          <p className="font-semibold text-foreground">{contextName}</p>
+          <p className="text-sm text-muted-foreground">{statusLabel}</p>
         </div>
       </div>
 
-      <div className="bg-muted/30 border-border w-full max-w-lg rounded-lg border p-4 font-mono text-sm">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-muted/30 p-4 font-mono text-sm">
         {lines.length === 0 && (
-          <div className="text-muted-foreground flex items-center gap-2">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
             <span>Initializing...</span>
           </div>

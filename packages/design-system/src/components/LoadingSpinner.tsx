@@ -8,6 +8,6 @@ export interface LoadingSpinnerProps {
 
 export const LoadingSpinner: FC<LoadingSpinnerProps> = ({ className }) => (
   <div className={cn("flex h-full items-center justify-center", className)}>
-    <Loader2Icon className="text-muted-foreground size-5 animate-spin" />
+    <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
   </div>
 );

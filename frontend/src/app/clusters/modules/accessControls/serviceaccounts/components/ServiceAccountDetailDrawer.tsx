@@ -47,12 +47,12 @@ const ServiceAccountOverviewTab: FC<{ sa: ServiceAccount }> = ({ sa }) => {
         </ResourceLink>
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-h3 text-muted-foreground shrink-0">Mountable Secrets</span>
+          <span className="text-h3 shrink-0 text-muted-foreground">Mountable Secrets</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 
         {(sa.Secrets ?? []).length === 0 ? (
-          <span className="text-muted-foreground col-span-2">—</span>
+          <span className="col-span-2 text-muted-foreground">—</span>
         ) : (
           (sa.Secrets ?? []).map((secret) => (
             <Fragment key={secret}>

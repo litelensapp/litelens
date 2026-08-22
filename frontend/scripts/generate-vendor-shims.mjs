@@ -32,7 +32,7 @@ async function namedExports(specifier) {
     .sort();
 }
 
-function renderShim({ rationale, hasDefault, exportName, globalKey, names }) {
+function renderShim({ rationale, hasDefault, exportName, globalKey, sourcePath = [], names }) {
   const commentBody = rationale
     .trim()
     .split("\n")
@@ -49,7 +49,7 @@ if (!window.__LITELENS_VENDOR__) {
     "window.__LITELENS_VENDOR__ is not set — src/main.tsx must run before any plugin is dynamically imported."
   );
 }
-const ${exportName} = window.__LITELENS_VENDOR__.${globalKey};
+const ${exportName} = window.__LITELENS_VENDOR__.${[globalKey, ...sourcePath].join(".")};
 `;
 
   const defaultExport = hasDefault ? `\nexport default ${exportName};\n` : "";
@@ -133,7 +133,12 @@ loaded instance. A plugin bundling its own copy of react-query would get
     exportName: "Core",
     hasDefault: false,
     outFile: path.join(vendorDir, "litelens", "core.js"),
-    rationale: `Vendor shim for the "@litelens/core" bare specifier. ${SEE_REACT_JS}`,
+    rationale: `Vendor shim for the "@litelens/core" bare specifier. ${SEE_REACT_JS}
+
+Named exports mirror what @litelens/core's own dist/index.js exports:
+clusterWideAPI (hooks/functions valid only within a single cluster's view)
+and appWideAPI (capabilities that aren't cluster-scoped, e.g.
+registerStylesheets) — see src/expose/index.tsx.`,
   },
 ];
 

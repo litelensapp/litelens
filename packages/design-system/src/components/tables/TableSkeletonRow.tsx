@@ -18,13 +18,13 @@ export const TableSkeletonRow: FC<TableSkeletonRowProps> = ({
   <TableRow>
     {includeCheckbox && (
       <TableCell>
-        <div className="bg-muted h-4 w-4 animate-pulse rounded-[4px]" />
+        <div className="h-4 w-4 animate-pulse rounded-[4px] bg-muted" />
       </TableCell>
     )}
     {Array.from({ length: columns }).map((_, i) => (
       <TableCell key={i}>
         <div
-          className={cn("bg-muted h-4 animate-pulse rounded-sm", columnWidths[i] ?? "w-[70%]")}
+          className={cn("h-4 animate-pulse rounded-sm bg-muted", columnWidths[i] ?? "w-[70%]")}
         />
       </TableCell>
     ))}

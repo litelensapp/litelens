@@ -19,7 +19,7 @@ function ContextMenuContent({ className, ...props }: ContextMenuPrimitive.Popup.
       <ContextMenuPrimitive.Positioner sideOffset={4}>
         <ContextMenuPrimitive.Popup
           className={cn(
-            "bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 z-overlay min-w-[8rem] rounded-lg p-1 text-sm shadow-md outline-none ring-1 duration-100",
+            "z-overlay min-w-[8rem] rounded-lg bg-popover p-1 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
             className
           )}
           {...props}
@@ -33,7 +33,7 @@ function ContextMenuItem({ className, ...props }: ContextMenuPrimitive.Item.Prop
   return (
     <ContextMenuPrimitive.Item
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 transition-theme relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none",
+        "transition-theme relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
         className
       )}
       {...props}
@@ -44,7 +44,7 @@ function ContextMenuItem({ className, ...props }: ContextMenuPrimitive.Item.Prop
 function ContextMenuSeparator({ className, ...props }: ContextMenuPrimitive.Separator.Props) {
   return (
     <ContextMenuPrimitive.Separator
-      className={cn("bg-border -mx-1 my-1 h-px", className)}
+      className={cn("-mx-1 my-1 h-px bg-border", className)}
       {...props}
     />
   );

@@ -33,14 +33,14 @@ export const PodDeleteConfirmationModal: FC<PodDeleteConfirmationModalProps> = (
       return {
         title: (
           <>
-            Delete Pod: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            Delete Pod: <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{namespace}</span>. All
+            <span className="font-mono font-medium text-foreground">{name}</span> from namespace{" "}
+            <span className="font-mono font-medium text-foreground">{namespace}</span>. All
             associated resources will be removed.
           </>
         ),
@@ -56,7 +56,7 @@ export const PodDeleteConfirmationModal: FC<PodDeleteConfirmationModalProps> = (
         return (
           <>
             This will permanently delete {count} pod{count === 1 ? "" : "s"} from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{nsName}</span>. All associated
+            <span className="font-mono font-medium text-foreground">{nsName}</span>. All associated
             resources will be removed.
           </>
         );

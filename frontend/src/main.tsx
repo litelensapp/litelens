@@ -1,12 +1,11 @@
 import { TooltipProvider } from "@litelens/design-system";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import "./expose";
+import { queryClient } from "./queryClient";
 import "./style.css";
-
-const queryClient = new QueryClient();
 
 const container = document.getElementById("root");
 

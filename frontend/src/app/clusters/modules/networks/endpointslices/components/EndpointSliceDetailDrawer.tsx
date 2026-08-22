@@ -88,7 +88,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
 
           {(slice.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -102,7 +102,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
 
         {/* Endpoints section */}
         <Separator />
-        <SectionDivider label="Endpoints" className="bg-muted/50 border-y-0 tracking-wide" />
+        <SectionDivider label="Endpoints" className="border-y-0 bg-muted/50 tracking-wide" />
         <Table>
           <TableHeader>
             <TableRow>
@@ -117,7 +117,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
           <TableBody>
             {(slice.Endpoints ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground py-6 text-center text-xs">
+                <TableCell colSpan={6} className="py-6 text-center text-xs text-muted-foreground">
                   No endpoints
                 </TableCell>
               </TableRow>
@@ -131,7 +131,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
                 conditions.push(
                   <span
                     key="ready"
-                    className="bg-success/15 text-success rounded px-1.5 py-0.5 text-xs"
+                    className="rounded bg-success/15 px-1.5 py-0.5 text-xs text-success"
                   >
                     Ready
                   </span>
@@ -140,7 +140,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
                 conditions.push(
                   <span
                     key="serving"
-                    className="bg-info/15 text-info rounded px-1.5 py-0.5 text-xs"
+                    className="rounded bg-info/15 px-1.5 py-0.5 text-xs text-info"
                   >
                     Serving
                   </span>
@@ -149,7 +149,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
                 conditions.push(
                   <span
                     key="terminating"
-                    className="bg-danger/15 text-danger rounded px-1.5 py-0.5 text-xs"
+                    className="rounded bg-danger/15 px-1.5 py-0.5 text-xs text-danger"
                   >
                     Terminating
                   </span>
@@ -177,7 +177,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
 
         {/* Ports section */}
         <Separator />
-        <SectionDivider label="Ports" className="bg-muted/50 border-y-0 tracking-wide" />
+        <SectionDivider label="Ports" className="border-y-0 bg-muted/50 tracking-wide" />
         <Table>
           <TableHeader>
             <TableRow>
@@ -189,7 +189,7 @@ const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
           <TableBody>
             {(slice.Ports ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-muted-foreground py-6 text-center text-xs">
+                <TableCell colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
                   No ports
                 </TableCell>
               </TableRow>

@@ -55,11 +55,11 @@ const KVSection: FC<{ title: string; data: Record<string, string> }> = ({ title,
   if (entries.length === 0) return null;
   return (
     <div>
-      <SectionDivider label={title} className="bg-muted/50 border-y-0 uppercase tracking-wide" />
+      <SectionDivider label={title} className="border-y-0 bg-muted/50 tracking-wide uppercase" />
       <div className="grid grid-cols-[160px_1fr] gap-y-2 px-4 py-3">
         {entries.map(([k, v]) => (
           <Fragment key={k}>
-            <span className="text-h3 text-muted-foreground font-mono">{k}</span>
+            <span className="text-h3 font-mono text-muted-foreground">{k}</span>
             <span className="text-body font-mono">{v}</span>
           </Fragment>
         ))}
@@ -106,7 +106,7 @@ const NodeInfoTab: FC<{ node: Node }> = ({ node }) => {
 
           {(node.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -210,7 +210,7 @@ const NodePodsTab: FC<{ node: Node }> = ({ node }) => {
         <TableBody>
           {nodePods.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground py-12 text-center text-xs">
+              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
                 Item list is empty
               </TableCell>
             </TableRow>
@@ -238,7 +238,7 @@ const NodePodsTab: FC<{ node: Node }> = ({ node }) => {
                 <TableCell>
                   <ResourceCell label={p.Memory} percent={p.MemPercent} />
                 </TableCell>
-                <TableCell className="text-success text-xs">{p.Status}</TableCell>
+                <TableCell className="text-xs text-success">{p.Status}</TableCell>
               </TableRow>
             ))
           )}

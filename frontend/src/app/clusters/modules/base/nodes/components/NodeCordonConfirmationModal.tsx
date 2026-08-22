@@ -20,12 +20,12 @@ export const NodeCordonConfirmationModal: FC<NodeCordonConfirmationModalProps> =
     open={open}
     title={
       <>
-        Cordon Node: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+        Cordon Node: <span className="font-mono font-normal text-muted-foreground">{name}</span>
       </>
     }
     description={
       <>
-        This will mark <span className="text-foreground font-mono font-medium">{name}</span> as
+        This will mark <span className="font-mono font-medium text-foreground">{name}</span> as
         unschedulable, preventing new Pods from being scheduled on it. Existing Pods will not be
         evicted.
       </>

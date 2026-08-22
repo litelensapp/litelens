@@ -33,23 +33,18 @@ describe("usePluginNavEntries", () => {
     expect(result.current).toEqual({
       navEntries: [],
       viewTypeToPluginId: {},
-      pluginNameByViewType: {},
       resourceLabels: {},
     });
   });
 
   it("derives viewType maps from a group entry", () => {
-    act(() => registerNavEntry("helm", "Helm", groupEntry));
+    act(() => registerNavEntry("helm", groupEntry));
     const { result } = renderHook(() => usePluginNavEntries());
 
     expect(result.current.navEntries).toEqual([groupEntry]);
     expect(result.current.viewTypeToPluginId).toEqual({
       "helm-charts": "helm",
       "helm-releases": "helm",
-    });
-    expect(result.current.pluginNameByViewType).toEqual({
-      "helm-charts": "Helm",
-      "helm-releases": "Helm",
     });
     expect(result.current.resourceLabels).toEqual({
       "helm-charts": "Charts",
@@ -58,7 +53,7 @@ describe("usePluginNavEntries", () => {
   });
 
   it("derives viewType maps from an item entry", () => {
-    act(() => registerNavEntry("kube", "Kube", itemEntry));
+    act(() => registerNavEntry("kube", itemEntry));
     const { result } = renderHook(() => usePluginNavEntries());
 
     expect(result.current.viewTypeToPluginId).toEqual({ "kube-view": "kube" });
@@ -68,7 +63,7 @@ describe("usePluginNavEntries", () => {
     const { result } = renderHook(() => usePluginNavEntries());
     expect(result.current.navEntries).toHaveLength(0);
 
-    act(() => registerNavEntry("helm", "Helm", groupEntry));
+    act(() => registerNavEntry("helm", groupEntry));
     expect(result.current.navEntries).toHaveLength(1);
 
     act(() => unregisterNavEntry("helm"));

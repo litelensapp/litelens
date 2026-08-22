@@ -20,12 +20,12 @@ export const NodeUncordonConfirmationModal: FC<NodeUncordonConfirmationModalProp
     open={open}
     title={
       <>
-        Uncordon Node: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+        Uncordon Node: <span className="font-mono font-normal text-muted-foreground">{name}</span>
       </>
     }
     description={
       <>
-        This will mark <span className="text-foreground font-mono font-medium">{name}</span> as
+        This will mark <span className="font-mono font-medium text-foreground">{name}</span> as
         schedulable again, allowing new Pods to be scheduled on it.
       </>
     }

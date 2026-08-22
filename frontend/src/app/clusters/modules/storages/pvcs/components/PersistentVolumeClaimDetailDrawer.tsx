@@ -175,7 +175,7 @@ const PVCOverviewTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
       </div>
 
       <Separator />
-      <SectionDivider label="Selector" className="bg-muted/50 border-y-0 uppercase tracking-wide" />
+      <SectionDivider label="Selector" className="border-y-0 bg-muted/50 tracking-wide uppercase" />
       <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Match Labels</span>
         {hasMatchLabels ? (

@@ -59,16 +59,16 @@ const ConfigMapValueField: FC<{
           placeholder="key name"
           value={name}
           onChange={(e) => onKeyChange(e.target.value)}
-          className="placeholder:text-muted-foreground/50 mx-4 mt-4 max-w-48 font-mono text-xs font-semibold"
+          className="mx-4 mt-4 max-w-48 font-mono text-xs font-semibold placeholder:text-muted-foreground/50"
           aria-label="New ConfigMap key"
         />
       ) : (
-        <p className="text-muted-foreground px-4 pb-1 pt-4 text-xs font-semibold tracking-wide">
+        <p className="px-4 pt-4 pb-1 text-xs font-semibold tracking-wide text-muted-foreground">
           {name}
         </p>
       )}
       {value === undefined ? (
-        <p className="text-muted-foreground mx-4 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs">
+        <p className="mx-4 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-muted-foreground">
           [binary data not shown]
         </p>
       ) : (
@@ -285,7 +285,7 @@ const ConfigMapOverviewTab: FC<{ cm: ConfigMap }> = ({ cm }) => {
 
           {(cm.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -301,7 +301,7 @@ const ConfigMapOverviewTab: FC<{ cm: ConfigMap }> = ({ cm }) => {
           <form onSubmit={handleSubmit}>
             <SectionDivider
               label="Data"
-              className="bg-muted/50 border-y-0 border-t uppercase tracking-wide"
+              className="border-y-0 border-t bg-muted/50 tracking-wide uppercase"
             />
 
             <div className="flex flex-col">

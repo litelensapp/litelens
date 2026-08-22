@@ -20,14 +20,14 @@ describe("pluginNavRegistry", () => {
   });
 
   it("registers a nav entry keyed by pluginId", () => {
-    registerNavEntry("helm", "Helm", navEntry);
-    expect(getNavEntries()).toEqual([{ pluginId: "helm", pluginName: "Helm", navEntry }]);
+    registerNavEntry("helm", navEntry);
+    expect(getNavEntries()).toEqual([{ pluginId: "helm", navEntry }]);
   });
 
   it("overwrites a previous registration for the same pluginId", () => {
-    registerNavEntry("helm", "Helm", navEntry);
+    registerNavEntry("helm", navEntry);
     const updated: NavEntry<string> = { ...navEntry, item: { ...navEntry.item, label: "Helm v2" } };
-    registerNavEntry("helm", "Helm", updated);
+    registerNavEntry("helm", updated);
 
     const entries = getNavEntries();
     expect(entries).toHaveLength(1);
@@ -35,7 +35,7 @@ describe("pluginNavRegistry", () => {
   });
 
   it("removes a registration on unregister", () => {
-    registerNavEntry("helm", "Helm", navEntry);
+    registerNavEntry("helm", navEntry);
     unregisterNavEntry("helm");
     expect(getNavEntries()).toEqual([]);
   });
@@ -44,7 +44,7 @@ describe("pluginNavRegistry", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeNavRegistry(listener);
 
-    registerNavEntry("helm", "Helm", navEntry);
+    registerNavEntry("helm", navEntry);
     expect(listener).toHaveBeenCalledTimes(1);
 
     unregisterNavEntry("nonexistent-plugin");
@@ -54,7 +54,7 @@ describe("pluginNavRegistry", () => {
     expect(listener).toHaveBeenCalledTimes(2);
 
     unsubscribe();
-    registerNavEntry("kube", "Kube", navEntry);
+    registerNavEntry("kube", navEntry);
     expect(listener).toHaveBeenCalledTimes(2);
   });
 
@@ -62,8 +62,8 @@ describe("pluginNavRegistry", () => {
     const listener = vi.fn();
     subscribeNavRegistry(listener);
 
-    registerNavEntry("helm", "Helm", navEntry);
-    registerNavEntry("kube", "Kube", navEntry);
+    registerNavEntry("helm", navEntry);
+    registerNavEntry("kube", navEntry);
     listener.mockClear();
 
     clearNavRegistry();

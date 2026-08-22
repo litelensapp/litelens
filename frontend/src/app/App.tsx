@@ -9,6 +9,7 @@ import { ClusterSettingsModal } from "./clusters/ClusterSettingsModal";
 import { ConnectingView } from "./clusters/ConnectingView";
 import { MainLayout } from "./clusters/MainLayout";
 import { MarketplaceView } from "./marketplace/MarketplaceView";
+import { PluginStylesheetsLoader } from "./plugins/PluginStylesheetsLoader";
 import type { Section } from "./settings/components/types";
 import { useMenuOpenSettingsEvents } from "./settings/hooks/async-events/useMenuOpenSettingsEvents";
 import { SettingsView } from "./settings/SettingsView";
@@ -260,11 +261,12 @@ export const App: FC = () => {
 
   return (
     <TooltipProvider>
+      <PluginStylesheetsLoader />
       <div className="flex h-screen flex-col overflow-hidden">
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {error ? (
             <div className="flex flex-1 items-center justify-center">
-              <p className="text-destructive text-sm">{error.message}</p>
+              <p className="text-sm text-destructive">{error.message}</p>
             </div>
           ) : (
             <>

@@ -35,7 +35,7 @@ export const ReplicaSetScaleModal: FC<ReplicaSetScaleModalProps> = ({
       title={
         <span className="flex gap-2">
           Scale ReplicaSet:{" "}
-          <span className="text-muted-foreground font-mono font-normal">{name}</span>
+          <span className="font-mono font-normal text-muted-foreground">{name}</span>
         </span>
       }
       isLoading={isPending}
@@ -88,7 +88,7 @@ export const ReplicaSetScaleModal: FC<ReplicaSetScaleModalProps> = ({
         </div>
 
         {desired === 0 && (
-          <div className="text-destructive flex items-start gap-1.5">
+          <div className="flex items-start gap-1.5 text-destructive">
             <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
             <span className="text-xs">
               ScalingIcon to 0 will take the replicaset offline — all pods will be terminated
@@ -96,7 +96,7 @@ export const ReplicaSetScaleModal: FC<ReplicaSetScaleModalProps> = ({
           </div>
         )}
         {desired > 10 && (
-          <div className="text-warning flex items-start gap-1.5">
+          <div className="flex items-start gap-1.5 text-warning">
             <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
             <span className="text-xs">
               High number of replicas may cause cluster performance issues

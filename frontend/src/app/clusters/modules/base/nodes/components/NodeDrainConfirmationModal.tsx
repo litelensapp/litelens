@@ -20,7 +20,7 @@ export const NodeDrainConfirmationModal: FC<NodeDrainConfirmationModalProps> = (
     open={open}
     title={
       <>
-        Drain Node: <span className="text-muted-foreground font-mono font-normal">{name}</span>
+        Drain Node: <span className="font-mono font-normal text-muted-foreground">{name}</span>
       </>
     }
     description={

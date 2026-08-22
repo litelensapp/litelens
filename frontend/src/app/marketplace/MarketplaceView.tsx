@@ -237,15 +237,15 @@ export const MarketplaceView: FC<{
     availableSectionContent = (
       <div className="flex flex-1 flex-col gap-4 py-16 text-center">
         <div>
-          <FrownIcon className="text-muted-foreground mx-auto mb-3 size-12" />
-          <p className="text-destructive text-lg font-medium">Couldn&apos;t load marketplace</p>
-          <p className="text-muted-foreground mt-2 text-xs">
+          <FrownIcon className="mx-auto mb-3 size-12 text-muted-foreground" />
+          <p className="text-lg font-medium text-destructive">Couldn&apos;t load marketplace</p>
+          <p className="mt-2 text-xs text-muted-foreground">
             {marketplaceError?.message || "Check your Access Token in Settings"}
           </p>
         </div>
         {marketplaceError?.message && (
           <div>
-            <p className="text-muted-foreground mt-2 text-xs">
+            <p className="mt-2 text-xs text-muted-foreground">
               Please check your Marketplace Repository URL
             </p>
             <Button className="mt-4" onClick={onGoToMarketplaceSettings}>
@@ -259,7 +259,7 @@ export const MarketplaceView: FC<{
     availableSectionContent = (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
         <LoadingSpinner />
-        <p className="text-muted-foreground text-sm">Loading available plugins...</p>
+        <p className="text-sm text-muted-foreground">Loading available plugins...</p>
       </div>
     );
   } else if (available.length === 0) {
@@ -323,7 +323,7 @@ export const MarketplaceView: FC<{
                 {isLoadingInstalled ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-16">
                     <LoadingSpinner />
-                    <p className="text-muted-foreground text-sm">Loading installed plugins...</p>
+                    <p className="text-sm text-muted-foreground">Loading installed plugins...</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-6">

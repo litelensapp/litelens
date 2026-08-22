@@ -65,7 +65,7 @@ const ClusterRoleOverviewTab: FC<{ cr: ClusterRole }> = ({ cr }) => {
 
         {(cr.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {cr.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -75,12 +75,12 @@ const ClusterRoleOverviewTab: FC<{ cr: ClusterRole }> = ({ cr }) => {
         )}
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-muted-foreground shrink-0 text-xs">Rules</span>
+          <span className="shrink-0 text-xs text-muted-foreground">Rules</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 
         {(cr.Rules ?? []).length === 0 ? (
-          <span className="text-muted-foreground col-span-2">—</span>
+          <span className="col-span-2 text-muted-foreground">—</span>
         ) : (
           cr.Rules.map((rule) => (
             <div

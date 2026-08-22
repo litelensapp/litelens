@@ -1,9 +1,21 @@
-import "@testing-library/jest-dom/vitest";
 import * as DesignSystem from "@litelens/design-system";
-import * as React from "react";
-import * as ReactJsxRuntime from "react/jsx-runtime";
-import * as ReactDom from "react-dom";
 import * as ReactQuery from "@tanstack/react-query";
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import * as React from "react";
+import * as ReactDom from "react-dom";
+import * as ReactJsxRuntime from "react/jsx-runtime";
+import { afterEach } from "vitest";
+
+// @testing-library/react only auto-registers its afterEach(cleanup) when it
+// detects a global `afterEach` (i.e. test.globals: true). This project runs
+// with globals: false, so without this, rendered trees/hooks stay mounted
+// across tests — their pending effects/timers can fire after a later test's
+// jsdom environment has torn down, surfacing as spurious
+// "window is not defined" errors in unrelated test files.
+afterEach(() => {
+  cleanup();
+});
 
 // jsdom does not implement ResizeObserver — provide a no-op stub so any component
 // that uses it (TruncatedText, usePodLogs, usePodExec) doesn't throw in tests.

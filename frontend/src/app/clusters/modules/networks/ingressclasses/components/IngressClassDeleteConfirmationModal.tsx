@@ -26,13 +26,13 @@ export const IngressClassDeleteConfirmationModal: FC<IngressClassDeleteConfirmat
         title: (
           <>
             Delete IngressClass:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span>. Ingresses may
+            <span className="font-mono font-medium text-foreground">{name}</span>. Ingresses may
             become unroutable if they reference this class. This action cannot be undone.
           </>
         ),

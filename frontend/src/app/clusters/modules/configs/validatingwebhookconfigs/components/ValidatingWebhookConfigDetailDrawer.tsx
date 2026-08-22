@@ -38,7 +38,7 @@ const WebhookBlock: FC<{ webhook: WebhookDetail }> = ({ webhook }) => (
     {(webhook.ClientConfigServiceName || webhook.ClientConfigServiceNamespace) && (
       <>
         <span className="text-h3 text-muted-foreground">Client Config</span>
-        <div className="text-body whitespace-pre-wrap font-mono">
+        <div className="text-body font-mono whitespace-pre-wrap">
           {webhook.ClientConfigServiceName && `Name: ${webhook.ClientConfigServiceName}\n`}
           {webhook.ClientConfigServiceNamespace &&
             `Namespace: ${webhook.ClientConfigServiceNamespace}`}
@@ -93,7 +93,7 @@ const WebhookBlock: FC<{ webhook: WebhookDetail }> = ({ webhook }) => (
       webhook.RulesResources.length > 0) && (
       <>
         <span className="text-h3 text-muted-foreground">Rules</span>
-        <div className="text-body whitespace-pre-wrap font-mono">
+        <div className="text-body font-mono whitespace-pre-wrap">
           {webhook.RulesAPIGroups.length > 0 &&
             `API Groups: ${webhook.RulesAPIGroups.join(", ")}\n`}
           {webhook.RulesAPIVersions.length > 0 &&
@@ -150,14 +150,14 @@ const ValidatingWebhookConfigOverviewTab: FC<{ vwc: ValidatingWebhookConfigDetai
       </div>
 
       {/* Webhooks */}
-      <SectionDivider label="Webhooks" className="uppercase tracking-wide" />
+      <SectionDivider label="Webhooks" className="tracking-wide uppercase" />
       {(() => {
         const webhooks = vwc.Webhooks ?? [];
         return webhooks.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-2 text-xs">No webhooks</p>
+          <p className="px-4 py-2 text-xs text-muted-foreground">No webhooks</p>
         ) : (
           webhooks.map((webhook) => (
-            <div key={webhook.Name} className="border-muted/40 border-t first:border-0">
+            <div key={webhook.Name} className="border-t border-muted/40 first:border-0">
               <div className="p-4">
                 <WebhookBlock webhook={webhook} />
               </div>

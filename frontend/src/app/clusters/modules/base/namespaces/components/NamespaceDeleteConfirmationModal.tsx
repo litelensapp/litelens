@@ -26,13 +26,13 @@ export const NamespaceDeleteConfirmationModal: FC<NamespaceDeleteConfirmationMod
         title: (
           <>
             Delete Namespace:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> and all resources
+            <span className="font-mono font-medium text-foreground">{name}</span> and all resources
             within it (Pods, Deployments, ConfigMaps, Secrets, etc.). This action cannot be undone.
           </>
         ),

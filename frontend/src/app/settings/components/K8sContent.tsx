@@ -54,7 +54,7 @@ export const K8sContent: FC = () => {
   return (
     <div className="flex max-w-lg flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <p className="text-left text-xs font-semibold uppercase tracking-wider">Kubeconfig Syncs</p>
+        <p className="text-left text-xs font-semibold tracking-wider uppercase">Kubeconfig Syncs</p>
         <Button onClick={handleSync} className="w-fit">
           <FolderSyncIcon className="size-4" />
           Sync Files and Folders
@@ -62,14 +62,14 @@ export const K8sContent: FC = () => {
       </div>
 
       <div className="flex flex-col gap-2">
-        <p className="text-left text-xs font-semibold uppercase tracking-wider">Synced Items</p>
+        <p className="text-left text-xs font-semibold tracking-wider uppercase">Synced Items</p>
         {paths.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No kubeconfig files synced.</p>
+          <p className="text-sm text-muted-foreground">No kubeconfig files synced.</p>
         ) : (
           <div className="flex flex-col gap-1.5">
             {paths.map((p) => (
               <div key={p} className="flex items-center gap-3 rounded-md border px-3 py-2.5">
-                <FileTextIcon className="text-muted-foreground size-4 shrink-0" />
+                <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
                 <span className="flex-1 truncate font-mono text-sm">{p}</span>
                 {!activePathSet.has(p) && (
                   <Button
@@ -77,7 +77,7 @@ export const K8sContent: FC = () => {
                     size="icon"
                     onClick={() => handleRemove(p)}
                     aria-label={`Remove ${p}`}
-                    className="text-muted-foreground hover:text-foreground size-8 shrink-0"
+                    className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
                   >
                     <Trash2Icon className="size-4" />
                   </Button>

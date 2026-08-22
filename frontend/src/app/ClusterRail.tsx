@@ -110,13 +110,13 @@ export const ClusterRail: FC<ClusterRailProps> = ({
                   style={{ backgroundColor: clusterColor(ctx) }}
                   className={cn(
                     "relative h-10 w-10 rounded-lg text-xs font-bold text-white hover:opacity-75",
-                    isActive && "ring-offset-background ring-2 ring-white ring-offset-2"
+                    isActive && "ring-2 ring-white ring-offset-2 ring-offset-background"
                   )}
                 >
                   {clusterInitials(ctx)}
                   <span
                     className={cn(
-                      "border-background absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2",
+                      "absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-background",
                       isConnected ? "bg-success" : "bg-muted-foreground/40"
                     )}
                   />
@@ -160,12 +160,12 @@ export const ClusterRail: FC<ClusterRailProps> = ({
               {clusterInitials(ctx)}
               <span
                 className={cn(
-                  "border-background absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full border-2",
+                  "absolute -right-1 -bottom-1 h-2.5 w-2.5 rounded-full border-2 border-background",
                   isConnected ? "bg-success" : "bg-muted-foreground/40"
                 )}
               />
             </span>
-            <span className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1 text-xs">
+            <span className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground">
               <TruncatedText text={ctx} />
             </span>
           </Button>
@@ -183,7 +183,7 @@ export const ClusterRail: FC<ClusterRailProps> = ({
   return (
     <aside
       className={cn(
-        "bg-muted/20 flex shrink-0 flex-col items-center gap-3 overflow-hidden border-r py-4 transition-[width] duration-200",
+        "flex shrink-0 flex-col items-center gap-3 overflow-hidden border-r bg-muted/20 py-4 transition-[width] duration-200",
         expanded ? "w-52" : "w-16"
       )}
     >
@@ -197,7 +197,7 @@ export const ClusterRail: FC<ClusterRailProps> = ({
             "h-10",
             contentExpanded ? "w-full justify-start gap-2 px-2" : "w-10 justify-center",
             settingsOpen
-              ? "bg-secondary text-secondary-foreground ring-offset-background ring-2 ring-white ring-offset-2"
+              ? "bg-secondary text-secondary-foreground ring-2 ring-white ring-offset-2 ring-offset-background"
               : "text-muted-foreground"
           )}
         >
@@ -217,7 +217,7 @@ export const ClusterRail: FC<ClusterRailProps> = ({
               "h-10",
               contentExpanded ? "w-full justify-start gap-2 px-2" : "w-10 justify-center",
               marketplaceOpen
-                ? "bg-secondary text-secondary-foreground ring-offset-background ring-2 ring-white ring-offset-2"
+                ? "bg-secondary text-secondary-foreground ring-2 ring-white ring-offset-2 ring-offset-background"
                 : "text-muted-foreground"
             )}
           >
@@ -232,14 +232,14 @@ export const ClusterRail: FC<ClusterRailProps> = ({
       {/* Cluster buttons */}
       <div
         className={cn(
-          "scrollbar-none flex min-h-0 flex-1 flex-col overflow-y-auto py-1 [&::-webkit-scrollbar]:hidden",
+          "flex min-h-0 flex-1 scrollbar-none flex-col overflow-y-auto py-1 [&::-webkit-scrollbar]:hidden",
           contentExpanded ? "w-full gap-4 px-2" : "items-center gap-3 px-2"
         )}
       >
         {contentExpanded
           ? contextGroups.map((group) => (
               <div key={group.kubeconfigPath} className="flex flex-col gap-1">
-                <p className="text-muted-foreground/60 truncate px-2 text-[10px] tracking-wider">
+                <p className="truncate px-2 text-[10px] tracking-wider text-muted-foreground/60">
                   {kubeconfigBasename(group.kubeconfigPath)}
                 </p>
                 {group.contexts.map(renderExpandedButton)}
@@ -258,7 +258,7 @@ export const ClusterRail: FC<ClusterRailProps> = ({
           onClick={toggle}
           title={contentExpanded ? "Collapse sidebar" : "Expand sidebar"}
           className={cn(
-            "text-muted-foreground h-8",
+            "h-8 text-muted-foreground",
             contentExpanded ? "w-full justify-between px-2" : "w-10 justify-center px-0"
           )}
         >

@@ -13,6 +13,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": ["node"],
     "noEmit": true,
     "jsx": "react-jsx",
     "ignoreDeprecations": "6.0",

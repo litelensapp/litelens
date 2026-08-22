@@ -8,7 +8,7 @@ function Tabs({ className, orientation = "horizontal", ...props }: TabsPrimitive
       data-slot="tabs"
       orientation={orientation}
       className={cn(
-        "group/tabs data-horizontal:grid-rows-[auto_1fr] data-vertical:grid-cols-[auto_1fr] grid gap-2",
+        "group/tabs grid gap-2 data-horizontal:grid-rows-[auto_1fr] data-vertical:grid-cols-[auto_1fr]",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "text-foreground/60 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/75 focus-visible:outline-ring has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground transition-interactive relative z-10 inline-flex h-[calc(100%-1px)] flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-sm font-medium focus-visible:outline-1 focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "transition-interactive relative z-10 inline-flex h-[calc(100%-1px)] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/75 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "data-active:text-foreground dark:data-active:text-foreground",
         className
       )}
@@ -84,9 +84,9 @@ function TabsIndicator({ className, variant = "default", ...props }: TabsIndicat
           ? cn(
               "bg-primary",
               "group-data-horizontal/tabs:bottom-0 group-data-horizontal/tabs:left-(--active-tab-left) group-data-horizontal/tabs:h-0.5 group-data-horizontal/tabs:w-(--active-tab-width)",
-              "group-data-vertical/tabs:right-0 group-data-vertical/tabs:top-(--active-tab-top) group-data-vertical/tabs:h-(--active-tab-height) group-data-vertical/tabs:w-0.5"
+              "group-data-vertical/tabs:top-(--active-tab-top) group-data-vertical/tabs:right-0 group-data-vertical/tabs:h-(--active-tab-height) group-data-vertical/tabs:w-0.5"
             )
-          : "left-(--active-tab-left) top-(--active-tab-top) h-(--active-tab-height) w-(--active-tab-width) bg-background dark:border-input dark:bg-input/30 rounded-md border border-transparent shadow-sm",
+          : "top-(--active-tab-top) left-(--active-tab-left) h-(--active-tab-height) w-(--active-tab-width) rounded-md border border-transparent bg-background shadow-sm dark:border-input dark:bg-input/30",
         className
       )}
       {...props}
@@ -99,7 +99,7 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
     <TabsPrimitive.Panel
       data-slot="tabs-content"
       className={cn(
-        "transition-fade data-ending-style:opacity-0 data-hidden:opacity-0 data-starting-style:opacity-0 group-data-horizontal/tabs:row-start-2 group-data-horizontal/tabs:col-start-1 group-data-vertical/tabs:col-start-2 group-data-vertical/tabs:row-start-1 min-h-0 min-w-0 flex-1 text-sm outline-none",
+        "transition-fade min-h-0 min-w-0 flex-1 text-sm outline-none group-data-horizontal/tabs:col-start-1 group-data-horizontal/tabs:row-start-2 group-data-vertical/tabs:col-start-2 group-data-vertical/tabs:row-start-1 data-ending-style:opacity-0 data-hidden:opacity-0 data-starting-style:opacity-0",
         className
       )}
       {...props}

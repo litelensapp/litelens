@@ -64,7 +64,7 @@ const StorageClassOverviewTab: FC<{ sc: StorageClass }> = ({ sc }) => {
 
         {(sc.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {sc.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -74,7 +74,7 @@ const StorageClassOverviewTab: FC<{ sc: StorageClass }> = ({ sc }) => {
         )}
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-caption text-muted-foreground shrink-0">Storage</span>
+          <span className="text-caption shrink-0 text-muted-foreground">Storage</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 
@@ -104,12 +104,12 @@ const StorageClassOverviewTab: FC<{ sc: StorageClass }> = ({ sc }) => {
         {Object.keys(sc.Parameters ?? {}).length > 0 && (
           <>
             <div className="col-span-2 flex items-center gap-2 pt-1">
-              <span className="text-caption text-muted-foreground shrink-0">Parameters</span>
+              <span className="text-caption shrink-0 text-muted-foreground">Parameters</span>
               <div className="h-px flex-1 bg-zinc-800" />
             </div>
             {Object.entries(sc.Parameters).map(([k, v]) => (
               <Fragment key={k}>
-                <span className="text-caption text-muted-foreground font-mono">{k}</span>
+                <span className="text-caption font-mono text-muted-foreground">{k}</span>
                 <span className="text-body font-mono">{v}</span>
               </Fragment>
             ))}

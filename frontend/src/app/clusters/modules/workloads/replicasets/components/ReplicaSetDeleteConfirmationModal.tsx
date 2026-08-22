@@ -34,14 +34,14 @@ export const ReplicaSetDeleteConfirmationModal: FC<ReplicaSetDeleteConfirmationM
         title: (
           <>
             Delete ReplicaSet:{" "}
-            <span className="text-muted-foreground font-mono font-normal">{name}</span>
+            <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
         description: (
           <>
             This will permanently delete{" "}
-            <span className="text-foreground font-mono font-medium">{name}</span> from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{namespace}</span>. All
+            <span className="font-mono font-medium text-foreground">{name}</span> from namespace{" "}
+            <span className="font-mono font-medium text-foreground">{namespace}</span>. All
             associated resources will be removed.
           </>
         ),
@@ -57,7 +57,7 @@ export const ReplicaSetDeleteConfirmationModal: FC<ReplicaSetDeleteConfirmationM
         return (
           <>
             This will permanently delete {count} replicaset{count === 1 ? "" : "s"} from namespace{" "}
-            <span className="text-foreground font-mono font-medium">{nsName}</span>. All associated
+            <span className="font-mono font-medium text-foreground">{nsName}</span>. All associated
             resources will be removed.
           </>
         );

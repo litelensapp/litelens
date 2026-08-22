@@ -41,9 +41,9 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback(error, this.reset);
       return (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-          <p className="text-destructive font-semibold">Something went wrong</p>
+          <p className="font-semibold text-destructive">Something went wrong</p>
           <div className="relative w-full max-w-xl">
-            <pre className="bg-muted text-muted-foreground overflow-auto rounded p-4 text-left text-xs">
+            <pre className="overflow-auto rounded bg-muted p-4 text-left text-xs text-muted-foreground">
               {error.message}
               {"\n"}
               {error.stack}
@@ -52,12 +52,12 @@ export class ErrorBoundary extends Component<Props, State> {
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-2 h-6 w-6"
+              className="absolute top-2 right-2 h-6 w-6"
               aria-label="Copy error"
               onClick={this.copyError}
             >
               {copied ? (
-                <CheckIcon className="text-success size-3.5" />
+                <CheckIcon className="size-3.5 text-success" />
               ) : (
                 <CopyIcon className="size-3.5" />
               )}

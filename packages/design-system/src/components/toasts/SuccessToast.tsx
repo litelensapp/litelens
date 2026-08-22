@@ -9,7 +9,7 @@ export interface SuccessToastProps {
 
 export const SuccessToast: React.FC<SuccessToastProps> = ({ title, description, action }) => {
   return (
-    <div className="rounded-(--radius) bg-success flex w-full flex-col gap-1.5 px-4 py-3 text-white shadow-lg">
+    <div className="flex w-full flex-col gap-1.5 rounded-(--radius) bg-success px-4 py-3 text-white shadow-lg">
       <div className="flex items-start gap-3">
         <CircleCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
         <p className="flex-1 text-sm font-semibold">{title}</p>

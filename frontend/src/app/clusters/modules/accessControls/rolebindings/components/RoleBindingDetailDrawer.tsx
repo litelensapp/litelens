@@ -80,7 +80,7 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
 
         {(rb.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {rb.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -90,7 +90,7 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
         )}
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-muted-foreground shrink-0 text-xs">Reference</span>
+          <span className="shrink-0 text-xs text-muted-foreground">Reference</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 
@@ -111,7 +111,7 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
                     {rb.RoleRefName}
                   </ResourceLink>
                 </TableCell>
-                <TableCell className="text-muted-foreground font-mono text-xs">
+                <TableCell className="font-mono text-xs text-muted-foreground">
                   {rb.RoleRefGroup || "—"}
                 </TableCell>
               </TableRow>
@@ -120,7 +120,7 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
         </div>
 
         <div className="col-span-2 flex items-center gap-2 pt-1">
-          <span className="text-muted-foreground shrink-0 text-xs">Bindings</span>
+          <span className="shrink-0 text-xs text-muted-foreground">Bindings</span>
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
 

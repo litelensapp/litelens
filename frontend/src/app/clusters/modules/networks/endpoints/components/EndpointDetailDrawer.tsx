@@ -91,7 +91,7 @@ const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
 
           {(ep.ManagedFields ?? []).length > 0 && (
             <>
-              <span className="text-h3 text-muted-foreground self-start pt-0.5">
+              <span className="text-h3 self-start pt-0.5 text-muted-foreground">
                 Managed Fields
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -104,7 +104,7 @@ const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
         </div>
 
         <Separator />
-        <SectionDivider label="Subsets" className="bg-muted/50 border-y-0 tracking-wide" />
+        <SectionDivider label="Subsets" className="border-y-0 bg-muted/50 tracking-wide" />
 
         <div className="px-4 py-2 text-xs font-semibold">Addresses</div>
         <Table>
@@ -118,7 +118,7 @@ const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
           <TableBody>
             {flatAddresses.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-muted-foreground py-6 text-center text-xs">
+                <TableCell colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
                   No addresses
                 </TableCell>
               </TableRow>
@@ -147,7 +147,7 @@ const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
           <TableBody>
             {flatPorts.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-muted-foreground py-6 text-center text-xs">
+                <TableCell colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
                   No ports
                 </TableCell>
               </TableRow>

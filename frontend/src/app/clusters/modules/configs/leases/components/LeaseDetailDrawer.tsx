@@ -60,7 +60,7 @@ const LeaseOverviewTab: FC<{ lease: Lease }> = ({ lease }) => {
 
         {(lease.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {lease.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />

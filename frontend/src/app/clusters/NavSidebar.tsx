@@ -65,12 +65,12 @@ export const NavSidebar: FC<NavSidebarProps> = ({
           <Icon className="size-4 shrink-0" />
           <span className="flex-1 text-left">{group.label}</span>
           {isOpen ? (
-            <ChevronDownIcon className="text-muted-foreground size-3.5" />
+            <ChevronDownIcon className="size-3.5 text-muted-foreground" />
           ) : (
-            <ChevronRightIcon className="text-muted-foreground size-3.5" />
+            <ChevronRightIcon className="size-3.5 text-muted-foreground" />
           )}
         </CollapsibleTrigger>
-        <CollapsiblePanel className="mb-1 ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-3">
+        <CollapsiblePanel className="mt-0.5 mb-1 ml-3 flex flex-col gap-0.5 border-l pl-3">
           {group.items.map((item) => {
             const isActive = item.view === activeResource;
             const isImplemented = !!item.view;
@@ -95,7 +95,7 @@ export const NavSidebar: FC<NavSidebarProps> = ({
   }
 
   return (
-    <aside className="w-62 flex shrink-0 flex-col overflow-y-auto border-r">
+    <aside className="flex w-62 shrink-0 flex-col overflow-y-auto border-r">
       <div className="flex flex-col gap-0.5 p-2">
         {NAV_CORE.map(renderEntry)}
         {pluginNavEntries.length > 0 && <Separator className="my-2" />}

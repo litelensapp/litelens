@@ -41,7 +41,7 @@ const PriorityClassOverviewTab: FC<{ pc: PriorityClass }> = ({ pc }) => {
 
         {(pc.ManagedFields ?? []).length > 0 && (
           <>
-            <span className="text-h3 text-muted-foreground self-start pt-0.5">Managed Fields</span>
+            <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
               {pc.ManagedFields.map((mf) => (
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
@@ -63,7 +63,7 @@ const PriorityClassOverviewTab: FC<{ pc: PriorityClass }> = ({ pc }) => {
         <span className="text-h3 text-muted-foreground">Global Default</span>
         <span>
           {pc.GlobalDefault ? (
-            <Badge className="bg-success hover:bg-success text-white">true</Badge>
+            <Badge className="bg-success text-white hover:bg-success">true</Badge>
           ) : (
             <Badge className="bg-zinc-700 text-white hover:bg-zinc-700">false</Badge>
           )}

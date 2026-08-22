@@ -35,7 +35,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
         <DialogTitle className="text-h2 flex gap-2">{title}</DialogTitle>
       </DialogHeader>
 
-      <p className="text-muted-foreground text-body">{description}</p>
+      <p className="text-body text-muted-foreground">{description}</p>
 
       <DialogFooter>
         <Button variant="outline" disabled={isPending} onClick={onClose}>

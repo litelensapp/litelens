@@ -21,7 +21,7 @@ export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
     )}
   >
     <div className="flex items-center gap-4">
-      <div className="text-muted-foreground flex cursor-not-allowed items-center gap-1.5 text-xs opacity-50">
+      <div className="flex cursor-not-allowed items-center gap-1.5 text-xs text-muted-foreground opacity-50">
         <Checkbox
           disabled
           aria-label="Show timestamps"
@@ -30,7 +30,7 @@ export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
         />
         <span className="select-none">Show timestamps</span>
       </div>
-      <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Checkbox
           aria-label="Word wrap"
           checked={opts.wrap}
@@ -38,7 +38,7 @@ export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
         />
         <span className="select-none">Word wrap</span>
       </div>
-      <div className="text-muted-foreground flex cursor-not-allowed items-center gap-1.5 text-xs opacity-50">
+      <div className="flex cursor-not-allowed items-center gap-1.5 text-xs text-muted-foreground opacity-50">
         <Checkbox
           disabled
           aria-label="Show prev. terminated"
