@@ -38,8 +38,9 @@ const apiMutationTimeout = 30 * time.Second
 type App struct {
 	ctx                   context.Context
 	version               string
-	appSizeBytes          int64  // cached at startup, read-only afterward
-	installSource         string // set once by a background goroutine started in Startup; guarded by mu
+	appSizeBytes          int64         // cached at startup, read-only afterward
+	installSource         string        // set once by a background goroutine started in Startup; guarded by mu
+	installSourceReady    chan struct{} // closed once installSource has been detected; see GetInstallSource
 	settings              config.Settings
 	clients               map[string]*kubernetes.Clientset
 	factories             map[string]*kube.FactoryHandle
@@ -86,20 +87,21 @@ func NewApp(version string) *App {
 		go resolveLoginShellPATH(s.ShellPath)
 	}
 	return &App{
-		version:           version,
-		settings:          s,
-		clients:           make(map[string]*kubernetes.Clientset),
-		factories:         make(map[string]*kube.FactoryHandle),
-		metricsClients:    make(map[string]*metricsclient.Clientset),
-		portForwards:      make(map[string]dto.PortForward),
-		restConfigs:       make(map[string]*rest.Config),
-		pfCancels:         make(map[string]context.CancelFunc),
-		logCancels:        make(map[string]context.CancelFunc),
-		logSeqs:           make(map[string]uint64),
-		execCancels:       make(map[string]context.CancelFunc),
-		execResizeChans:   make(map[string]chan remotecommand.TerminalSize),
-		pluginLoaders:     make(map[string]*plugin.PluginLoader),
-		removingPluginIDs: make(map[string]bool),
+		version:            version,
+		settings:           s,
+		clients:            make(map[string]*kubernetes.Clientset),
+		factories:          make(map[string]*kube.FactoryHandle),
+		metricsClients:     make(map[string]*metricsclient.Clientset),
+		portForwards:       make(map[string]dto.PortForward),
+		restConfigs:        make(map[string]*rest.Config),
+		pfCancels:          make(map[string]context.CancelFunc),
+		logCancels:         make(map[string]context.CancelFunc),
+		logSeqs:            make(map[string]uint64),
+		execCancels:        make(map[string]context.CancelFunc),
+		execResizeChans:    make(map[string]chan remotecommand.TerminalSize),
+		pluginLoaders:      make(map[string]*plugin.PluginLoader),
+		removingPluginIDs:  make(map[string]bool),
+		installSourceReady: make(chan struct{}),
 	}
 }
 
@@ -113,15 +115,16 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.appSizeBytes = getAppSizeBytes()
 	// DetectInstallSource can shell out to brew (up to a 2s timeout) on Homebrew
-	// installs; run it off the startup path so it never delays app launch. The
-	// About modal isn't reachable until well after DomReady, so installSource
-	// (mu-guarded) is populated long before anyone reads it in practice; if read
-	// before it's ready, GetInstallSource/OpenAbout just see the zero-value "".
+	// installs; run it off the startup path so it never delays app launch.
+	// GetInstallSource blocks on installSourceReady rather than racing this
+	// goroutine, since the update-available flow can reach the frontend (and
+	// call GetInstallSource) well before detection finishes.
 	go func() {
 		source := updater.DetectInstallSource()
 		a.mu.Lock()
 		a.installSource = source
 		a.mu.Unlock()
+		close(a.installSourceReady)
 	}()
 	a.restoreInstalledPlugins()
 	// Start the plugin cluster context gRPC server. This is required for cluster sync

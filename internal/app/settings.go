@@ -15,10 +15,15 @@ import (
 
 // GetInstallSource reports which channel the running install came from
 // (homebrew, apt, winget, or manual), for display in the updater UI.
-// Install source is detected in a background goroutine at startup (mu-guarded)
-// so a slow `brew` subprocess never delays app launch; it will not reflect a
+// Install source is detected in a background goroutine at startup; this
+// blocks on installSourceReady rather than reading a.installSource directly,
+// since the update-available flow can call this before that goroutine
+// finishes (e.g. a fast GitHub check racing a slow `brew` subprocess) —
+// reading the zero-value "" early was mistaken by the frontend for a
+// (nonexistent) package-manager install source. Detection won't reflect a
 // mid-session uninstall via package manager (rare, acceptable tradeoff).
 func (a *App) GetInstallSource() string {
+	<-a.installSourceReady
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.installSource
@@ -26,6 +31,7 @@ func (a *App) GetInstallSource() string {
 
 // OpenAbout emits an event so the frontend opens the About modal.
 func (a *App) OpenAbout() {
+	<-a.installSourceReady
 	a.mu.RLock()
 	installSource := a.installSource
 	a.mu.RUnlock()
@@ -283,4 +289,3 @@ func (a *App) SaveKubeconfigPaths(paths []string) error {
 	runtime.EventsEmit(a.ctx, "kubeconfig:changed")
 	return nil
 }
-
