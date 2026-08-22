@@ -3,18 +3,18 @@ packages:
   - "packages/design-system"
   - "packages/core/frontend"
 catalog:
-  "@testing-library/jest-dom": ^6.9.1
+  "@testing-library/jest-dom": ^6.10.0
   "@testing-library/react": ^16.3.2
   "@types/node": ^26.2.0
   "@types/react": ^19.2.18
   "@types/react-dom": ^19.2.4
-  "@vitejs/plugin-react": ^6.0.5
-  "@vitest/coverage-v8": ^4.1.10
+  "@vitejs/plugin-react": ^6.1.0
+  "@vitest/coverage-v8": ^4.1.11
   cross-env: ^10.1.0
   esbuild-visualizer: ^0.7.0
   jsdom: ^29.1.1
   typescript: ^6.0.3
-  vitest: ^4.1.10
+  vitest: ^4.1.11
 allowBuilds:
   esbuild: true
   msgpackr-extract: true
@@ -23,3 +23,5 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - "@opentelemetry/core@2.8.0"
   - hono@4.12.25
+  - eslint@10.9.0
+  - shadcn@4.19.0

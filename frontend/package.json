@@ -35,10 +35,10 @@
     "@vitest/coverage-v8": "catalog:",
     "cross-env": "catalog:",
     "jsdom": "catalog:",
-    "rollup-plugin-visualizer": "^7.0.1",
+    "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:",
-    "vite": "^8.2.1",
+    "vite": "^8.2.2",
     "vitest": "catalog:"
   }
 }

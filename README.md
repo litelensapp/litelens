@@ -17,7 +17,7 @@ For step-by-step installation instructions, see https://litelensapp.github.io/#i
 
 ## Uninstallation
 
-See [docs/UNINSTALLATION.md](docs/UNINSTALLATION.md).
+See [docs/uninstallation.md](docs/uninstallation.md).
 
 ## Architecture
 
@@ -27,35 +27,10 @@ frontend calls Go directly as if it were a local async function; Go, in turn,
 watches the Kubernetes API via informers and pushes live updates back to the
 frontend as Wails events, rather than the frontend polling for changes.
 
-```mermaid
-flowchart LR
-    subgraph FE["Frontend (React / TypeScript)"]
-        UI["React components"]
-        Hooks["TanStack Query hooks"]
-        Bindings["Wails JS bindings\n(frontend/wailsjs)"]
-        EventListeners["Event listeners\n(useXxxUpdateEvents)"]
-    end
-
-    subgraph BE["Backend (Go)"]
-        AppMethods["App methods\n(internal/app)"]
-        Informers["SharedInformerFactory\n(internal/kube)"]
-        K8sClient["Kubernetes clientset"]
-    end
-
-    K8sAPI[("Kubernetes API server")]
-
-    UI --> Hooks
-    Hooks -->|"method call\n(request/response)"| Bindings
-    Bindings -->|"IPC call"| AppMethods
-    AppMethods --> Informers
-    Informers --> K8sClient
-    K8sClient <-->|watch/list| K8sAPI
-
-    Informers -->|"runtime.EventsEmit\n(e.g. pods:update)"| EventListeners
-    EventListeners -->|merge over query cache| Hooks
-    AppMethods -->|"return value\n(IPC response)"| Bindings
-    Bindings --> Hooks
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/architecture-dark.svg" />
+  <img src="docs/architecture/architecture-light.svg" alt="Litelens frontend / backend IPC architecture diagram" />
+</picture>
 
 - **Request/response**: the frontend calls a bound Go method (e.g.
   `GetPods(namespace)`) through the Wails-generated bindings; Go runs it and
