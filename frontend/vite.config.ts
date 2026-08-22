@@ -35,7 +35,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@wailsjs": path.resolve(__dirname, "./wailsjs"),
+      "@wailsjs": path.resolve(import.meta.dirname, "./wailsjs"),
     },
   },
   build: {

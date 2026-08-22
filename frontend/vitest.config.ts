@@ -6,14 +6,14 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
-      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      { find: "@", replacement: path.resolve(import.meta.dirname, "./src") },
       {
         find: "@wailsjs",
-        replacement: path.resolve(__dirname, "./src/__mocks__/wailsjs"),
+        replacement: path.resolve(import.meta.dirname, "./src/__mocks__/wailsjs"),
       },
       {
         find: /.*\/wailsjs\/(.*)/,
-        replacement: `${path.resolve(__dirname, "./src/__mocks__/wailsjs")}/$1`,
+        replacement: `${path.resolve(import.meta.dirname, "./src/__mocks__/wailsjs")}/$1`,
       },
     ],
   },
