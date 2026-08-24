@@ -1,10 +1,12 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginStylesheetsLoader } from "../PluginStylesheetsLoader";
 
 const useGetInstalledPluginsMock = vi.hoisted(() => vi.fn());
 const loadPluginModuleMock = vi.hoisted(() => vi.fn());
 const getStylesheetsMock = vi.hoisted(() => vi.fn());
+const getRegisteredPluginIdsMock = vi.hoisted(() => vi.fn());
+const unregisterStylesheetsMock = vi.hoisted(() => vi.fn());
 const ensurePluginStylesheetMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../marketplace/hooks/useGetInstalledPlugins", () => ({
@@ -12,7 +14,11 @@ vi.mock("../../marketplace/hooks/useGetInstalledPlugins", () => ({
 }));
 
 vi.mock("../hooks/registry/stylesheet/pluginStylesheetRegistry", () => ({
-  getStylesheets: getStylesheetsMock,
+  pluginStylesheetRegistry: {
+    getStylesheets: getStylesheetsMock,
+    getRegisteredPluginIds: getRegisteredPluginIdsMock,
+    unregisterStylesheets: unregisterStylesheetsMock,
+  },
 }));
 
 vi.mock("../utils/ensurePluginStylesheet", () => ({
@@ -28,6 +34,7 @@ describe("PluginStylesheetsLoader", () => {
     vi.clearAllMocks();
     loadPluginModuleMock.mockResolvedValue({});
     ensurePluginStylesheetMock.mockResolvedValue(undefined);
+    getRegisteredPluginIdsMock.mockReturnValue([]);
   });
 
   it("loads each ready plugin's bundle and injects its registered stylesheets", async () => {
@@ -52,6 +59,18 @@ describe("PluginStylesheetsLoader", () => {
       expect(ensurePluginStylesheetMock).toHaveBeenCalledWith("helm", helmStylesheets);
       expect(ensurePluginStylesheetMock).toHaveBeenCalledWith("kube", []);
     });
+  });
+
+  it("unregisters stylesheets for plugins no longer ready", () => {
+    useGetInstalledPluginsMock.mockReturnValue({
+      readyPlugins: [{ pluginId: "helm", bundleChecksum: "abc123" }],
+    });
+    getRegisteredPluginIdsMock.mockReturnValue(["helm", "kube"]);
+
+    render(<PluginStylesheetsLoader />);
+
+    expect(unregisterStylesheetsMock).toHaveBeenCalledWith("kube");
+    expect(unregisterStylesheetsMock).not.toHaveBeenCalledWith("helm");
   });
 
   it("does nothing when there are no ready plugins", () => {

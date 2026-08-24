@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
 import type { NavEntry } from "@litelens/core";
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { pluginNavRegistry } from "../pluginNavRegistry";
 import { usePluginNavEntries } from "../usePluginNavEntries";
-import { clearNavRegistry, registerNavEntry, unregisterNavEntry } from "../pluginNavRegistry";
 
 const groupEntry: NavEntry<string> = {
   kind: "group",
@@ -25,7 +25,7 @@ const itemEntry: NavEntry<string> = {
 
 describe("usePluginNavEntries", () => {
   beforeEach(() => {
-    clearNavRegistry();
+    pluginNavRegistry.clearNavRegistry();
   });
 
   it("returns empty derived data when nothing is registered", () => {
@@ -38,7 +38,7 @@ describe("usePluginNavEntries", () => {
   });
 
   it("derives viewType maps from a group entry", () => {
-    act(() => registerNavEntry("helm", groupEntry));
+    act(() => pluginNavRegistry.registerNavEntry("helm", groupEntry));
     const { result } = renderHook(() => usePluginNavEntries());
 
     expect(result.current.navEntries).toEqual([groupEntry]);
@@ -53,7 +53,7 @@ describe("usePluginNavEntries", () => {
   });
 
   it("derives viewType maps from an item entry", () => {
-    act(() => registerNavEntry("kube", itemEntry));
+    act(() => pluginNavRegistry.registerNavEntry("kube", itemEntry));
     const { result } = renderHook(() => usePluginNavEntries());
 
     expect(result.current.viewTypeToPluginId).toEqual({ "kube-view": "kube" });
@@ -63,10 +63,10 @@ describe("usePluginNavEntries", () => {
     const { result } = renderHook(() => usePluginNavEntries());
     expect(result.current.navEntries).toHaveLength(0);
 
-    act(() => registerNavEntry("helm", groupEntry));
+    act(() => pluginNavRegistry.registerNavEntry("helm", groupEntry));
     expect(result.current.navEntries).toHaveLength(1);
 
-    act(() => unregisterNavEntry("helm"));
+    act(() => pluginNavRegistry.unregisterNavEntry("helm"));
     expect(result.current.navEntries).toHaveLength(0);
   });
 });

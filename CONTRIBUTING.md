@@ -36,6 +36,8 @@ For hot-reload development of the full desktop app (Go backend + React frontend)
 wails dev
 ```
 
+While `wails dev` is running, the app's dev build is also available at `http://localhost:34115` in a regular browser — useful for browser devtools (console, network, React devtools) that aren't accessible in the native webview shell.
+
 For frontend-only development (Vite dev server, useful for pure UI work):
 
 ```bash

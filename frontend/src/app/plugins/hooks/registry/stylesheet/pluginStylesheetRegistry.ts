@@ -1,20 +1,25 @@
-const registry = new Map<string, Array<Promise<{ default: string }>>>();
+class PluginStylesheetRegistry {
+  private readonly registry = new Map<string, Array<Promise<{ default: string }>>>();
 
-export function registerStylesheets(
-  pluginId: string,
-  stylesheets: Array<Promise<{ default: string }>>
-): void {
-  registry.set(pluginId, stylesheets);
+  registerStylesheets(pluginId: string, stylesheets: Array<Promise<{ default: string }>>): void {
+    this.registry.set(pluginId, stylesheets);
+  }
+
+  unregisterStylesheets(pluginId: string): void {
+    this.registry.delete(pluginId);
+  }
+
+  getStylesheets(pluginId: string): Array<Promise<{ default: string }>> {
+    return this.registry.get(pluginId) ?? [];
+  }
+
+  getRegisteredPluginIds(): string[] {
+    return Array.from(this.registry.keys());
+  }
+
+  clearStylesheetRegistry(): void {
+    this.registry.clear();
+  }
 }
 
-export function unregisterStylesheets(pluginId: string): void {
-  registry.delete(pluginId);
-}
-
-export function getStylesheets(pluginId: string): Array<Promise<{ default: string }>> {
-  return registry.get(pluginId) ?? [];
-}
-
-export function clearStylesheetRegistry(): void {
-  registry.clear();
-}
+export const pluginStylesheetRegistry = new PluginStylesheetRegistry();

@@ -1,20 +1,16 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import type { ComponentType } from "react";
 import type { SharedUnifiedTrayContentProps } from "@litelens/core";
+import { act, renderHook } from "@testing-library/react";
+import type { ComponentType } from "react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { pluginTrayRegistry } from "../pluginTrayRegistry";
 import { usePluginTrayFamilies } from "../usePluginTrayFamilies";
-import {
-  clearTrayRegistry,
-  registerTrayFamilies,
-  unregisterTrayFamilies,
-} from "../pluginTrayRegistry";
 
 const HelmTrayComponent = (() => null) as ComponentType<SharedUnifiedTrayContentProps>;
 const KubeTrayComponent = (() => null) as ComponentType<SharedUnifiedTrayContentProps>;
 
 describe("usePluginTrayFamilies", () => {
   beforeEach(() => {
-    clearTrayRegistry();
+    pluginTrayRegistry.clearTrayRegistry();
   });
 
   it("returns an empty map when nothing is registered", () => {
@@ -24,7 +20,7 @@ describe("usePluginTrayFamilies", () => {
 
   it("merges families from a single plugin", () => {
     act(() =>
-      registerTrayFamilies("helm", {
+      pluginTrayRegistry.registerTrayFamilies("helm", {
         "helm-chart": HelmTrayComponent,
         "helm-chart-upgrade": HelmTrayComponent,
       })
@@ -38,8 +34,8 @@ describe("usePluginTrayFamilies", () => {
   });
 
   it("merges families across multiple plugins", () => {
-    act(() => registerTrayFamilies("helm", { "helm-chart": HelmTrayComponent }));
-    act(() => registerTrayFamilies("kube", { "kube-shell": KubeTrayComponent }));
+    act(() => pluginTrayRegistry.registerTrayFamilies("helm", { "helm-chart": HelmTrayComponent }));
+    act(() => pluginTrayRegistry.registerTrayFamilies("kube", { "kube-shell": KubeTrayComponent }));
     const { result } = renderHook(() => usePluginTrayFamilies());
 
     expect(result.current).toEqual({
@@ -52,10 +48,10 @@ describe("usePluginTrayFamilies", () => {
     const { result } = renderHook(() => usePluginTrayFamilies());
     expect(result.current).toEqual({});
 
-    act(() => registerTrayFamilies("helm", { "helm-chart": HelmTrayComponent }));
+    act(() => pluginTrayRegistry.registerTrayFamilies("helm", { "helm-chart": HelmTrayComponent }));
     expect(result.current).toEqual({ "helm-chart": HelmTrayComponent });
 
-    act(() => unregisterTrayFamilies("helm"));
+    act(() => pluginTrayRegistry.unregisterTrayFamilies("helm"));
     expect(result.current).toEqual({});
   });
 });

@@ -52,8 +52,9 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	defer pl.mu.Unlock()
 
 	// Check if lock file exists with a live process. Liveness is PID-only —
-	// there is no network health check anymore; a process that's alive but
-	// unresponsive is caught later by the frontend's on-demand retry path.
+	// there is no network health check here; App.GetPluginBackendAddr does an
+	// on-demand TCP dial check before returning an address and relaunches if
+	// the process is alive but its HTTP listener isn't responding.
 	if lockData, err := pl.readLockFile(); err == nil && lockData != nil {
 		if isProcessAlive(lockData.PID) {
 			pl.pid = lockData.PID
@@ -279,10 +280,10 @@ func (pl *PluginLoader) SetBinaryPath(binaryPath string) {
 	pl.lockFilePath = filepath.Join(filepath.Dir(binaryPath), pl.id+".lock")
 }
 
-// IsAlive reports whether the plugin's subprocess PID is still alive. This is
-// the sole liveness signal used for on-demand relaunch decisions — there is
-// no network health check; a process that's alive but unresponsive is not
-// detected here.
+// IsAlive reports whether the plugin's subprocess PID is still alive. Liveness
+// is PID-only — there is no network health check here. For a complete health check
+// that detects alive processes with unresponsive HTTP listeners, see
+// App.GetPluginBackendAddr in internal/app/plugin.go.
 func (pl *PluginLoader) IsAlive() bool {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()

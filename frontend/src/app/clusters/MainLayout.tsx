@@ -2,21 +2,21 @@ import { NavItem } from "@litelens/core";
 import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
-import { unregisterStylesheets } from "../plugins/hooks/registry/stylesheet/pluginStylesheetRegistry";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
+import { isPluginMounted, shouldResetActiveResource } from "./MainLayout.utils";
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { NavSidebar } from "./NavSidebar";
+import { pluginEventRegistry } from "./plugins/hooks/registry/event/pluginEventRegistry";
+import { pluginNavRegistry } from "./plugins/hooks/registry/nav/pluginNavRegistry";
 import { usePluginNavEntries } from "./plugins/hooks/registry/nav/usePluginNavEntries";
-import { unregisterNavEntry } from "./plugins/hooks/registry/nav/pluginNavRegistry";
-import { unregisterEvents } from "./plugins/hooks/registry/event/pluginEventRegistry";
-import { unregisterTrayFamilies } from "./plugins/hooks/registry/tray/pluginTrayRegistry";
+import { pluginTrayRegistry } from "./plugins/hooks/registry/tray/pluginTrayRegistry";
 import { usePluginTrayFamilies } from "./plugins/hooks/registry/tray/usePluginTrayFamilies";
+import { pluginViewRegistry } from "./plugins/hooks/registry/view/pluginViewRegistry";
 import { PluginEventsSubscriber } from "./plugins/PluginEventsSubscriber";
 import { PluginResourceView } from "./plugins/PluginResourceView";
-import { unregisterView } from "./plugins/hooks/registry/view/pluginViewRegistry";
 import { DetailBlock } from "./shared/components/details/DetailBlock";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { UnifiedTrayOutlet } from "./shared/components/trays/unified/UnifiedTrayOutlet";
@@ -272,40 +272,63 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   }, [pluginNavEntries]);
   const { pluginStatuses } = useGetInstalledPlugins();
   const mountedPlugins = useMemo(
-    () => pluginStatuses.filter((s) => s.status !== "NOT_INSTALLED"),
+    () => pluginStatuses.filter((s) => isPluginMounted(s.status)),
     [pluginStatuses]
   );
-  // Track previous plugin IDs to detect uninstalls and unregister their views
-  const prevMountedPluginIds = useRef(new Set<string>());
+  // Reconcile against the actual registered plugin IDs (not a locally tracked
+  // "previously mounted" baseline) — MainLayout unmounts/remounts on every
+  // cluster switch and whenever the user navigates to Marketplace/Settings
+  // (see App.tsx's AppContent), so a disable/remove that happens while this
+  // component is unmounted would never be diffed against a prior local state.
+  // The registries themselves are module-level singletons that outlive this
+  // component's mount lifecycle, so they're the source of truth to reconcile
+  // against.
   useEffect(() => {
     const currentIds = new Set(mountedPlugins.map((p) => p.pluginId));
-    const prevIds = prevMountedPluginIds.current;
-    // Unregister any plugins that are no longer mounted (e.g., uninstalled)
-    for (const id of prevIds) {
+    const registeredIds = new Set([
+      ...pluginViewRegistry.getRegisteredPluginIds(),
+      ...pluginNavRegistry.getRegisteredPluginIds(),
+      ...pluginTrayRegistry.getRegisteredPluginIds(),
+      ...pluginEventRegistry.getRegisteredPluginIds(),
+    ]);
+    for (const id of registeredIds) {
       if (!currentIds.has(id)) {
-        unregisterView(id);
-        unregisterNavEntry(id);
-        unregisterTrayFamilies(id);
-        unregisterEvents(id);
-        unregisterStylesheets(id);
+        pluginViewRegistry.unregisterView(id);
+        pluginNavRegistry.unregisterNavEntry(id);
+        pluginTrayRegistry.unregisterTrayFamilies(id);
+        pluginEventRegistry.unregisterEvents(id);
       }
     }
-    prevMountedPluginIds.current = currentIds;
   }, [mountedPlugins]);
+
+  // Reset activeResource to overview if the currently-active resource belongs
+  // to a plugin that is no longer mounted (e.g., disabled or crashed).
+  // We intentionally call setState here to sync the UI when a plugin becomes unavailable;
+  // this is the correct behavior to prevent showing a blank screen.
+  useEffect(() => {
+    const currentMountedIds = new Set(mountedPlugins.map((p) => p.pluginId));
+    if (
+      shouldResetActiveResource(activeResource, currentMountedIds, pluginNavData.viewTypeToPluginId)
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveResource("overview");
+    }
+  }, [mountedPlugins, pluginNavData.viewTypeToPluginId, activeResource]);
+
   // Tray families come from usePluginTrayFamilies reading pluginTrayRegistry,
   // which each plugin populates by calling clusterWideAPI.registerTrayFamilies()
   // at module scope (mirrors registerViews/registerNavEntry above) — the
   // plugin pushes its own tray-family components rather than the host reading
   // a static export. Unregistration is host-driven (above), not tied to a
   // component's mount lifecycle.
-  const pluginTrayRegistry = usePluginTrayFamilies();
+  const pluginTrayFamilies = usePluginTrayFamilies();
   const mergedResourceLabels = useMemo(
     () => ({ ...RESOURCE_LABEL, ...pluginNavData.resourceLabels }),
     [pluginNavData.resourceLabels]
   );
   const mergedTrayRegistry = useMemo(
-    () => ({ ...unifiedTrayRegistry, ...pluginTrayRegistry }),
-    [pluginTrayRegistry]
+    () => ({ ...unifiedTrayRegistry, ...pluginTrayFamilies }),
+    [pluginTrayFamilies]
   );
 
   const { forbiddenResources } = useCatchForbiddenResources(activeResource, {
@@ -411,9 +434,10 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
               {activeResource === "leases" && <LeasesView />}
               {activeResource === "events" && <EventsView />}
 
-              {/* Every non-uninstalled plugin stays mounted (hidden when inactive)
+              {/* Every READY or INSTALLING plugin stays mounted (hidden when inactive)
                   so a READY plugin's own PluginView can register its nav entry
-                  before the user has navigated to it — see PluginResourceView. */}
+                  before the user has navigated to it — see PluginResourceView.
+                  Disabled, crashed, and incompatible plugins are excluded. */}
               {mountedPlugins.map((status) => (
                 <PluginResourceView
                   key={status.pluginId}

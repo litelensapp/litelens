@@ -1,8 +1,15 @@
 import { FC, useEffect } from "react";
 import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
-import { getStylesheets } from "./hooks/registry/stylesheet/pluginStylesheetRegistry";
+import { pluginStylesheetRegistry } from "./hooks/registry/stylesheet/pluginStylesheetRegistry";
 import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
 import { loadPluginModule } from "./utils/loadPluginModule";
+
+/**
+ * Cluster-scoped code (MainLayout) intentionally has no reach into this
+ * app-wide registry — reconciling stale entries on disable/uninstall is this
+ * loader's own responsibility, mirroring how MainLayout reconciles its own
+ * cluster-scoped plugin registries against useGetInstalledPlugins.
+ */
 
 /**
  * Loads each installed plugin's app-wide stylesheet(s), registered via
@@ -23,10 +30,22 @@ export const PluginStylesheetsLoader: FC = () => {
   useEffect(() => {
     for (const plugin of readyPlugins) {
       loadPluginModule(plugin.pluginId, plugin.bundleChecksum)
-        .then(() => ensurePluginStylesheet(plugin.pluginId, getStylesheets(plugin.pluginId)))
+        .then(() =>
+          ensurePluginStylesheet(
+            plugin.pluginId,
+            pluginStylesheetRegistry.getStylesheets(plugin.pluginId)
+          )
+        )
         .catch((err) => {
           console.error(`Failed to load stylesheets for plugin ${plugin.pluginId}:`, err);
         });
+    }
+
+    const readyIds = new Set(readyPlugins.map((p) => p.pluginId));
+    for (const id of pluginStylesheetRegistry.getRegisteredPluginIds()) {
+      if (!readyIds.has(id)) {
+        pluginStylesheetRegistry.unregisterStylesheets(id);
+      }
     }
   }, [readyPlugins]);
 
