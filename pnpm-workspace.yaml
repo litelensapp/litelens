@@ -5,9 +5,9 @@ packages:
 catalog:
   "@testing-library/jest-dom": ^6.10.0
   "@testing-library/react": ^16.3.2
-  "@types/node": ^26.2.0
+  "@types/node": ^26.3.0
   "@types/react": ^19.2.18
-  "@types/react-dom": ^19.2.4
+  "@types/react-dom": ^19.2.5
   "@vitejs/plugin-react": ^6.1.0
   "@vitest/coverage-v8": ^4.1.11
   cross-env: ^10.1.0
@@ -23,5 +23,19 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - "@opentelemetry/core@2.8.0"
   - hono@4.12.25
-  - eslint@10.9.0
+  - eslint@10.9.0 || 10.9.1
   - shadcn@4.19.0
+  - '@tanstack/query-core@5.102.3'
+  - '@tanstack/react-query@5.102.3'
+  - '@types/node@26.3.0'
+  - '@typescript-eslint/eslint-plugin@8.68.0'
+  - '@typescript-eslint/parser@8.68.0'
+  - '@typescript-eslint/project-service@8.68.0'
+  - '@typescript-eslint/scope-manager@8.68.0'
+  - '@typescript-eslint/tsconfig-utils@8.68.0'
+  - '@typescript-eslint/type-utils@8.68.0'
+  - '@typescript-eslint/types@8.68.0'
+  - '@typescript-eslint/typescript-estree@8.68.0'
+  - '@typescript-eslint/utils@8.68.0'
+  - '@typescript-eslint/visitor-keys@8.68.0'
+  - typescript-eslint@8.68.0
