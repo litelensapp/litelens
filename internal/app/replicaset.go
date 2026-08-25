@@ -7,8 +7,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,9 +18,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListReplicaSets(namespaces []string) ([]dto.ReplicaSet, error) {
+func (a *App) ListReplicaSets() ([]dto.ReplicaSet, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.ReplicaSet{}, nil
@@ -128,7 +129,7 @@ func (a *App) DeleteReplicaSet(namespace, name string) error {
 		return fmt.Errorf("delete ReplicaSet: %w", err)
 	}
 
-	a.emitReplicaSets([]string{namespace})
+	a.emitReplicaSets()
 
 	return nil
 }
@@ -143,7 +144,6 @@ func (a *App) DeleteReplicaSets(items []dto.ReplicaSetRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -152,15 +152,9 @@ func (a *App) DeleteReplicaSets(items []dto.ReplicaSetRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitReplicaSets(touchedNamespaces)
+	a.emitReplicaSets()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d replicasets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -168,9 +162,10 @@ func (a *App) DeleteReplicaSets(items []dto.ReplicaSetRef) error {
 	return nil
 }
 
-func (a *App) emitReplicaSets(namespaces []string) {
+func (a *App) emitReplicaSets() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -183,22 +178,12 @@ func (a *App) emitReplicaSets(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
-	allData, err := kubeResources.ListReplicaSets(lister, nil)
+	data, err := kubeResources.ListReplicaSets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitReplicaSets: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "replicasets:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.ReplicaSet, 0)
-		for _, rs := range allData {
-			if rs.Namespace == ns {
-				nsData = append(nsData, rs)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "replicasets:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "replicasets:update", data)
 }
 
 func (a *App) GetReplicaSetYAML(namespace, name string) (string, error) {
@@ -245,7 +230,7 @@ func (a *App) UpdateReplicaSetYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update ReplicaSet: %w", err)
 	}
 
-	a.emitReplicaSets([]string{namespace})
+	a.emitReplicaSets()
 
 	return nil
 }

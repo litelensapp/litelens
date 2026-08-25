@@ -1,46 +1,21 @@
-import { useEffect, useState, startTransition } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
+import { useEffect, useState, startTransition } from "react";
 import type { Service } from "../../api/resources";
-import { mergeNamespaceScopedData } from "../../../../../shared/utils/eventMerging";
 
-export function useServicesUpdateEvents(namespaces: string[] = []): Service[] {
-  const [latestServices, setlatestServices] = useState<Service[]>([]);
-  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
-
-  // When namespace selection changes, filter down accumulated state to only selected namespaces.
-  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
-    setPrevNamespaces(namespaces);
-    if (namespaces.length > 0) {
-      const namespacesSet = new Set(namespaces);
-      setlatestServices((prev) => prev.filter((item) => namespacesSet.has(item.Namespace)));
-    } else {
-      setlatestServices([]);
-    }
-  }
+// Data-only event hook: tracks the latest pushed data in local state.
+// The backend pre-filters "services:update" by the currently active namespace
+// selection (see App.SetActiveNamespaces / emitServices), so this hook
+// no longer needs to know about namespaces at all.
+export function useServicesUpdateEvents(): Service[] {
+  const [latestServices, setLatestServices] = useState<Service[]>([]);
 
   useEffect(() => {
-    if (namespaces.length === 0) {
-      return EventsOn("services:update", (data: Service[]) => {
-        startTransition(() => {
-          setlatestServices(data);
-        });
+    return EventsOn("services:update", (data: Service[]) => {
+      startTransition(() => {
+        setLatestServices(data);
       });
-    }
+    });
+  }, []);
 
-    const unsubscribers: Array<() => void> = [];
-    for (const ns of namespaces) {
-      const eventName = `services:${ns}:update`;
-      const unsubscriber = EventsOn(eventName, (data: Service[]) => {
-        startTransition(() => {
-          setlatestServices((prev) => mergeNamespaceScopedData(prev, data, ns));
-        });
-      });
-      unsubscribers.push(unsubscriber);
-    }
-
-    return () => {
-      unsubscribers.forEach((unsub) => unsub());
-    };
-  }, [namespaces]);
   return latestServices;
 }

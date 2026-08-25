@@ -12,7 +12,7 @@ import {
   Trash2Icon,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
-import { PluginManifest } from "../hooks/useGetPluginsFromMarketplace";
+import { PluginManifest } from "../hooks/data-access/useGetPluginsFromMarketplace";
 import { formatBytes } from "../utils/formatBytes";
 import { pluginLogoUrl } from "../utils/pluginLogoUrl";
 import { compareVersions } from "../utils/semver";

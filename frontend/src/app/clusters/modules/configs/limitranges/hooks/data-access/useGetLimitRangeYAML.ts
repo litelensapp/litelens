@@ -12,7 +12,7 @@ export function useGetLimitRangeYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestLimitRanges = useLimitRangesUpdateEvents([namespace]);
+  const latestLimitRanges = useLimitRangesUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_LIMITRANGE_YAML, { context, namespace, name }],

@@ -12,7 +12,7 @@ export function useGetDeploymentYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestDeployments = useDeploymentsUpdateEvents([namespace]);
+  const latestDeployments = useDeploymentsUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_DEPLOYMENT_YAML, { context, namespace, name }],

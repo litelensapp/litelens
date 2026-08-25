@@ -2,9 +2,34 @@ package app
 
 import (
 	"testing"
+	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
 )
+
+// TestGetInstallSource_BlocksUntilDetectionCompletes guards against the
+// startup race where GetInstallSource (called by the frontend as soon as the
+// update-available flow mounts UpdateModal) could return the installSource
+// zero-value "" if called before Startup's background detection goroutine
+// finished — the frontend then treated "" as a truthy, unrecognized
+// package-manager source (UPGRADE_COMMANDS[""] is undefined), rendering an
+// empty upgrade-command box. GetInstallSource must block on
+// installSourceReady instead of racing the goroutine.
+func TestGetInstallSource_BlocksUntilDetectionCompletes(t *testing.T) {
+	app := NewApp("test")
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		app.mu.Lock()
+		app.installSource = "homebrew"
+		app.mu.Unlock()
+		close(app.installSourceReady)
+	}()
+
+	if got := app.GetInstallSource(); got != "homebrew" {
+		t.Fatalf("expected GetInstallSource to block until detection completes and return %q, got %q", "homebrew", got)
+	}
+}
 
 // TestGetSettingsSeedsDefaultMarketplaceURLOnFirstRun verifies that GetSettings
 // seeds the default marketplace source (config.GetMarketplaceBaseURL(), which

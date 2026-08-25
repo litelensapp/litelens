@@ -1,12 +1,13 @@
 import { FC, lazy, Suspense, useMemo } from "react";
 import { PluginNotInstalledEmptyState } from "../../marketplace/components/PluginNotInstalledEmptyState";
 import { ensurePluginStylesheet } from "../../plugins/utils/ensurePluginStylesheet";
-import { useGetInstalledPlugin } from "./hooks/useGetInstalledPlugin";
 import { PluginCrashedError } from "./components/PluginCrashedError";
 import { PluginDisabledEmptyState } from "./components/PluginDisabledEmptyState";
 import { PluginErrorBoundary } from "./components/PluginErrorBoundary";
 import { PluginLoadingFallback } from "./components/PluginLoadingFallback";
-import { getViewAssets } from "./hooks/registry/view/pluginViewRegistry";
+import { pluginViewRegistry } from "./hooks/registry/view/pluginViewRegistry";
+import { useGetInstalledPlugin } from "./hooks/useGetInstalledPlugin";
+import { capturePluginAssetSnapshot, restorePluginAssetSnapshot } from "./pluginAssetSnapshot";
 
 /**
  * Props passed to the dynamically-imported plugin's wrapper component (see
@@ -61,10 +62,20 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
   const PluginViewDynamic = useMemo(
     () =>
       lazy(async () => {
-        // Runtime plugin bundle URL served from the Go backend, not a build-time
-        // module Vite can statically analyze.
-        await import(/* @vite-ignore */ pluginAssetUrl);
-        const assets = getViewAssets().filter((a) => a.pluginId === pluginId);
+        // The browser's ES module loader caches an evaluated module by exact
+        // URL for the page's lifetime. pluginAssetUrl is unchanged across a
+        // disable/re-enable cycle (bundleChecksum only changes on
+        // reinstall/update), so re-importing it here would resolve from
+        // cache without re-running the bundle's top-level registration
+        // calls. Restore from a snapshot taken after the first successful
+        // import instead of relying on the module re-evaluating.
+        if (!restorePluginAssetSnapshot(pluginId, cacheVersion)) {
+          // Runtime plugin bundle URL served from the Go backend, not a
+          // build-time module Vite can statically analyze.
+          await import(/* @vite-ignore */ pluginAssetUrl);
+          capturePluginAssetSnapshot(pluginId, cacheVersion);
+        }
+        const assets = pluginViewRegistry.getViewAssets().filter((a) => a.pluginId === pluginId);
         if (!assets.length) throw new Error(`Plugin ${pluginId} did not register a view`);
         const stylesheets = assets
           .map((a) => a.stylesheet)
@@ -88,7 +99,7 @@ export const PluginResourceView: FC<PluginResourceViewProps> = ({
         );
         return { default: PluginViews };
       }),
-    [pluginAssetUrl, pluginId]
+    [pluginAssetUrl, pluginId, cacheVersion]
   );
 
   // READY plugins mount unconditionally (kept alive even while another

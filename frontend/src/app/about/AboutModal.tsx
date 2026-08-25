@@ -2,7 +2,7 @@ import { Button, Dialog, DialogContent, Divider, Loader2Icon } from "@litelens/d
 import { FC } from "react";
 import pkg from "../../../package.json";
 import logo from "../../assets/images/logo-universal.png";
-import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
+import { useGetInstalledPlugins } from "../marketplace/hooks/data-access/useGetInstalledPlugins";
 import { formatBytes } from "../marketplace/utils/formatBytes";
 import { useOpenBrowserURL } from "../shared/hooks/useOpenBrowserURL";
 import { useCheckForUpdate } from "../updater/hooks/data-mutation/useCheckForUpdate";

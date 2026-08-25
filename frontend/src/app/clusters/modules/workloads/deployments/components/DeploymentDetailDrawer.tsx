@@ -30,23 +30,23 @@ import {
   Textarea,
   TooltipProvider,
 } from "@litelens/design-system";
-import { FC, useEffect, useState, useMemo } from "react";
-import type { Deployment } from "../api/resources";
-import { useGetDeploymentDetail } from "../hooks/data-access/useGetDeploymentDetail";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
-import { useGetReplicaSets } from "../../replicasets/hooks/data-access/useGetReplicaSets";
-import { useDeleteDeployment } from "../hooks/data-mutation/useDeleteDeployment";
+import { FC, useEffect, useMemo, useState } from "react";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
-import { useRestartDeployment } from "../hooks/data-mutation/useRestartDeployment";
-import { useScaleDeployment } from "../hooks/data-mutation/useScaleDeployment";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
+import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
+import { useGetReplicaSets } from "../../replicasets/hooks/data-access/useGetReplicaSets";
+import type { Deployment } from "../api/resources";
+import { useGetDeploymentDetail } from "../hooks/data-access/useGetDeploymentDetail";
+import { useDeleteDeployment } from "../hooks/data-mutation/useDeleteDeployment";
+import { useRestartDeployment } from "../hooks/data-mutation/useRestartDeployment";
+import { useScaleDeployment } from "../hooks/data-mutation/useScaleDeployment";
 import { DeploymentConditionBadge } from "./DeploymentConditionBadge";
 import { DeploymentDeleteConfirmationModal } from "./DeploymentDeleteConfirmationModal";
 import { DeploymentRestartConfirmationModal } from "./DeploymentRestartConfirmationModal";
@@ -191,8 +191,8 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(deployment.TolerationDetails ?? []).map((t, i) => (
-                    <TableRow key={`${t.Key}-${t.Effect}-${i}`}>
+                  {(deployment.TolerationDetails ?? []).map((t) => (
+                    <TableRow key={`${t.Key}-${t.Operator}-${t.Value}-${t.Effect}-${t.Seconds}`}>
                       <TableCell className="font-mono text-xs">{t.Key || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{t.Operator}</TableCell>
                       <TableCell className="font-mono text-xs">{t.Value || "—"}</TableCell>

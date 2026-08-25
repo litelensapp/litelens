@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,9 +15,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListIngresses(namespaces []string) ([]dto.Ingress, error) {
+func (a *App) ListIngresses() ([]dto.Ingress, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Ingress{}, nil
@@ -76,7 +77,7 @@ func (a *App) DeleteIngress(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitIngresses([]string{namespace})
+	a.emitIngresses()
 
 	return nil
 }
@@ -91,7 +92,6 @@ func (a *App) DeleteIngresses(items []dto.IngressRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -100,15 +100,9 @@ func (a *App) DeleteIngresses(items []dto.IngressRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitIngresses(touchedNamespaces)
+	a.emitIngresses()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d ingresses: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -116,9 +110,10 @@ func (a *App) DeleteIngresses(items []dto.IngressRef) error {
 	return nil
 }
 
-func (a *App) emitIngresses(namespaces []string) {
+func (a *App) emitIngresses() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -131,22 +126,12 @@ func (a *App) emitIngresses(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Networking().V1().Ingresses().Lister()
-	allData, err := kubeResources.ListIngresses(lister, nil)
+	data, err := kubeResources.ListIngresses(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitIngresses: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "ingresses:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.Ingress, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "ingresses:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "ingresses:update", data)
 }
 
 func (a *App) GetIngressYAML(namespace, name string) (string, error) {
@@ -193,7 +178,7 @@ func (a *App) UpdateIngressYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Ingress: %w", err)
 	}
 
-	a.emitIngresses([]string{namespace})
+	a.emitIngresses()
 
 	return nil
 }

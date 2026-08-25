@@ -1,11 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import type { ComponentType } from "react";
-import {
-  clearViewRegistry,
-  getViewAssets,
-  registerViews,
-  unregisterView,
-} from "../pluginViewRegistry";
+import { beforeEach, describe, expect, it } from "vitest";
+import { pluginViewRegistry } from "../pluginViewRegistry";
 
 const ViewComponent = (() => null) as ComponentType;
 const config = {
@@ -16,12 +11,12 @@ const config = {
 
 describe("pluginViewRegistry", () => {
   beforeEach(() => {
-    clearViewRegistry();
+    pluginViewRegistry.clearViewRegistry();
   });
 
   it("registers view assets keyed by pluginId", () => {
-    registerViews("helm", [config]);
-    expect(getViewAssets()).toEqual([
+    pluginViewRegistry.registerViews("helm", [config]);
+    expect(pluginViewRegistry.getViewAssets()).toEqual([
       {
         pluginId: "helm",
         name: "helm-charts",
@@ -33,8 +28,8 @@ describe("pluginViewRegistry", () => {
 
   it("registers view assets without a stylesheet", () => {
     const configNoStylesheet = { name: "kube-view", component: ViewComponent };
-    registerViews("kube", [configNoStylesheet]);
-    expect(getViewAssets()).toEqual([
+    pluginViewRegistry.registerViews("kube", [configNoStylesheet]);
+    expect(pluginViewRegistry.getViewAssets()).toEqual([
       { pluginId: "kube", name: "kube-view", component: ViewComponent },
     ]);
   });
@@ -45,9 +40,9 @@ describe("pluginViewRegistry", () => {
       component: ViewComponent,
       stylesheet: Promise.resolve({ default: ".second-view { color: green; }" }),
     };
-    registerViews("helm", [config, second]);
+    pluginViewRegistry.registerViews("helm", [config, second]);
 
-    const assets = getViewAssets();
+    const assets = pluginViewRegistry.getViewAssets();
     expect(assets).toHaveLength(2);
     expect(assets).toEqual([
       {
@@ -66,29 +61,29 @@ describe("pluginViewRegistry", () => {
   });
 
   it("overwrites a previous registration for the same pluginId", async () => {
-    registerViews("helm", [config]);
+    pluginViewRegistry.registerViews("helm", [config]);
     const updated = {
       name: "helm-charts",
       component: ViewComponent,
       stylesheet: Promise.resolve({ default: ".new-style { color: blue; }" }),
     };
-    registerViews("helm", [updated]);
+    pluginViewRegistry.registerViews("helm", [updated]);
 
-    const assets = getViewAssets();
+    const assets = pluginViewRegistry.getViewAssets();
     expect(assets).toHaveLength(1);
     await expect(assets[0].stylesheet).resolves.toEqual({ default: ".new-style { color: blue; }" });
   });
 
   it("removes a registration on unregister", () => {
-    registerViews("helm", [config]);
-    unregisterView("helm");
-    expect(getViewAssets()).toEqual([]);
+    pluginViewRegistry.registerViews("helm", [config]);
+    pluginViewRegistry.unregisterView("helm");
+    expect(pluginViewRegistry.getViewAssets()).toEqual([]);
   });
 
   it("unregister on a nonexistent pluginId is a no-op", () => {
-    registerViews("helm", [config]);
-    unregisterView("nonexistent-plugin");
-    expect(getViewAssets()).toEqual([
+    pluginViewRegistry.registerViews("helm", [config]);
+    pluginViewRegistry.unregisterView("nonexistent-plugin");
+    expect(pluginViewRegistry.getViewAssets()).toEqual([
       {
         pluginId: "helm",
         name: "helm-charts",
@@ -99,19 +94,19 @@ describe("pluginViewRegistry", () => {
   });
 
   it("clearViewRegistry empties the registry", () => {
-    registerViews("helm", [config]);
-    registerViews("kube", [config]);
+    pluginViewRegistry.registerViews("helm", [config]);
+    pluginViewRegistry.registerViews("kube", [config]);
 
-    clearViewRegistry();
-    expect(getViewAssets()).toEqual([]);
+    pluginViewRegistry.clearViewRegistry();
+    expect(pluginViewRegistry.getViewAssets()).toEqual([]);
   });
 
   it("returns multiple registered assets in the list", () => {
-    registerViews("helm", [config]);
-    registerViews("kube", [{ name: "kube-view", component: ViewComponent }]);
-    registerViews("prometheus", [config]);
+    pluginViewRegistry.registerViews("helm", [config]);
+    pluginViewRegistry.registerViews("kube", [{ name: "kube-view", component: ViewComponent }]);
+    pluginViewRegistry.registerViews("prometheus", [config]);
 
-    const assets = getViewAssets();
+    const assets = pluginViewRegistry.getViewAssets();
     expect(assets).toHaveLength(3);
     expect(assets.map((a) => a.pluginId).sort()).toEqual(["helm", "kube", "prometheus"]);
   });

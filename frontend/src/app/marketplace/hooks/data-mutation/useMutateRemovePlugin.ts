@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RemovePlugin } from "@wailsjs/go/app/App";
-import { QUERY_KEY_PLUGIN_STATUS } from "../../clusters/plugins/hooks/useGetInstalledPlugin";
+import { QUERY_KEY_PLUGIN_STATUS } from "../../../clusters/plugins/hooks/useGetInstalledPlugin";
 
 interface RemoveMutationVariables {
   pluginId: string;

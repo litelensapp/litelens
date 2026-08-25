@@ -1,7 +1,7 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginResourceView } from "../PluginResourceView";
-import { registerViews, clearViewRegistry } from "../hooks/registry/view/pluginViewRegistry";
+import { pluginViewRegistry } from "../hooks/registry/view/pluginViewRegistry";
 
 const useGetInstalledPluginMock = vi.hoisted(() => vi.fn());
 
@@ -14,7 +14,7 @@ vi.mock("../hooks/useGetInstalledPlugin", () => ({
 // simulates the plugin bundle module executing (and calling registerViews()
 // as its own module-level side effect, same as a real plugin would).
 vi.mock("/api/plugins/well-behaved-plugin/dist/index.js?v=def456", () => {
-  registerViews("well-behaved-plugin", [
+  pluginViewRegistry.registerViews("well-behaved-plugin", [
     {
       name: "well-behaved-view",
       component: () => <div data-testid="plugin-view">Hello from plugin</div>,
@@ -24,7 +24,7 @@ vi.mock("/api/plugins/well-behaved-plugin/dist/index.js?v=def456", () => {
 });
 
 vi.mock("/api/plugins/multi-view-plugin/dist/index.js?v=abc123", () => {
-  registerViews("multi-view-plugin", [
+  pluginViewRegistry.registerViews("multi-view-plugin", [
     { name: "resource-a", component: () => <div data-testid="view-a">View A</div> },
     { name: "resource-b", component: () => <div data-testid="view-b">View B</div> },
   ]);
@@ -39,11 +39,11 @@ vi.mock("/api/plugins/malformed-plugin/dist/index.js?v=abc123", () => {
 describe("PluginResourceView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    clearViewRegistry();
+    pluginViewRegistry.clearViewRegistry();
   });
 
   afterEach(() => {
-    clearViewRegistry();
+    pluginViewRegistry.clearViewRegistry();
   });
 
   it("throws and is caught by the error boundary when the plugin bundle never calls registerViews", async () => {

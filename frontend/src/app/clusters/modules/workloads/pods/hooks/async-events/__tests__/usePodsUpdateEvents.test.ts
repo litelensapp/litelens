@@ -37,7 +37,12 @@ describe("usePodsUpdateEvents", () => {
     expect(result.current).toEqual([]);
   });
 
-  it("returns the pushed pods after an event is received", async () => {
+  it("subscribes to the single cluster-wide pods:update event", () => {
+    renderHook(() => usePodsUpdateEvents());
+    expect(eventsOnMock).toHaveBeenCalledWith("pods:update", expect.any(Function));
+  });
+
+  it("returns the pushed pods after a pods:update event is received", async () => {
     const { result } = renderHook(() => usePodsUpdateEvents());
     const payload: Pod[] = [
       {
@@ -170,106 +175,5 @@ describe("usePodsUpdateEvents", () => {
     await waitFor(() => {
       expect(result.current).toEqual(payload2);
     });
-  });
-
-  it("subscribes to the namespace-scoped channel when a namespace is passed", async () => {
-    const { result } = renderHook(() => usePodsUpdateEvents(["kube-system"]));
-    expect(eventsOnMock).toHaveBeenCalledWith("pods:kube-system:update", expect.any(Function));
-
-    const payload: Pod[] = [
-      {
-        Name: "pod-1",
-        Namespace: "kube-system",
-        Status: "Running",
-        Ready: "1/1",
-        Containers: 1,
-        Restarts: 0,
-        ControlledBy: "Deployment",
-        NodeName: "node-1",
-        QoS: "BestEffort",
-        Age: "1h",
-        CPU: "10m",
-        Memory: "64Mi",
-        Disk: "0",
-        CPUPercent: 1,
-        MemPercent: 2,
-        DiskPercent: 0,
-        CreatedAt: "2025-01-01T00:00:00Z",
-        ServiceAccount: "default",
-        PriorityClass: "",
-        TerminationGracePeriod: "30s",
-        ControlledByName: "my-deployment",
-        HostIPs: [],
-        PodIPs: ["10.0.0.1"],
-        Tolerations: 0,
-        TolerationDetails: [],
-        AffinityCount: 0,
-        Affinities: "",
-        Labels: {},
-        Annotations: {},
-        ManagedFields: [],
-        Conditions: [],
-        ContainerDetails: [],
-        InitContainerDetails: [],
-        Volumes: [],
-      },
-    ];
-    triggerEvent("pods:kube-system:update", payload);
-    await waitFor(() => {
-      expect(result.current).toEqual(payload);
-    });
-  });
-
-  it("resets state and resubscribes when the namespace changes", async () => {
-    const { result, rerender } = renderHook(({ namespace }) => usePodsUpdateEvents(namespace), {
-      initialProps: { namespace: ["default"] },
-    });
-
-    const payload: Pod[] = [
-      {
-        Name: "pod-1",
-        Namespace: "default",
-        Status: "Running",
-        Ready: "1/1",
-        Containers: 1,
-        Restarts: 0,
-        ControlledBy: "Deployment",
-        NodeName: "node-1",
-        QoS: "BestEffort",
-        Age: "1h",
-        CPU: "10m",
-        Memory: "64Mi",
-        Disk: "0",
-        CPUPercent: 1,
-        MemPercent: 2,
-        DiskPercent: 0,
-        CreatedAt: "2025-01-01T00:00:00Z",
-        ServiceAccount: "default",
-        PriorityClass: "",
-        TerminationGracePeriod: "30s",
-        ControlledByName: "my-deployment",
-        HostIPs: [],
-        PodIPs: ["10.0.0.1"],
-        Tolerations: 0,
-        TolerationDetails: [],
-        AffinityCount: 0,
-        Affinities: "",
-        Labels: {},
-        Annotations: {},
-        ManagedFields: [],
-        Conditions: [],
-        ContainerDetails: [],
-        InitContainerDetails: [],
-        Volumes: [],
-      },
-    ];
-    triggerEvent("pods:default:update", payload);
-    await waitFor(() => {
-      expect(result.current).toEqual(payload);
-    });
-
-    rerender({ namespace: ["kube-system"] });
-    expect(result.current).toEqual([]);
-    expect(eventsOnMock).toHaveBeenCalledWith("pods:kube-system:update", expect.any(Function));
   });
 });

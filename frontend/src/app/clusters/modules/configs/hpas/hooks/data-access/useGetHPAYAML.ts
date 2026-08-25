@@ -7,7 +7,7 @@ import { useHPAsUpdateEvents } from "../async-events/useHPAsUpdateEvents";
 
 export function useGetHPAYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestHPAs = useHPAsUpdateEvents([namespace]);
+  const latestHPAs = useHPAsUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_HPA_YAML, { context, namespace, name }],

@@ -3,11 +3,11 @@ import * as ReactQuery from "@tanstack/react-query";
 import * as React from "react";
 import * as ReactDom from "react-dom";
 import * as ReactJsxRuntime from "react/jsx-runtime";
-import { registerEvents } from "../app/clusters/plugins/hooks/registry/event/pluginEventRegistry";
-import { registerNavEntry } from "../app/clusters/plugins/hooks/registry/nav/pluginNavRegistry";
-import { registerTrayFamilies } from "../app/clusters/plugins/hooks/registry/tray/pluginTrayRegistry";
-import { registerViews } from "../app/clusters/plugins/hooks/registry/view/pluginViewRegistry";
-import { registerStylesheets } from "../app/plugins/hooks/registry/stylesheet/pluginStylesheetRegistry";
+import { pluginEventRegistry } from "../app/clusters/plugins/hooks/registry/event/pluginEventRegistry";
+import { pluginNavRegistry } from "../app/clusters/plugins/hooks/registry/nav/pluginNavRegistry";
+import { pluginTrayRegistry } from "../app/clusters/plugins/hooks/registry/tray/pluginTrayRegistry";
+import { pluginViewRegistry } from "../app/clusters/plugins/hooks/registry/view/pluginViewRegistry";
+import { pluginStylesheetRegistry } from "../app/plugins/hooks/registry/stylesheet/pluginStylesheetRegistry";
 import { queryClient } from "../queryClient";
 import { useExposeMethods } from "./hooks/useExposeMethods";
 import { useExposeProperties } from "./hooks/useExposeProperties";
@@ -37,16 +37,16 @@ declare global {
       designSystem: typeof DesignSystem;
       core: {
         appWideAPI: {
-          registerStylesheets: typeof registerStylesheets;
+          registerStylesheets: typeof pluginStylesheetRegistry.registerStylesheets;
           getQueryClient: typeof getQueryClient;
         };
         clusterWideAPI: {
           useExposeProperties: typeof useExposeProperties;
           useExposeMethods: typeof useExposeMethods;
-          registerViews: typeof registerViews;
-          registerNavEntry: typeof registerNavEntry;
-          registerTrayFamilies: typeof registerTrayFamilies;
-          registerEvents: typeof registerEvents;
+          registerViews: typeof pluginViewRegistry.registerViews;
+          registerNavEntry: typeof pluginNavRegistry.registerNavEntry;
+          registerTrayFamilies: typeof pluginTrayRegistry.registerTrayFamilies;
+          registerEvents: typeof pluginEventRegistry.registerEvents;
         };
       };
       reactQuery: typeof ReactQuery;
@@ -61,16 +61,17 @@ window.__LITELENS_VENDOR__ = {
   designSystem: DesignSystem,
   core: {
     appWideAPI: {
-      registerStylesheets,
+      registerStylesheets:
+        pluginStylesheetRegistry.registerStylesheets.bind(pluginStylesheetRegistry),
       getQueryClient,
     },
     clusterWideAPI: {
       useExposeProperties,
       useExposeMethods,
-      registerViews,
-      registerNavEntry,
-      registerTrayFamilies,
-      registerEvents,
+      registerViews: pluginViewRegistry.registerViews.bind(pluginViewRegistry),
+      registerNavEntry: pluginNavRegistry.registerNavEntry.bind(pluginNavRegistry),
+      registerTrayFamilies: pluginTrayRegistry.registerTrayFamilies.bind(pluginTrayRegistry),
+      registerEvents: pluginEventRegistry.registerEvents.bind(pluginEventRegistry),
     },
   },
   reactQuery: ReactQuery,

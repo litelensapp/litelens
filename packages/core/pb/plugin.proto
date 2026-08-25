@@ -6,6 +6,7 @@ option go_package = "github.com/litelensapp/litelens/packages/core/pb";
 
 service Plugin {
   rpc ClusterContextWatch(Empty) returns (stream ClusterContextChangedEvent);
+  rpc ActiveNamespacesWatch(Empty) returns (stream ActiveNamespacesChangedEvent);
   rpc EmitEvent(PluginEventRequest) returns (Empty);
 }
 
@@ -15,6 +16,11 @@ message ClusterContextChangedEvent {
   string contextName = 1;
   string kubeconfigPath = 2;
   string timestamp = 3;
+}
+
+message ActiveNamespacesChangedEvent {
+  repeated string namespaces = 1;
+  string timestamp = 2;
 }
 
 message PluginEventRequest {

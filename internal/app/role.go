@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,9 +41,10 @@ func (a *App) GetRoleByName(namespace, name string) (dto.Role, error) {
 	return result, nil
 }
 
-func (a *App) ListRoles(namespaces []string) ([]dto.Role, error) {
+func (a *App) ListRoles() ([]dto.Role, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Role{}, nil
@@ -66,9 +67,10 @@ func (a *App) ListRoles(namespaces []string) ([]dto.Role, error) {
 	return result, nil
 }
 
-func (a *App) emitRoles(namespaces []string) {
+func (a *App) emitRoles() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -81,22 +83,12 @@ func (a *App) emitRoles(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Rbac().V1().Roles().Lister()
-	allData, err := kubeResources.ListRoles(lister, nil)
+	data, err := kubeResources.ListRoles(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitRoles: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "roles:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.Role, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "roles:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "roles:update", data)
 }
 
 func (a *App) DeleteRole(namespace, name string) error {
@@ -114,7 +106,7 @@ func (a *App) DeleteRole(namespace, name string) error {
 		return fmt.Errorf("delete Role: %w", err)
 	}
 
-	a.emitRoles([]string{namespace})
+	a.emitRoles()
 
 	return nil
 }
@@ -128,7 +120,6 @@ func (a *App) DeleteRoles(items []dto.RoleRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -137,14 +128,9 @@ func (a *App) DeleteRoles(items []dto.RoleRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitRoles(touchedNamespaces)
+	a.emitRoles()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d roles: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -196,7 +182,7 @@ func (a *App) UpdateRoleYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Role: %w", err)
 	}
 
-	a.emitRoles([]string{namespace})
+	a.emitRoles()
 
 	return nil
 }

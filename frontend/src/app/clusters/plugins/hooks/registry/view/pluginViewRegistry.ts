@@ -7,30 +7,38 @@ export interface ViewAssets {
   stylesheet?: Promise<{ default: string }>;
 }
 
-const registry = new Map<string, ViewAssets[]>();
+class PluginViewRegistry {
+  private readonly registry = new Map<string, ViewAssets[]>();
 
-export function registerViews(
-  pluginId: string,
-  configs: Array<{
-    name: string;
-    component: ComponentType;
-    stylesheet?: Promise<{ default: string }>;
-  }>
-): void {
-  registry.set(
-    pluginId,
-    configs.map((config) => ({ pluginId, ...config }))
-  );
+  registerViews(
+    pluginId: string,
+    configs: Array<{
+      name: string;
+      component: ComponentType;
+      stylesheet?: Promise<{ default: string }>;
+    }>
+  ): void {
+    this.registry.set(
+      pluginId,
+      configs.map((config) => ({ pluginId, ...config }))
+    );
+  }
+
+  unregisterView(pluginId: string): void {
+    this.registry.delete(pluginId);
+  }
+
+  getViewAssets(): ViewAssets[] {
+    return Array.from(this.registry.values()).flat();
+  }
+
+  getRegisteredPluginIds(): string[] {
+    return Array.from(this.registry.keys());
+  }
+
+  clearViewRegistry(): void {
+    this.registry.clear();
+  }
 }
 
-export function unregisterView(pluginId: string): void {
-  registry.delete(pluginId);
-}
-
-export function getViewAssets(): ViewAssets[] {
-  return Array.from(registry.values()).flat();
-}
-
-export function clearViewRegistry(): void {
-  registry.clear();
-}
+export const pluginViewRegistry = new PluginViewRegistry();

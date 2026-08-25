@@ -7,7 +7,9 @@ import { usePodsUpdateEvents } from "../async-events/usePodsUpdateEvents";
 
 export function useGetPodYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestPods = usePodsUpdateEvents([namespace]);
+  // Live push-updates for this pod only arrive while its namespace is part of the active namespace filter.
+  // Initial load via GetPodYAML is unaffected either way.
+  const latestPods = usePodsUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_POD_YAML, { context, namespace, name }],

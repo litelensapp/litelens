@@ -461,4 +461,141 @@ func (m *mockStreamWithError) SendHeader(md metadata.MD) error {
 }
 
 func (m *mockStreamWithError) SetTrailer(md metadata.MD) {
+	_ = md
+}
+
+// mockNsStream is the ActiveNamespacesWatch analogue of mockStream.
+type mockNsStream struct {
+	ctx   context.Context
+	recvd []*pb.ActiveNamespacesChangedEvent
+	mu    sync.Mutex
+}
+
+func (m *mockNsStream) Send(event *pb.ActiveNamespacesChangedEvent) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recvd = append(m.recvd, event)
+	return nil
+}
+
+func (m *mockNsStream) Context() context.Context {
+	return m.ctx
+}
+
+func (m *mockNsStream) SendMsg(msg interface{}) error {
+	return nil
+}
+
+func (m *mockNsStream) RecvMsg(msg interface{}) error {
+	return nil
+}
+
+func (m *mockNsStream) SetHeader(md metadata.MD) error {
+	return nil
+}
+
+func (m *mockNsStream) SendHeader(md metadata.MD) error {
+	return nil
+}
+
+func (m *mockNsStream) SetTrailer(md metadata.MD) {
+}
+
+// TestHostPluginServer_ActiveNamespacesSubscriptionReplay tests that new subscribers
+// receive the last published active-namespaces event immediately.
+func TestHostPluginServer_ActiveNamespacesSubscriptionReplay(t *testing.T) {
+	server := NewHostPluginServer(func(payload map[string]interface{}) {})
+	defer server.MarkStopped()
+
+	server.PublishActiveNamespacesChange([]string{"default", "kube-system"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	stream := &mockNsStream{ctx: ctx, recvd: make([]*pb.ActiveNamespacesChangedEvent, 0)}
+	server.ActiveNamespacesWatch(&pb.Empty{}, stream)
+
+	if len(stream.recvd) != 1 {
+		t.Fatalf("expected 1 event from replay, got %d", len(stream.recvd))
+	}
+	if got := stream.recvd[0].Namespaces; len(got) != 2 || got[0] != "default" || got[1] != "kube-system" {
+		t.Fatalf("expected [default kube-system], got %v", got)
+	}
+}
+
+// TestHostPluginServer_ActiveNamespacesLastEventReplacement tests that only the latest
+// active-namespaces event is replayed to a new subscriber.
+func TestHostPluginServer_ActiveNamespacesLastEventReplacement(t *testing.T) {
+	server := NewHostPluginServer(func(payload map[string]interface{}) {})
+	defer server.MarkStopped()
+
+	server.PublishActiveNamespacesChange([]string{"ns1"})
+	server.PublishActiveNamespacesChange([]string{"ns2"})
+	server.PublishActiveNamespacesChange([]string{"ns3", "ns4"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	stream := &mockNsStream{ctx: ctx, recvd: make([]*pb.ActiveNamespacesChangedEvent, 0)}
+	server.ActiveNamespacesWatch(&pb.Empty{}, stream)
+
+	if len(stream.recvd) != 1 {
+		t.Fatalf("expected 1 replay event, got %d", len(stream.recvd))
+	}
+	if got := stream.recvd[0].Namespaces; len(got) != 2 || got[0] != "ns3" || got[1] != "ns4" {
+		t.Fatalf("expected [ns3 ns4], got %v", got)
+	}
+}
+
+// TestHostPluginServer_ActiveNamespacesPublishRejectedAfterStop tests that publishes
+// after MarkStopped are rejected, mirroring PublishClusterContextChange's behavior.
+func TestHostPluginServer_ActiveNamespacesPublishRejectedAfterStop(t *testing.T) {
+	server := NewHostPluginServer(func(payload map[string]interface{}) {})
+
+	if ok := server.PublishActiveNamespacesChange([]string{"ns1"}); !ok {
+		t.Fatal("expected publish before stop to succeed")
+	}
+
+	server.MarkStopped()
+
+	if ok := server.PublishActiveNamespacesChange([]string{"ns2"}); ok {
+		t.Fatal("expected publish after stop to fail")
+	}
+}
+
+// TestHostPluginServer_ActiveNamespacesConcurrentSubscribersReceivePublishes tests that
+// concurrent subscribers all receive published active-namespaces events.
+func TestHostPluginServer_ActiveNamespacesConcurrentSubscribersReceivePublishes(t *testing.T) {
+	server := NewHostPluginServer(func(payload map[string]interface{}) {})
+	defer server.MarkStopped()
+
+	numSubscribers := 10
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	streams := make([]*mockNsStream, numSubscribers)
+	var wg sync.WaitGroup
+	for i := 0; i < numSubscribers; i++ {
+		streams[i] = &mockNsStream{ctx: ctx, recvd: make([]*pb.ActiveNamespacesChangedEvent, 0)}
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			server.ActiveNamespacesWatch(&pb.Empty{}, streams[idx])
+		}(i)
+	}
+
+	// Give subscribers a moment to register before publishing.
+	time.Sleep(20 * time.Millisecond)
+	server.PublishActiveNamespacesChange([]string{"default"})
+
+	wg.Wait()
+
+	for i, s := range streams {
+		s.mu.Lock()
+		n := len(s.recvd)
+		s.mu.Unlock()
+		if n == 0 {
+			t.Errorf("subscriber %d received no events", i)
+		}
+	}
 }

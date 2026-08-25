@@ -8,7 +8,7 @@ import { useResourceQuotasUpdateEvents } from "../async-events/useResourceQuotas
 
 export const useGetResourceQuotaDetail = (context: string, namespace: string, name: string) => {
   const queryClient = useQueryClient();
-  const latestResourceQuotas = useResourceQuotasUpdateEvents([namespace]);
+  const latestResourceQuotas = useResourceQuotasUpdateEvents();
   const query = useQuery<ResourceQuotaDetail, Error>({
     queryKey: [QUERY_KEY_RESOURCE_QUOTA_DETAIL, { context, namespace, name }],
     queryFn: () => GetResourceQuotaByName(namespace, name),

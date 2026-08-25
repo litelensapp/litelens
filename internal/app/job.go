@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -38,9 +38,10 @@ func (a *App) GetJobByName(namespace, name string) (dto.Job, error) {
 	return result, nil
 }
 
-func (a *App) ListJobs(namespaces []string) ([]dto.Job, error) {
+func (a *App) ListJobs() ([]dto.Job, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Job{}, nil
@@ -89,9 +90,10 @@ func (a *App) GetJobsSummary(namespace string) (dto.JobSummary, error) {
 	return kubeResources.SummarizeJobs(jobs), nil
 }
 
-func (a *App) emitJobs(namespaces []string) {
+func (a *App) emitJobs() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -104,22 +106,12 @@ func (a *App) emitJobs(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Batch().V1().Jobs().Lister()
-	allData, err := kubeResources.ListJobs(lister, nil)
+	data, err := kubeResources.ListJobs(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitJobs: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "jobs:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.Job, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "jobs:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "jobs:update", data)
 }
 
 // DeleteJob deletes a Job from the specified namespace.
@@ -139,7 +131,7 @@ func (a *App) DeleteJob(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitJobs([]string{namespace})
+	a.emitJobs()
 
 	return nil
 }
@@ -154,7 +146,6 @@ func (a *App) DeleteJobs(items []dto.JobRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -163,15 +154,9 @@ func (a *App) DeleteJobs(items []dto.JobRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitJobs(touchedNamespaces)
+	a.emitJobs()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d jobs: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -223,7 +208,7 @@ func (a *App) UpdateJobYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Job: %w", err)
 	}
 
-	a.emitJobs([]string{namespace})
+	a.emitJobs()
 
 	return nil
 }

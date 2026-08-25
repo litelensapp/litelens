@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -965,15 +966,17 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 		return "", fmt.Errorf("plugin %q is disabled", pluginID)
 	}
 
+	// Capture activeContextName once for reuse in both the PID-liveness branch
+	// and the TCP-dial relaunch branch below.
+	a.mu.RLock()
+	activeContextName := a.activeContext
+	a.mu.RUnlock()
+
 	if !loader.IsAlive() {
 		// Lazily relaunch: the plugin may have crashed, been killed externally,
 		// or simply never been started for this context (prewarmRestoredPlugins
 		// only relaunches on Connect, not on-demand). Mirrors the launch pattern
 		// used by InstallPlugin/prewarmRestoredPlugins.
-		a.mu.RLock()
-		activeContextName := a.activeContext
-		a.mu.RUnlock()
-
 		if activeContextName == "" {
 			return "", fmt.Errorf("plugin %q is not running", pluginID)
 		}
@@ -1000,5 +1003,48 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 		return "", fmt.Errorf("plugin %q: invalid port %d", pluginID, port)
 	}
 
-	return fmt.Sprintf("127.0.0.1:%d", port), nil
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+
+	// PID is alive but the HTTP listener may not be accepting connections yet
+	// (startup race between the READY handshake and the listener binding) or
+	// may have died internally without killing the process. IsAlive() can't detect
+	// this — do a fast TCP dial check and force a clean relaunch on failure.
+	conn, dialErr := net.DialTimeout("tcp", addr, 1*time.Second)
+	if dialErr == nil {
+		conn.Close()
+		return addr, nil
+	}
+
+	// Backend not responding. Try to relaunch if we can.
+	if activeContextName == "" {
+		return "", fmt.Errorf("plugin %q: backend not responding and no active context to relaunch", pluginID)
+	}
+
+	if err := loader.Shutdown(); err != nil {
+		fmt.Printf("plugin %q: shutdown before relaunch: %v\n", pluginID, err)
+	}
+
+	kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
+	if err != nil {
+		return "", fmt.Errorf("plugin %q: backend not responding, relaunch failed: %v", pluginID, err)
+	}
+	if a.grpcServerCfg != nil {
+		loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+	}
+	if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
+		return "", fmt.Errorf("plugin %q: backend not responding, relaunch failed: %w", pluginID, err)
+	}
+
+	port, err = loader.HTTPPort()
+	if err != nil {
+		return "", fmt.Errorf("plugin %q: read HTTP port after relaunch: %v", pluginID, err)
+	}
+	addr = fmt.Sprintf("127.0.0.1:%d", port)
+
+	conn, dialErr = net.DialTimeout("tcp", addr, 1*time.Second)
+	if dialErr != nil {
+		return "", fmt.Errorf("plugin %q: backend unreachable after relaunch", pluginID)
+	}
+	conn.Close()
+	return addr, nil
 }

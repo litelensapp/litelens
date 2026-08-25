@@ -1,6 +1,6 @@
 import type { NavEntry } from "@litelens/core";
 import { useMemo, useSyncExternalStore } from "react";
-import { getNavEntries, subscribeNavRegistry } from "./pluginNavRegistry";
+import { pluginNavRegistry } from "./pluginNavRegistry";
 
 interface PluginNavData {
   navEntries: NavEntry<string>[];
@@ -15,7 +15,12 @@ interface PluginNavData {
  * or the host unregisters it on uninstall (see MainLayout).
  */
 export function usePluginNavEntries(): PluginNavData {
-  const registered = useSyncExternalStore(subscribeNavRegistry, getNavEntries, getNavEntries);
+  const subscribe = useMemo(
+    () => pluginNavRegistry.subscribeNavRegistry.bind(pluginNavRegistry),
+    []
+  );
+  const getSnapshot = useMemo(() => pluginNavRegistry.getNavEntries.bind(pluginNavRegistry), []);
+  const registered = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   return useMemo<PluginNavData>(() => {
     const navEntries: NavEntry<string>[] = [];

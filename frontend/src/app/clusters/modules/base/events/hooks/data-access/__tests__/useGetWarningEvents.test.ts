@@ -88,7 +88,7 @@ describe("useGetWarningEvents", () => {
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listWarningEventsMock).toHaveBeenCalledWith(["default"]);
+    expect(listWarningEventsMock).toHaveBeenCalledWith();
   });
 
   it("uses correct queryKey with context, namespace, and triggerRefresh", async () => {
@@ -143,7 +143,7 @@ describe("useGetWarningEvents", () => {
       mockEvent("e3", "default", 1735689615),
     ];
     listWarningEventsMock.mockResolvedValueOnce(newEvents);
-    triggerEvent("events:default:warning:update");
+    triggerEvent("events:warning:update");
 
     await waitFor(() => {
       rerender();
@@ -161,7 +161,7 @@ describe("useGetWarningEvents", () => {
     const initialKey = initialCache[0].queryKey;
     const initialTrigger = initialKey[2];
 
-    triggerEvent("events:default:warning:update");
+    triggerEvent("events:warning:update");
 
     await waitFor(() => {
       const cache = client.getQueryCache().findAll();
@@ -172,14 +172,14 @@ describe("useGetWarningEvents", () => {
     });
   });
 
-  it("fetches namespace-scoped warning events", async () => {
+  it("calls ListWarningEvents with no arguments regardless of the namespaces input", async () => {
     const { wrapper } = makeWrapper();
     const { result } = renderHook(
       () => useGetWarningEvents({ context: "ctx", namespaces: ["kube-system"] }),
       { wrapper }
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listWarningEventsMock).toHaveBeenCalledWith(["kube-system"]);
+    expect(listWarningEventsMock).toHaveBeenCalledWith();
   });
 
   it("handles empty event list", async () => {

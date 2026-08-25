@@ -6,33 +6,29 @@ import { QUERY_KEY_PODS } from "../../api/api.const";
 import type { Pod } from "../../api/resources";
 import { ListPods } from "../../api/resources";
 import { usePodsUpdateEvents } from "../async-events/usePodsUpdateEvents";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 
 export const useGetPods = (
   input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<Pod[]>
 ) => {
   const { context, namespaces } = input;
-  const latestPods = usePodsUpdateEvents(namespaces);
+  const latestPods = usePodsUpdateEvents();
 
   const query = useQuery<Pod[], Error>({
     queryKey: [QUERY_KEY_PODS, { context, namespaces }],
-    queryFn: () => ListPods(namespaces),
+    queryFn: () => ListPods(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
-  // Merge event-driven data locally: prefer event-filtered pods over fetched data if available.
-  // Filter cluster-wide event list by namespace membership.
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestPods.length) baseData = filterByNamespaces(latestPods, namespaces);
+    const baseData = latestPods.length ? latestPods : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestPods, query.data, namespaces, callback]);
+  }, [latestPods, query.data, callback]);
 
-  // Effective loading flag: if we've received at least one event-driven update,
-  // we have real data even if query is re-fetching. Only show loading if query
-  // is truly loading AND we haven't received any live event data yet.
   const isLoading = latestPods.length === 0 && query.isLoading;
 
   return {

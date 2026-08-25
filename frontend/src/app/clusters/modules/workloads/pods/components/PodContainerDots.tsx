@@ -39,7 +39,7 @@ export const PodContainerDots: FC<{
       <span className="text-xs text-muted-foreground">{label}</span>
       <TooltipProvider>
         <div className="flex gap-1">
-          {allContainers.map((c, i) => {
+          {allContainers.map((c) => {
             const title = containerTooltipTitle(c.Name, c.StatusMessage, c.isInit);
             const fields: [string, string][] = [];
             if (c.ExitCode !== null && c.ExitCode !== undefined)
@@ -49,7 +49,7 @@ export const PodContainerDots: FC<{
             if (c.FinishedAt) fields.push(["Finished At", c.FinishedAt]);
             if (c.ContainerID) fields.push(["ContainerIcon ID", c.ContainerID]);
             return (
-              <Tooltip key={c.Name || i}>
+              <Tooltip key={c.Name}>
                 <TooltipTrigger
                   render={
                     <span

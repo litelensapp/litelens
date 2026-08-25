@@ -8,7 +8,7 @@ import { useSecretsUpdateEvents } from "../async-events/useSecretsUpdateEvents";
 
 export const useGetSecretDetail = (context: string, namespace: string, name: string) => {
   const queryClient = useQueryClient();
-  const latestSecrets = useSecretsUpdateEvents([namespace]);
+  const latestSecrets = useSecretsUpdateEvents();
   const query = useQuery<SecretDetail, Error>({
     queryKey: [QUERY_KEY_SECRET_DETAIL, { context, namespace, name }],
     queryFn: () => GetSecretByName(namespace, name),

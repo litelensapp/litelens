@@ -3,29 +3,49 @@ interface RegisteredEventHandler {
   handler: (payload: unknown) => void;
 }
 
-const registry = new Map<string, RegisteredEventHandler>();
+class PluginEventRegistry {
+  private readonly registry = new Map<string, RegisteredEventHandler>();
 
-export function registerEvents(
-  pluginId: string,
-  // Plugins type each handler's payload with its own event-specific shape
-  // rather than `unknown`, so this must accept `any` here — a `(payload:
-  // unknown) => void` signature would reject those narrower handlers.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handlers: Record<string, (payload: any) => void>
-): void {
-  for (const [eventName, handler] of Object.entries(handlers)) {
-    registry.set(eventName, { pluginId, handler });
-  }
-}
-
-export function unregisterEvents(pluginId: string): void {
-  for (const [eventName, entry] of registry) {
-    if (entry.pluginId === pluginId) {
-      registry.delete(eventName);
+  registerEvents(
+    pluginId: string,
+    // Plugins type each handler's payload with its own event-specific shape
+    // rather than `unknown`, so this must accept `any` here — a `(payload:
+    // unknown) => void` signature would reject those narrower handlers.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handlers: Record<string, (payload: any) => void>
+  ): void {
+    for (const [eventName, handler] of Object.entries(handlers)) {
+      this.registry.set(eventName, { pluginId, handler });
     }
   }
+
+  unregisterEvents(pluginId: string): void {
+    for (const [eventName, entry] of this.registry) {
+      if (entry.pluginId === pluginId) {
+        this.registry.delete(eventName);
+      }
+    }
+  }
+
+  getHandler(eventName: string): ((payload: unknown) => void) | undefined {
+    return this.registry.get(eventName)?.handler;
+  }
+
+  getRegisteredPluginIds(): string[] {
+    return Array.from(new Set(Array.from(this.registry.values()).map((entry) => entry.pluginId)));
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getHandlersForPlugin(pluginId: string): Record<string, (payload: any) => void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handlers: Record<string, (payload: any) => void> = {};
+    for (const [eventName, entry] of this.registry) {
+      if (entry.pluginId === pluginId) {
+        handlers[eventName] = entry.handler;
+      }
+    }
+    return handlers;
+  }
 }
 
-export function getHandler(eventName: string): ((payload: unknown) => void) | undefined {
-  return registry.get(eventName)?.handler;
-}
+export const pluginEventRegistry = new PluginEventRegistry();

@@ -82,7 +82,7 @@ describe("useGetEvents", () => {
       wrapper,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(listEventsMock).toHaveBeenCalledWith(["default"]);
+    expect(listEventsMock).toHaveBeenCalledWith();
   });
 
   it("uses correct queryKey with context and namespace", () => {
@@ -107,7 +107,7 @@ describe("useGetEvents", () => {
     expect(result.current.data).toEqual(queryData);
   });
 
-  it("returns filtered latestEvents when namespace is set and latestEvents present", async () => {
+  it("returns latestEvents pushed by the backend-filtered events:update channel", async () => {
     const { wrapper } = makeWrapper();
     const queryData = [mockEvent("e1", "default")];
     listEventsMock.mockResolvedValue(queryData);
@@ -117,10 +117,10 @@ describe("useGetEvents", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const latestEvents = [mockEvent("e2", "default"), mockEvent("e3", "kube-system")];
-    triggerEvent("events:default:update", latestEvents);
+    const latestEvents = [mockEvent("e2", "default")];
+    triggerEvent("events:update", latestEvents);
     await waitFor(() => {
-      expect(result.current.data).toEqual([mockEvent("e2", "default")]);
+      expect(result.current.data).toEqual(latestEvents);
     });
   });
 
@@ -166,7 +166,7 @@ describe("useGetEvents", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     const latestEvents = [mockEvent("e1", "default")];
-    triggerEvent("events:default:update", latestEvents);
+    triggerEvent("events:update", latestEvents);
     await waitFor(() => {
       expect(result.current.data).toEqual([mockEvent("e1", "default")]);
     });

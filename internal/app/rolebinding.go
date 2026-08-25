@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,9 +41,10 @@ func (a *App) GetRoleBindingByName(namespace, name string) (dto.RoleBinding, err
 	return result, nil
 }
 
-func (a *App) ListRoleBindings(namespaces []string) ([]dto.RoleBinding, error) {
+func (a *App) ListRoleBindings() ([]dto.RoleBinding, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.RoleBinding{}, nil
@@ -66,9 +67,10 @@ func (a *App) ListRoleBindings(namespaces []string) ([]dto.RoleBinding, error) {
 	return result, nil
 }
 
-func (a *App) emitRoleBindings(namespaces []string) {
+func (a *App) emitRoleBindings() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -81,22 +83,12 @@ func (a *App) emitRoleBindings(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Rbac().V1().RoleBindings().Lister()
-	allData, err := kubeResources.ListRoleBindings(lister, nil)
+	data, err := kubeResources.ListRoleBindings(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitRoleBindings: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "rolebindings:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.RoleBinding, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "rolebindings:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "rolebindings:update", data)
 }
 
 func (a *App) DeleteRoleBinding(namespace, name string) error {
@@ -114,7 +106,7 @@ func (a *App) DeleteRoleBinding(namespace, name string) error {
 		return fmt.Errorf("delete RoleBinding: %w", err)
 	}
 
-	a.emitRoleBindings([]string{namespace})
+	a.emitRoleBindings()
 
 	return nil
 }
@@ -128,7 +120,6 @@ func (a *App) DeleteRoleBindings(items []dto.RoleBindingRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -137,14 +128,9 @@ func (a *App) DeleteRoleBindings(items []dto.RoleBindingRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitRoleBindings(touchedNamespaces)
+	a.emitRoleBindings()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d rolebindings: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -196,7 +182,7 @@ func (a *App) UpdateRoleBindingYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update RoleBinding: %w", err)
 	}
 
-	a.emitRoleBindings([]string{namespace})
+	a.emitRoleBindings()
 
 	return nil
 }

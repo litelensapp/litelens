@@ -7,7 +7,7 @@ import { GetReplicaSetByName } from "../../api/resources";
 import { useReplicaSetsUpdateEvents } from "../async-events/useReplicaSetsUpdateEvents";
 
 export const useGetReplicaSetDetail = (context: string, namespace: string, name: string) => {
-  const latestReplicaSets = useReplicaSetsUpdateEvents([namespace]);
+  const latestReplicaSets = useReplicaSetsUpdateEvents();
 
   const query = useQuery<ReplicaSet, Error>({
     queryKey: [QUERY_KEY_REPLICASET_DETAIL, { context, namespace, name }],

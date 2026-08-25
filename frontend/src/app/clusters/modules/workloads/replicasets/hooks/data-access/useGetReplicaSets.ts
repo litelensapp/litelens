@@ -1,11 +1,10 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_REPLICASETS } from "../../api/api.const";
 import type { ReplicaSet } from "../../api/resources";
 import { ListReplicaSets } from "../../api/resources";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useReplicaSetsUpdateEvents } from "../async-events/useReplicaSetsUpdateEvents";
 
 export const useGetReplicaSets = (
@@ -13,20 +12,28 @@ export const useGetReplicaSets = (
   callback?: UseQueryCallback<ReplicaSet[]>
 ) => {
   const { context, namespaces } = input;
-  const latestReplicaSets = useReplicaSetsUpdateEvents(namespaces);
+  const latestReplicaSets = useReplicaSetsUpdateEvents();
 
   const query = useQuery<ReplicaSet[], Error>({
     queryKey: [QUERY_KEY_REPLICASETS, { context, namespaces }],
-    queryFn: () => ListReplicaSets(namespaces),
+    queryFn: () => ListReplicaSets(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestReplicaSets.length) baseData = filterByNamespaces(latestReplicaSets, namespaces);
+    const baseData = latestReplicaSets.length ? latestReplicaSets : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestReplicaSets, query.data, namespaces, callback]);
+  }, [latestReplicaSets, query.data, callback]);
 
-  return { ...query, data: mergedData };
+  const isLoading = latestReplicaSets.length === 0 && query.isLoading;
+
+  return {
+    ...query,
+    data: mergedData,
+    isLoading,
+  };
 };

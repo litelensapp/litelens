@@ -24,11 +24,11 @@ const mockUseGetPluginsFromMarketplaceState = vi.hoisted(() => ({
   error: null as any,
 }));
 
-vi.mock("../hooks/useGetPluginsFromMarketplace", () => ({
+vi.mock("../hooks/data-access/useGetPluginsFromMarketplace", () => ({
   useGetPluginsFromMarketplace: () => mockUseGetPluginsFromMarketplaceState,
 }));
 
-vi.mock("../hooks/useGetInstalledPlugins", () => ({
+vi.mock("../hooks/data-access/useGetInstalledPlugins", () => ({
   useGetInstalledPlugins: () => ({
     pluginStatuses: mockGetInstalledPlugins(),
     isLoading: false,

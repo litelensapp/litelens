@@ -1,10 +1,8 @@
-import { Button, Divider, FrownIcon, LoadingSpinner } from "@litelens/design-system";
-import type { dto } from "@wailsjs/go/models";
-import { FC, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { maskTerminalStatus } from "../shared/utils/maskTerminalStatus";
+import { Divider } from "@litelens/design-system";
+import { FC, useCallback, useEffect, useRef, useState } from "react";
 import { useGetVersion } from "../updater/hooks/data-access/useGetVersion";
-import { PluginCard } from "./components/PluginCard";
-import { PluginCardFallback } from "./components/PluginCardFallback";
+import { AvailablePluginsSection } from "./components/AvailablePluginsSection";
+import { InstalledPluginsSection } from "./components/InstalledPluginsSection";
 import {
   toastPluginDisableFailed,
   toastPluginEnableFailed,
@@ -13,19 +11,14 @@ import {
   toastPluginRemovalFailed,
   toastPluginRemovalSucceeded,
 } from "./components/PluginToasts";
-import { useGetHostPlatform } from "./hooks/useGetHostPlatform";
-import { useGetInstalledPlugins } from "./hooks/useGetInstalledPlugins";
-import { PluginManifest, useGetPluginsFromMarketplace } from "./hooks/useGetPluginsFromMarketplace";
-import { useMutateDisablePlugin } from "./hooks/useMutateDisablePlugin";
-import { useMutateEnablePlugin } from "./hooks/useMutateEnablePlugin";
-import { useMutateInstallPlugin } from "./hooks/useMutateInstallPlugin";
-import { useMutateRemovePlugin } from "./hooks/useMutateRemovePlugin";
-
-// Backend placeholder for a plugin installed before checksum-tracking existed
-// (or whose checksum file is otherwise missing) — never a real sha256, so it
-// must not be treated as "matches the marketplace version".
-const PLACEHOLDER_BUNDLE_CHECKSUM =
-  "0000000000000000000000000000000000000000000000000000000000000000";
+import { useGetHostPlatform } from "./hooks/data-access/useGetHostPlatform";
+import { useGetInstalledPlugins } from "./hooks/data-access/useGetInstalledPlugins";
+import { useGetPluginsFromMarketplace } from "./hooks/data-access/useGetPluginsFromMarketplace";
+import { useMutateDisablePlugin } from "./hooks/data-mutation/useMutateDisablePlugin";
+import { useMutateEnablePlugin } from "./hooks/data-mutation/useMutateEnablePlugin";
+import { useMutateInstallPlugin } from "./hooks/data-mutation/useMutateInstallPlugin";
+import { useMutateRemovePlugin } from "./hooks/data-mutation/useMutateRemovePlugin";
+import { usePluginCatalog } from "./hooks/usePluginCatalog";
 
 export const MarketplaceView: FC<{
   onGoToMarketplaceSettings?: () => void;
@@ -169,142 +162,11 @@ export const MarketplaceView: FC<{
     }
   }, [installedPlugins, marketplacePlugins]);
 
-  // Build installed/available sections with deduplication.
-  // "Installed" is reserved for plugins that are actually on disk (READY /
-  // CRASHED / INCOMPATIBLE) *and* have a resolvable manifest — INSTALLING is
-  // still in progress, and a manifestless entry (e.g. crashed before its
-  // .plugin-metadata.json was ever written, or metadata corrupted, with no
-  // matching marketplace listing to fall back on) can't render a real
-  // PluginCard either way. Both cases are pushed to "Available" instead,
-  // where the existing manifest-optional rendering already covers them:
-  // a live progress bar when the manifest is known, PluginCardFallback when
-  // it isn't. This keeps manifest non-optional for everything in "installed".
-  const { installed, available } = useMemo(() => {
-    const marketplacePluginsById = new Map(marketplacePlugins.map((p) => [p.id, p]));
-    // Plugins that belong in "Available" beyond the plain marketplace catalog:
-    // still installing, or installed-but-manifestless. Keyed by pluginId.
-    const extraByPluginId = new Map<string, dto.InstalledPlugin>();
-
-    const installed: Array<{
-      installedPlugin: dto.InstalledPlugin;
-      manifest: dto.InstalledPlugin | PluginManifest;
-    }> = [];
-
-    for (const installedPlugin of installedPlugins) {
-      const hasAttempted = attemptedInstalls.has(installedPlugin.pluginId);
-      const displayStatus = maskTerminalStatus(installedPlugin.status, hasAttempted);
-      if (displayStatus === "NOT_INSTALLED") continue;
-
-      if (displayStatus === "INSTALLING") {
-        extraByPluginId.set(installedPlugin.pluginId, installedPlugin);
-        continue;
-      }
-
-      const marketplaceManifest = marketplacePluginsById.get(installedPlugin.pluginId);
-      const manifest = marketplaceManifest ?? (installedPlugin.id ? installedPlugin : undefined);
-      if (manifest) installed.push({ installedPlugin, manifest });
-      else extraByPluginId.set(installedPlugin.pluginId, installedPlugin);
-    }
-
-    const installedIds = new Set(installed.map(({ installedPlugin }) => installedPlugin.pluginId));
-
-    const available: Array<{
-      id: string;
-      manifest: PluginManifest | undefined;
-      installStatus: dto.InstalledPlugin | undefined;
-    }> = marketplacePlugins
-      .filter((p) => !installedIds.has(p.id))
-      .map((manifest) => ({
-        id: manifest.id,
-        manifest,
-        installStatus: extraByPluginId.get(manifest.id),
-      }));
-
-    // Entries with no matching marketplace listing (catalog changed mid-install,
-    // or a crashed/corrupted install the catalog never covered) still need to
-    // render somewhere — surface them via PluginCardFallback.
-    for (const [pluginId, installStatus] of extraByPluginId) {
-      if (!marketplacePluginsById.has(pluginId) && !installedIds.has(pluginId)) {
-        available.push({ id: pluginId, manifest: undefined, installStatus });
-      }
-    }
-
-    return { installed, available };
-  }, [installedPlugins, attemptedInstalls, marketplacePlugins]);
-
-  let availableSectionContent: ReactNode;
-  if (isMarketplaceError) {
-    availableSectionContent = (
-      <div className="flex flex-1 flex-col gap-4 py-16 text-center">
-        <div>
-          <FrownIcon className="mx-auto mb-3 size-12 text-muted-foreground" />
-          <p className="text-lg font-medium text-destructive">Couldn&apos;t load marketplace</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {marketplaceError?.message || "Check your Access Token in Settings"}
-          </p>
-        </div>
-        {marketplaceError?.message && (
-          <div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Please check your Marketplace Repository URL
-            </p>
-            <Button className="mt-4" onClick={onGoToMarketplaceSettings}>
-              Go to Marketplace settings
-            </Button>
-          </div>
-        )}
-      </div>
-    );
-  } else if (isLoadingMarketplace) {
-    availableSectionContent = (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
-        <LoadingSpinner />
-        <p className="text-sm text-muted-foreground">Loading available plugins...</p>
-      </div>
-    );
-  } else if (available.length === 0) {
-    availableSectionContent = (
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <p className="text-muted-foreground">No available plugins</p>
-      </div>
-    );
-  } else {
-    availableSectionContent = (
-      <div className="flex flex-col gap-6">
-        {available.map(({ id, manifest, installStatus: installStatusEntry }) => {
-          if (!manifest) {
-            return (
-              <PluginCardFallback
-                key={id}
-                status={installStatusEntry!}
-                onRemove={() => handleRemove(id, id)}
-                isRemoving={removingIds.has(id)}
-              />
-            );
-          }
-
-          return (
-            <PluginCard
-              key={id}
-              plugin={manifest}
-              hostVersion={hostVersion}
-              hostPlatform={hostPlatform}
-              installStatus={installStatusEntry ? "INSTALLING" : "NOT_INSTALLED"}
-              installProgress={installStatusEntry?.progress ?? 0}
-              updateAvailable={false}
-              installedVersion={undefined}
-              installedSize={undefined}
-              onInstall={() => handleInstall(id, manifest.name)}
-              onUpdate={undefined}
-              onRetry={undefined}
-              onRemove={undefined}
-              isRemoving={false}
-            />
-          );
-        })}
-      </div>
-    );
-  }
+  const { installed, available } = usePluginCatalog(
+    installedPlugins,
+    attemptedInstalls,
+    marketplacePlugins
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -320,76 +182,22 @@ export const MarketplaceView: FC<{
                 <h3 className="text-sm font-semibold">
                   Installed Plugins{installed.length > 0 ? ` (${installed.length})` : ""}
                 </h3>
-                {isLoadingInstalled ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-16">
-                    <LoadingSpinner />
-                    <p className="text-sm text-muted-foreground">Loading installed plugins...</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-6">
-                    {installed.map(({ installedPlugin, manifest }) => {
-                      const hasAttempted = attemptedInstalls.has(installedPlugin.pluginId);
-                      const displayStatus = maskTerminalStatus(
-                        installedPlugin.status,
-                        hasAttempted
-                      );
-
-                      const hasComparableChecksum = Boolean(
-                        installedPlugin.bundleChecksum &&
-                        installedPlugin.bundleChecksum !== "" &&
-                        installedPlugin.bundleChecksum !== PLACEHOLDER_BUNDLE_CHECKSUM
-                      );
-                      const checksumMismatch =
-                        hasComparableChecksum &&
-                        installedPlugin.bundleChecksum !== manifest.bundle.sha256;
-                      const versionMismatch =
-                        (installedPlugin.installedVersion ?? "") !== manifest.version;
-                      const updateAvailable: boolean =
-                        displayStatus === "READY" && (checksumMismatch || versionMismatch);
-
-                      const isPluginRemoving = removingIds.has(installedPlugin.pluginId);
-                      const isPluginDisabling = disablingIds.has(installedPlugin.pluginId);
-                      const isPluginEnabling = enablingIds.has(installedPlugin.pluginId);
-
-                      return (
-                        <PluginCard
-                          key={installedPlugin.pluginId}
-                          plugin={manifest}
-                          hostVersion={hostVersion}
-                          hostPlatform={hostPlatform}
-                          installStatus={
-                            displayStatus as
-                              | "NOT_INSTALLED"
-                              | "INSTALLING"
-                              | "READY"
-                              | "CRASHED"
-                              | "INCOMPATIBLE"
-                              | "DISABLED"
-                          }
-                          installProgress={installedPlugin.progress}
-                          updateAvailable={updateAvailable}
-                          installedVersion={installedPlugin.installedVersion}
-                          installedSize={installedPlugin.size}
-                          isDisabling={isPluginDisabling}
-                          isEnabling={isPluginEnabling}
-                          onInstall={() => handleInstall(installedPlugin.pluginId, manifest.name)}
-                          onUpdate={() => handleInstall(installedPlugin.pluginId, manifest.name)}
-                          onRetry={() =>
-                            handleInstall(
-                              installedPlugin.pluginId,
-                              manifest.name,
-                              installedPlugin.installedVersion
-                            )
-                          }
-                          onRemove={() => handleRemove(installedPlugin.pluginId, manifest.name)}
-                          onDisable={() => handleDisable(installedPlugin.pluginId, manifest.name)}
-                          onEnable={() => handleEnable(installedPlugin.pluginId, manifest.name)}
-                          isRemoving={isPluginRemoving}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
+                <InstalledPluginsSection
+                  installed={installed}
+                  isLoadingInstalled={isLoadingInstalled}
+                  hostVersion={hostVersion}
+                  hostPlatform={hostPlatform}
+                  attemptedInstalls={attemptedInstalls}
+                  removingIds={removingIds}
+                  disablingIds={disablingIds}
+                  enablingIds={enablingIds}
+                  onInstall={handleInstall}
+                  onUpdate={handleInstall}
+                  onRetry={handleInstall}
+                  onRemove={handleRemove}
+                  onDisable={handleDisable}
+                  onEnable={handleEnable}
+                />
               </section>
 
               <Divider />
@@ -401,7 +209,18 @@ export const MarketplaceView: FC<{
             <h3 className="text-sm font-semibold">
               Available Plugins{available.length > 0 ? ` (${available.length})` : ""}
             </h3>
-            {availableSectionContent}
+            <AvailablePluginsSection
+              isMarketplaceError={isMarketplaceError}
+              marketplaceError={marketplaceError}
+              onGoToMarketplaceSettings={onGoToMarketplaceSettings}
+              isLoadingMarketplace={isLoadingMarketplace}
+              available={available}
+              hostVersion={hostVersion}
+              hostPlatform={hostPlatform}
+              removingIds={removingIds}
+              onInstall={handleInstall}
+              onRemove={handleRemove}
+            />
           </section>
         </div>
       </div>

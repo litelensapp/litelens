@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,9 +15,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListNetworkPolicies(namespaces []string) ([]dto.NetworkPolicy, error) {
+func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.NetworkPolicy{}, nil
@@ -76,7 +77,7 @@ func (a *App) DeleteNetworkPolicy(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitNetworkPolicies([]string{namespace})
+	a.emitNetworkPolicies()
 
 	return nil
 }
@@ -91,7 +92,6 @@ func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -100,15 +100,9 @@ func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitNetworkPolicies(touchedNamespaces)
+	a.emitNetworkPolicies()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d networkpolicies: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -116,9 +110,10 @@ func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
 	return nil
 }
 
-func (a *App) emitNetworkPolicies(namespaces []string) {
+func (a *App) emitNetworkPolicies() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -131,22 +126,12 @@ func (a *App) emitNetworkPolicies(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Networking().V1().NetworkPolicies().Lister()
-	allData, err := kubeResources.ListNetworkPolicies(lister, nil)
+	data, err := kubeResources.ListNetworkPolicies(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitNetworkPolicies: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "networkpolicies:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.NetworkPolicy, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "networkpolicies:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "networkpolicies:update", data)
 }
 
 func (a *App) GetNetworkPolicyYAML(namespace, name string) (string, error) {
@@ -193,7 +178,7 @@ func (a *App) UpdateNetworkPolicyYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update NetworkPolicy: %w", err)
 	}
 
-	a.emitNetworkPolicies([]string{namespace})
+	a.emitNetworkPolicies()
 
 	return nil
 }

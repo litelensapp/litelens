@@ -7,7 +7,7 @@ import { GetDeploymentByName } from "../../api/resources";
 import { useDeploymentsUpdateEvents } from "../async-events/useDeploymentsUpdateEvents";
 
 export const useGetDeploymentDetail = (context: string, namespace: string, name: string) => {
-  const latestDeployments = useDeploymentsUpdateEvents([namespace]);
+  const latestDeployments = useDeploymentsUpdateEvents();
 
   const query = useQuery<Deployment, Error>({
     queryKey: [QUERY_KEY_DEPLOYMENT_DETAIL, { context, namespace, name }],

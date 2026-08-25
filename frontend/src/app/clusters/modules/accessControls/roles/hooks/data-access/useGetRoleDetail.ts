@@ -7,7 +7,7 @@ import { GetRoleByName } from "../../api/resources";
 import { useRolesUpdateEvents } from "../async-events/useRolesUpdateEvents";
 
 export const useGetRoleDetail = (context: string, namespace: string, name: string) => {
-  const latestRoles = useRolesUpdateEvents([namespace]);
+  const latestRoles = useRolesUpdateEvents();
 
   const query = useQuery<Role, Error>({
     queryKey: [QUERY_KEY_ROLE_DETAIL, { context, namespace, name }],

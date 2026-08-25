@@ -38,13 +38,15 @@ const apiMutationTimeout = 30 * time.Second
 type App struct {
 	ctx                   context.Context
 	version               string
-	appSizeBytes          int64  // cached at startup, read-only afterward
-	installSource         string // set once by a background goroutine started in Startup; guarded by mu
+	appSizeBytes          int64         // cached at startup, read-only afterward
+	installSource         string        // set once by a background goroutine started in Startup; guarded by mu
+	installSourceReady    chan struct{} // closed once installSource has been detected; see GetInstallSource
 	settings              config.Settings
 	clients               map[string]*kubernetes.Clientset
 	factories             map[string]*kube.FactoryHandle
 	metricsClients        map[string]*metricsclient.Clientset
 	activeContext         string
+	activeNamespaces      []string // guarded by mu; empty/nil = all namespaces
 	mu                    sync.RWMutex
 	lastUpdateCheckResult *UpdateCheckResult // guarded by mu; caches the last successful update check
 	portForwards          map[string]dto.PortForward
@@ -86,20 +88,21 @@ func NewApp(version string) *App {
 		go resolveLoginShellPATH(s.ShellPath)
 	}
 	return &App{
-		version:           version,
-		settings:          s,
-		clients:           make(map[string]*kubernetes.Clientset),
-		factories:         make(map[string]*kube.FactoryHandle),
-		metricsClients:    make(map[string]*metricsclient.Clientset),
-		portForwards:      make(map[string]dto.PortForward),
-		restConfigs:       make(map[string]*rest.Config),
-		pfCancels:         make(map[string]context.CancelFunc),
-		logCancels:        make(map[string]context.CancelFunc),
-		logSeqs:           make(map[string]uint64),
-		execCancels:       make(map[string]context.CancelFunc),
-		execResizeChans:   make(map[string]chan remotecommand.TerminalSize),
-		pluginLoaders:     make(map[string]*plugin.PluginLoader),
-		removingPluginIDs: make(map[string]bool),
+		version:            version,
+		settings:           s,
+		clients:            make(map[string]*kubernetes.Clientset),
+		factories:          make(map[string]*kube.FactoryHandle),
+		metricsClients:     make(map[string]*metricsclient.Clientset),
+		portForwards:       make(map[string]dto.PortForward),
+		restConfigs:        make(map[string]*rest.Config),
+		pfCancels:          make(map[string]context.CancelFunc),
+		logCancels:         make(map[string]context.CancelFunc),
+		logSeqs:            make(map[string]uint64),
+		execCancels:        make(map[string]context.CancelFunc),
+		execResizeChans:    make(map[string]chan remotecommand.TerminalSize),
+		pluginLoaders:      make(map[string]*plugin.PluginLoader),
+		removingPluginIDs:  make(map[string]bool),
+		installSourceReady: make(chan struct{}),
 	}
 }
 
@@ -113,15 +116,16 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.appSizeBytes = getAppSizeBytes()
 	// DetectInstallSource can shell out to brew (up to a 2s timeout) on Homebrew
-	// installs; run it off the startup path so it never delays app launch. The
-	// About modal isn't reachable until well after DomReady, so installSource
-	// (mu-guarded) is populated long before anyone reads it in practice; if read
-	// before it's ready, GetInstallSource/OpenAbout just see the zero-value "".
+	// installs; run it off the startup path so it never delays app launch.
+	// GetInstallSource blocks on installSourceReady rather than racing this
+	// goroutine, since the update-available flow can reach the frontend (and
+	// call GetInstallSource) well before detection finishes.
 	go func() {
 		source := updater.DetectInstallSource()
 		a.mu.Lock()
 		a.installSource = source
 		a.mu.Unlock()
+		close(a.installSourceReady)
 	}()
 	a.restoreInstalledPlugins()
 	// Start the plugin cluster context gRPC server. This is required for cluster sync
@@ -243,6 +247,7 @@ func (a *App) Connect(contextName string) error {
 	})
 	a.factories[contextName] = h
 	a.activeContext = contextName
+	a.activeNamespaces = nil
 
 	// Push cluster context to all running plugins with HTTP backends.
 	// Phase 2 design decision: "The host pushes POST on every cluster switch."
@@ -261,38 +266,38 @@ func (a *App) Connect(contextName string) error {
 
 	// Register event handlers for live updates.
 	isCtx := func() bool { return a.isActive(contextName) }
-	debLeases := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitLeases([]string{ns}) }, isCtx)
-	debEvents := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitEvents([]string{ns}) }, isCtx)
-	debEndpoints := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitEndpoints([]string{ns}) }, isCtx)
-	debEndpointSlices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitEndpointSlices([]string{ns}) }, isCtx)
-	debPods := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitPods([]string{ns}) }, isCtx)
-	debDeployments := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitDeployments([]string{ns}) }, isCtx)
-	debDaemonSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitDaemonSets([]string{ns}) }, isCtx)
-	debReplicaSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitReplicaSets([]string{ns}) }, isCtx)
-	debStatefulSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitStatefulSets([]string{ns}) }, isCtx)
-	debJobs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitJobs([]string{ns}) }, isCtx)
-	debCronJobs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitCronJobs([]string{ns}) }, isCtx)
-	debConfigMaps := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitConfigMaps([]string{ns}) }, isCtx)
-	debSecrets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitSecrets([]string{ns}) }, isCtx)
-	debResourceQuotas := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitResourceQuotas([]string{ns}) }, isCtx)
-	debLimitRanges := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitLimitRanges([]string{ns}) }, isCtx)
-	debHPAs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitHPAs([]string{ns}) }, isCtx)
-	debPodDisruptionBudgets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitPodDisruptionBudgets([]string{ns}) }, isCtx)
-	debIngresses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitIngresses([]string{ns}) }, isCtx)
-	debNetworkPolicies := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitNetworkPolicies([]string{ns}) }, isCtx)
+	debLeases := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitLeases() }, isCtx)
+	debEvents := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEvents() }, isCtx)
+	debEndpoints := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEndpoints() }, isCtx)
+	debEndpointSlices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEndpointSlices() }, isCtx)
+	debPods := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPods() }, isCtx)
+	debDeployments := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitDeployments() }, isCtx)
+	debDaemonSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitDaemonSets() }, isCtx)
+	debReplicaSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitReplicaSets() }, isCtx)
+	debStatefulSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitStatefulSets() }, isCtx)
+	debJobs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitJobs() }, isCtx)
+	debCronJobs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitCronJobs() }, isCtx)
+	debConfigMaps := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitConfigMaps() }, isCtx)
+	debSecrets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitSecrets() }, isCtx)
+	debResourceQuotas := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitResourceQuotas() }, isCtx)
+	debLimitRanges := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitLimitRanges() }, isCtx)
+	debHPAs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitHPAs() }, isCtx)
+	debPodDisruptionBudgets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPodDisruptionBudgets() }, isCtx)
+	debIngresses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitIngresses() }, isCtx)
+	debNetworkPolicies := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitNetworkPolicies() }, isCtx)
 	debIngressClasses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitIngressClasses() }, isCtx)
 	debValidatingWebhookConfigs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitValidatingWebhookConfigs() }, isCtx)
-	debPersistentVolumeClaims := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitPersistentVolumeClaims([]string{ns}) }, isCtx)
+	debPersistentVolumeClaims := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPersistentVolumeClaims() }, isCtx)
 	debPersistentVolumes := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPersistentVolumes() }, isCtx)
 	debStorageClasses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitStorageClasses() }, isCtx)
-	debServices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitServices([]string{ns}) }, isCtx)
+	debServices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitServices() }, isCtx)
 	debNodes := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitNodes() }, isCtx)
 	debNamespaces := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitNamespaces() }, isCtx)
-	debServiceAccounts := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitServiceAccounts([]string{ns}) }, isCtx)
+	debServiceAccounts := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitServiceAccounts() }, isCtx)
 	debClusterRoles := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitClusterRoles() }, isCtx)
-	debRoles := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitRoles([]string{ns}) }, isCtx)
+	debRoles := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitRoles() }, isCtx)
 	debClusterRoleBindings := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitClusterRoleBindings() }, isCtx)
-	debRoleBindings := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(ns string) { a.emitRoleBindings([]string{ns}) }, isCtx)
+	debRoleBindings := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitRoleBindings() }, isCtx)
 	debPriorityClasses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPriorityClasses() }, isCtx)
 
 	// Register all debouncers with the factory for lifecycle management

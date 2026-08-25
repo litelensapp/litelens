@@ -1,11 +1,10 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_ROLE_BINDINGS } from "../../api/api.const";
 import type { RoleBinding } from "../../api/resources";
 import { ListRoleBindings } from "../../api/resources";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useRoleBindingsUpdateEvents } from "../async-events/useRoleBindingsUpdateEvents";
 
 export const useGetRoleBindings = (
@@ -13,20 +12,28 @@ export const useGetRoleBindings = (
   callback?: UseQueryCallback<RoleBinding[]>
 ) => {
   const { context, namespaces } = input;
-  const latestRoleBindings = useRoleBindingsUpdateEvents(namespaces);
+  const latestRoleBindings = useRoleBindingsUpdateEvents();
 
   const query = useQuery<RoleBinding[], Error>({
     queryKey: [QUERY_KEY_ROLE_BINDINGS, { context, namespaces }],
-    queryFn: () => ListRoleBindings(namespaces),
+    queryFn: () => ListRoleBindings(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestRoleBindings.length) baseData = filterByNamespaces(latestRoleBindings, namespaces);
+    const baseData = latestRoleBindings.length ? latestRoleBindings : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestRoleBindings, query.data, namespaces, callback]);
+  }, [latestRoleBindings, query.data, callback]);
 
-  return { ...query, data: mergedData };
+  const isLoading = latestRoleBindings.length === 0 && query.isLoading;
+
+  return {
+    ...query,
+    data: mergedData,
+    isLoading,
+  };
 };

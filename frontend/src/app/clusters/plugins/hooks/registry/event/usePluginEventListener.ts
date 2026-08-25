@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
-import { getHandler } from "./pluginEventRegistry";
+import { useEffect } from "react";
+import { pluginEventRegistry } from "./pluginEventRegistry";
 
 interface PluginEventPayload {
   pluginId: string;
@@ -12,7 +12,7 @@ export function usePluginEventListener(): void {
   useEffect(() => {
     return EventsOn("plugin:event", (eventPayload: unknown) => {
       const payload = eventPayload as PluginEventPayload;
-      const handler = getHandler(payload.eventName);
+      const handler = pluginEventRegistry.getHandler(payload.eventName);
       if (handler) {
         try {
           handler(payload.payload);

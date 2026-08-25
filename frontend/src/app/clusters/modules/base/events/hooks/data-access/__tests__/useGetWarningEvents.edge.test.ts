@@ -83,7 +83,7 @@ describe("useGetWarningEvents edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       const callCount1 = listWarningEventsMock.mock.calls.length;
 
-      triggerEvent("events:default:warning:update");
+      triggerEvent("events:warning:update");
 
       await waitFor(() => {
         expect(listWarningEventsMock.mock.calls.length).toBeGreaterThan(callCount1);
@@ -101,7 +101,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      triggerEvent("events:default:warning:update");
+      triggerEvent("events:warning:update");
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
@@ -120,7 +120,7 @@ describe("useGetWarningEvents edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       const callCount1 = listWarningEventsMock.mock.calls.length;
 
-      triggerEvent("events:default:warning:update");
+      triggerEvent("events:warning:update");
 
       await waitFor(() => {
         expect(listWarningEventsMock.mock.calls.length).toBeGreaterThan(callCount1);
@@ -128,7 +128,7 @@ describe("useGetWarningEvents edge cases", () => {
 
       const callCount2 = listWarningEventsMock.mock.calls.length;
 
-      triggerEvent("events:default:warning:update");
+      triggerEvent("events:warning:update");
 
       await waitFor(() => {
         expect(listWarningEventsMock.mock.calls.length).toBeGreaterThan(callCount2);
@@ -312,7 +312,7 @@ describe("useGetWarningEvents edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       const callCount1 = listWarningEventsMock.mock.calls.length;
 
-      triggerEvent("events:default:warning:update");
+      triggerEvent("events:warning:update");
 
       await waitFor(() => {
         expect(listWarningEventsMock.mock.calls.length).toBeGreaterThan(callCount1);
