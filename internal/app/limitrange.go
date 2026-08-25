@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,9 +16,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListLimitRanges(namespaces []string) ([]dto.LimitRange, error) {
+func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.LimitRange{}, nil
@@ -148,7 +149,7 @@ func (a *App) CreateLimitRange(namespace, name string, limits map[string]map[str
 		return err
 	}
 
-	a.emitLimitRanges([]string{namespace})
+	a.emitLimitRanges()
 	return nil
 }
 
@@ -167,7 +168,7 @@ func (a *App) DeleteLimitRange(namespace, name string) error {
 		return fmt.Errorf("delete LimitRange: %w", err)
 	}
 
-	a.emitLimitRanges([]string{namespace})
+	a.emitLimitRanges()
 
 	return nil
 }
@@ -182,7 +183,6 @@ func (a *App) DeleteLimitRanges(items []dto.LimitRangeRef) error {
 	}
 
 	var failMsgs []string
-	touchedNamespaces := map[string]bool{}
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -191,14 +191,9 @@ func (a *App) DeleteLimitRanges(items []dto.LimitRangeRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			failMsgs = append(failMsgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		touchedNamespaces[ref.Namespace] = true
 	}
 
-	touchedNamespaceList := make([]string, 0, len(touchedNamespaces))
-	for ns := range touchedNamespaces {
-		touchedNamespaceList = append(touchedNamespaceList, ns)
-	}
-	a.emitLimitRanges(touchedNamespaceList)
+	a.emitLimitRanges()
 
 	if len(failMsgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d limitranges: %s", len(failMsgs), len(items), strings.Join(failMsgs, "; "))
@@ -206,9 +201,10 @@ func (a *App) DeleteLimitRanges(items []dto.LimitRangeRef) error {
 	return nil
 }
 
-func (a *App) emitLimitRanges(namespaces []string) {
+func (a *App) emitLimitRanges() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -221,22 +217,12 @@ func (a *App) emitLimitRanges(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Core().V1().LimitRanges().Lister()
-	allData, err := kubeResources.ListLimitRanges(lister, nil)
+	data, err := kubeResources.ListLimitRanges(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitLimitRanges: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "limitranges:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.LimitRange, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "limitranges:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "limitranges:update", data)
 }
 
 func (a *App) GetLimitRangeYAML(namespace, name string) (string, error) {
@@ -283,7 +269,7 @@ func (a *App) UpdateLimitRangeYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update LimitRange: %w", err)
 	}
 
-	a.emitLimitRanges([]string{namespace})
+	a.emitLimitRanges()
 
 	return nil
 }

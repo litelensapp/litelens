@@ -4,8 +4,8 @@ import (
 	"log"
 	"sort"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -26,9 +26,10 @@ func warningEvents(events []dto.Event) []dto.Event {
 	return result
 }
 
-func (a *App) ListEvents(namespaces []string) ([]dto.Event, error) {
+func (a *App) ListEvents() ([]dto.Event, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Event{}, nil
@@ -51,9 +52,10 @@ func (a *App) ListEvents(namespaces []string) ([]dto.Event, error) {
 	return result, nil
 }
 
-func (a *App) ListWarningEvents(namespaces []string) ([]dto.Event, error) {
+func (a *App) ListWarningEvents() ([]dto.Event, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Event{}, nil
@@ -98,9 +100,10 @@ func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
 	return result, nil
 }
 
-func (a *App) emitEvents(namespaces []string) {
+func (a *App) emitEvents() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -113,23 +116,12 @@ func (a *App) emitEvents(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Core().V1().Events().Lister()
-	allData, err := kubeResources.ListEvents(lister, nil)
+	data, err := kubeResources.ListEvents(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitEvents: %v", err)
 		return
 	}
-	sortEventsDesc(allData)
-	runtime.EventsEmit(a.ctx, "events:update", allData)
-	runtime.EventsEmit(a.ctx, "events:warning:update", warningEvents(allData))
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.Event, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "events:"+ns+":update", nsData)
-		runtime.EventsEmit(a.ctx, "events:"+ns+":warning:update", warningEvents(nsData))
-	}
+	sortEventsDesc(data)
+	runtime.EventsEmit(a.ctx, "events:update", data)
+	runtime.EventsEmit(a.ctx, "events:warning:update", warningEvents(data))
 }

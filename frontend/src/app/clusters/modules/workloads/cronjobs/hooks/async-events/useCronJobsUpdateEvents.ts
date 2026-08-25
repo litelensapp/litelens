@@ -1,46 +1,21 @@
-import { useEffect, useState, startTransition } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
+import { useEffect, useState, startTransition } from "react";
 import type { CronJob } from "../../api/resources";
-import { mergeNamespaceScopedData } from "../../../../../shared/utils/eventMerging";
 
-export function useCronJobsUpdateEvents(namespaces: string[] = []): CronJob[] {
-  const [latestCronJobs, setlatestCronJobs] = useState<CronJob[]>([]);
-  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
-
-  // When namespace selection changes, filter down accumulated state to only selected namespaces.
-  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
-    setPrevNamespaces(namespaces);
-    if (namespaces.length > 0) {
-      const namespacesSet = new Set(namespaces);
-      setlatestCronJobs((prev) => prev.filter((item) => namespacesSet.has(item.Namespace)));
-    } else {
-      setlatestCronJobs([]);
-    }
-  }
+// Data-only event hook: tracks the latest pushed data in local state.
+// The backend pre-filters "cronjobs:update" by the currently active namespace
+// selection (see App.SetActiveNamespaces / emitCronJobs), so this hook
+// no longer needs to know about namespaces at all.
+export function useCronJobsUpdateEvents(): CronJob[] {
+  const [latestCronJobs, setLatestCronJobs] = useState<CronJob[]>([]);
 
   useEffect(() => {
-    if (namespaces.length === 0) {
-      return EventsOn("cronjobs:update", (data: CronJob[]) => {
-        startTransition(() => {
-          setlatestCronJobs(data);
-        });
+    return EventsOn("cronjobs:update", (data: CronJob[]) => {
+      startTransition(() => {
+        setLatestCronJobs(data);
       });
-    }
+    });
+  }, []);
 
-    const unsubscribers: Array<() => void> = [];
-    for (const ns of namespaces) {
-      const eventName = `cronjobs:${ns}:update`;
-      const unsubscriber = EventsOn(eventName, (data: CronJob[]) => {
-        startTransition(() => {
-          setlatestCronJobs((prev) => mergeNamespaceScopedData(prev, data, ns));
-        });
-      });
-      unsubscribers.push(unsubscriber);
-    }
-
-    return () => {
-      unsubscribers.forEach((unsub) => unsub());
-    };
-  }, [namespaces]);
   return latestCronJobs;
 }

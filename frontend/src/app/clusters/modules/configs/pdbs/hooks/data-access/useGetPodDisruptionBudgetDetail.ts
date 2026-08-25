@@ -12,7 +12,7 @@ export const useGetPodDisruptionBudgetDetail = (
   name: string
 ) => {
   const queryClient = useQueryClient();
-  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents([namespace]);
+  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents();
 
   const query = useQuery<PodDisruptionBudgetDetail, Error>({
     queryKey: [QUERY_KEY_PDB_DETAIL, { context, namespace, name }],

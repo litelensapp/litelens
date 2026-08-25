@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,9 +15,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListPersistentVolumeClaims(namespaces []string) ([]dto.PersistentVolumeClaim, error) {
+func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.PersistentVolumeClaim{}, nil
@@ -68,9 +69,10 @@ func (a *App) GetPersistentVolumeClaimByName(namespace, name string) (*dto.Persi
 	return result, nil
 }
 
-func (a *App) emitPersistentVolumeClaims(namespaces []string) {
+func (a *App) emitPersistentVolumeClaims() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -84,22 +86,12 @@ func (a *App) emitPersistentVolumeClaims(namespaces []string) {
 	}
 	pvcLister := h.Factory.Core().V1().PersistentVolumeClaims().Lister()
 	podLister := h.Factory.Core().V1().Pods().Lister()
-	allData, err := kubeResources.ListPersistentVolumeClaims(pvcLister, podLister, nil)
+	data, err := kubeResources.ListPersistentVolumeClaims(pvcLister, podLister, namespaces)
 	if err != nil {
 		log.Printf("app: emitPersistentVolumeClaims: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "pvcs:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.PersistentVolumeClaim, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "pvcs:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "pvcs:update", data)
 }
 
 // DeletePersistentVolumeClaim deletes a PersistentVolumeClaim from the specified namespace.
@@ -118,7 +110,7 @@ func (a *App) DeletePersistentVolumeClaim(namespace, name string) error {
 		return fmt.Errorf("delete PersistentVolumeClaim: %w", err)
 	}
 
-	a.emitPersistentVolumeClaims([]string{namespace})
+	a.emitPersistentVolumeClaims()
 
 	return nil
 }
@@ -133,7 +125,6 @@ func (a *App) DeletePersistentVolumeClaims(items []dto.PersistentVolumeClaimRef)
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -142,15 +133,9 @@ func (a *App) DeletePersistentVolumeClaims(items []dto.PersistentVolumeClaimRef)
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitPersistentVolumeClaims(touchedNamespaces)
+	a.emitPersistentVolumeClaims()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d persistentvolumeclaims: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -202,7 +187,7 @@ func (a *App) UpdatePersistentVolumeClaimYAML(namespace, yamlString string) erro
 		return fmt.Errorf("update PersistentVolumeClaim: %w", err)
 	}
 
-	a.emitPersistentVolumeClaims([]string{namespace})
+	a.emitPersistentVolumeClaims()
 
 	return nil
 }

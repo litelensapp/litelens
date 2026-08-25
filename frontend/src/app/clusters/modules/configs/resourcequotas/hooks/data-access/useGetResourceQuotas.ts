@@ -1,11 +1,10 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_RESOURCE_QUOTAS } from "../../api/api.const";
 import type { ResourceQuota } from "../../api/resources";
 import { ListResourceQuotas } from "../../api/resources";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useResourceQuotasUpdateEvents } from "../async-events/useResourceQuotasUpdateEvents";
 
 export const useGetResourceQuotas = (
@@ -13,21 +12,28 @@ export const useGetResourceQuotas = (
   callback?: UseQueryCallback<ResourceQuota[]>
 ) => {
   const { context, namespaces } = input;
-  const latestResourceQuotas = useResourceQuotasUpdateEvents(namespaces);
+  const latestResourceQuotas = useResourceQuotasUpdateEvents();
 
   const query = useQuery<ResourceQuota[], Error>({
     queryKey: [QUERY_KEY_RESOURCE_QUOTAS, { context, namespaces }],
-    queryFn: () => ListResourceQuotas(namespaces),
+    queryFn: () => ListResourceQuotas(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestResourceQuotas.length)
-      baseData = filterByNamespaces(latestResourceQuotas, namespaces);
+    const baseData = latestResourceQuotas.length ? latestResourceQuotas : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestResourceQuotas, query.data, namespaces, callback]);
+  }, [latestResourceQuotas, query.data, callback]);
 
-  return { ...query, data: mergedData };
+  const isLoading = latestResourceQuotas.length === 0 && query.isLoading;
+
+  return {
+    ...query,
+    data: mergedData,
+    isLoading,
+  };
 };

@@ -7,6 +7,7 @@ import { isPluginMounted, shouldResetActiveResource } from "./MainLayout.utils";
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 import { useGetNamespaceNames } from "./modules/base/namespaces/hooks/data-access/useGetNamespaceNames";
+import { useSetActiveNamespaces } from "./modules/base/namespaces/hooks/data-mutation/useSetActiveNamespaces";
 import { RESOURCE_LABEL, ViewType } from "./navConfig";
 import { NavSidebar } from "./NavSidebar";
 import { pluginEventRegistry } from "./plugins/hooks/registry/event/pluginEventRegistry";
@@ -209,6 +210,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   );
 
   const [namespaces, setNamespaces] = useState<string[]>([]);
+  const { mutate: setActiveNamespaces } = useSetActiveNamespaces();
   const { data: namespaceNames = [] } = useGetNamespaceNames(activeContext);
   const { data: defaultNamespaces } = useGetDefaultNamespaces(activeContext);
   // Tracks the last-applied "<context>:<defaults>" snapshot, so the seed below
@@ -229,7 +231,9 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     if (appliedDefaultKey !== defaultKey) {
       setAppliedDefaultKey(defaultKey);
       const existing = new Set(namespaceNames);
-      setNamespaces(defaultNamespaces.filter((ns) => existing.has(ns)));
+      const filteredDefaults = defaultNamespaces.filter((ns) => existing.has(ns));
+      setNamespaces(filteredDefaults);
+      setActiveNamespaces(filteredDefaults);
     }
   }
 
@@ -338,6 +342,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
 
   function handleNamespacesChange(ns: string[]) {
     setNamespaces(ns);
+    setActiveNamespaces(ns);
   }
 
   function toggleGroup(id: string) {

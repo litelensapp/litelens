@@ -12,7 +12,7 @@ export function useGetIngressYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestIngresses = useIngressesUpdateEvents([namespace]);
+  const latestIngresses = useIngressesUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_INGRESS_YAML, { context, namespace, name }],

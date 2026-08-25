@@ -8,7 +8,7 @@ import { useNetworkPoliciesUpdateEvents } from "../async-events/useNetworkPolici
 
 export const useGetNetworkPolicyDetail = (context: string, namespace: string, name: string) => {
   const queryClient = useQueryClient();
-  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents([namespace]);
+  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents();
 
   const query = useQuery<NetworkPolicyDetail, Error>({
     queryKey: [QUERY_KEY_NETWORK_POLICY_DETAIL, { context, namespace, name }],

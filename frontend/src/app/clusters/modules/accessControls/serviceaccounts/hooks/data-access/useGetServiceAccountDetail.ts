@@ -7,7 +7,7 @@ import { GetServiceAccountByName } from "../../api/resources";
 import { useServiceAccountsUpdateEvents } from "../async-events/useServiceAccountsUpdateEvents";
 
 export const useGetServiceAccountDetail = (context: string, namespace: string, name: string) => {
-  const latestServiceAccounts = useServiceAccountsUpdateEvents([namespace]);
+  const latestServiceAccounts = useServiceAccountsUpdateEvents();
 
   const query = useQuery<ServiceAccount, Error>({
     queryKey: [QUERY_KEY_SERVICE_ACCOUNT_DETAIL, { context, namespace, name }],

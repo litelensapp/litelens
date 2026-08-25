@@ -3,6 +3,7 @@ export {
   GetNamespaces,
   GetNamespaceYAML,
   ListNamespaces,
+  SetActiveNamespaces,
   UpdateNamespaceYAML,
 } from "@wailsjs/go/app/App";
 

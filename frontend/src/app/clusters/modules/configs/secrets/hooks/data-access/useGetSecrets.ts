@@ -1,11 +1,10 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_SECRETS } from "../../api/api.const";
 import type { Secret } from "../../api/resources";
 import { ListSecrets } from "../../api/resources";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useSecretsUpdateEvents } from "../async-events/useSecretsUpdateEvents";
 
 export const useGetSecrets = (
@@ -13,19 +12,28 @@ export const useGetSecrets = (
   callback?: UseQueryCallback<Secret[]>
 ) => {
   const { context, namespaces } = input;
-  const latestSecrets = useSecretsUpdateEvents(namespaces);
+  const latestSecrets = useSecretsUpdateEvents();
+
   const query = useQuery<Secret[], Error>({
     queryKey: [QUERY_KEY_SECRETS, { context, namespaces }],
-    queryFn: () => ListSecrets(namespaces),
+    queryFn: () => ListSecrets(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestSecrets.length) baseData = filterByNamespaces(latestSecrets, namespaces);
+    const baseData = latestSecrets.length ? latestSecrets : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestSecrets, query.data, namespaces, callback]);
+  }, [latestSecrets, query.data, callback]);
 
-  return { ...query, data: mergedData };
+  const isLoading = latestSecrets.length === 0 && query.isLoading;
+
+  return {
+    ...query,
+    data: mergedData,
+    isLoading,
+  };
 };

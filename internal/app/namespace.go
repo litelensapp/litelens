@@ -6,9 +6,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -232,5 +232,36 @@ func (a *App) UpdateNamespaceYAML(yamlString string) error {
 
 	a.emitNamespaces()
 
+	return nil
+}
+
+func (a *App) SetActiveNamespaces(namespaces []string) error {
+	a.mu.Lock()
+	a.activeNamespaces = namespaces
+	a.mu.Unlock()
+	a.emitPods()
+	a.emitEvents()
+	a.emitLeases()
+	a.emitEndpoints()
+	a.emitEndpointSlices()
+	a.emitDeployments()
+	a.emitDaemonSets()
+	a.emitReplicaSets()
+	a.emitStatefulSets()
+	a.emitJobs()
+	a.emitCronJobs()
+	a.emitConfigMaps()
+	a.emitSecrets()
+	a.emitResourceQuotas()
+	a.emitLimitRanges()
+	a.emitHPAs()
+	a.emitPodDisruptionBudgets()
+	a.emitIngresses()
+	a.emitNetworkPolicies()
+	a.emitPersistentVolumeClaims()
+	a.emitServices()
+	a.emitServiceAccounts()
+	a.emitRoles()
+	a.emitRoleBindings()
 	return nil
 }

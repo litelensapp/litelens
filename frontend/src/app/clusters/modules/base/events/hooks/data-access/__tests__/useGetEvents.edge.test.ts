@@ -67,8 +67,8 @@ beforeEach(() => {
 });
 
 describe("useGetEvents edge cases", () => {
-  describe("1. Event push with different namespace — should filter out", () => {
-    it("excludes events from different namespace when hook scoped to 'default'", async () => {
+  describe("1. Backend-filtered event push — passed through unfiltered", () => {
+    it("passes through whatever the backend pushes on events:update, regardless of namespace", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
         () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
@@ -84,14 +84,14 @@ describe("useGetEvents edge cases", () => {
         Namespace: "kube-system",
       });
 
-      triggerEvent("events:default:update", [kube_system_event]);
+      triggerEvent("events:update", [kube_system_event]);
 
       await waitFor(() => {
-        expect(result.current.data).toEqual([]);
+        expect(result.current.data).toEqual([kube_system_event]);
       });
     });
 
-    it("includes only events matching hook namespace from mixed event push", async () => {
+    it("passes through a mixed-namespace event push as-is", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
         () => useGetEvents({ context: "ctx", namespaces: ["default"] }),
@@ -105,10 +105,10 @@ describe("useGetEvents edge cases", () => {
       const default_event = mockEvent({ Name: "default-event", Namespace: "default" });
       const other_event = mockEvent({ Name: "other-event", Namespace: "kube-system" });
 
-      triggerEvent("events:default:update", [default_event, other_event]);
+      triggerEvent("events:update", [default_event, other_event]);
 
       await waitFor(() => {
-        expect(result.current.data).toEqual([default_event]);
+        expect(result.current.data).toEqual([default_event, other_event]);
       });
     });
   });
@@ -129,7 +129,7 @@ describe("useGetEvents edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data).toEqual(queryData);
 
-      triggerEvent("events:default:update", []);
+      triggerEvent("events:update", []);
 
       await new Promise((r) => setTimeout(r, 20));
       expect(result.current.data).toEqual(queryData);
@@ -188,7 +188,7 @@ describe("useGetEvents edge cases", () => {
       const event1 = mockEvent({ Name: "event-1" });
       const event2 = mockEvent({ Name: "event-2" });
 
-      triggerEvent("events:default:update", [event1, event2]);
+      triggerEvent("events:update", [event1, event2]);
 
       await waitFor(() => {
         expect(result.current.data).toEqual([event1]);
@@ -212,7 +212,7 @@ describe("useGetEvents edge cases", () => {
       expect(result.current.data).toBeUndefined();
 
       const event1 = mockEvent();
-      triggerEvent("events:default:update", [event1]);
+      triggerEvent("events:update", [event1]);
 
       await waitFor(() => {
         expect(result.current.data).toEqual([event1]);
@@ -229,8 +229,8 @@ describe("useGetEvents edge cases", () => {
     });
   });
 
-  describe("7. Namespace filter case sensitivity", () => {
-    it("requires exact namespace match (case-sensitive)", async () => {
+  describe("7. ListEvents call signature", () => {
+    it("calls ListEvents with no arguments — backend pre-filters by active namespace", async () => {
       const { wrapper } = makeWrapper();
       const { result } = renderHook(
         () => useGetEvents({ context: "ctx", namespaces: ["Default"] }),
@@ -240,13 +240,7 @@ describe("useGetEvents edge cases", () => {
       );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-      const event = mockEvent({ Namespace: "default" });
-      triggerEvent("events:Default:update", [event]);
-
-      await waitFor(() => {
-        expect(result.current.data).toEqual([]);
-      });
+      expect(listEventsMock).toHaveBeenCalledWith();
     });
   });
 
@@ -263,14 +257,14 @@ describe("useGetEvents edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       const event1 = mockEvent({ Name: "event-1" });
-      triggerEvent("events:default:update", [event1]);
+      triggerEvent("events:update", [event1]);
 
       await waitFor(() => {
         expect(result.current.data).toEqual([event1]);
       });
 
       const event2 = mockEvent({ Name: "event-2" });
-      triggerEvent("events:default:update", [event2]);
+      triggerEvent("events:update", [event2]);
 
       await waitFor(() => {
         expect(result.current.data).toEqual([event2]);

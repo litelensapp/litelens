@@ -7,7 +7,7 @@ import { GetIngressByName } from "../../api/resources";
 import { useIngressesUpdateEvents } from "../async-events/useIngressesUpdateEvents";
 
 export const useGetIngressDetail = (context: string, namespace: string, name: string) => {
-  const latestIngresses = useIngressesUpdateEvents([namespace]);
+  const latestIngresses = useIngressesUpdateEvents();
 
   const query = useQuery<IngressDetail, Error>({
     queryKey: [QUERY_KEY_INGRESS_DETAIL, { context, namespace, name }],

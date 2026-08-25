@@ -12,7 +12,7 @@ export const useGetPersistentVolumeClaimDetail = (
   name: string
 ) => {
   const queryClient = useQueryClient();
-  const latestPVCs = usePersistentVolumeClaimsUpdateEvents([namespace]);
+  const latestPVCs = usePersistentVolumeClaimsUpdateEvents();
   const query = useQuery<PersistentVolumeClaimDetail, Error>({
     queryKey: [QUERY_KEY_PVC_DETAIL, { context, namespace, name }],
     queryFn: () => GetPersistentVolumeClaimByName(namespace, name),

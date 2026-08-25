@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,9 +19,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListDeployments(namespaces []string) ([]dto.Deployment, error) {
+func (a *App) ListDeployments() ([]dto.Deployment, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Deployment{}, nil
@@ -159,7 +160,7 @@ func (a *App) DeleteDeployment(namespace, name string) error {
 		return fmt.Errorf("delete Deployment: %w", err)
 	}
 
-	a.emitDeployments([]string{namespace})
+	a.emitDeployments()
 
 	return nil
 }
@@ -174,7 +175,6 @@ func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -183,15 +183,9 @@ func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitDeployments(touchedNamespaces)
+	a.emitDeployments()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d deployments: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -199,9 +193,10 @@ func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
 	return nil
 }
 
-func (a *App) emitDeployments(namespaces []string) {
+func (a *App) emitDeployments() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -214,22 +209,12 @@ func (a *App) emitDeployments(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Apps().V1().Deployments().Lister()
-	allData, err := kubeResources.ListDeployments(lister, nil)
+	data, err := kubeResources.ListDeployments(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitDeployments: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "deployments:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.Deployment, 0)
-		for _, d := range allData {
-			if d.Namespace == ns {
-				nsData = append(nsData, d)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "deployments:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "deployments:update", data)
 }
 
 func (a *App) GetDeploymentYAML(namespace, name string) (string, error) {
@@ -276,7 +261,7 @@ func (a *App) UpdateDeploymentYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Deployment: %w", err)
 	}
 
-	a.emitDeployments([]string{namespace})
+	a.emitDeployments()
 
 	return nil
 }

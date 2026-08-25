@@ -7,14 +7,12 @@ import { useWarningEventsUpdateEvents } from "../async-events/useWarningEventsUp
 
 export const useGetWarningEvents = (input: { context: string; namespaces: string[] }) => {
   const { context, namespaces } = input;
-  const triggerRefresh = useWarningEventsUpdateEvents(namespaces);
+  const triggerRefresh = useWarningEventsUpdateEvents();
 
   return useQuery<Event[], Error>({
     queryKey: [QUERY_KEY_WARNING_EVENTS, { context, namespaces }, triggerRefresh],
     queryFn: () =>
-      ListWarningEvents(namespaces).then((events) =>
-        events.toSorted((a, b) => b.CreatedAt - a.CreatedAt)
-      ),
+      ListWarningEvents().then((events) => events.toSorted((a, b) => b.CreatedAt - a.CreatedAt)),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

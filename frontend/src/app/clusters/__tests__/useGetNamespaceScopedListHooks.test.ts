@@ -225,7 +225,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listEventsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listEventsMock).toHaveBeenCalledWith();
     });
   });
 
@@ -249,7 +249,7 @@ describe("Namespace-scoped list hooks", () => {
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listWarningEventsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listWarningEventsMock).toHaveBeenCalledWith();
     });
 
     it("queryFn sorts descending by CreatedAt", async () => {
@@ -290,7 +290,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listPodsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listPodsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -320,7 +320,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listDeploymentsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listDeploymentsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -356,7 +356,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listStatefulSetsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listStatefulSetsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -389,7 +389,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listDaemonSetsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listDaemonSetsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -422,7 +422,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listReplicaSetsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listReplicaSetsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -452,7 +452,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listJobsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listJobsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -482,7 +482,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listConfigMapsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listConfigMapsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -512,7 +512,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listSecretsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listSecretsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -544,7 +544,7 @@ describe("Namespace-scoped list hooks", () => {
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listPersistentVolumeClaimsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listPersistentVolumeClaimsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -577,7 +577,7 @@ describe("Namespace-scoped list hooks", () => {
         { wrapper }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listResourceQuotasMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listResourceQuotasMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -610,7 +610,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listLimitRangesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listLimitRangesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -640,7 +640,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listCronJobsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listCronJobsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -672,7 +672,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listServicesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listServicesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -705,7 +705,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listIngressesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listIngressesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -738,7 +738,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listEndpointsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listEndpointsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -774,7 +774,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listEndpointSlicesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listEndpointSlicesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -810,7 +810,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listNetworkPoliciesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listNetworkPoliciesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -846,7 +846,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listServiceAccountsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listServiceAccountsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -878,7 +878,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listLeasesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listLeasesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -908,7 +908,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listRolesMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listRolesMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -941,7 +941,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listRoleBindingsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listRoleBindingsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -971,7 +971,7 @@ describe("Namespace-scoped list hooks", () => {
         wrapper,
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listHPAsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listHPAsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {
@@ -1004,7 +1004,7 @@ describe("Namespace-scoped list hooks", () => {
         }
       );
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(listPodDisruptionBudgetsMock).toHaveBeenCalledWith(["ns1"]);
+      expect(listPodDisruptionBudgetsMock).toHaveBeenCalledWith();
     });
 
     it("queryKey uses [KEY, { context, namespace }]", () => {

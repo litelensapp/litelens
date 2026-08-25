@@ -1,11 +1,10 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_PDBS } from "../../api/api.const";
 import type { PodDisruptionBudget } from "../../api/resources";
 import { ListPodDisruptionBudgets } from "../../api/resources";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { usePodDisruptionBudgetsUpdateEvents } from "../async-events/usePodDisruptionBudgetsUpdateEvents";
 
 export const useGetPodDisruptionBudgets = (
@@ -13,21 +12,28 @@ export const useGetPodDisruptionBudgets = (
   callback?: UseQueryCallback<PodDisruptionBudget[]>
 ) => {
   const { context, namespaces } = input;
-  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents(namespaces);
+  const latestPodDisruptionBudgets = usePodDisruptionBudgetsUpdateEvents();
 
   const query = useQuery<PodDisruptionBudget[], Error>({
     queryKey: [QUERY_KEY_PDBS, { context, namespaces }],
-    queryFn: () => ListPodDisruptionBudgets(namespaces),
+    queryFn: () => ListPodDisruptionBudgets(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestPodDisruptionBudgets.length)
-      baseData = filterByNamespaces(latestPodDisruptionBudgets, namespaces);
+    const baseData = latestPodDisruptionBudgets.length ? latestPodDisruptionBudgets : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestPodDisruptionBudgets, query.data, namespaces, callback]);
+  }, [latestPodDisruptionBudgets, query.data, callback]);
 
-  return { ...query, data: mergedData };
+  const isLoading = latestPodDisruptionBudgets.length === 0 && query.isLoading;
+
+  return {
+    ...query,
+    data: mergedData,
+    isLoading,
+  };
 };

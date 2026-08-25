@@ -1,46 +1,21 @@
-import { useEffect, useState, startTransition } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
+import { useEffect, useState, startTransition } from "react";
 import type { EndpointSlice } from "../../api/resources";
-import { mergeNamespaceScopedData } from "../../../../../shared/utils/eventMerging";
 
-export function useEndpointSlicesUpdateEvents(namespaces: string[] = []): EndpointSlice[] {
-  const [latestEndpointSlices, setlatestEndpointSlices] = useState<EndpointSlice[]>([]);
-  const [prevNamespaces, setPrevNamespaces] = useState(namespaces);
-
-  // When namespace selection changes, filter down accumulated state to only selected namespaces.
-  if (JSON.stringify(prevNamespaces) !== JSON.stringify(namespaces)) {
-    setPrevNamespaces(namespaces);
-    if (namespaces.length > 0) {
-      const namespacesSet = new Set(namespaces);
-      setlatestEndpointSlices((prev) => prev.filter((item) => namespacesSet.has(item.Namespace)));
-    } else {
-      setlatestEndpointSlices([]);
-    }
-  }
+// Data-only event hook: tracks the latest pushed data in local state.
+// The backend pre-filters "endpointslices:update" by the currently active namespace
+// selection (see App.SetActiveNamespaces / emitEndpointSlices), so this hook
+// no longer needs to know about namespaces at all.
+export function useEndpointSlicesUpdateEvents(): EndpointSlice[] {
+  const [latestEndpointSlices, setLatestEndpointSlices] = useState<EndpointSlice[]>([]);
 
   useEffect(() => {
-    if (namespaces.length === 0) {
-      return EventsOn("endpointslices:update", (data: EndpointSlice[]) => {
-        startTransition(() => {
-          setlatestEndpointSlices(data);
-        });
+    return EventsOn("endpointslices:update", (data: EndpointSlice[]) => {
+      startTransition(() => {
+        setLatestEndpointSlices(data);
       });
-    }
+    });
+  }, []);
 
-    const unsubscribers: Array<() => void> = [];
-    for (const ns of namespaces) {
-      const eventName = `endpointslices:${ns}:update`;
-      const unsubscriber = EventsOn(eventName, (data: EndpointSlice[]) => {
-        startTransition(() => {
-          setlatestEndpointSlices((prev) => mergeNamespaceScopedData(prev, data, ns));
-        });
-      });
-      unsubscribers.push(unsubscriber);
-    }
-
-    return () => {
-      unsubscribers.forEach((unsub) => unsub());
-    };
-  }, [namespaces]);
   return latestEndpointSlices;
 }

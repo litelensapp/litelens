@@ -6,9 +6,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/litelensapp/litelens/internal/kube"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,10 +17,11 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListPods(namespaces []string) ([]dto.Pod, error) {
+func (a *App) ListPods() ([]dto.Pod, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	mc := a.metricsClients[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Pod{}, nil
@@ -101,17 +102,18 @@ func (a *App) GetPodsSummary(namespace string) (dto.PodSummary, error) {
 	return kubeResources.SummarizePods(pods), nil
 }
 
-func (a *App) emitPods(namespaces []string) {
-	a.emitPodsWithMetrics(namespaces, nil)
+func (a *App) emitPods() {
+	a.emitPodsWithMetrics(nil)
 }
 
-// emitPodsWithMetrics emits pod updates with optional pre-fetched cluster-wide metrics.
-// If allMetrics is nil, metrics are fetched asynchronously to avoid blocking the initial emit.
-// This variant avoids redundant metric fetches when emitting updates for multiple namespaces.
-func (a *App) emitPodsWithMetrics(namespaces []string, allMetrics map[string]dto.PodUsage) {
+// emitPodsWithMetrics emits a pod update filtered by the currently active namespace
+// selection (a.activeNamespaces). If allMetrics is nil, metrics are fetched
+// asynchronously to avoid blocking the initial emit.
+func (a *App) emitPodsWithMetrics(allMetrics map[string]dto.PodUsage) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
 	mc := a.metricsClients[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -121,50 +123,29 @@ func (a *App) emitPodsWithMetrics(namespaces []string, allMetrics map[string]dto
 	}
 	lister := h.Factory.Core().V1().Pods().Lister()
 
-	allPods, err := kubeResources.ListPods(lister, nil)
+	pods, err := kubeResources.ListPods(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitPods: %v", err)
 		return
 	}
 
-	// Emit pods immediately without waiting for metrics
 	if allMetrics != nil {
-		allPods = kubeResources.ApplyPodMetrics(allPods, allMetrics)
+		pods = kubeResources.ApplyPodMetrics(pods, allMetrics)
 	}
-	runtime.EventsEmit(a.ctx, "pods:update", allPods)
+	runtime.EventsEmit(a.ctx, "pods:update", pods)
 
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsPods := make([]dto.Pod, 0)
-		for _, p := range allPods {
-			if p.Namespace == ns {
-				nsPods = append(nsPods, p)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "pods:"+ns+":update", nsPods)
-	}
-
-	// Fetch metrics asynchronously if needed to avoid blocking the emit
 	if allMetrics == nil && mc != nil {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), metricsFetchTimeout)
 			defer cancel()
-			fetchedMetrics := kube.FetchPodMetrics(ctx, mc, "")
+			metricsNamespace := ""
+			if len(namespaces) == 1 {
+				metricsNamespace = namespaces[0]
+			}
+			fetchedMetrics := kube.FetchPodMetrics(ctx, mc, metricsNamespace)
 			if fetchedMetrics != nil {
-				// Apply metrics to the already-fetched pod list and re-emit; avoids a redundant relist.
-				allPodsWithMetrics := kubeResources.ApplyPodMetrics(allPods, fetchedMetrics)
-				runtime.EventsEmit(a.ctx, "pods:update", allPodsWithMetrics)
-
-				for _, ns := range namespaces {
-					// Filter to namespace and emit namespaced update with metrics
-					nsPods := make([]dto.Pod, 0)
-					for _, p := range allPodsWithMetrics {
-						if p.Namespace == ns {
-							nsPods = append(nsPods, p)
-						}
-					}
-					runtime.EventsEmit(a.ctx, "pods:"+ns+":update", nsPods)
-				}
+				podsWithMetrics := kubeResources.ApplyPodMetrics(pods, fetchedMetrics)
+				runtime.EventsEmit(a.ctx, "pods:update", podsWithMetrics)
 			}
 		}()
 	}
@@ -186,7 +167,7 @@ func (a *App) DeletePod(namespace, name string) error {
 		return fmt.Errorf("delete Pod: %w", err)
 	}
 
-	a.emitPods([]string{namespace})
+	a.emitPods()
 	return nil
 }
 
@@ -194,14 +175,12 @@ func (a *App) DeletePod(namespace, name string) error {
 func (a *App) DeletePods(items []dto.PodRef) error {
 	a.mu.RLock()
 	cs := a.clients[a.activeContext]
-	mc := a.metricsClients[a.activeContext]
 	a.mu.RUnlock()
 	if cs == nil {
 		return fmt.Errorf("not connected")
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -210,23 +189,9 @@ func (a *App) DeletePods(items []dto.PodRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Fetch cluster-wide metrics once, then emit per-namespace using pre-fetched metrics
-	var allMetrics map[string]dto.PodUsage
-	if mc != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), metricsFetchTimeout)
-		defer cancel()
-		allMetrics = kube.FetchPodMetrics(ctx, mc, "")
-	}
-
-	// Emit updates for each unique namespace touched, using the pre-fetched metrics
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitPodsWithMetrics(touchedNamespaces, allMetrics)
+	a.emitPods()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d pods: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -278,7 +243,7 @@ func (a *App) UpdatePodYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Pod: %w", err)
 	}
 
-	a.emitPods([]string{namespace})
+	a.emitPods()
 
 	return nil
 }

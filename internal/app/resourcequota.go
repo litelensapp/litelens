@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,9 +16,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListResourceQuotas(namespaces []string) ([]dto.ResourceQuota, error) {
+func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.ResourceQuota{}, nil
@@ -110,7 +111,7 @@ func (a *App) DeleteResourceQuota(namespace, name string) error {
 	}
 
 	// Emit update event after successful delete
-	a.emitResourceQuotas([]string{namespace})
+	a.emitResourceQuotas()
 
 	return nil
 }
@@ -125,7 +126,6 @@ func (a *App) DeleteResourceQuotas(items []dto.ResourceQuotaRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -134,15 +134,9 @@ func (a *App) DeleteResourceQuotas(items []dto.ResourceQuotaRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitResourceQuotas(touchedNamespaces)
+	a.emitResourceQuotas()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d resourcequotas: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -150,9 +144,10 @@ func (a *App) DeleteResourceQuotas(items []dto.ResourceQuotaRef) error {
 	return nil
 }
 
-func (a *App) emitResourceQuotas(namespaces []string) {
+func (a *App) emitResourceQuotas() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -165,22 +160,12 @@ func (a *App) emitResourceQuotas(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Core().V1().ResourceQuotas().Lister()
-	allData, err := kubeResources.ListResourceQuotas(lister, nil)
+	data, err := kubeResources.ListResourceQuotas(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitResourceQuotas: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "resourcequotas:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.ResourceQuota, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "resourcequotas:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "resourcequotas:update", data)
 }
 
 func (a *App) GetResourceQuotaYAML(namespace, name string) (string, error) {
@@ -227,7 +212,7 @@ func (a *App) UpdateResourceQuotaYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update ResourceQuota: %w", err)
 	}
 
-	a.emitResourceQuotas([]string{namespace})
+	a.emitResourceQuotas()
 
 	return nil
 }

@@ -7,8 +7,8 @@ import (
 	"log"
 	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,9 +16,10 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
-func (a *App) ListSecrets(namespaces []string) ([]dto.Secret, error) {
+func (a *App) ListSecrets() ([]dto.Secret, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return []dto.Secret{}, nil
@@ -105,7 +106,7 @@ func (a *App) DeleteSecret(namespace, name string) error {
 		return fmt.Errorf("delete Secret: %w", err)
 	}
 
-	a.emitSecrets([]string{namespace})
+	a.emitSecrets()
 
 	return nil
 }
@@ -120,7 +121,6 @@ func (a *App) DeleteSecrets(items []dto.SecretRef) error {
 	}
 
 	var msgs []string
-	namespaces := make(map[string]bool)
 
 	for _, ref := range items {
 		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
@@ -129,15 +129,9 @@ func (a *App) DeleteSecrets(items []dto.SecretRef) error {
 		if err != nil && !errors.IsNotFound(err) {
 			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
 		}
-		namespaces[ref.Namespace] = true
 	}
 
-	// Emit updates for each unique namespace touched
-	touchedNamespaces := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		touchedNamespaces = append(touchedNamespaces, ns)
-	}
-	a.emitSecrets(touchedNamespaces)
+	a.emitSecrets()
 
 	if len(msgs) > 0 {
 		return fmt.Errorf("failed to delete %d of %d secrets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
@@ -145,9 +139,10 @@ func (a *App) DeleteSecrets(items []dto.SecretRef) error {
 	return nil
 }
 
-func (a *App) emitSecrets(namespaces []string) {
+func (a *App) emitSecrets() {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return
@@ -160,22 +155,12 @@ func (a *App) emitSecrets(namespaces []string) {
 		return
 	}
 	lister := h.Factory.Core().V1().Secrets().Lister()
-	allData, err := kubeResources.ListSecrets(lister, nil)
+	data, err := kubeResources.ListSecrets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitSecrets: %v", err)
 		return
 	}
-	runtime.EventsEmit(a.ctx, "secrets:update", allData)
-	for _, ns := range namespaces {
-		// Filter already-fetched cluster-wide data instead of re-listing
-		nsData := make([]dto.Secret, 0)
-		for _, item := range allData {
-			if item.Namespace == ns {
-				nsData = append(nsData, item)
-			}
-		}
-		runtime.EventsEmit(a.ctx, "secrets:"+ns+":update", nsData)
-	}
+	runtime.EventsEmit(a.ctx, "secrets:update", data)
 }
 
 func (a *App) GetSecretYAML(namespace, name string) (string, error) {
@@ -222,7 +207,7 @@ func (a *App) UpdateSecretYAML(namespace, yamlString string) error {
 		return fmt.Errorf("update Secret: %w", err)
 	}
 
-	a.emitSecrets([]string{namespace})
+	a.emitSecrets()
 
 	return nil
 }

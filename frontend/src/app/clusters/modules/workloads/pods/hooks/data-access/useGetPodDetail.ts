@@ -7,7 +7,9 @@ import { GetPodByName } from "../../api/resources";
 import { usePodsUpdateEvents } from "../async-events/usePodsUpdateEvents";
 
 export const useGetPodDetail = (context: string, namespace: string, name: string) => {
-  const latestPods = usePodsUpdateEvents([namespace]);
+  // Live push-updates for this pod only arrive while its namespace is part of the active namespace filter.
+  // Initial load via GetPodByName is unaffected either way.
+  const latestPods = usePodsUpdateEvents();
 
   const query = useQuery<Pod, Error>({
     queryKey: [QUERY_KEY_POD_DETAIL, { context, namespace, name }],

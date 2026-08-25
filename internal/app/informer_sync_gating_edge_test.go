@@ -132,7 +132,8 @@ func TestListConfigMapsGatingPattern(t *testing.T) {
 
 	// Create an App with this factory handle
 	a := &App{
-		activeContext: "test",
+		activeContext:    "test",
+		activeNamespaces: []string{"default"},
 		factories: map[string]*kube.FactoryHandle{
 			"test": h,
 		},
@@ -142,7 +143,7 @@ func TestListConfigMapsGatingPattern(t *testing.T) {
 	<-h.GetSyncedChan("configmaps")
 
 	// ListConfigMaps should return the ConfigMaps
-	cms, err := a.ListConfigMaps([]string{"default"})
+	cms, err := a.ListConfigMaps()
 	if err != nil {
 		t.Fatalf("ListConfigMaps failed: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestListConfigMapsGatingPattern(t *testing.T) {
 	h.StopResource("configmaps", func(string) {})
 
 	// ListConfigMaps should return an empty slice (zero-value)
-	cms2, err := a.ListConfigMaps([]string{"default"})
+	cms2, err := a.ListConfigMaps()
 	if err != nil {
 		t.Fatalf("ListConfigMaps with forbidden resource should return nil error, got %v", err)
 	}
@@ -314,7 +315,8 @@ func TestListPodsAfterCacheSyncGates(t *testing.T) {
 	<-h.GetSyncedChan("pods")
 
 	// ListPods should return the pod
-	pods, err := a.ListPods([]string{"default"})
+	a.activeNamespaces = []string{"default"}
+	pods, err := a.ListPods()
 	if err != nil {
 		t.Fatalf("ListPods failed: %v", err)
 	}
@@ -389,7 +391,8 @@ func TestForbiddenResourceReturnsZeroValueAndNilError(t *testing.T) {
 	h.StopResource("pods", func(string) {})
 
 	// ListPods should return empty slice and nil error
-	pods, err := a.ListPods([]string{"default"})
+	a.activeNamespaces = []string{"default"}
+	pods, err := a.ListPods()
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}

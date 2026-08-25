@@ -1,11 +1,10 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_NETWORK_POLICIES } from "../../api/api.const";
 import type { NetworkPolicy } from "../../api/resources";
 import { ListNetworkPolicies } from "../../api/resources";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 import { useNetworkPoliciesUpdateEvents } from "../async-events/useNetworkPoliciesUpdateEvents";
 
 export const useGetNetworkPolicies = (
@@ -13,21 +12,28 @@ export const useGetNetworkPolicies = (
   callback?: UseQueryCallback<NetworkPolicy[]>
 ) => {
   const { context, namespaces } = input;
-  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents(namespaces);
+  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents();
 
   const query = useQuery<NetworkPolicy[], Error>({
     queryKey: [QUERY_KEY_NETWORK_POLICIES, { context, namespaces }],
-    queryFn: () => ListNetworkPolicies(namespaces),
+    queryFn: () => ListNetworkPolicies(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestNetworkPolicies.length)
-      baseData = filterByNamespaces(latestNetworkPolicies, namespaces);
+    const baseData = latestNetworkPolicies.length ? latestNetworkPolicies : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestNetworkPolicies, query.data, namespaces, callback]);
+  }, [latestNetworkPolicies, query.data, callback]);
 
-  return { ...query, data: mergedData };
+  const isLoading = latestNetworkPolicies.length === 0 && query.isLoading;
+
+  return {
+    ...query,
+    data: mergedData,
+    isLoading,
+  };
 };

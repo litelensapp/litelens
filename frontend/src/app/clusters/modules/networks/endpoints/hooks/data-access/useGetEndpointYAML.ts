@@ -12,7 +12,7 @@ export function useGetEndpointYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestEndpoints = useEndpointsUpdateEvents([namespace]);
+  const latestEndpoints = useEndpointsUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_ENDPOINT_YAML, { context, namespace, name }],

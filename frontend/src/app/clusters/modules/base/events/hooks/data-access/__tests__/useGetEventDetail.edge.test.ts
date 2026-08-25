@@ -81,7 +81,7 @@ describe("useGetEventDetail edge cases", () => {
       expect(result.current.data?.Name).toBe("query-event");
 
       const otherEvent = mockEvent({ Name: "other-event", Namespace: "default" });
-      triggerEvent("events:default:update", [otherEvent]);
+      triggerEvent("events:update", [otherEvent]);
 
       await waitFor(() => {
         expect(result.current.data?.Name).toBe("query-event");
@@ -103,7 +103,7 @@ describe("useGetEventDetail edge cases", () => {
       expect(result.current.data?.Namespace).toBe("default");
 
       const otherEvent = mockEvent({ Name: "test-event", Namespace: "kube-system" });
-      triggerEvent("events:default:update", [otherEvent]);
+      triggerEvent("events:update", [otherEvent]);
 
       await waitFor(() => {
         expect(result.current.data?.Namespace).toBe("default");
@@ -129,7 +129,7 @@ describe("useGetEventDetail edge cases", () => {
         Namespace: "default",
         Count: 5,
       });
-      triggerEvent("events:default:update", [matchedEvent]);
+      triggerEvent("events:update", [matchedEvent]);
 
       await waitFor(() => {
         expect(result.current.data?.Count).toBe(5);
@@ -151,7 +151,7 @@ describe("useGetEventDetail edge cases", () => {
       });
 
       const eventFromPush = mockEvent({ Name: "test-event", Namespace: "default" });
-      triggerEvent("events:default:update", [eventFromPush]);
+      triggerEvent("events:update", [eventFromPush]);
 
       await waitFor(() => {
         expect(result.current.data).toEqual(eventFromPush);
@@ -176,7 +176,7 @@ describe("useGetEventDetail edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       const event = mockEvent({ Name: "testevent", Namespace: "default" });
-      triggerEvent("events:default:update", [event]);
+      triggerEvent("events:update", [event]);
 
       await waitFor(() => {
         expect(result.current.data?.Name).toBe("TestEvent");
@@ -195,7 +195,7 @@ describe("useGetEventDetail edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       const event = mockEvent({ Name: "test-event", Namespace: "default" });
-      triggerEvent("events:Default:update", [event]);
+      triggerEvent("events:update", [event]);
 
       await waitFor(() => {
         expect(result.current.data?.Namespace).toBe("Default");
@@ -244,7 +244,7 @@ describe("useGetEventDetail edge cases", () => {
         mockEvent({ Name: "event-3", Namespace: "default" }),
       ];
 
-      triggerEvent("events:default:update", events);
+      triggerEvent("events:update", events);
 
       await waitFor(() => {
         expect(result.current.data?.Name).toBe("target-event");
@@ -265,7 +265,7 @@ describe("useGetEventDetail edge cases", () => {
       expect(result.current.data).toBeUndefined();
 
       const event = mockEvent({ Name: "test-event", Namespace: "default" });
-      triggerEvent("events:default:update", [event]);
+      triggerEvent("events:update", [event]);
 
       await waitFor(() => {
         expect(result.current.data).toEqual(event);

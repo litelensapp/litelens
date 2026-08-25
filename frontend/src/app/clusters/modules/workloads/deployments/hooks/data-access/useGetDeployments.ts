@@ -1,37 +1,39 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { UseQueryCallback } from "@litelens/core";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_DEPLOYMENTS } from "../../api/api.const";
 import type { Deployment } from "../../api/resources";
 import { ListDeployments } from "../../api/resources";
 import { useDeploymentsUpdateEvents } from "../async-events/useDeploymentsUpdateEvents";
-import { filterByNamespaces } from "../../../../../shared/utils/namespaceFiltering";
 
 export const useGetDeployments = (
   input: { context: string; namespaces: string[] },
   callback?: UseQueryCallback<Deployment[]>
 ) => {
   const { context, namespaces } = input;
-  const latestDeployments = useDeploymentsUpdateEvents(namespaces);
+  const latestDeployments = useDeploymentsUpdateEvents();
 
   const query = useQuery<Deployment[], Error>({
     queryKey: [QUERY_KEY_DEPLOYMENTS, { context, namespaces }],
-    queryFn: () => ListDeployments(namespaces),
+    queryFn: () => ListDeployments(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });
 
-  // Merge event-driven data locally: prefer event-filtered deployments over fetched data if available.
-  // Filter cluster-wide event list by namespace membership.
+  // Backend pre-filters both the initial fetch and every push event by the
+  // active namespace selection, so no client-side filtering/merging by
+  // namespace is needed here — just prefer live event data when present.
   const mergedData = useMemo(() => {
-    let baseData = query.data;
-    if (latestDeployments.length) baseData = filterByNamespaces(latestDeployments, namespaces);
+    const baseData = latestDeployments.length ? latestDeployments : query.data;
     return callback?.select ? callback.select(baseData) : baseData;
-  }, [latestDeployments, query.data, namespaces, callback]);
+  }, [latestDeployments, query.data, callback]);
+
+  const isLoading = latestDeployments.length === 0 && query.isLoading;
 
   return {
     ...query,
     data: mergedData,
+    isLoading,
   };
 };

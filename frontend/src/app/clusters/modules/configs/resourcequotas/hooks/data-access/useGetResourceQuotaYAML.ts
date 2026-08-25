@@ -12,7 +12,7 @@ export function useGetResourceQuotaYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestResourceQuotas = useResourceQuotasUpdateEvents([namespace]);
+  const latestResourceQuotas = useResourceQuotasUpdateEvents();
   const query = useQuery({
     queryKey: [QUERY_KEY_RESOURCE_QUOTA_YAML, { context, namespace, name }],
     queryFn: () => GetResourceQuotaYAML(namespace, name),

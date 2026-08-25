@@ -7,7 +7,7 @@ import { GetEndpointByName } from "../../api/resources";
 import { useEndpointsUpdateEvents } from "../async-events/useEndpointsUpdateEvents";
 
 export const useGetEndpointDetail = (context: string, namespace: string, name: string) => {
-  const latestEndpoints = useEndpointsUpdateEvents([namespace]);
+  const latestEndpoints = useEndpointsUpdateEvents();
 
   const query = useQuery<Endpoint, Error>({
     queryKey: [QUERY_KEY_ENDPOINT_DETAIL, { context, namespace, name }],

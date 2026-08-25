@@ -7,7 +7,7 @@ import { useRolesUpdateEvents } from "../async-events/useRolesUpdateEvents";
 
 export function useGetRoleYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
-  const latestRoles = useRolesUpdateEvents([namespace]);
+  const latestRoles = useRolesUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_ROLE_YAML, { context, namespace, name }],

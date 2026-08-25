@@ -12,7 +12,7 @@ export function useGetRoleBindingYAML(
   enabled = true
 ) {
   const queryClient = useQueryClient();
-  const latestRoleBindings = useRoleBindingsUpdateEvents([namespace]);
+  const latestRoleBindings = useRoleBindingsUpdateEvents();
 
   const query = useQuery({
     queryKey: [QUERY_KEY_ROLE_BINDING_YAML, { context, namespace, name }],
