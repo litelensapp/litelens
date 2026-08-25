@@ -21,7 +21,7 @@ export const DownloadProgressIndicator: FC<DownloadProgressIndicatorProps> = ({
         ) : (
           // Percentage-driven width while downloading
           <div
-            className="h-full bg-amber-500 transition-all duration-300"
+            className="h-full bg-amber-500 transition-[width] duration-300"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         )}

@@ -9,7 +9,7 @@ const getRegisteredPluginIdsMock = vi.hoisted(() => vi.fn());
 const unregisterStylesheetsMock = vi.hoisted(() => vi.fn());
 const ensurePluginStylesheetMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../../marketplace/hooks/useGetInstalledPlugins", () => ({
+vi.mock("../../marketplace/hooks/data-access/useGetInstalledPlugins", () => ({
   useGetInstalledPlugins: useGetInstalledPluginsMock,
 }));
 

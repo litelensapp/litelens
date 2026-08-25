@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { GetPluginsFromMarketplace } from "@wailsjs/go/app/App";
 import type { dto } from "@wailsjs/go/models";
-import { DEFAULT_QUERY_OPTIONS } from "../../shared/api/api";
+import { DEFAULT_QUERY_OPTIONS } from "../../../shared/api/api";
 
 // Omit the generated class's `convertValues` instance method so plain object
 // literals (e.g. test mocks) can satisfy this type structurally.

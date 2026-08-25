@@ -1,5 +1,5 @@
 import { FC, useEffect } from "react";
-import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
+import { useGetInstalledPlugins } from "../marketplace/hooks/data-access/useGetInstalledPlugins";
 import { pluginStylesheetRegistry } from "./hooks/registry/stylesheet/pluginStylesheetRegistry";
 import { ensurePluginStylesheet } from "./utils/ensurePluginStylesheet";
 import { loadPluginModule } from "./utils/loadPluginModule";

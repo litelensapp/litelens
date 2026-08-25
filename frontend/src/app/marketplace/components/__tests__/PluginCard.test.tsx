@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PluginManifest } from "../../hooks/useGetPluginsFromMarketplace";
+import { PluginManifest } from "../../hooks/data-access/useGetPluginsFromMarketplace";
 import { PluginCard } from "../PluginCard";
 
 // Mock plugin manifest for testing

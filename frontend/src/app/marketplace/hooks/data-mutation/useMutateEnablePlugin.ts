@@ -1,24 +1,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DisablePlugin } from "@wailsjs/go/app/App";
-import { QUERY_KEY_PLUGIN_STATUS } from "../../clusters/plugins/hooks/useGetInstalledPlugin";
+import { EnablePlugin } from "@wailsjs/go/app/App";
+import { QUERY_KEY_PLUGIN_STATUS } from "../../../clusters/plugins/hooks/useGetInstalledPlugin";
 
-interface DisableMutationVariables {
+interface EnableMutationVariables {
   pluginId: string;
 }
 
 /**
- * useMutateDisablePlugin triggers plugin disable via a mutation:
+ * useMutateEnablePlugin triggers plugin enable via a mutation:
  * - Takes pluginId as a **call-time** argument (not hook-time)
  * - This allows one hook instance to serve every row in a list
- * - Wraps DisablePlugin Wails binding and invalidates the same queries as related mutations
+ * - Wraps EnablePlugin Wails binding and invalidates the same queries as related mutations
  * - Callers can still catch errors and toast
  */
-export const useMutateDisablePlugin = () => {
+export const useMutateEnablePlugin = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ pluginId }: DisableMutationVariables) => {
-      await DisablePlugin(pluginId);
+    mutationFn: async ({ pluginId }: EnableMutationVariables) => {
+      await EnablePlugin(pluginId);
     },
     onSuccess: async (_data, { pluginId }) => {
       // Invalidate status query to trigger immediate refetch
@@ -34,7 +34,7 @@ export const useMutateDisablePlugin = () => {
       });
     },
     onError: (error, { pluginId }) => {
-      console.error(`Failed to disable plugin ${pluginId}:`, error);
+      console.error(`Failed to enable plugin ${pluginId}:`, error);
     },
   });
 };

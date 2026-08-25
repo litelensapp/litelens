@@ -28,10 +28,15 @@ const snapshots = new Map<string, PluginAssetSnapshot>();
  */
 export function capturePluginAssetSnapshot(pluginId: string, bundleChecksum: string): void {
   const navEntry = pluginNavRegistry.getNavEntries().find((e) => e.pluginId === pluginId)?.navEntry;
-  const viewConfigs = pluginViewRegistry
-    .getViewAssets()
-    .filter((a) => a.pluginId === pluginId)
-    .map(({ name, component, stylesheet }) => ({ name, component, stylesheet }));
+  const viewConfigs: PluginAssetSnapshot["viewConfigs"] = [];
+  for (const a of pluginViewRegistry.getViewAssets())
+    if (a.pluginId === pluginId)
+      viewConfigs.push({
+        name: a.name,
+        component: a.component,
+        stylesheet: a.stylesheet,
+      });
+
   const trayFamilies = pluginTrayRegistry
     .getTrayFamilies()
     .find((t) => t.pluginId === pluginId)?.families;

@@ -36,22 +36,22 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { Pod, PodContainerDetail, PodContainerPort, PodVolume } from "../api/resources";
-import type { PortForward } from "../../../networks/portforwarding/api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetPodDetail } from "../hooks/data-access/useGetPodDetail";
-import { useGetPortForwards } from "../../../networks/portforwarding/hooks/data-access/useGetPortForwards";
-import { useDeletePod } from "../hooks/data-mutation/useDeletePod";
 import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
-import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
+import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { PortForward } from "../../../networks/portforwarding/api/resources";
 import { PortForwardCtaButton } from "../../../networks/portforwarding/components/PortForwardCtaButton";
 import { PortForwardOperationDialog } from "../../../networks/portforwarding/components/PortForwardOperationDialog";
+import { useGetPortForwards } from "../../../networks/portforwarding/hooks/data-access/useGetPortForwards";
+import type { Pod, PodContainerDetail, PodContainerPort, PodVolume } from "../api/resources";
+import { useGetPodDetail } from "../hooks/data-access/useGetPodDetail";
+import { useDeletePod } from "../hooks/data-mutation/useDeletePod";
 import { PodConditionBadge } from "./PodConditionBadge";
 import { PodDeleteConfirmationModal } from "./PodDeleteConfirmationModal";
 import { PodQoSBadge } from "./PodQoSBadge";
@@ -597,8 +597,8 @@ const PodOverviewTab: FC<{
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pod.TolerationDetails.map((t, i) => (
-                      <TableRow key={`${t.Key}-${t.Effect}-${i}`}>
+                    {pod.TolerationDetails.map((t) => (
+                      <TableRow key={`${t.Key}-${t.Operator}-${t.Value}-${t.Effect}-${t.Seconds}`}>
                         <TableCell className="font-mono text-xs">{t.Key || "—"}</TableCell>
                         <TableCell className="font-mono text-xs">{t.Operator}</TableCell>
                         <TableCell className="font-mono text-xs">{t.Value || "—"}</TableCell>

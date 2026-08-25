@@ -130,8 +130,8 @@ const ClusterRoleBindingOverviewTab: FC<{ crb: ClusterRoleBinding }> = ({ crb })
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {crb.Subjects.map((s, i) => (
-                  <TableRow key={`${i}:${s.Kind}:${s.Name}:${s.Namespace}`}>
+                {crb.Subjects.map((s) => (
+                  <TableRow key={`${s.Kind}:${s.Name}:${s.Namespace}`}>
                     <TableCell className="font-mono text-xs">{s.Kind}</TableCell>
                     <TableCell className="font-mono text-xs">
                       {s.Kind === "ServiceAccount" ? (

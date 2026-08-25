@@ -137,8 +137,8 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rb.Subjects.map((s, i) => (
-                  <TableRow key={`${i}:${s.Kind}:${s.Name}:${s.Namespace}`}>
+                {rb.Subjects.map((s) => (
+                  <TableRow key={`${s.Kind}:${s.Name}:${s.Namespace}`}>
                     <TableCell className="font-mono text-xs">{s.Kind}</TableCell>
                     <TableCell className="font-mono text-xs">
                       {s.Kind === "ServiceAccount" ? (

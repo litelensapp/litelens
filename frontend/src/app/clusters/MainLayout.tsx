@@ -1,7 +1,7 @@
 import { NavItem } from "@litelens/core";
 import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useGetInstalledPlugins } from "../marketplace/hooks/useGetInstalledPlugins";
+import { useGetInstalledPlugins } from "../marketplace/hooks/data-access/useGetInstalledPlugins";
 import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
 import { isPluginMounted, shouldResetActiveResource } from "./MainLayout.utils";
 import { MainLayoutProvider } from "./MainLayoutContext";
