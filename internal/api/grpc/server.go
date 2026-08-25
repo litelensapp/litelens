@@ -10,22 +10,32 @@ import (
 	"github.com/litelensapp/litelens/packages/core/pb"
 )
 
-// HostPluginServer implements the gRPC Plugin service streaming cluster context changes.
+// HostPluginServer implements the gRPC Plugin service streaming cluster context and
+// active-namespaces changes. A single mutex guards both subscriber maps and the
+// shared stopped flag — the two streams are independent but small enough that
+// splitting the lock buys no real concurrency and would just risk stopped being
+// read/written inconsistently across two mutexes.
 type HostPluginServer struct {
 	pb.UnimplementedPluginServer
 	mu                sync.RWMutex
 	subscribers       map[int]chan *pb.ClusterContextChangedEvent
 	nextSubscriberID  int
 	lastContextChange *pb.ClusterContextChangedEvent
-	stopped           bool // flag to prevent publishing during shutdown
-	eventEmitFn       func(payload map[string]interface{})
+
+	nsSubscribers        map[int]chan *pb.ActiveNamespacesChangedEvent
+	nextNsSubscriberID   int
+	lastActiveNamespaces *pb.ActiveNamespacesChangedEvent
+
+	stopped     bool // flag to prevent publishing during shutdown
+	eventEmitFn func(payload map[string]interface{})
 }
 
 // NewHostPluginServer creates a new HostPluginServer.
 func NewHostPluginServer(eventEmitFn func(payload map[string]interface{})) *HostPluginServer {
 	return &HostPluginServer{
-		subscribers: make(map[int]chan *pb.ClusterContextChangedEvent),
-		eventEmitFn: eventEmitFn,
+		subscribers:   make(map[int]chan *pb.ClusterContextChangedEvent),
+		nsSubscribers: make(map[int]chan *pb.ActiveNamespacesChangedEvent),
+		eventEmitFn:   eventEmitFn,
 	}
 }
 
@@ -68,6 +78,85 @@ func (s *HostPluginServer) ClusterContextWatch(req *pb.Empty, stream pb.Plugin_C
 			}
 		}
 	}
+}
+
+// ActiveNamespacesWatch handles the streaming RPC that plugins call to subscribe to
+// active-namespaces changes.
+func (s *HostPluginServer) ActiveNamespacesWatch(req *pb.Empty, stream pb.Plugin_ActiveNamespacesWatchServer) error {
+	// Register a new subscriber
+	s.mu.Lock()
+	subscriberID := s.nextNsSubscriberID
+	s.nextNsSubscriberID++
+	ch := make(chan *pb.ActiveNamespacesChangedEvent, 1)
+	s.nsSubscribers[subscriberID] = ch
+
+	// Send the last active-namespaces change immediately if one exists
+	lastChange := s.lastActiveNamespaces
+	s.mu.Unlock()
+
+	if lastChange != nil {
+		if err := stream.Send(lastChange); err != nil {
+			s.mu.Lock()
+			delete(s.nsSubscribers, subscriberID)
+			s.mu.Unlock()
+			return err
+		}
+	}
+
+	// Loop to send future changes to this subscriber
+	for {
+		select {
+		case <-stream.Context().Done():
+			s.mu.Lock()
+			delete(s.nsSubscribers, subscriberID)
+			s.mu.Unlock()
+			return stream.Context().Err()
+		case event := <-ch:
+			if err := stream.Send(event); err != nil {
+				s.mu.Lock()
+				delete(s.nsSubscribers, subscriberID)
+				s.mu.Unlock()
+				return err
+			}
+		}
+	}
+}
+
+// PublishActiveNamespacesChange sends an active-namespaces change event to all
+// currently subscribed plugins. Returns false if the server is shutting down (event
+// not published). Follows the same eventually-consistent, self-healing delivery
+// guarantee as PublishClusterContextChange (see its doc comment) — a late-joining or
+// briefly-behind subscriber may serve one stale namespace filter before it catches up.
+func (s *HostPluginServer) PublishActiveNamespacesChange(namespaces []string) bool {
+	event := &pb.ActiveNamespacesChangedEvent{
+		Namespaces: namespaces,
+		Timestamp:  time.Now().Format(time.RFC3339),
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.stopped {
+		return false
+	}
+
+	s.lastActiveNamespaces = event
+
+	for _, ch := range s.nsSubscribers {
+		select {
+		case ch <- event:
+		default:
+			select {
+			case <-ch:
+			default:
+			}
+			select {
+			case ch <- event:
+			default:
+			}
+		}
+	}
+	return true
 }
 
 // PublishClusterContextChange sends a cluster context change event to all currently subscribed plugins.

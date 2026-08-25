@@ -239,6 +239,14 @@ func (a *App) SetActiveNamespaces(namespaces []string) error {
 	a.mu.Lock()
 	a.activeNamespaces = namespaces
 	a.mu.Unlock()
+
+	// Push the active namespace filter to all running plugins with HTTP backends,
+	// same "host pushes on every change" design as the cluster-context push (see
+	// PublishClusterContextChange).
+	if a.grpcServerCfg != nil {
+		a.grpcServerCfg.PluginServer().PublishActiveNamespacesChange(namespaces)
+	}
+
 	a.emitPods()
 	a.emitEvents()
 	a.emitLeases()
