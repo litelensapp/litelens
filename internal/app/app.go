@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
@@ -46,7 +47,9 @@ type App struct {
 	factories             map[string]*kube.FactoryHandle
 	metricsClients        map[string]*metricsclient.Clientset
 	activeContext         string
+	activeContextSeq      int64    // guarded by mu; monotonic per Connect call, see Connect
 	activeNamespaces      []string // guarded by mu; empty/nil = all namespaces
+	activeNamespacesSeq   int64    // guarded by mu; see SetActiveNamespaces
 	mu                    sync.RWMutex
 	lastUpdateCheckResult *UpdateCheckResult // guarded by mu; caches the last successful update check
 	portForwards          map[string]dto.PortForward
@@ -194,7 +197,22 @@ func (a *App) emitConnectStatus(contextName, message string) {
 // NewFactoryHandle blocks until every informer's initial LIST has populated
 // its cache, so activeContext is only set — and the frontend's first
 // List*/Get* calls only unblocked — once listers are warm.
-func (a *App) Connect(contextName string) error {
+//
+// seq is a value the frontend increments synchronously on every call (before
+// the async IPC dispatch), same pattern as SetActiveNamespaces: rapid
+// back-and-forth context switches launch multiple Connect calls concurrently,
+// and since each does slow network/informer-sync work outside any lock that
+// serializes it against the others, they can complete in an order that
+// doesn't match the order the user clicked them in. Without seq, whichever
+// call happens to finish last wins and silently overwrites activeContext with
+// a stale (no-longer-selected) context — every List*/Get* call and the
+// namespace filter would then silently keep operating on the wrong cluster
+// while the UI shows the one the user actually selected.
+func (a *App) Connect(contextName string, seq int64) error {
+	if !a.tryClaimConnectSeq(seq) {
+		return nil
+	}
+
 	a.emitConnectStatus(contextName, "Loading cluster configuration...")
 
 	a.mu.RLock()
@@ -245,6 +263,15 @@ func (a *App) Connect(contextName string) error {
 			wailsruntime.EventsEmit(a.ctx, "resource:forbidden", resource)
 		}
 	})
+
+	// A newer Connect call may have already become active while this one was
+	// blocked building its client and syncing informers above — don't let a
+	// stale call clobber it. Stop the just-synced factory rather than leaking it.
+	if seq < a.activeContextSeq {
+		a.mu.Unlock()
+		h.Stop()
+		return nil
+	}
 	a.factories[contextName] = h
 	a.activeContext = contextName
 	a.activeNamespaces = nil
@@ -258,9 +285,16 @@ func (a *App) Connect(contextName string) error {
 	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
 	if err != nil {
 		log.Printf("resolve kubeconfig path for plugin cluster-context push (context %q): %v", contextName, err)
-	}
-	if a.grpcServerCfg != nil {
-		a.grpcServerCfg.PluginServer().PublishClusterContextChange(contextName, kubeconfigPath)
+	} else if a.grpcServerCfg != nil {
+		payloadJSON, err := json.Marshal(map[string]string{
+			"contextName":    contextName,
+			"kubeconfigPath": kubeconfigPath,
+		})
+		if err != nil {
+			log.Printf("marshal cluster-context payload for plugin push (context %q): %v", contextName, err)
+		} else {
+			a.grpcServerCfg.PluginServer().PublishToHost("cluster.context", string(payloadJSON))
+		}
 	}
 	a.mu.Lock()
 

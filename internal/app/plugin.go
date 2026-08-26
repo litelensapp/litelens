@@ -178,6 +178,7 @@ func (a *App) prewarmRestoredPlugins(contextName string) {
 		if loader.Status() == dto.PluginStatusReady && !loader.IsAlive() {
 			if a.grpcServerCfg != nil {
 				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+				loader.SetTokenManager(a.grpcServerCfg)
 			}
 			_ = loader.Launch(context.Background(), kubeconfigPath)
 		}
@@ -578,6 +579,7 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 			if err == nil {
 				if a.grpcServerCfg != nil {
 					loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+					loader.SetTokenManager(a.grpcServerCfg)
 				}
 				if launchErr := loader.Launch(ctx, kubeconfigPath); launchErr != nil {
 					fmt.Printf("plugin %q: post-install launch failed: %v\n", pluginID, launchErr)
@@ -786,6 +788,7 @@ func (a *App) EnablePlugin(pluginID string) error {
 		} else {
 			if a.grpcServerCfg != nil {
 				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+				loader.SetTokenManager(a.grpcServerCfg)
 			}
 			if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
 				// Log but don't fail — matches crash-recovery behavior
@@ -988,6 +991,7 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 
 		if a.grpcServerCfg != nil {
 			loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+			loader.SetTokenManager(a.grpcServerCfg)
 		}
 		if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
 			return "", fmt.Errorf("plugin %q: relaunch failed: %w", pluginID, err)
@@ -1030,6 +1034,7 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 	}
 	if a.grpcServerCfg != nil {
 		loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+		loader.SetTokenManager(a.grpcServerCfg)
 	}
 	if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
 		return "", fmt.Errorf("plugin %q: backend not responding, relaunch failed: %w", pluginID, err)

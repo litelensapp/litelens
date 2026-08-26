@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -235,16 +236,34 @@ func (a *App) UpdateNamespaceYAML(yamlString string) error {
 	return nil
 }
 
-func (a *App) SetActiveNamespaces(namespaces []string) error {
+// SetActiveNamespaces updates the active namespace filter. seq is a value the
+// frontend increments synchronously on every call (before the async Wails IPC
+// dispatch), letting us detect calls that arrive out of order: two rapid
+// selection changes can reach this method in either order over the IPC
+// bridge, since Wails gives no ordering guarantee between concurrent calls to
+// the same bound method. Without seq, whichever call happens to arrive last
+// wins — even if it was the user's earlier (now-stale) selection — silently
+// reverting a newer choice. A call with seq <= the highest seq already
+// applied is dropped as stale.
+func (a *App) SetActiveNamespaces(namespaces []string, seq int64) error {
 	a.mu.Lock()
+	if seq <= a.activeNamespacesSeq {
+		a.mu.Unlock()
+		return nil
+	}
+	a.activeNamespacesSeq = seq
 	a.activeNamespaces = namespaces
 	a.mu.Unlock()
 
 	// Push the active namespace filter to all running plugins with HTTP backends,
-	// same "host pushes on every change" design as the cluster-context push (see
-	// PublishClusterContextChange).
+	// same "host pushes on every change" design as the cluster-context push.
 	if a.grpcServerCfg != nil {
-		a.grpcServerCfg.PluginServer().PublishActiveNamespacesChange(namespaces)
+		payloadJSON, err := json.Marshal(map[string][]string{"namespaces": namespaces})
+		if err != nil {
+			log.Printf("marshal active-namespaces payload for plugin push: %v", err)
+		} else {
+			a.grpcServerCfg.PluginServer().PublishToHost("namespaces.active", string(payloadJSON))
+		}
 	}
 
 	a.emitPods()

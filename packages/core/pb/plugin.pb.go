@@ -7,12 +7,11 @@
 package pb
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -58,29 +57,28 @@ func (*Empty) Descriptor() ([]byte, []int) {
 	return file_plugin_proto_rawDescGZIP(), []int{0}
 }
 
-type ClusterContextChangedEvent struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	ContextName    string                 `protobuf:"bytes,1,opt,name=contextName,proto3" json:"contextName,omitempty"`
-	KubeconfigPath string                 `protobuf:"bytes,2,opt,name=kubeconfigPath,proto3" json:"kubeconfigPath,omitempty"`
-	Timestamp      string                 `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+// SubscribeRequest is used to subscribe to messages on a topic.
+type SubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClusterContextChangedEvent) Reset() {
-	*x = ClusterContextChangedEvent{}
+func (x *SubscribeRequest) Reset() {
+	*x = SubscribeRequest{}
 	mi := &file_plugin_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClusterContextChangedEvent) String() string {
+func (x *SubscribeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClusterContextChangedEvent) ProtoMessage() {}
+func (*SubscribeRequest) ProtoMessage() {}
 
-func (x *ClusterContextChangedEvent) ProtoReflect() protoreflect.Message {
+func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_plugin_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -92,54 +90,41 @@ func (x *ClusterContextChangedEvent) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClusterContextChangedEvent.ProtoReflect.Descriptor instead.
-func (*ClusterContextChangedEvent) Descriptor() ([]byte, []int) {
+// Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeRequest) Descriptor() ([]byte, []int) {
 	return file_plugin_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ClusterContextChangedEvent) GetContextName() string {
+func (x *SubscribeRequest) GetTopic() string {
 	if x != nil {
-		return x.ContextName
+		return x.Topic
 	}
 	return ""
 }
 
-func (x *ClusterContextChangedEvent) GetKubeconfigPath() string {
-	if x != nil {
-		return x.KubeconfigPath
-	}
-	return ""
-}
-
-func (x *ClusterContextChangedEvent) GetTimestamp() string {
-	if x != nil {
-		return x.Timestamp
-	}
-	return ""
-}
-
-type ActiveNamespacesChangedEvent struct {
+// PublishRequest is used to publish a message to a topic.
+type PublishRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Namespaces    []string               `protobuf:"bytes,1,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
-	Timestamp     string                 `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	PayloadJson   string                 `protobuf:"bytes,2,opt,name=payload_json,json=payloadJson,proto3" json:"payload_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ActiveNamespacesChangedEvent) Reset() {
-	*x = ActiveNamespacesChangedEvent{}
+func (x *PublishRequest) Reset() {
+	*x = PublishRequest{}
 	mi := &file_plugin_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ActiveNamespacesChangedEvent) String() string {
+func (x *PublishRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ActiveNamespacesChangedEvent) ProtoMessage() {}
+func (*PublishRequest) ProtoMessage() {}
 
-func (x *ActiveNamespacesChangedEvent) ProtoReflect() protoreflect.Message {
+func (x *PublishRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_plugin_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -151,48 +136,50 @@ func (x *ActiveNamespacesChangedEvent) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ActiveNamespacesChangedEvent.ProtoReflect.Descriptor instead.
-func (*ActiveNamespacesChangedEvent) Descriptor() ([]byte, []int) {
+// Deprecated: Use PublishRequest.ProtoReflect.Descriptor instead.
+func (*PublishRequest) Descriptor() ([]byte, []int) {
 	return file_plugin_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ActiveNamespacesChangedEvent) GetNamespaces() []string {
+func (x *PublishRequest) GetTopic() string {
 	if x != nil {
-		return x.Namespaces
-	}
-	return nil
-}
-
-func (x *ActiveNamespacesChangedEvent) GetTimestamp() string {
-	if x != nil {
-		return x.Timestamp
+		return x.Topic
 	}
 	return ""
 }
 
-type PluginEventRequest struct {
+func (x *PublishRequest) GetPayloadJson() string {
+	if x != nil {
+		return x.PayloadJson
+	}
+	return ""
+}
+
+// PubSubMessage is a message published to a topic.
+type PubSubMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PluginId      string                 `protobuf:"bytes,1,opt,name=pluginId,proto3" json:"pluginId,omitempty"`
-	EventName     string                 `protobuf:"bytes,2,opt,name=eventName,proto3" json:"eventName,omitempty"`
-	PayloadJson   string                 `protobuf:"bytes,3,opt,name=payloadJson,proto3" json:"payloadJson,omitempty"`
+	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`       // host or pluginID
+	Timestamp     string                 `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // RFC3339 formatted
+	PayloadJson   string                 `protobuf:"bytes,4,opt,name=payload_json,json=payloadJson,proto3" json:"payload_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PluginEventRequest) Reset() {
-	*x = PluginEventRequest{}
+func (x *PubSubMessage) Reset() {
+	*x = PubSubMessage{}
 	mi := &file_plugin_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PluginEventRequest) String() string {
+func (x *PubSubMessage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PluginEventRequest) ProtoMessage() {}
+func (*PubSubMessage) ProtoMessage() {}
 
-func (x *PluginEventRequest) ProtoReflect() protoreflect.Message {
+func (x *PubSubMessage) ProtoReflect() protoreflect.Message {
 	mi := &file_plugin_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -204,26 +191,33 @@ func (x *PluginEventRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PluginEventRequest.ProtoReflect.Descriptor instead.
-func (*PluginEventRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PubSubMessage.ProtoReflect.Descriptor instead.
+func (*PubSubMessage) Descriptor() ([]byte, []int) {
 	return file_plugin_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *PluginEventRequest) GetPluginId() string {
+func (x *PubSubMessage) GetTopic() string {
 	if x != nil {
-		return x.PluginId
+		return x.Topic
 	}
 	return ""
 }
 
-func (x *PluginEventRequest) GetEventName() string {
+func (x *PubSubMessage) GetSource() string {
 	if x != nil {
-		return x.EventName
+		return x.Source
 	}
 	return ""
 }
 
-func (x *PluginEventRequest) GetPayloadJson() string {
+func (x *PubSubMessage) GetTimestamp() string {
+	if x != nil {
+		return x.Timestamp
+	}
+	return ""
+}
+
+func (x *PubSubMessage) GetPayloadJson() string {
 	if x != nil {
 		return x.PayloadJson
 	}
@@ -235,24 +229,20 @@ var File_plugin_proto protoreflect.FileDescriptor
 const file_plugin_proto_rawDesc = "" +
 	"\n" +
 	"\fplugin.proto\x12\tpluginapi\"\a\n" +
-	"\x05Empty\"\x84\x01\n" +
-	"\x1aClusterContextChangedEvent\x12 \n" +
-	"\vcontextName\x18\x01 \x01(\tR\vcontextName\x12&\n" +
-	"\x0ekubeconfigPath\x18\x02 \x01(\tR\x0ekubeconfigPath\x12\x1c\n" +
-	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\"\\\n" +
-	"\x1cActiveNamespacesChangedEvent\x12\x1e\n" +
-	"\n" +
-	"namespaces\x18\x01 \x03(\tR\n" +
-	"namespaces\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\tR\ttimestamp\"p\n" +
-	"\x12PluginEventRequest\x12\x1a\n" +
-	"\bpluginId\x18\x01 \x01(\tR\bpluginId\x12\x1c\n" +
-	"\teventName\x18\x02 \x01(\tR\teventName\x12 \n" +
-	"\vpayloadJson\x18\x03 \x01(\tR\vpayloadJson2\xee\x01\n" +
-	"\x06Plugin\x12P\n" +
-	"\x13ClusterContextWatch\x12\x10.pluginapi.Empty\x1a%.pluginapi.ClusterContextChangedEvent0\x01\x12T\n" +
-	"\x15ActiveNamespacesWatch\x12\x10.pluginapi.Empty\x1a'.pluginapi.ActiveNamespacesChangedEvent0\x01\x12<\n" +
-	"\tEmitEvent\x12\x1d.pluginapi.PluginEventRequest\x1a\x10.pluginapi.EmptyB2Z0github.com/litelensapp/litelens/packages/core/pbb\x06proto3"
+	"\x05Empty\"(\n" +
+	"\x10SubscribeRequest\x12\x14\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"I\n" +
+	"\x0ePublishRequest\x12\x14\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12!\n" +
+	"\fpayload_json\x18\x02 \x01(\tR\vpayloadJson\"~\n" +
+	"\rPubSubMessage\x12\x14\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\x12!\n" +
+	"\fpayload_json\x18\x04 \x01(\tR\vpayloadJson2\x86\x01\n" +
+	"\x06Plugin\x12D\n" +
+	"\tSubscribe\x12\x1b.pluginapi.SubscribeRequest\x1a\x18.pluginapi.PubSubMessage0\x01\x126\n" +
+	"\aPublish\x12\x19.pluginapi.PublishRequest\x1a\x10.pluginapi.EmptyB2Z0github.com/litelensapp/litelens/packages/core/pbb\x06proto3"
 
 var (
 	file_plugin_proto_rawDescOnce sync.Once
@@ -268,20 +258,18 @@ func file_plugin_proto_rawDescGZIP() []byte {
 
 var file_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_plugin_proto_goTypes = []any{
-	(*Empty)(nil),                        // 0: pluginapi.Empty
-	(*ClusterContextChangedEvent)(nil),   // 1: pluginapi.ClusterContextChangedEvent
-	(*ActiveNamespacesChangedEvent)(nil), // 2: pluginapi.ActiveNamespacesChangedEvent
-	(*PluginEventRequest)(nil),           // 3: pluginapi.PluginEventRequest
+	(*Empty)(nil),            // 0: pluginapi.Empty
+	(*SubscribeRequest)(nil), // 1: pluginapi.SubscribeRequest
+	(*PublishRequest)(nil),   // 2: pluginapi.PublishRequest
+	(*PubSubMessage)(nil),    // 3: pluginapi.PubSubMessage
 }
 var file_plugin_proto_depIdxs = []int32{
-	0, // 0: pluginapi.Plugin.ClusterContextWatch:input_type -> pluginapi.Empty
-	0, // 1: pluginapi.Plugin.ActiveNamespacesWatch:input_type -> pluginapi.Empty
-	3, // 2: pluginapi.Plugin.EmitEvent:input_type -> pluginapi.PluginEventRequest
-	1, // 3: pluginapi.Plugin.ClusterContextWatch:output_type -> pluginapi.ClusterContextChangedEvent
-	2, // 4: pluginapi.Plugin.ActiveNamespacesWatch:output_type -> pluginapi.ActiveNamespacesChangedEvent
-	0, // 5: pluginapi.Plugin.EmitEvent:output_type -> pluginapi.Empty
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	1, // 0: pluginapi.Plugin.Subscribe:input_type -> pluginapi.SubscribeRequest
+	2, // 1: pluginapi.Plugin.Publish:input_type -> pluginapi.PublishRequest
+	3, // 2: pluginapi.Plugin.Subscribe:output_type -> pluginapi.PubSubMessage
+	0, // 3: pluginapi.Plugin.Publish:output_type -> pluginapi.Empty
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name

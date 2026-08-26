@@ -109,7 +109,38 @@ func TestGetPluginBackendAddrDetectsDeadListenerAndRelaunches(t *testing.T) {
 	t.Setenv("HOME", tempHome)
 	t.Setenv("MARKETPLACE_ENABLED", "true")
 
-	// Step 1: Find an available port, then close the listener (dead port)
+	// Step 1: Create a valid kubeconfig with "test-context" so that
+	// GetContextKubeconfigPath can resolve it during the relaunch phase.
+	kubeDir := filepath.Join(tempHome, ".kube")
+	if err := os.MkdirAll(kubeDir, 0755); err != nil {
+		t.Fatalf("setup: create .kube dir: %v", err)
+	}
+	kubeconfigPath := filepath.Join(kubeDir, "config")
+	kubeconfigContent := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+  name: test-cluster
+contexts:
+- context:
+    cluster: test-cluster
+    user: test-user
+  name: test-context
+current-context: test-context
+users:
+- name: test-user
+  user:
+    token: test-token
+`
+	if err := os.WriteFile(kubeconfigPath, []byte(kubeconfigContent), 0600); err != nil {
+		t.Fatalf("setup: write kubeconfig: %v", err)
+	}
+	// KUBECONFIG defaults to ~/.kube/config when paths are empty in settings
+	t.Setenv("KUBECONFIG", kubeconfigPath)
+
+	// Step 2: Find an available port, then close the listener (dead port)
 	deadListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("setup: create temp listener: %v", err)
@@ -118,7 +149,7 @@ func TestGetPluginBackendAddrDetectsDeadListenerAndRelaunches(t *testing.T) {
 	deadPort := deadAddr.Port
 	deadListener.Close() // Close it immediately, so nothing listens there
 
-	// Step 2: Track how many times the plugin binary is executed
+	// Step 3: Track how many times the plugin binary is executed
 	// (first time for initial Launch, second time for relaunch after dial failure)
 	tmpDir := t.TempDir()
 	invocationCountFile := filepath.Join(tmpDir, "invocation_count.txt")
@@ -149,7 +180,7 @@ sleep 3600
 		t.Fatalf("setup: write mock plugin: %v", err)
 	}
 
-	// Step 3: Set up app and loader
+	// Step 4: Set up app and loader
 	pluginID := "test-dead-dial"
 	pluginDir := filepath.Join(tempHome, ".litelens", "plugins", pluginID)
 	if err := os.MkdirAll(pluginDir, 0755); err != nil {
@@ -166,13 +197,13 @@ sleep 3600
 		activeContext: "test-context",
 	}
 
-	// Step 4: Launch the plugin (emits READY with the dead port on first invocation)
+	// Step 5: Launch the plugin (emits READY with the dead port on first invocation)
 	if err := loader.Launch(context.Background(), ""); err != nil {
 		t.Fatalf("setup: initial Launch plugin: %v", err)
 	}
 	defer loader.Shutdown()
 
-	// Step 5: Call GetPluginBackendAddr
+	// Step 6: Call GetPluginBackendAddr
 	// Since the port has nothing listening (deadListener was closed),
 	// the TCP dial will fail. The code should attempt recovery.
 	_, _ = app.GetPluginBackendAddr(pluginID)
@@ -181,7 +212,7 @@ sleep 3600
 	// but the key is that it ATTEMPTED to recover. We verify this by checking if the script
 	// was invoked twice (initial Launch + relaunch in response to dial failure).
 
-	// Step 6: Check invocation count to verify recovery was attempted
+	// Step 7: Check invocation count to verify recovery was attempted
 	if countData, err := os.ReadFile(invocationCountFile); err == nil {
 		var count int
 		fmt.Sscanf(string(countData), "%d", &count)

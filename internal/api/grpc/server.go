@@ -2,213 +2,269 @@ package grpc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-// HostPluginServer implements the gRPC Plugin service streaming cluster context and
-// active-namespaces changes. A single mutex guards both subscriber maps and the
-// shared stopped flag — the two streams are independent but small enough that
-// splitting the lock buys no real concurrency and would just risk stopped being
-// read/written inconsistently across two mutexes.
+// HostPluginServer implements the gRPC Plugin service with native pub/sub support
+// via Subscribe/Publish.
 type HostPluginServer struct {
 	pb.UnimplementedPluginServer
-	mu                sync.RWMutex
-	subscribers       map[int]chan *pb.ClusterContextChangedEvent
-	nextSubscriberID  int
-	lastContextChange *pb.ClusterContextChangedEvent
+	mu sync.RWMutex
 
-	nsSubscribers        map[int]chan *pb.ActiveNamespacesChangedEvent
-	nextNsSubscriberID   int
-	lastActiveNamespaces *pb.ActiveNamespacesChangedEvent
+	// Native pub/sub broker
+	broker *PubSubBroker
 
 	stopped     bool // flag to prevent publishing during shutdown
-	eventEmitFn func(payload map[string]interface{})
+	eventEmitFn func(payload map[string]any)
+	authManager *AuthTokenManager
+}
+
+// PubSubBroker manages topics and subscriber channels for pub/sub messaging.
+// It maintains a lastMessage cache for host-owned topics (cluster.*, namespaces.*).
+type PubSubBroker struct {
+	mu          sync.RWMutex
+	topics      map[string]map[int]chan *pb.PubSubMessage // topic -> subscriberID -> channel
+	nextID      map[string]int                            // topic -> next subscriber ID
+	lastMessage map[string]*pb.PubSubMessage              // topic -> last message (host topics only)
+}
+
+// NewPubSubBroker creates a new pub/sub broker.
+func NewPubSubBroker() *PubSubBroker {
+	return &PubSubBroker{
+		topics:      make(map[string]map[int]chan *pb.PubSubMessage),
+		nextID:      make(map[string]int),
+		lastMessage: make(map[string]*pb.PubSubMessage),
+	}
 }
 
 // NewHostPluginServer creates a new HostPluginServer.
-func NewHostPluginServer(eventEmitFn func(payload map[string]interface{})) *HostPluginServer {
+func NewHostPluginServer(eventEmitFn func(payload map[string]any), authManager *AuthTokenManager) *HostPluginServer {
 	return &HostPluginServer{
-		subscribers:   make(map[int]chan *pb.ClusterContextChangedEvent),
-		nsSubscribers: make(map[int]chan *pb.ActiveNamespacesChangedEvent),
-		eventEmitFn:   eventEmitFn,
+		broker:      NewPubSubBroker(),
+		eventEmitFn: eventEmitFn,
+		authManager: authManager,
 	}
 }
 
-// ClusterContextWatch handles the streaming RPC that plugins call to subscribe to context changes.
-func (s *HostPluginServer) ClusterContextWatch(req *pb.Empty, stream pb.Plugin_ClusterContextWatchServer) error {
-	// Register a new subscriber
-	s.mu.Lock()
-	subscriberID := s.nextSubscriberID
-	s.nextSubscriberID++
-	ch := make(chan *pb.ClusterContextChangedEvent, 1)
-	s.subscribers[subscriberID] = ch
+// topicRegex validates topic names: alphanumeric, dots, underscores, hyphens.
+var topicRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 
-	// Send the last context change immediately if one exists
-	lastChange := s.lastContextChange
-	s.mu.Unlock()
+// isValidTopic checks if a topic name is valid.
+func isValidTopic(topic string) bool {
+	return topic != "" && topicRegex.MatchString(topic)
+}
 
-	if lastChange != nil {
-		if err := stream.Send(lastChange); err != nil {
-			s.mu.Lock()
-			delete(s.subscribers, subscriberID)
-			s.mu.Unlock()
+// isHostOwnedTopic checks if a topic is host-owned (e.g., cluster.*, namespaces.*).
+func isHostOwnedTopic(topic string) bool {
+	return len(topic) > 0 && (topic[0:min(8, len(topic))] == "cluster." || topic[0:min(11, len(topic))] == "namespaces.")
+}
+
+// Subscribe handles native pub/sub subscriptions for a given topic.
+func (s *HostPluginServer) Subscribe(req *pb.SubscribeRequest, stream pb.Plugin_SubscribeServer) error {
+	topic := req.Topic
+	ctx := stream.Context()
+
+	// Validate topic
+	if !isValidTopic(topic) {
+		return status.Error(codes.InvalidArgument, "invalid topic format")
+	}
+
+	// Register subscriber
+	subscriberID, ch := s.broker.registerSubscriber(topic)
+
+	// Send last message immediately if it exists (host-owned topics only)
+	lastMsg := s.broker.getLastMessage(topic)
+	if lastMsg != nil {
+		if err := stream.Send(lastMsg); err != nil {
+			s.broker.unregisterSubscriber(topic, subscriberID)
 			return err
 		}
 	}
 
-	// Loop to send future changes to this subscriber
+	// Stream loop
 	for {
 		select {
-		case <-stream.Context().Done():
-			s.mu.Lock()
-			delete(s.subscribers, subscriberID)
-			s.mu.Unlock()
-			return stream.Context().Err()
-		case event := <-ch:
-			if err := stream.Send(event); err != nil {
-				s.mu.Lock()
-				delete(s.subscribers, subscriberID)
-				s.mu.Unlock()
+		case <-ctx.Done():
+			s.broker.unregisterSubscriber(topic, subscriberID)
+			return ctx.Err()
+		case msg := <-ch:
+			if err := stream.Send(msg); err != nil {
+				s.broker.unregisterSubscriber(topic, subscriberID)
 				return err
 			}
 		}
 	}
 }
 
-// ActiveNamespacesWatch handles the streaming RPC that plugins call to subscribe to
-// active-namespaces changes.
-func (s *HostPluginServer) ActiveNamespacesWatch(req *pb.Empty, stream pb.Plugin_ActiveNamespacesWatchServer) error {
-	// Register a new subscriber
-	s.mu.Lock()
-	subscriberID := s.nextNsSubscriberID
-	s.nextNsSubscriberID++
-	ch := make(chan *pb.ActiveNamespacesChangedEvent, 1)
-	s.nsSubscribers[subscriberID] = ch
+// Publish publishes a message to a topic.
+// Plugins may only publish to plugins.<their-own-pluginID>.* topics.
+// The host may publish to any topic.
+func (s *HostPluginServer) Publish(ctx context.Context, req *pb.PublishRequest) (*pb.Empty, error) {
+	topic := req.Topic
+	pluginID := PluginIDFromContext(ctx)
 
-	// Send the last active-namespaces change immediately if one exists
-	lastChange := s.lastActiveNamespaces
-	s.mu.Unlock()
+	// Validate topic
+	if !isValidTopic(topic) {
+		return nil, status.Error(codes.InvalidArgument, "invalid topic format")
+	}
 
-	if lastChange != nil {
-		if err := stream.Send(lastChange); err != nil {
-			s.mu.Lock()
-			delete(s.nsSubscribers, subscriberID)
-			s.mu.Unlock()
-			return err
+	s.mu.RLock()
+	stopped := s.stopped
+	s.mu.RUnlock()
+	if stopped {
+		return nil, status.Error(codes.Unavailable, "server is shutting down")
+	}
+
+	// Authorization check: plugins can only publish under plugins.<their-pluginID>.*
+	// Reserved namespaces (cluster.*, namespaces.*) are host-only.
+	if pluginID != "" {
+		if isHostOwnedTopic(topic) {
+			return nil, status.Error(codes.PermissionDenied, "plugins cannot publish to reserved namespaces")
+		}
+		allowedPrefix := fmt.Sprintf("plugins.%s.", pluginID)
+		if !strings.HasPrefix(topic, allowedPrefix) {
+			return nil, status.Error(codes.PermissionDenied, "plugins can only publish to their own namespace")
 		}
 	}
 
-	// Loop to send future changes to this subscriber
-	for {
-		select {
-		case <-stream.Context().Done():
-			s.mu.Lock()
-			delete(s.nsSubscribers, subscriberID)
-			s.mu.Unlock()
-			return stream.Context().Err()
-		case event := <-ch:
-			if err := stream.Send(event); err != nil {
-				s.mu.Lock()
-				delete(s.nsSubscribers, subscriberID)
-				s.mu.Unlock()
-				return err
-			}
+	// Create pub/sub message
+	msg := &pb.PubSubMessage{
+		Topic:       topic,
+		Source:      pluginID,
+		Timestamp:   time.Now().Format(time.RFC3339),
+		PayloadJson: req.PayloadJson,
+	}
+
+	// Publish to all subscribers (non-blocking, buffer-1, drop-oldest)
+	s.broker.publish(topic, msg)
+
+	// Update last-message cache only for host-owned topics
+	if isHostOwnedTopic(topic) {
+		s.broker.setLastMessage(topic, msg)
+	}
+
+	return &pb.Empty{}, nil
+}
+
+// PublishToHost is called by host-internal code to publish cluster/namespace changes.
+// It publishes to the broker without going through the plugin-facing gRPC RPC.
+// Returns false if the topic is invalid or the server is shutting down.
+func (s *HostPluginServer) PublishToHost(topic string, payloadJSON string) bool {
+	if !isValidTopic(topic) {
+		return false
+	}
+
+	s.mu.RLock()
+	stopped := s.stopped
+	s.mu.RUnlock()
+	if stopped {
+		return false
+	}
+
+	msg := &pb.PubSubMessage{
+		Topic:       topic,
+		Source:      "host",
+		Timestamp:   time.Now().Format(time.RFC3339),
+		PayloadJson: payloadJSON,
+	}
+
+	s.broker.publish(topic, msg)
+
+	// Cache for host-owned topics
+	if isHostOwnedTopic(topic) {
+		s.broker.setLastMessage(topic, msg)
+	}
+	return true
+}
+
+// Broker helper methods
+
+// registerSubscriber registers a subscriber for a topic and returns the subscriber ID and channel.
+func (b *PubSubBroker) registerSubscriber(topic string) (int, chan *pb.PubSubMessage) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.topics[topic] == nil {
+		b.topics[topic] = make(map[int]chan *pb.PubSubMessage)
+		b.nextID[topic] = 0
+	}
+
+	subscriberID := b.nextID[topic]
+	b.nextID[topic]++
+
+	ch := make(chan *pb.PubSubMessage, 1)
+	b.topics[topic][subscriberID] = ch
+
+	return subscriberID, ch
+}
+
+// unregisterSubscriber removes a subscriber from a topic.
+func (b *PubSubBroker) unregisterSubscriber(topic string, subscriberID int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if subs, ok := b.topics[topic]; ok {
+		if ch, ok := subs[subscriberID]; ok {
+			close(ch)
+			delete(subs, subscriberID)
+		}
+		if len(subs) == 0 {
+			delete(b.topics, topic)
 		}
 	}
 }
 
-// PublishActiveNamespacesChange sends an active-namespaces change event to all
-// currently subscribed plugins. Returns false if the server is shutting down (event
-// not published). Follows the same eventually-consistent, self-healing delivery
-// guarantee as PublishClusterContextChange (see its doc comment) — a late-joining or
-// briefly-behind subscriber may serve one stale namespace filter before it catches up.
-func (s *HostPluginServer) PublishActiveNamespacesChange(namespaces []string) bool {
-	event := &pb.ActiveNamespacesChangedEvent{
-		Namespaces: namespaces,
-		Timestamp:  time.Now().Format(time.RFC3339),
+// publish publishes a message to all subscribers of a topic (non-blocking, drop-oldest on full).
+func (b *PubSubBroker) publish(topic string, msg *pb.PubSubMessage) {
+	// Hold the read lock for the entire send loop (sends are non-blocking via
+	// select/default, so this is cheap) — this prevents unregisterSubscriber,
+	// which takes the write lock, from closing a channel or mutating the
+	// topic's subscriber map concurrently with this range/send.
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	subs, ok := b.topics[topic]
+	if !ok || len(subs) == 0 {
+		return
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.stopped {
-		return false
-	}
-
-	s.lastActiveNamespaces = event
-
-	for _, ch := range s.nsSubscribers {
+	for _, ch := range subs {
 		select {
-		case ch <- event:
+		case ch <- msg:
 		default:
+			// Channel full, drop oldest message and try again
 			select {
 			case <-ch:
 			default:
 			}
 			select {
-			case ch <- event:
+			case ch <- msg:
 			default:
 			}
 		}
 	}
-	return true
 }
 
-// PublishClusterContextChange sends a cluster context change event to all currently subscribed plugins.
-// Returns false if the server is shutting down (event not published).
-//
-// Event-Ordering Guarantee:
-// Each subscriber is guaranteed to receive events in order. However, a subscriber that
-// arrives after a publish begins may receive a stale context replay (the last published
-// event) before receiving subsequent new events. This is acceptable because:
-// - Single-active-context semantics mean only one context is ever valid at a time
-// - A stale replay self-heals on the next actual cluster switch
-// - This avoids the complexity of buffering or ordering guarantees across late-joiners
-// Plugins should expect to receive occasional redundant replays and handle them idempotently
-// (which they do — SetActiveContext is a no-op if the context is already set).
-func (s *HostPluginServer) PublishClusterContextChange(contextName, kubeconfigPath string) bool {
-	event := &pb.ClusterContextChangedEvent{
-		ContextName:    contextName,
-		KubeconfigPath: kubeconfigPath,
-		Timestamp:      time.Now().Format(time.RFC3339),
-	}
+// getLastMessage returns the last message for a topic (if cached).
+func (b *PubSubBroker) getLastMessage(topic string) *pb.PubSubMessage {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.lastMessage[topic]
+}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Reject publishes during shutdown
-	if s.stopped {
-		return false
-	}
-
-	// Store the last published event for new subscribers
-	s.lastContextChange = event
-
-	// Broadcast to all current subscribers. The channel is buffer-1 and holds only the
-	// most recent pending event: if it's already full (the subscriber hasn't drained
-	// the previous event yet), drop the stale one and enqueue this one in its place.
-	// Dropping the newest event instead would let a subscriber get stuck delivering a
-	// superseded context indefinitely, since nothing here retries a skipped publish.
-	for _, ch := range s.subscribers {
-		select {
-		case ch <- event:
-		default:
-			select {
-			case <-ch:
-			default:
-			}
-			select {
-			case ch <- event:
-			default:
-			}
-		}
-	}
-	return true
+// setLastMessage caches the last message for a topic.
+func (b *PubSubBroker) setLastMessage(topic string, msg *pb.PubSubMessage) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.lastMessage[topic] = msg
 }
 
 // MarkStopped marks the server as stopped, preventing new publishes.
@@ -216,26 +272,4 @@ func (s *HostPluginServer) MarkStopped() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stopped = true
-}
-
-// EmitEvent handles event emission from plugins to the host.
-func (s *HostPluginServer) EmitEvent(ctx context.Context, req *pb.PluginEventRequest) (*pb.Empty, error) {
-	if req.PluginId == "" || req.EventName == "" {
-		return nil, fmt.Errorf("invalid event request: pluginId and eventName required")
-	}
-	if s.eventEmitFn == nil {
-		return &pb.Empty{}, nil
-	}
-	var payload interface{}
-	if req.PayloadJson != "" {
-		if err := json.Unmarshal([]byte(req.PayloadJson), &payload); err != nil {
-			return nil, fmt.Errorf("invalid payloadJson: %w", err)
-		}
-	}
-	s.eventEmitFn(map[string]interface{}{
-		"pluginId":  req.PluginId,
-		"eventName": req.EventName,
-		"payload":   payload,
-	})
-	return &pb.Empty{}, nil
 }

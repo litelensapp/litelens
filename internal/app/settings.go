@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -232,7 +233,7 @@ func (a *App) IsPrivateRepoAccess() bool {
 }
 
 // GetContextKubeconfigPath returns the kubeconfig file path that defines the given context.
-// Returns an empty string if the context is not found in any loaded kubeconfig.
+// Returns an error if the context is not found in any loaded kubeconfig.
 func (a *App) GetContextKubeconfigPath(contextName string) (string, error) {
 	a.mu.RLock()
 	paths := a.settings.KubeconfigPaths
@@ -248,7 +249,7 @@ func (a *App) GetContextKubeconfigPath(contextName string) (string, error) {
 			return path, nil
 		}
 	}
-	return "", nil
+	return "", fmt.Errorf("context %q not found in any kubeconfig", contextName)
 }
 
 // PickKubeconfigPath opens a native file dialog rooted at ~/.kube and returns the selected path.

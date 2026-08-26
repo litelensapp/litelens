@@ -69,12 +69,12 @@ func TestPluginLoaderLockFile(t *testing.T) {
 func TestPluginLoaderHandshakeValidation(t *testing.T) {
 	tests := []struct {
 		name    string
-		hs      map[string]interface{}
+		hs      map[string]any
 		wantErr bool
 	}{
 		{
 			name: "valid handshake",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "READY",
 				"httpPort": 54321.0,
 				"version":  "1.0.0",
@@ -83,7 +83,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "missing httpPort",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":    "READY",
 				"version": "1.0.0",
 			},
@@ -91,7 +91,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "invalid type",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "INVALID",
 				"httpPort": 54321.0,
 			},
@@ -99,7 +99,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "port out of range (too low)",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "READY",
 				"httpPort": 0.0,
 			},
@@ -107,7 +107,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "port out of ephemeral range (too high)",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "READY",
 				"httpPort": 65536.0,
 			},
@@ -115,7 +115,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "httpPort in valid range",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "READY",
 				"httpPort": 49152.0,
 			},
@@ -123,7 +123,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "httpPort at upper bound",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "READY",
 				"httpPort": 65535.0,
 			},
@@ -131,7 +131,7 @@ func TestPluginLoaderHandshakeValidation(t *testing.T) {
 		},
 		{
 			name: "httpPort in Linux ephemeral range (32845 - original bug)",
-			hs: map[string]interface{}{
+			hs: map[string]any{
 				"type":     "READY",
 				"httpPort": 32845.0,
 			},
@@ -210,7 +210,7 @@ func TestPluginLoaderConcurrency(t *testing.T) {
 		done := make(chan bool)
 
 		// Concurrent reads
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			go func() {
 				_ = pl.Status()
 				done <- true
@@ -218,7 +218,7 @@ func TestPluginLoaderConcurrency(t *testing.T) {
 		}
 
 		// Wait for all
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			<-done
 		}
 	})
@@ -228,7 +228,7 @@ func TestHandshakeJSONParsing(t *testing.T) {
 	t.Run("valid handshake JSON is parsed correctly", func(t *testing.T) {
 		jsonLine := `{"type":"READY","version":"dev","httpPort":54321,"pid":1234,"timestamp":"2026-07-23T00:00:00Z"}`
 
-		var handshake map[string]interface{}
+		var handshake map[string]any
 		if err := json.Unmarshal([]byte(jsonLine), &handshake); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
@@ -242,7 +242,7 @@ func TestHandshakeJSONParsing(t *testing.T) {
 	t.Run("malformed JSON fails appropriately", func(t *testing.T) {
 		jsonLine := `{"type":"READY","httpPort":65536}`
 
-		var handshake map[string]interface{}
+		var handshake map[string]any
 		if err := json.Unmarshal([]byte(jsonLine), &handshake); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
@@ -260,9 +260,9 @@ func TestPluginStatusThreadSafety(t *testing.T) {
 
 	// Start goroutines that repeatedly call Status()
 	errs := make(chan error, 20)
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		go func() {
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				_ = pl.Status()
 			}
 			errs <- nil
@@ -270,7 +270,7 @@ func TestPluginStatusThreadSafety(t *testing.T) {
 	}
 
 	// Wait for all to complete
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		<-errs
 	}
 }
@@ -328,14 +328,14 @@ func TestPluginLoaderProgress(t *testing.T) {
 		done := make(chan bool, 20)
 
 		// Concurrent writes and reads
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			go func(idx int) {
 				pl.SetProgress(idx * 10)
 				done <- true
 			}(i)
 		}
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			go func() {
 				_ = pl.Progress()
 				done <- true
@@ -343,7 +343,7 @@ func TestPluginLoaderProgress(t *testing.T) {
 		}
 
 		// Wait for all
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			<-done
 		}
 	})
