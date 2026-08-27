@@ -3,16 +3,26 @@ package plugin
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
+
+// TokenManager is an interface for managing authentication tokens.
+// It abstracts away the gRPC server dependency.
+type TokenManager interface {
+	RegisterToken(token, pluginID string)
+	RemoveToken(token string)
+}
 
 // PluginLoader manages a single plugin instance lifecycle
 type PluginLoader struct {
@@ -25,7 +35,9 @@ type PluginLoader struct {
 	pid          int // plugin subprocess PID, used for on-demand liveness checks
 	processCmd   *exec.Cmd
 	lastError    string
-	hostGRPCPort int // host's gRPC port for cluster context watch (0 = not set)
+	hostGRPCPort int          // host's gRPC port for cluster context watch (0 = not set)
+	tokenManager TokenManager // manages authentication tokens (optional)
+	authToken    string       // current auth token for this plugin instance
 }
 
 // NewPluginLoader creates a new loader for a plugin. The lock file lives
@@ -92,6 +104,14 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 		return fmt.Errorf("plugin launch failed: %w", err)
 	}
 
+	// Set up stdin pipe for token delivery
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		pl.status = dto.PluginStatusCrashed
+		pl.lastError = fmt.Sprintf("stdin pipe: %v", err)
+		return fmt.Errorf("plugin launch failed: %w", err)
+	}
+
 	if err := cmd.Start(); err != nil {
 		pl.status = dto.PluginStatusCrashed
 		pl.lastError = fmt.Sprintf("start process: %v", err)
@@ -100,11 +120,42 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 
 	pl.processCmd = cmd
 
+	// Remove any stale token from a previous run (e.g. crash-relaunch) before
+	// registering a new one — an old token must not remain valid indefinitely
+	// once its process is gone.
+	if pl.tokenManager != nil && pl.authToken != "" {
+		pl.tokenManager.RemoveToken(pl.authToken)
+		pl.authToken = ""
+	}
+
+	// Generate and register authentication token before delivering it to the plugin.
+	// This token is a security credential and must use crypto/rand.
+	authToken, err := generateAuthToken()
+	if err != nil {
+		_ = cmd.Process.Kill()
+		pl.status = dto.PluginStatusCrashed
+		pl.lastError = fmt.Sprintf("generate auth token: %v", err)
+		return fmt.Errorf("generate auth token: %w", err)
+	}
+	pl.authToken = authToken
+
+	// Register token before starting the plugin so it can authenticate immediately.
+	if pl.tokenManager != nil {
+		pl.tokenManager.RegisterToken(authToken, pl.id)
+	}
+
+	// Write token to plugin's stdin and close stdin.
+	// This must happen before waiting on the handshake (separate pipes, no ordering dependency).
+	go func() {
+		defer stdinPipe.Close()
+		_, _ = io.WriteString(stdinPipe, authToken+"\n")
+	}()
+
 	// Read handshake within 5s timeout
 	readCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	handshakeCh := make(chan map[string]interface{}, 1)
+	handshakeCh := make(chan map[string]any, 1)
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -118,7 +169,7 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 			errCh <- fmt.Errorf("no output from plugin")
 			return
 		}
-		var handshake map[string]interface{}
+		var handshake map[string]any
 		if err := json.Unmarshal([]byte(line), &handshake); err != nil {
 			errCh <- fmt.Errorf("parse handshake: %w", err)
 			return
@@ -167,7 +218,7 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 }
 
 // validateHandshake checks the handshake JSON for required fields and valid port.
-func (pl *PluginLoader) validateHandshake(handshake map[string]interface{}) error {
+func (pl *PluginLoader) validateHandshake(handshake map[string]any) error {
 	if handshake["type"] != "READY" {
 		return fmt.Errorf("invalid handshake type: %v", handshake["type"])
 	}
@@ -309,6 +360,26 @@ func (pl *PluginLoader) SetHostGRPCPort(port int) {
 	pl.hostGRPCPort = port
 }
 
+// SetTokenManager sets the token manager for this plugin loader (thread-safe)
+func (pl *PluginLoader) SetTokenManager(tm TokenManager) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	pl.tokenManager = tm
+}
+
+// generateAuthToken generates a 32-byte authentication token, hex-encoded to 64 characters.
+// It uses crypto/rand which is required for security-sensitive credentials.
+func generateAuthToken() (string, error) {
+	// Generate 32 random bytes (crypto/rand required — do not downgrade to math/rand,
+	// token is a security credential).
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", fmt.Errorf("generate random token: %w", err)
+	}
+	// Hex-encode the bytes to get a 64-character string.
+	return hex.EncodeToString(tokenBytes), nil
+}
+
 // Shutdown cleanly shuts down the plugin
 func (pl *PluginLoader) Shutdown() error {
 	pl.mu.Lock()
@@ -319,11 +390,17 @@ func (pl *PluginLoader) Shutdown() error {
 		_ = pl.processCmd.Wait()
 	}
 
+	// Remove the authentication token
+	if pl.tokenManager != nil && pl.authToken != "" {
+		pl.tokenManager.RemoveToken(pl.authToken)
+	}
+
 	_ = os.Remove(pl.lockFilePath)
 
 	// Reset state to allow relaunch
 	pl.pid = 0
 	pl.processCmd = nil
+	pl.authToken = ""
 	pl.status = dto.PluginStatusNotInstalled
 	pl.lastError = ""
 

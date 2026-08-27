@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
 // TestRestoreInstalledPluginsValidMetadata verifies a plugin with valid .plugin-metadata.json

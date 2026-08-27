@@ -8,7 +8,7 @@ import (
 
 // TestGRPCServerConfig_StartSucceeds tests that a server can be successfully started.
 func TestGRPCServerConfig_StartSucceeds(t *testing.T) {
-	cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create gRPC server: %v", err)
 	}
@@ -21,7 +21,7 @@ func TestGRPCServerConfig_StartSucceeds(t *testing.T) {
 
 // TestGRPCServerConfig_PortIsAssigned tests that the server is assigned a valid port.
 func TestGRPCServerConfig_PortIsAssigned(t *testing.T) {
-	cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create gRPC server: %v", err)
 	}
@@ -35,13 +35,13 @@ func TestGRPCServerConfig_PortIsAssigned(t *testing.T) {
 
 // TestGRPCServerConfig_PortsDiffer tests that multiple servers get different ports.
 func TestGRPCServerConfig_PortsDiffer(t *testing.T) {
-	cfg1, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg1, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create first gRPC server: %v", err)
 	}
 	defer cfg1.Stop()
 
-	cfg2, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg2, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create second gRPC server: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestGRPCServerConfig_PortsDiffer(t *testing.T) {
 
 // TestGRPCServerConfig_PluginServerIsAccessible tests that the PluginServer is accessible.
 func TestGRPCServerConfig_PluginServerIsAccessible(t *testing.T) {
-	cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create gRPC server: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestGRPCServerConfig_PluginServerIsAccessible(t *testing.T) {
 	}
 
 	// Verify we can publish to it
-	ok := server.PublishClusterContextChange("test", "/test")
+	ok := server.PublishToHost("test.topic", "{}")
 	if !ok {
 		t.Fatal("expected publish to succeed before stop")
 	}
@@ -74,7 +74,7 @@ func TestGRPCServerConfig_PluginServerIsAccessible(t *testing.T) {
 
 // TestGRPCServerConfig_StopPreventsPublish tests that Stop() prevents further publishes.
 func TestGRPCServerConfig_StopPreventsPublish(t *testing.T) {
-	cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create gRPC server: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestGRPCServerConfig_StopPreventsPublish(t *testing.T) {
 	server := cfg.PluginServer()
 
 	// Should work before stop
-	ok := server.PublishClusterContextChange("before-stop", "/before-stop")
+	ok := server.PublishToHost("before-stop", "{}")
 	if !ok {
 		t.Fatal("publish before stop should succeed")
 	}
@@ -91,7 +91,7 @@ func TestGRPCServerConfig_StopPreventsPublish(t *testing.T) {
 	cfg.Stop()
 
 	// Should fail after stop
-	ok = server.PublishClusterContextChange("after-stop", "/after-stop")
+	ok = server.PublishToHost("after-stop", "{}")
 	if ok {
 		t.Fatal("publish after stop should fail")
 	}
@@ -99,7 +99,7 @@ func TestGRPCServerConfig_StopPreventsPublish(t *testing.T) {
 
 // TestGRPCServerConfig_StopIdempotent tests that multiple Stop() calls are safe.
 func TestGRPCServerConfig_StopIdempotent(t *testing.T) {
-	cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create gRPC server: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestGRPCServerConfig_StopIdempotent(t *testing.T) {
 	cfg.Stop()
 
 	// Should still be stopped
-	ok := cfg.PluginServer().PublishClusterContextChange("test", "/test")
+	ok := cfg.PluginServer().PublishToHost("test.topic", "{}")
 	if ok {
 		t.Fatal("expected publish to fail after stop")
 	}
@@ -123,11 +123,11 @@ func TestGRPCServerConfig_ConcurrentCreation(t *testing.T) {
 	errs := make(chan error, numServers)
 	var wg sync.WaitGroup
 
-	for i := 0; i < numServers; i++ {
+	for i := range numServers {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+			cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 			if err != nil {
 				errs <- fmt.Errorf("failed to create server %d: %v", idx, err)
 				return
@@ -147,7 +147,7 @@ func TestGRPCServerConfig_ConcurrentCreation(t *testing.T) {
 	}
 
 	// Defer cleanup
-	for i := 0; i < numServers; i++ {
+	for i := range numServers {
 		if cfgs[i] != nil {
 			defer cfgs[i].Stop()
 		}
@@ -155,7 +155,7 @@ func TestGRPCServerConfig_ConcurrentCreation(t *testing.T) {
 
 	// Verify all have different ports
 	ports := make(map[int]bool)
-	for i := 0; i < numServers; i++ {
+	for i := range numServers {
 		if cfgs[i] == nil {
 			t.Fatalf("server %d is nil", i)
 		}
@@ -169,7 +169,7 @@ func TestGRPCServerConfig_ConcurrentCreation(t *testing.T) {
 
 // TestGRPCServerConfig_ListenerKeptAlive tests that the listener is properly maintained.
 func TestGRPCServerConfig_ListenerKeptAlive(t *testing.T) {
-	cfg, err := NewGRPCServerConfig(func(payload map[string]interface{}) {})
+	cfg, err := NewGRPCServerConfig(func(payload map[string]any) {})
 	if err != nil {
 		t.Fatalf("failed to create gRPC server: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestGRPCServerConfig_ListenerKeptAlive(t *testing.T) {
 	}
 
 	// Should still be able to publish
-	ok := server.PublishClusterContextChange("test", "/test")
+	ok := server.PublishToHost("test.topic", "{}")
 	if !ok {
 		t.Fatal("publish failed - listener may have been garbage collected")
 	}

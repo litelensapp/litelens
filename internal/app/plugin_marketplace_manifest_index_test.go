@@ -10,7 +10,7 @@ import (
 
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/plugin"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
 // TestManifestIndexDiscovery_Present verifies that plugin manifests are read

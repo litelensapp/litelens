@@ -5,26 +5,32 @@ package pluginapi;
 option go_package = "github.com/litelensapp/litelens/packages/core/pb";
 
 service Plugin {
-  rpc ClusterContextWatch(Empty) returns (stream ClusterContextChangedEvent);
-  rpc ActiveNamespacesWatch(Empty) returns (stream ActiveNamespacesChangedEvent);
-  rpc EmitEvent(PluginEventRequest) returns (Empty);
+  // Subscribe returns a stream of pub/sub messages for a given topic.
+  rpc Subscribe(SubscribeRequest) returns (stream PubSubMessage);
+
+  // Publish publishes a message to a topic. Only the host and plugins publishing
+  // to their own topic prefix (plugins.<pluginID>.*) may call this.
+  rpc Publish(PublishRequest) returns (Empty);
 }
 
 message Empty {}
 
-message ClusterContextChangedEvent {
-  string contextName = 1;
-  string kubeconfigPath = 2;
-  string timestamp = 3;
+// SubscribeRequest is used to subscribe to messages on a topic.
+message SubscribeRequest {
+  string topic = 1;
 }
 
-message ActiveNamespacesChangedEvent {
-  repeated string namespaces = 1;
-  string timestamp = 2;
+// PublishRequest is used to publish a message to a topic.
+message PublishRequest {
+  string topic = 1;
+  string payload_json = 2;
 }
 
-message PluginEventRequest {
-  string pluginId = 1;
-  string eventName = 2;
-  string payloadJson = 3;
+// PubSubMessage is a message published to a topic.
+message PubSubMessage {
+  string topic = 1;
+  string source = 2;       // host or pluginID
+  string timestamp = 3;    // RFC3339 formatted
+  string payload_json = 4;
 }
+

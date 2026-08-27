@@ -3,7 +3,7 @@ package app
 import (
 	"sort"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/litelensapp/litelens/internal/kube"
 	corekube "github.com/litelensapp/litelens/packages/core/kube"
 	"k8s.io/client-go/tools/clientcmd"

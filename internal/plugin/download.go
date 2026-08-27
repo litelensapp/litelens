@@ -19,7 +19,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
 const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"

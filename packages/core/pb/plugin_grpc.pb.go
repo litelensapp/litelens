@@ -19,18 +19,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Plugin_ClusterContextWatch_FullMethodName   = "/pluginapi.Plugin/ClusterContextWatch"
-	Plugin_ActiveNamespacesWatch_FullMethodName = "/pluginapi.Plugin/ActiveNamespacesWatch"
-	Plugin_EmitEvent_FullMethodName             = "/pluginapi.Plugin/EmitEvent"
+	Plugin_Subscribe_FullMethodName = "/pluginapi.Plugin/Subscribe"
+	Plugin_Publish_FullMethodName   = "/pluginapi.Plugin/Publish"
 )
 
 // PluginClient is the client API for Plugin service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PluginClient interface {
-	ClusterContextWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ClusterContextChangedEvent], error)
-	ActiveNamespacesWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ActiveNamespacesChangedEvent], error)
-	EmitEvent(ctx context.Context, in *PluginEventRequest, opts ...grpc.CallOption) (*Empty, error)
+	// Subscribe returns a stream of pub/sub messages for a given topic.
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PubSubMessage], error)
+	// Publish publishes a message to a topic. Only the host and plugins publishing
+	// to their own topic prefix (plugins.<pluginID>.*) may call this.
+	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type pluginClient struct {
@@ -41,13 +42,13 @@ func NewPluginClient(cc grpc.ClientConnInterface) PluginClient {
 	return &pluginClient{cc}
 }
 
-func (c *pluginClient) ClusterContextWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ClusterContextChangedEvent], error) {
+func (c *pluginClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PubSubMessage], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Plugin_ServiceDesc.Streams[0], Plugin_ClusterContextWatch_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Plugin_ServiceDesc.Streams[0], Plugin_Subscribe_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[Empty, ClusterContextChangedEvent]{ClientStream: stream}
+	x := &grpc.GenericClientStream[SubscribeRequest, PubSubMessage]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -58,31 +59,12 @@ func (c *pluginClient) ClusterContextWatch(ctx context.Context, in *Empty, opts 
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Plugin_ClusterContextWatchClient = grpc.ServerStreamingClient[ClusterContextChangedEvent]
+type Plugin_SubscribeClient = grpc.ServerStreamingClient[PubSubMessage]
 
-func (c *pluginClient) ActiveNamespacesWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ActiveNamespacesChangedEvent], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Plugin_ServiceDesc.Streams[1], Plugin_ActiveNamespacesWatch_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[Empty, ActiveNamespacesChangedEvent]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Plugin_ActiveNamespacesWatchClient = grpc.ServerStreamingClient[ActiveNamespacesChangedEvent]
-
-func (c *pluginClient) EmitEvent(ctx context.Context, in *PluginEventRequest, opts ...grpc.CallOption) (*Empty, error) {
+func (c *pluginClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, Plugin_EmitEvent_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Plugin_Publish_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +75,11 @@ func (c *pluginClient) EmitEvent(ctx context.Context, in *PluginEventRequest, op
 // All implementations must embed UnimplementedPluginServer
 // for forward compatibility.
 type PluginServer interface {
-	ClusterContextWatch(*Empty, grpc.ServerStreamingServer[ClusterContextChangedEvent]) error
-	ActiveNamespacesWatch(*Empty, grpc.ServerStreamingServer[ActiveNamespacesChangedEvent]) error
-	EmitEvent(context.Context, *PluginEventRequest) (*Empty, error)
+	// Subscribe returns a stream of pub/sub messages for a given topic.
+	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[PubSubMessage]) error
+	// Publish publishes a message to a topic. Only the host and plugins publishing
+	// to their own topic prefix (plugins.<pluginID>.*) may call this.
+	Publish(context.Context, *PublishRequest) (*Empty, error)
 	mustEmbedUnimplementedPluginServer()
 }
 
@@ -106,14 +90,11 @@ type PluginServer interface {
 // pointer dereference when methods are called.
 type UnimplementedPluginServer struct{}
 
-func (UnimplementedPluginServer) ClusterContextWatch(*Empty, grpc.ServerStreamingServer[ClusterContextChangedEvent]) error {
-	return status.Error(codes.Unimplemented, "method ClusterContextWatch not implemented")
+func (UnimplementedPluginServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[PubSubMessage]) error {
+	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
 }
-func (UnimplementedPluginServer) ActiveNamespacesWatch(*Empty, grpc.ServerStreamingServer[ActiveNamespacesChangedEvent]) error {
-	return status.Error(codes.Unimplemented, "method ActiveNamespacesWatch not implemented")
-}
-func (UnimplementedPluginServer) EmitEvent(context.Context, *PluginEventRequest) (*Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method EmitEvent not implemented")
+func (UnimplementedPluginServer) Publish(context.Context, *PublishRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Publish not implemented")
 }
 func (UnimplementedPluginServer) mustEmbedUnimplementedPluginServer() {}
 func (UnimplementedPluginServer) testEmbeddedByValue()                {}
@@ -136,42 +117,31 @@ func RegisterPluginServer(s grpc.ServiceRegistrar, srv PluginServer) {
 	s.RegisterService(&Plugin_ServiceDesc, srv)
 }
 
-func _Plugin_ClusterContextWatch_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
+func _Plugin_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(PluginServer).ClusterContextWatch(m, &grpc.GenericServerStream[Empty, ClusterContextChangedEvent]{ServerStream: stream})
+	return srv.(PluginServer).Subscribe(m, &grpc.GenericServerStream[SubscribeRequest, PubSubMessage]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Plugin_ClusterContextWatchServer = grpc.ServerStreamingServer[ClusterContextChangedEvent]
+type Plugin_SubscribeServer = grpc.ServerStreamingServer[PubSubMessage]
 
-func _Plugin_ActiveNamespacesWatch_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(PluginServer).ActiveNamespacesWatch(m, &grpc.GenericServerStream[Empty, ActiveNamespacesChangedEvent]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Plugin_ActiveNamespacesWatchServer = grpc.ServerStreamingServer[ActiveNamespacesChangedEvent]
-
-func _Plugin_EmitEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PluginEventRequest)
+func _Plugin_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginServer).EmitEvent(ctx, in)
+		return srv.(PluginServer).Publish(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Plugin_EmitEvent_FullMethodName,
+		FullMethod: Plugin_Publish_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServer).EmitEvent(ctx, req.(*PluginEventRequest))
+		return srv.(PluginServer).Publish(ctx, req.(*PublishRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -184,19 +154,14 @@ var Plugin_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PluginServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "EmitEvent",
-			Handler:    _Plugin_EmitEvent_Handler,
+			MethodName: "Publish",
+			Handler:    _Plugin_Publish_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "ClusterContextWatch",
-			Handler:       _Plugin_ClusterContextWatch_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "ActiveNamespacesWatch",
-			Handler:       _Plugin_ActiveNamespacesWatch_Handler,
+			StreamName:    "Subscribe",
+			Handler:       _Plugin_Subscribe_Handler,
 			ServerStreams: true,
 		},
 	},

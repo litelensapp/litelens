@@ -16,9 +16,50 @@ import (
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/storage"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
+	"github.com/litelensapp/litelens/packages/core/util"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// emitActiveContextToPlugins pushes the active cluster context to all running
+// plugins with HTTP backends. Phase 2 design decision: "The host pushes POST
+// on every cluster switch." Callers must not hold a.mu while calling this:
+// GetContextKubeconfigPath takes its own RLock on a.mu, and a.mu is not
+// reentrant.
+func (a *App) emitActiveContextToPlugins(contextName string) {
+	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
+	if err != nil {
+		log.Printf("resolve kubeconfig path for plugin cluster-context push (context %q): %v", contextName, err)
+		return
+	}
+	if a.grpcServerCfg == nil {
+		return
+	}
+	payloadJSON, err := json.Marshal(map[string]string{
+		"contextName":    contextName,
+		"kubeconfigPath": kubeconfigPath,
+	})
+	if err != nil {
+		log.Printf("marshal cluster-context payload for plugin push (context %q): %v", contextName, err)
+		return
+	}
+	a.grpcServerCfg.PluginServer().PublishToHost(string(util.EventTopicClusterContext), string(payloadJSON))
+}
+
+// emitActiveNamespacesToPlugins pushes the active namespace filter to all
+// running plugins with HTTP backends, same "host pushes on every change"
+// design as the cluster-context push.
+func (a *App) emitActiveNamespacesToPlugins(namespaces []string) {
+	if a.grpcServerCfg == nil {
+		return
+	}
+	payloadJSON, err := json.Marshal(map[string][]string{"namespaces": namespaces})
+	if err != nil {
+		log.Printf("marshal active-namespaces payload for plugin push: %v", err)
+		return
+	}
+	a.grpcServerCfg.PluginServer().PublishToHost(string(util.EventTopicNamespacesActive), string(payloadJSON))
+}
 
 // pluginsRootDir returns the directory all installed plugins live under: ~/.litelens/plugins.
 func (a *App) pluginsRootDir() string {
@@ -178,6 +219,7 @@ func (a *App) prewarmRestoredPlugins(contextName string) {
 		if loader.Status() == dto.PluginStatusReady && !loader.IsAlive() {
 			if a.grpcServerCfg != nil {
 				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+				loader.SetTokenManager(a.grpcServerCfg)
 			}
 			_ = loader.Launch(context.Background(), kubeconfigPath)
 		}
@@ -578,6 +620,7 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 			if err == nil {
 				if a.grpcServerCfg != nil {
 					loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+					loader.SetTokenManager(a.grpcServerCfg)
 				}
 				if launchErr := loader.Launch(ctx, kubeconfigPath); launchErr != nil {
 					fmt.Printf("plugin %q: post-install launch failed: %v\n", pluginID, launchErr)
@@ -786,6 +829,7 @@ func (a *App) EnablePlugin(pluginID string) error {
 		} else {
 			if a.grpcServerCfg != nil {
 				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+				loader.SetTokenManager(a.grpcServerCfg)
 			}
 			if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
 				// Log but don't fail — matches crash-recovery behavior
@@ -988,6 +1032,7 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 
 		if a.grpcServerCfg != nil {
 			loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+			loader.SetTokenManager(a.grpcServerCfg)
 		}
 		if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
 			return "", fmt.Errorf("plugin %q: relaunch failed: %w", pluginID, err)
@@ -1030,6 +1075,7 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 	}
 	if a.grpcServerCfg != nil {
 		loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+		loader.SetTokenManager(a.grpcServerCfg)
 	}
 	if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
 		return "", fmt.Errorf("plugin %q: backend not responding, relaunch failed: %w", pluginID, err)

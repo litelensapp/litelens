@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 

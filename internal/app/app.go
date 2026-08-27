@@ -12,7 +12,7 @@ import (
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/updater"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -46,7 +46,9 @@ type App struct {
 	factories             map[string]*kube.FactoryHandle
 	metricsClients        map[string]*metricsclient.Clientset
 	activeContext         string
+	activeContextSeq      int64    // guarded by mu; monotonic per Connect call, see Connect
 	activeNamespaces      []string // guarded by mu; empty/nil = all namespaces
+	activeNamespacesSeq   int64    // guarded by mu; see SetActiveNamespaces
 	mu                    sync.RWMutex
 	lastUpdateCheckResult *UpdateCheckResult // guarded by mu; caches the last successful update check
 	portForwards          map[string]dto.PortForward
@@ -130,7 +132,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.restoreInstalledPlugins()
 	// Start the plugin cluster context gRPC server. This is required for cluster sync
 	// to work with plugins; if it fails, plugins will not receive context changes.
-	eventEmitter := func(payload map[string]interface{}) {
+	eventEmitter := func(payload map[string]any) {
 		wailsruntime.EventsEmit(a.ctx, "plugin:event", payload)
 	}
 	grpcCfg, err := hostgrpc.NewGRPCServerConfig(eventEmitter)
@@ -194,7 +196,22 @@ func (a *App) emitConnectStatus(contextName, message string) {
 // NewFactoryHandle blocks until every informer's initial LIST has populated
 // its cache, so activeContext is only set — and the frontend's first
 // List*/Get* calls only unblocked — once listers are warm.
-func (a *App) Connect(contextName string) error {
+//
+// seq is a value the frontend increments synchronously on every call (before
+// the async IPC dispatch), same pattern as SetActiveNamespaces: rapid
+// back-and-forth context switches launch multiple Connect calls concurrently,
+// and since each does slow network/informer-sync work outside any lock that
+// serializes it against the others, they can complete in an order that
+// doesn't match the order the user clicked them in. Without seq, whichever
+// call happens to finish last wins and silently overwrites activeContext with
+// a stale (no-longer-selected) context — every List*/Get* call and the
+// namespace filter would then silently keep operating on the wrong cluster
+// while the UI shows the one the user actually selected.
+func (a *App) Connect(contextName string, seq int64) error {
+	if !a.tryClaimConnectSeq(seq) {
+		return nil
+	}
+
 	a.emitConnectStatus(contextName, "Loading cluster configuration...")
 
 	a.mu.RLock()
@@ -245,9 +262,33 @@ func (a *App) Connect(contextName string) error {
 			wailsruntime.EventsEmit(a.ctx, "resource:forbidden", resource)
 		}
 	})
+
+	// A newer Connect call may have already become active while this one was
+	// blocked building its client and syncing informers above — don't let a
+	// stale call clobber it. Stop the just-synced factory rather than leaking it.
+	if seq < a.activeContextSeq {
+		a.mu.Unlock()
+		h.Stop()
+		return nil
+	}
 	a.factories[contextName] = h
 	a.activeContext = contextName
-	a.activeNamespaces = nil
+	// Restore this context's persisted default namespace filter (rather than
+	// resetting to nil/"all namespaces") and push it to plugins unconditionally
+	// on every Connect — not just on a genuine context switch. A plain
+	// reconnect to the already-active context (e.g. a page reload while the
+	// host process keeps running) previously fell into the "no context
+	// change, no push" branch, leaving a running plugin's synced namespace
+	// filter stale (e.g. left over from an earlier in-session selection) with
+	// nothing to correct it: the frontend's MainLayout does asynchronously
+	// re-push its restored defaults on mount, but any plugin business call
+	// racing ahead of that IPC round trip would be served — and its result
+	// cached indefinitely — against the stale filter. Pushing the correct
+	// restored value here, synchronously within Connect() and before it
+	// returns to the frontend, closes that window instead of relying on the
+	// slower async re-push to win the race.
+	restoredNamespaces := a.restoredNamespacesForContextLocked(contextName)
+	a.activeNamespaces = restoredNamespaces
 
 	// Push cluster context to all running plugins with HTTP backends.
 	// Phase 2 design decision: "The host pushes POST on every cluster switch."
@@ -255,13 +296,8 @@ func (a *App) Connect(contextName string) error {
 	// takes its own RLock on a.mu, and a.mu is not reentrant, so calling it while still
 	// holding the write lock acquired above would deadlock.
 	a.mu.Unlock()
-	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
-	if err != nil {
-		log.Printf("resolve kubeconfig path for plugin cluster-context push (context %q): %v", contextName, err)
-	}
-	if a.grpcServerCfg != nil {
-		a.grpcServerCfg.PluginServer().PublishClusterContextChange(contextName, kubeconfigPath)
-	}
+	a.emitActiveContextToPlugins(contextName)
+	a.emitActiveNamespacesToPlugins(restoredNamespaces)
 	a.mu.Lock()
 
 	// Register event handlers for live updates.
