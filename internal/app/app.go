@@ -39,7 +39,7 @@ type App struct {
 	ctx                   context.Context
 	version               string
 	appSizeBytes          int64         // cached at startup, read-only afterward
-	installSource         string        // set once by a background goroutine started in Startup; guarded by mu
+	installSource         string        // set once during Startup; guarded by mu
 	installSourceReady    chan struct{} // closed once installSource has been detected; see GetInstallSource
 	settings              config.Settings
 	clients               map[string]*kubernetes.Clientset
@@ -117,21 +117,16 @@ func NewApp(version string) *App {
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.appSizeBytes = getAppSizeBytes()
-	// DetectInstallSource can shell out to brew (up to a 2s timeout) on Homebrew
-	// installs; run it off the startup path so it never delays app launch.
-	// GetInstallSource blocks on installSourceReady rather than racing this
-	// goroutine, since the update-available flow can reach the frontend (and
-	// call GetInstallSource) well before detection finishes.
-	go func() {
-		source := updater.DetectInstallSource()
-		a.mu.Lock()
-		a.installSource = source
-		a.mu.Unlock()
-		close(a.installSourceReady)
-	}()
+	a.detectInstallSource()
 	a.restoreInstalledPlugins()
-	// Start the plugin cluster context gRPC server. This is required for cluster sync
-	// to work with plugins; if it fails, plugins will not receive context changes.
+	a.runServer()
+	go a.checkForUpdate(3)
+}
+
+// runServer starts the plugin cluster context gRPC server. This is required
+// for cluster sync to work with plugins; if it fails, plugins will not
+// receive context changes.
+func (a *App) runServer() {
 	eventEmitter := func(payload map[string]any) {
 		wailsruntime.EventsEmit(a.ctx, "plugin:event", payload)
 	}
@@ -143,7 +138,16 @@ func (a *App) Startup(ctx context.Context) {
 		a.grpcServerCfg = grpcCfg
 		log.Printf("plugin cluster context gRPC server started on port %d", grpcCfg.Port())
 	}
-	go a.checkForUpdate(3)
+}
+
+// detectInstallSource blocks up to ~2s (brew's timeout), but eliminates the
+// race entirely and completes before frontend JS runs.
+func (a *App) detectInstallSource() {
+	source := updater.DetectInstallSource()
+	a.mu.Lock()
+	a.installSource = source
+	a.mu.Unlock()
+	close(a.installSourceReady)
 }
 
 // DomReady is called once the frontend DOM is loaded and the native window is visible.

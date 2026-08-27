@@ -148,7 +148,10 @@ func selectUpdateStrategy(goos string) string {
 func (a *App) PerformUpdate(version string) error {
 	// Defense in depth: reject in-app self-update on package-manager-managed installs.
 	// The frontend should disable the "Update Now" button for these, but enforce it here too.
-	source := updater.DetectInstallSource()
+	<-a.installSourceReady
+	a.mu.RLock()
+	source := a.installSource
+	a.mu.RUnlock()
 	if source != updater.InstallSourceManual {
 		return fmt.Errorf("cannot auto-update: managed by %s, use its upgrade command instead", source)
 	}
