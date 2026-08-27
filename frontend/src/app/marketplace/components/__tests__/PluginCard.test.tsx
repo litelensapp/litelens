@@ -495,6 +495,27 @@ describe("PluginCard", () => {
     });
   });
 
+  describe("Version compatibility with v/V prefix handling", () => {
+    it("treats plugin as compatible when hostVersion has v prefix and minimumHostVersion doesn't (e.g. v1.7.5 >= 1.7.5)", () => {
+      const compatiblePlugin: PluginManifest = {
+        ...mockPlugin,
+        minimumHostVersion: "1.7.5",
+        maximumHostVersion: "999.999.999",
+      };
+
+      const { container } = render(
+        <PluginCard plugin={compatiblePlugin} hostVersion="v1.7.5" installStatus="NOT_INSTALLED" />
+      );
+
+      // Should show Install button (not Incompatible)
+      const installButton = Array.from(container.querySelectorAll("button")).find((b) =>
+        b.textContent?.startsWith("Install v")
+      );
+      expect(installButton).toBeTruthy();
+      expect(installButton?.textContent).not.toContain("Incompatible");
+    });
+  });
+
   describe("Remove button", () => {
     it("shows remove button when installStatus is READY", () => {
       const { container } = render(
