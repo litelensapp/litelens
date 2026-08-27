@@ -36,3 +36,15 @@ func (a *App) tryClaimConnectSeq(seq int64) bool {
 	a.activeContextSeq = seq
 	return true
 }
+
+// restoredNamespacesForContextLocked returns a fresh copy of contextName's
+// persisted default namespace filter (from settings), or nil if none is
+// saved (interpreted downstream as "all namespaces"). Called by Connect
+// while a.mu is already held, to seed a.activeNamespaces on every connect —
+// including a reconnect to the already-active context — rather than only on
+// a genuine context switch. Returns a copy, not the settings slice itself,
+// so mutating a.activeNamespaces later can never alias persisted settings
+// state.
+func (a *App) restoredNamespacesForContextLocked(contextName string) []string {
+	return append([]string(nil), a.settings.ClusterDefaultNamespaces[contextName]...)
+}

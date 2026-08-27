@@ -273,7 +273,22 @@ func (a *App) Connect(contextName string, seq int64) error {
 	}
 	a.factories[contextName] = h
 	a.activeContext = contextName
-	a.activeNamespaces = nil
+	// Restore this context's persisted default namespace filter (rather than
+	// resetting to nil/"all namespaces") and push it to plugins unconditionally
+	// on every Connect — not just on a genuine context switch. A plain
+	// reconnect to the already-active context (e.g. a page reload while the
+	// host process keeps running) previously fell into the "no context
+	// change, no push" branch, leaving a running plugin's synced namespace
+	// filter stale (e.g. left over from an earlier in-session selection) with
+	// nothing to correct it: the frontend's MainLayout does asynchronously
+	// re-push its restored defaults on mount, but any plugin business call
+	// racing ahead of that IPC round trip would be served — and its result
+	// cached indefinitely — against the stale filter. Pushing the correct
+	// restored value here, synchronously within Connect() and before it
+	// returns to the frontend, closes that window instead of relying on the
+	// slower async re-push to win the race.
+	restoredNamespaces := a.restoredNamespacesForContextLocked(contextName)
+	a.activeNamespaces = restoredNamespaces
 
 	// Push cluster context to all running plugins with HTTP backends.
 	// Phase 2 design decision: "The host pushes POST on every cluster switch."
@@ -282,6 +297,7 @@ func (a *App) Connect(contextName string, seq int64) error {
 	// holding the write lock acquired above would deadlock.
 	a.mu.Unlock()
 	a.emitActiveContextToPlugins(contextName)
+	a.emitActiveNamespacesToPlugins(restoredNamespaces)
 	a.mu.Lock()
 
 	// Register event handlers for live updates.

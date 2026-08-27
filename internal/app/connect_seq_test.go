@@ -3,6 +3,8 @@ package app
 import (
 	"sync"
 	"testing"
+
+	"github.com/litelensapp/litelens/internal/config"
 )
 
 // TestTryClaimConnectSeq_RejectsStaleAndDuplicate verifies the ordering guard
@@ -66,5 +68,72 @@ func TestTryClaimConnectSeq_ConcurrentOutOfOrderCompletion(t *testing.T) {
 	}
 	if !a.tryClaimConnectSeq(n + 1) {
 		t.Fatalf("expected seq=%d (strictly newer) to be accepted", n+1)
+	}
+}
+
+// TestRestoredNamespacesForContextLocked_ReturnsPersistedDefaults is a
+// regression test for the bug where Connect only pushed a context's
+// persisted default namespace filter to plugins on a genuine context switch,
+// leaving a plugin's synced filter stale on a plain reconnect to the
+// already-active context (e.g. a page reload while the host process keeps
+// running). Connect now always seeds a.activeNamespaces via this helper.
+func TestRestoredNamespacesForContextLocked_ReturnsPersistedDefaults(t *testing.T) {
+	a := &App{
+		settings: config.Settings{
+			ClusterDefaultNamespaces: map[string][]string{
+				"minikube": {"super-longgggg", "test", "test-litelens"},
+			},
+		},
+	}
+
+	got := a.restoredNamespacesForContextLocked("minikube")
+	want := []string{"super-longgggg", "test", "test-litelens"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("expected %v, got %v", want, got)
+		}
+	}
+}
+
+// TestRestoredNamespacesForContextLocked_UnknownContextReturnsNil verifies a
+// context with no saved default filter restores to nil (interpreted
+// downstream as "all namespaces"), not a stale value from another context.
+func TestRestoredNamespacesForContextLocked_UnknownContextReturnsNil(t *testing.T) {
+	a := &App{
+		settings: config.Settings{
+			ClusterDefaultNamespaces: map[string][]string{
+				"minikube": {"default"},
+			},
+		},
+	}
+
+	got := a.restoredNamespacesForContextLocked("docker-desktop")
+	if got != nil {
+		t.Fatalf("expected nil for a context with no saved defaults, got %v", got)
+	}
+}
+
+// TestRestoredNamespacesForContextLocked_ReturnsIndependentCopy verifies the
+// returned slice doesn't alias the settings-backed slice: mutating the
+// result (as Connect's a.activeNamespaces is expected to be, over its
+// lifetime) must never corrupt the persisted settings value.
+func TestRestoredNamespacesForContextLocked_ReturnsIndependentCopy(t *testing.T) {
+	original := []string{"default"}
+	a := &App{
+		settings: config.Settings{
+			ClusterDefaultNamespaces: map[string][]string{
+				"minikube": original,
+			},
+		},
+	}
+
+	got := a.restoredNamespacesForContextLocked("minikube")
+	got[0] = "mutated"
+
+	if original[0] != "default" {
+		t.Fatalf("expected persisted settings slice to be unaffected, got %v", original)
 	}
 }
