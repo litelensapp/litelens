@@ -45,7 +45,7 @@ Then import from the module normally:
 ```go
 import (
     "github.com/litelensapp/litelens/packages/core/pb"
-    "github.com/litelensapp/litelens/packages/core/dto"
+    "github.com/litelensapp/litelens/packages/core/kube/dto"
     "github.com/litelensapp/litelens/packages/core/kube"
 )
 ```

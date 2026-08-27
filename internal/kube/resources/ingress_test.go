@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

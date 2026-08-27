@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/kube/resources"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

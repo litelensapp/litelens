@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-08-20T11:10:27.310Z
+  modified: 2026-08-27T10:15:09.998Z
 ---
 
 ```text
@@ -905,7 +905,7 @@ metadata:
     client.go             # NewClientset(contextName) — returns clientset + rest.Config
     metrics.go            # FetchNodeMetrics() → map[string]dto.NodeUsage; NewMetricsClientForContext()
     informers.go          # NewFactoryHandle(cs, onForbidden) — SharedInformerFactory, pre-registers all informers, sets WatchErrorHandler on each to detect 403s and call onForbidden(resourceKey)
-    /resources/           # package resources — k8s→DTO conversion + list functions (types live in packages/core/dto — moved from internal/dto, which was deleted 2026-08-18 once every importer migrated)
+    /resources/           # package resources — k8s→DTO conversion + list functions (types live in packages/core/kube/dto — moved from internal/dto, which was deleted 2026-08-18 once every importer migrated; dto itself moved from packages/core/dto to packages/core/kube/dto on 2026-08-27)
       common.go           # humanAge helper
       pod.go              # toPod, ListPods
       deployment.go       # toDeployment, ListDeployments

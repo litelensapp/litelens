@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"sync"
 	"time"
@@ -13,7 +12,7 @@ import (
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/updater"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -133,7 +132,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.restoreInstalledPlugins()
 	// Start the plugin cluster context gRPC server. This is required for cluster sync
 	// to work with plugins; if it fails, plugins will not receive context changes.
-	eventEmitter := func(payload map[string]interface{}) {
+	eventEmitter := func(payload map[string]any) {
 		wailsruntime.EventsEmit(a.ctx, "plugin:event", payload)
 	}
 	grpcCfg, err := hostgrpc.NewGRPCServerConfig(eventEmitter)
@@ -282,20 +281,7 @@ func (a *App) Connect(contextName string, seq int64) error {
 	// takes its own RLock on a.mu, and a.mu is not reentrant, so calling it while still
 	// holding the write lock acquired above would deadlock.
 	a.mu.Unlock()
-	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
-	if err != nil {
-		log.Printf("resolve kubeconfig path for plugin cluster-context push (context %q): %v", contextName, err)
-	} else if a.grpcServerCfg != nil {
-		payloadJSON, err := json.Marshal(map[string]string{
-			"contextName":    contextName,
-			"kubeconfigPath": kubeconfigPath,
-		})
-		if err != nil {
-			log.Printf("marshal cluster-context payload for plugin push (context %q): %v", contextName, err)
-		} else {
-			a.grpcServerCfg.PluginServer().PublishToHost("cluster.context", string(payloadJSON))
-		}
-	}
+	a.emitActiveContextToPlugins(contextName)
 	a.mu.Lock()
 
 	// Register event handlers for live updates.

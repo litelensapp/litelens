@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/plugin"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
 // TestGetPluginBackendAddrWithHealthyListener verifies that when a plugin has

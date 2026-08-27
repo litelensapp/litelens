@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
 // newCountingMarketplaceServer builds a test GitHub-releases server that

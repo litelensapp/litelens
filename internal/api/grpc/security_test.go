@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/pb"
+	"github.com/litelensapp/litelens/packages/core/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -326,7 +327,7 @@ func TestPublish_ReservedNamespaceRejected(t *testing.T) {
 
 	ctx := injectPluginID(context.Background(), testPluginID)
 
-	for _, topic := range []string{"cluster.context", "namespaces.active"} {
+	for _, topic := range []string{string(util.EventTopicClusterContext), string(util.EventTopicNamespacesActive)} {
 		_, err := server.Publish(ctx, &pb.PublishRequest{
 			Topic:       topic,
 			PayloadJson: "{}",
@@ -400,20 +401,20 @@ func TestPubSubBroker_HostTopicLateJoinerGetsReplay(t *testing.T) {
 
 	// Publish to a host-owned topic
 	msg := &pb.PubSubMessage{
-		Topic:       "cluster.context",
+		Topic:       string(util.EventTopicClusterContext),
 		Source:      "host",
 		Timestamp:   time.Now().Format(time.RFC3339),
 		PayloadJson: `{"contextName":"test"}`,
 	}
-	broker.publish("cluster.context", msg)
-	broker.setLastMessage("cluster.context", msg)
+	broker.publish(string(util.EventTopicClusterContext), msg)
+	broker.setLastMessage(string(util.EventTopicClusterContext), msg)
 
 	// Late joiner subscribes
-	subID, _ := broker.registerSubscriber("cluster.context")
-	defer broker.unregisterSubscriber("cluster.context", subID)
+	subID, _ := broker.registerSubscriber(string(util.EventTopicClusterContext))
+	defer broker.unregisterSubscriber(string(util.EventTopicClusterContext), subID)
 
 	// Should receive last message immediately
-	lastMsg := broker.getLastMessage("cluster.context")
+	lastMsg := broker.getLastMessage(string(util.EventTopicClusterContext))
 	if lastMsg == nil {
 		t.Fatal("expected last message to be cached for host-owned topic")
 	}

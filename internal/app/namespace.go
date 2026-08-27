@@ -2,14 +2,13 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 
 	"github.com/litelensapp/litelens/internal/kube"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
-	"github.com/litelensapp/litelens/packages/core/dto"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -255,16 +254,7 @@ func (a *App) SetActiveNamespaces(namespaces []string, seq int64) error {
 	a.activeNamespaces = namespaces
 	a.mu.Unlock()
 
-	// Push the active namespace filter to all running plugins with HTTP backends,
-	// same "host pushes on every change" design as the cluster-context push.
-	if a.grpcServerCfg != nil {
-		payloadJSON, err := json.Marshal(map[string][]string{"namespaces": namespaces})
-		if err != nil {
-			log.Printf("marshal active-namespaces payload for plugin push: %v", err)
-		} else {
-			a.grpcServerCfg.PluginServer().PublishToHost("namespaces.active", string(payloadJSON))
-		}
-	}
+	a.emitActiveNamespacesToPlugins(namespaces)
 
 	a.emitPods()
 	a.emitEvents()
