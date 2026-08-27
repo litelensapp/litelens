@@ -61,9 +61,10 @@ func (a *App) ListJobs() ([]dto.Job, error) {
 	return result, nil
 }
 
-func (a *App) GetJobsSummary(namespace string) (dto.JobSummary, error) {
+func (a *App) GetJobsSummary() (dto.JobSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.JobSummary{}, nil
@@ -75,17 +76,24 @@ func (a *App) GetJobsSummary(namespace string) (dto.JobSummary, error) {
 	if h.IsForbidden("jobs") {
 		return dto.JobSummary{}, nil
 	}
-	var jobs []*batchv1.Job
-	var err error
 	lister := h.Factory.Batch().V1().Jobs().Lister()
-	if namespace == "" {
-		jobs, err = lister.List(labels.Everything())
-	} else {
-		jobs, err = lister.Jobs(namespace).List(labels.Everything())
-	}
+	jobs, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetJobsSummary: %v", err)
 		return dto.JobSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := jobs[:0:0]
+		for _, j := range jobs {
+			if _, ok := nsSet[j.Namespace]; ok {
+				filtered = append(filtered, j)
+			}
+		}
+		jobs = filtered
 	}
 	return kubeResources.SummarizeJobs(jobs), nil
 }

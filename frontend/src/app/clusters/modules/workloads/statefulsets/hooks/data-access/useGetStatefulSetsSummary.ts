@@ -9,7 +9,7 @@ export const useGetStatefulSetsSummary = (input: { context: string; namespaces: 
 
   return useQuery<StatefulSetSummary, Error>({
     queryKey: [QUERY_KEY_STATEFULSETS, "summary", { context, namespaces }],
-    queryFn: () => GetStatefulSetsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetStatefulSetsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

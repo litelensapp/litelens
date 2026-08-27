@@ -9,7 +9,7 @@ export const useGetPodsSummary = (input: { context: string; namespaces: string[]
 
   return useQuery<PodSummary, Error>({
     queryKey: [QUERY_KEY_PODS, "summary", { context, namespaces }],
-    queryFn: () => GetPodsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetPodsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

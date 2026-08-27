@@ -61,9 +61,10 @@ func (a *App) ListCronJobs() ([]dto.CronJob, error) {
 	return result, nil
 }
 
-func (a *App) GetCronJobsSummary(namespace string) (dto.CronJobSummary, error) {
+func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.CronJobSummary{}, nil
@@ -75,17 +76,24 @@ func (a *App) GetCronJobsSummary(namespace string) (dto.CronJobSummary, error) {
 	if h.IsForbidden("cronjobs") {
 		return dto.CronJobSummary{}, nil
 	}
-	var cjs []*batchv1.CronJob
-	var err error
 	lister := h.Factory.Batch().V1().CronJobs().Lister()
-	if namespace == "" {
-		cjs, err = lister.List(labels.Everything())
-	} else {
-		cjs, err = lister.CronJobs(namespace).List(labels.Everything())
-	}
+	cjs, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetCronJobsSummary: %v", err)
 		return dto.CronJobSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := cjs[:0:0]
+		for _, cj := range cjs {
+			if _, ok := nsSet[cj.Namespace]; ok {
+				filtered = append(filtered, cj)
+			}
+		}
+		cjs = filtered
 	}
 	return kubeResources.SummarizeCronJobs(cjs), nil
 }

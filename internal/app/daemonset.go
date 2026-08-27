@@ -64,9 +64,10 @@ func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) 
 	return result, nil
 }
 
-func (a *App) GetDaemonSetsSummary(namespace string) (dto.DaemonSetSummary, error) {
+func (a *App) GetDaemonSetsSummary() (dto.DaemonSetSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.DaemonSetSummary{}, nil
@@ -78,17 +79,24 @@ func (a *App) GetDaemonSetsSummary(namespace string) (dto.DaemonSetSummary, erro
 	if h.IsForbidden("daemonsets") {
 		return dto.DaemonSetSummary{}, nil
 	}
-	var dss []*appsv1.DaemonSet
-	var err error
 	lister := h.Factory.Apps().V1().DaemonSets().Lister()
-	if namespace == "" {
-		dss, err = lister.List(labels.Everything())
-	} else {
-		dss, err = lister.DaemonSets(namespace).List(labels.Everything())
-	}
+	dss, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetDaemonSetsSummary: %v", err)
 		return dto.DaemonSetSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := dss[:0:0]
+		for _, ds := range dss {
+			if _, ok := nsSet[ds.Namespace]; ok {
+				filtered = append(filtered, ds)
+			}
+		}
+		dss = filtered
 	}
 	return kubeResources.SummarizeDaemonSets(dss), nil
 }

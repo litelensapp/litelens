@@ -73,9 +73,10 @@ func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 	return result, nil
 }
 
-func (a *App) GetPodsSummary(namespace string) (dto.PodSummary, error) {
+func (a *App) GetPodsSummary() (dto.PodSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.PodSummary{}, nil
@@ -87,17 +88,24 @@ func (a *App) GetPodsSummary(namespace string) (dto.PodSummary, error) {
 	if h.IsForbidden("pods") {
 		return dto.PodSummary{}, nil
 	}
-	var pods []*corev1.Pod
-	var err error
 	lister := h.Factory.Core().V1().Pods().Lister()
-	if namespace == "" {
-		pods, err = lister.List(labels.Everything())
-	} else {
-		pods, err = lister.Pods(namespace).List(labels.Everything())
-	}
+	pods, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetPodsSummary: %v", err)
 		return dto.PodSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := pods[:0:0]
+		for _, p := range pods {
+			if _, ok := nsSet[p.Namespace]; ok {
+				filtered = append(filtered, p)
+			}
+		}
+		pods = filtered
 	}
 	return kubeResources.SummarizePods(pods), nil
 }

@@ -9,7 +9,7 @@ export const useGetReplicaSetsSummary = (input: { context: string; namespaces: s
 
   return useQuery<ReplicaSetSummary, Error>({
     queryKey: [QUERY_KEY_REPLICASETS, "summary", { context, namespaces }],
-    queryFn: () => GetReplicaSetsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetReplicaSetsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

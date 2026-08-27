@@ -64,9 +64,10 @@ func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error
 	return result, nil
 }
 
-func (a *App) GetDeploymentsSummary(namespace string) (dto.DeploymentSummary, error) {
+func (a *App) GetDeploymentsSummary() (dto.DeploymentSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.DeploymentSummary{}, nil
@@ -78,17 +79,24 @@ func (a *App) GetDeploymentsSummary(namespace string) (dto.DeploymentSummary, er
 	if h.IsForbidden("deployments") {
 		return dto.DeploymentSummary{}, nil
 	}
-	var deps []*appsv1.Deployment
-	var err error
 	lister := h.Factory.Apps().V1().Deployments().Lister()
-	if namespace == "" {
-		deps, err = lister.List(labels.Everything())
-	} else {
-		deps, err = lister.Deployments(namespace).List(labels.Everything())
-	}
+	deps, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetDeploymentsSummary: %v", err)
 		return dto.DeploymentSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := deps[:0:0]
+		for _, d := range deps {
+			if _, ok := nsSet[d.Namespace]; ok {
+				filtered = append(filtered, d)
+			}
+		}
+		deps = filtered
 	}
 	return kubeResources.SummarizeDeployments(deps), nil
 }

@@ -63,9 +63,10 @@ func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error
 	return result, nil
 }
 
-func (a *App) GetReplicaSetsSummary(namespace string) (dto.ReplicaSetSummary, error) {
+func (a *App) GetReplicaSetsSummary() (dto.ReplicaSetSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.ReplicaSetSummary{}, nil
@@ -77,17 +78,24 @@ func (a *App) GetReplicaSetsSummary(namespace string) (dto.ReplicaSetSummary, er
 	if h.IsForbidden("replicasets") {
 		return dto.ReplicaSetSummary{}, nil
 	}
-	var rss []*appsv1.ReplicaSet
-	var err error
 	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
-	if namespace == "" {
-		rss, err = lister.List(labels.Everything())
-	} else {
-		rss, err = lister.ReplicaSets(namespace).List(labels.Everything())
-	}
+	rss, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetReplicaSetsSummary: %v", err)
 		return dto.ReplicaSetSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := rss[:0:0]
+		for _, rs := range rss {
+			if _, ok := nsSet[rs.Namespace]; ok {
+				filtered = append(filtered, rs)
+			}
+		}
+		rss = filtered
 	}
 	return kubeResources.SummarizeReplicaSets(rss), nil
 }

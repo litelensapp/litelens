@@ -9,7 +9,7 @@ export const useGetJobsSummary = (input: { context: string; namespaces: string[]
 
   return useQuery<JobSummary, Error>({
     queryKey: [QUERY_KEY_JOBS, "summary", { context, namespaces }],
-    queryFn: () => GetJobsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetJobsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

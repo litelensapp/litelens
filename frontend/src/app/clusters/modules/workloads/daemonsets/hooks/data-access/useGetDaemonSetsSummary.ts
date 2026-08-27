@@ -9,7 +9,7 @@ export const useGetDaemonSetsSummary = (input: { context: string; namespaces: st
 
   return useQuery<DaemonSetSummary, Error>({
     queryKey: [QUERY_KEY_DAEMONSETS, "summary", { context, namespaces }],
-    queryFn: () => GetDaemonSetsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetDaemonSetsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

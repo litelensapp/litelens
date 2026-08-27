@@ -60,9 +60,10 @@ func (a *App) ListStatefulSets() ([]dto.StatefulSet, error) {
 	return result, nil
 }
 
-func (a *App) GetStatefulSetsSummary(namespace string) (dto.StatefulSetSummary, error) {
+func (a *App) GetStatefulSetsSummary() (dto.StatefulSetSummary, error) {
 	a.mu.RLock()
 	h := a.factories[a.activeContext]
+	namespaces := a.activeNamespaces
 	a.mu.RUnlock()
 	if h == nil {
 		return dto.StatefulSetSummary{}, nil
@@ -74,17 +75,24 @@ func (a *App) GetStatefulSetsSummary(namespace string) (dto.StatefulSetSummary, 
 	if h.IsForbidden("statefulsets") {
 		return dto.StatefulSetSummary{}, nil
 	}
-	var sss []*appsv1.StatefulSet
-	var err error
 	lister := h.Factory.Apps().V1().StatefulSets().Lister()
-	if namespace == "" {
-		sss, err = lister.List(labels.Everything())
-	} else {
-		sss, err = lister.StatefulSets(namespace).List(labels.Everything())
-	}
+	sss, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetStatefulSetsSummary: %v", err)
 		return dto.StatefulSetSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := sss[:0:0]
+		for _, ss := range sss {
+			if _, ok := nsSet[ss.Namespace]; ok {
+				filtered = append(filtered, ss)
+			}
+		}
+		sss = filtered
 	}
 	return kubeResources.SummarizeStatefulSets(sss), nil
 }
