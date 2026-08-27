@@ -17,7 +17,7 @@ For step-by-step installation instructions, see https://litelensapp.github.io/#i
 
 ## Uninstallation
 
-See [docs/uninstallation.md](docs/uninstallation.md).
+See [docs/uninstallation.md](docs/uninstallation-v2.md).
 
 ## Architecture
 
