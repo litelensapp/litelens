@@ -21,10 +21,10 @@ jobs:
         packages/core/go.mod
         packages/core/go.sum
         packages/core/pb/**
-        packages/core/dto/**
         packages/core/kube/**
         packages/core/async/**
-        .github/workflows/job-publish-app-core-packages.yml
+        packages/core/util/**
+        .github/workflows/job-publish-core-packages.yml
         .github/actions/setup-go/**
 
   detect-core-fe-changes:
@@ -37,7 +37,7 @@ jobs:
         pnpm-lock.yaml
         package.json
         pnpm-workspace.yaml
-        .github/workflows/job-publish-app-core-packages.yml
+        .github/workflows/job-publish-core-packages.yml
         .github/actions/setup-node-pnpm/**
 
   publish-be:
