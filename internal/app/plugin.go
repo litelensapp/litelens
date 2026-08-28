@@ -16,8 +16,8 @@ import (
 	"github.com/litelensapp/litelens/internal/config"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/storage"
+	"github.com/litelensapp/litelens/packages/core/async"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
-	"github.com/litelensapp/litelens/packages/core/util"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -43,7 +43,7 @@ func (a *App) emitActiveContextToPlugins(contextName string) {
 		log.Printf("marshal cluster-context payload for plugin push (context %q): %v", contextName, err)
 		return
 	}
-	a.grpcServerCfg.PluginServer().PublishToHost(string(util.EventTopicClusterContext), string(payloadJSON))
+	a.grpcServerCfg.PluginServer().PublishToHost(string(async.EventTopicClusterContext), string(payloadJSON))
 }
 
 // emitActiveNamespacesToPlugins pushes the active namespace filter to all
@@ -58,7 +58,7 @@ func (a *App) emitActiveNamespacesToPlugins(namespaces []string) {
 		log.Printf("marshal active-namespaces payload for plugin push: %v", err)
 		return
 	}
-	a.grpcServerCfg.PluginServer().PublishToHost(string(util.EventTopicNamespacesActive), string(payloadJSON))
+	a.grpcServerCfg.PluginServer().PublishToHost(string(async.EventTopicNamespacesActive), string(payloadJSON))
 }
 
 // pluginsRootDir returns the directory all installed plugins live under: ~/.litelens/plugins.
