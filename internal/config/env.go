@@ -43,15 +43,21 @@ func GetReleasesBaseURL() string {
 	return getEnvOrDefault("APP_VERSION_RELEASES_BASE_URL", "https://github.com/litelensapp/litelens")
 }
 
-// GetMarketplaceBaseURL returns the GitHub API base URL used as the default
-// plugin marketplace source, allowing it to be overridden via the
+// GetMarketplaceBaseURL returns the base URL used as the default plugin
+// marketplace source, allowing it to be overridden via the
 // MARKETPLACE_BASE_URL environment variable (primarily for testing). This is
 // split from GetReleasesBaseURL so the app's own update checks and the
 // plugin marketplace default can be pointed at different repos independently.
+// Defaults to the public github.com host, mirroring GetReleasesBaseURL: the
+// unauthenticated releases/latest redirect + direct asset-download path takes
+// precedence and isn't subject to api.github.com's 60 req/hr rate limit; set
+// this (or a per-repository MarketplaceRepository.URL) to
+// https://api.github.com/repos/<owner>/<repo>/releases when a private repo or
+// access token requires the authenticated API path instead.
 // internal/plugin/download.go falls back to this only when the user hasn't
 // configured a per-instance marketplace repo URL in Settings.
 func GetMarketplaceBaseURL() string {
-	return getEnvOrDefault("MARKETPLACE_BASE_URL", "https://api.github.com/repos/litelensapp/litelens-plugins/releases")
+	return getEnvOrDefault("MARKETPLACE_BASE_URL", "https://github.com/litelensapp/litelens-plugins")
 }
 
 // IsPrivateRepoAccess reports whether GitHub release assets should be fetched

@@ -71,7 +71,7 @@ func TestGetPluginsFromMarketplace_OneAPICallPerSource(t *testing.T) {
 	app := &App{
 		settings: config.Settings{
 			MarketplaceRepositories: []config.MarketplaceRepository{
-				{URL: server.URL + "/repos/test/plugins/releases"},
+				{URL: server.URL + "/repos/test/plugins/releases", AccessToken: "test-token"},
 			},
 		},
 	}
@@ -107,8 +107,8 @@ func TestGetPluginsFromMarketplace_MultipleSourcesEachCalledOnce(t *testing.T) {
 	app := &App{
 		settings: config.Settings{
 			MarketplaceRepositories: []config.MarketplaceRepository{
-				{URL: serverA.URL + "/repos/test/plugins/releases"},
-				{URL: serverB.URL + "/repos/test/plugins/releases"},
+				{URL: serverA.URL + "/repos/test/plugins/releases", AccessToken: "test-token"},
+				{URL: serverB.URL + "/repos/test/plugins/releases", AccessToken: "test-token"},
 			},
 		},
 	}

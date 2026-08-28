@@ -444,13 +444,13 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 		// 5. Resolve asset names and locate URLs
 		binaryAsset, bundleAsset := plugin.ResolveAssetNames(pluginID, runtime.GOOS, runtime.GOARCH)
 
-		binaryURL, ok := assets[binaryAsset]
+		binaryURL, ok := assets.Lookup(binaryAsset)
 		if !ok {
 			loader.SetStatusWithError(dto.PluginStatusCrashed, fmt.Sprintf("binary asset %q not found in release %s", binaryAsset, tag))
 			return
 		}
 
-		bundleURL, ok := assets[bundleAsset]
+		bundleURL, ok := assets.Lookup(bundleAsset)
 		if !ok {
 			loader.SetStatusWithError(dto.PluginStatusCrashed, fmt.Sprintf("bundle asset %q not found in release %s", bundleAsset, tag))
 			return
@@ -572,7 +572,7 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 		// cosmetic only (PluginLogo falls back to a placeholder icon on load error).
 		if manifest.Assets.Logo != "" {
 			logoAssetName := plugin.ResolveLogoAssetName(pluginID, manifest.Assets.Logo)
-			if logoURL, ok := assets[logoAssetName]; ok {
+			if logoURL, ok := assets.Lookup(logoAssetName); ok {
 				logoPath := filepath.Join(pluginDir, manifest.Assets.Logo)
 				if err := plugin.DownloadToFile(ctx, logoURL, logoPath, token, nil); err != nil {
 					log.Printf("plugin %q: download logo: %v", pluginID, err)

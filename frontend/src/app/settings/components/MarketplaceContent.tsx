@@ -61,6 +61,11 @@ export const MarketplaceContent: FC = () => {
             <p className="text-xs text-muted-foreground">
               Enter any marketplace source URL. The official litelens marketplace is pre-added below
               — remove it if you don't want plugins fetched from it.
+              <br />- Public repositories should use the plain GitHub URL form (e.g.
+              <b>https://github.com/user/plugins</b>);
+              <br />- Mark a repository Private and add an access token if it needs the
+              authenticated GitHub API instead (e.g.
+              <b>https://api.github.com/repos/user/plugins/releases</b>).
             </p>
 
             {/* User-added repositories */}
