@@ -23,6 +23,7 @@ jobs:
         packages/core/pb/**
         packages/core/dto/**
         packages/core/kube/**
+        packages/core/async/**
         .github/workflows/job-publish-app-core-packages.yml
         .github/actions/setup-go/**
 
