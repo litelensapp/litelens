@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -17,18 +17,8 @@ import (
 )
 
 func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return []dto.LimitRange{}, nil
-	}
-	if h.IsForbidden("limitranges") {
-		return []dto.LimitRange{}, nil
-	}
-	<-h.GetSyncedChan("limitranges")
-	if h.IsForbidden("limitranges") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "limitranges") {
 		return []dto.LimitRange{}, nil
 	}
 	result, err := kubeResources.ListLimitRanges(h.Factory.Core().V1().LimitRanges().Lister(), namespaces)
@@ -40,17 +30,8 @@ func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
 }
 
 func (a *App) GetLimitRangeByName(namespace, name string) dto.LimitRangeDetail {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.LimitRangeDetail{}
-	}
-	if h.IsForbidden("limitranges") {
-		return dto.LimitRangeDetail{}
-	}
-	<-h.GetSyncedChan("limitranges")
-	if h.IsForbidden("limitranges") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "limitranges") {
 		return dto.LimitRangeDetail{}
 	}
 	result, err := kubeResources.GetLimitRangeByName(h.Factory.Core().V1().LimitRanges().Lister(), namespace, name)
@@ -66,11 +47,9 @@ func (a *App) GetLimitRangeByName(namespace, name string) dto.LimitRangeDetail {
 // limitType is one of: "Container", "Pod", "PersistentVolumeClaim"
 // e.g., { "Container": {"cpu/Max": "1", "memory/Default": "256Mi"}, "Pod": {"cpu/Max": "2"} }
 func (a *App) CreateLimitRange(namespace, name string, limits map[string]map[string]string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	limitTypeMap := map[string]corev1.LimitType{
@@ -144,7 +123,7 @@ func (a *App) CreateLimitRange(namespace, name string, limits map[string]map[str
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	_, err := cs.CoreV1().LimitRanges(namespace).Create(ctx, lr, metav1.CreateOptions{})
+	_, err = cs.CoreV1().LimitRanges(namespace).Create(ctx, lr, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -154,16 +133,14 @@ func (a *App) CreateLimitRange(namespace, name string, limits map[string]map[str
 }
 
 func (a *App) DeleteLimitRange(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().LimitRanges(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().LimitRanges(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete LimitRange: %w", err)
 	}
@@ -175,45 +152,28 @@ func (a *App) DeleteLimitRange(namespace, name string) error {
 
 // DeleteLimitRanges deletes multiple LimitRanges, handling best-effort deletion across namespaces.
 func (a *App) DeleteLimitRanges(items []dto.LimitRangeRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var failMsgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().LimitRanges(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			failMsgs = append(failMsgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.LimitRangeRef) string { return r.Namespace },
+		func(r dto.LimitRangeRef) string { return r.Name },
+		"limitranges",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().LimitRanges(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitLimitRanges()
 
-	if len(failMsgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d limitranges: %s", len(failMsgs), len(items), strings.Join(failMsgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitLimitRanges() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("limitranges") {
-		return
-	}
-	<-h.GetSyncedChan("limitranges")
-	if h.IsForbidden("limitranges") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "limitranges") {
 		return
 	}
 	lister := h.Factory.Core().V1().LimitRanges().Lister()
@@ -226,11 +186,9 @@ func (a *App) emitLimitRanges() {
 }
 
 func (a *App) GetLimitRangeYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -249,15 +207,13 @@ func (a *App) GetLimitRangeYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateLimitRangeYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var lr corev1.LimitRange
-	err := sigsyaml.Unmarshal([]byte(yamlString), &lr)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &lr)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to LimitRange: %w", err)
 	}

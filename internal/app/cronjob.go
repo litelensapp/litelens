@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -17,17 +16,8 @@ import (
 )
 
 func (a *App) GetCronJobByName(namespace, name string) (dto.CronJob, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.CronJob{}, nil
-	}
-	if h.IsForbidden("cronjobs") {
-		return dto.CronJob{}, nil
-	}
-	<-h.GetSyncedChan("cronjobs")
-	if h.IsForbidden("cronjobs") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "cronjobs") {
 		return dto.CronJob{}, nil
 	}
 	result, err := kubeResources.GetCronJobByName(h.Factory.Batch().V1().CronJobs().Lister(), namespace, name)
@@ -39,19 +29,9 @@ func (a *App) GetCronJobByName(namespace, name string) (dto.CronJob, error) {
 }
 
 func (a *App) ListCronJobs() ([]dto.CronJob, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "cronjobs") {
 		return []dto.CronJob{}, nil
-	}
-	if h.IsForbidden("cronjobs") {
-		return []dto.CronJob{}, nil
-	}
-	<-h.GetSyncedChan("cronjobs")
-	if h.IsForbidden("cronjobs") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListCronJobs(h.Factory.Batch().V1().CronJobs().Lister(), namespaces)
 	if err != nil {
@@ -62,18 +42,8 @@ func (a *App) ListCronJobs() ([]dto.CronJob, error) {
 }
 
 func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.CronJobSummary{}, nil
-	}
-	if h.IsForbidden("cronjobs") {
-		return dto.CronJobSummary{}, nil
-	}
-	<-h.GetSyncedChan("cronjobs")
-	if h.IsForbidden("cronjobs") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "cronjobs") {
 		return dto.CronJobSummary{}, nil
 	}
 	lister := h.Factory.Batch().V1().CronJobs().Lister()
@@ -99,18 +69,8 @@ func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
 }
 
 func (a *App) emitCronJobs() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("cronjobs") {
-		return
-	}
-	<-h.GetSyncedChan("cronjobs")
-	if h.IsForbidden("cronjobs") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "cronjobs") {
 		return
 	}
 	lister := h.Factory.Batch().V1().CronJobs().Lister()
@@ -124,16 +84,14 @@ func (a *App) emitCronJobs() {
 
 // DeleteCronJob deletes a CronJob from the specified namespace.
 func (a *App) DeleteCronJob(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.BatchV1().CronJobs(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.BatchV1().CronJobs(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete CronJob: %w", err)
 	}
@@ -146,38 +104,29 @@ func (a *App) DeleteCronJob(namespace, name string) error {
 
 // DeleteCronJobs deletes multiple CronJobs, handling best-effort deletion across namespaces.
 func (a *App) DeleteCronJobs(items []dto.CronJobRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.BatchV1().CronJobs(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.CronJobRef) string { return r.Namespace },
+		func(r dto.CronJobRef) string { return r.Name },
+		"cronjobs",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.BatchV1().CronJobs(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitCronJobs()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d cronjobs: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetCronJobYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -196,15 +145,13 @@ func (a *App) GetCronJobYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateCronJobYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var cj batchv1.CronJob
-	err := sigsyaml.Unmarshal([]byte(yamlString), &cj)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &cj)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to CronJob: %w", err)
 	}

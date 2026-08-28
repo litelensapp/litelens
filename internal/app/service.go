@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -16,9 +15,7 @@ import (
 )
 
 func (a *App) GetServiceByName(namespace, name string) (dto.Service, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
+	h := a.activeFactory()
 	if h == nil {
 		return dto.Service{}, nil
 	}
@@ -31,19 +28,9 @@ func (a *App) GetServiceByName(namespace, name string) (dto.Service, error) {
 }
 
 func (a *App) ListServices() ([]dto.Service, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "services") {
 		return []dto.Service{}, nil
-	}
-	if h.IsForbidden("services") {
-		return []dto.Service{}, nil
-	}
-	<-h.GetSyncedChan("services")
-	if h.IsForbidden("services") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListServices(h.Factory.Core().V1().Services().Lister(), namespaces)
 	if err != nil {
@@ -55,16 +42,14 @@ func (a *App) ListServices() ([]dto.Service, error) {
 
 // DeleteService deletes a Service from the specified namespace.
 func (a *App) DeleteService(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Service: %w", err)
 	}
@@ -77,45 +62,28 @@ func (a *App) DeleteService(namespace, name string) error {
 
 // DeleteServices deletes multiple Services, handling best-effort deletion across namespaces.
 func (a *App) DeleteServices(items []dto.ServiceRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().Services(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.ServiceRef) string { return r.Namespace },
+		func(r dto.ServiceRef) string { return r.Name },
+		"services",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitServices()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d services: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitServices() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("services") {
-		return
-	}
-	<-h.GetSyncedChan("services")
-	if h.IsForbidden("services") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "services") {
 		return
 	}
 	lister := h.Factory.Core().V1().Services().Lister()
@@ -128,11 +96,9 @@ func (a *App) emitServices() {
 }
 
 func (a *App) GetServiceYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -151,15 +117,13 @@ func (a *App) GetServiceYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateServiceYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var svc corev1.Service
-	err := sigsyaml.Unmarshal([]byte(yamlString), &svc)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &svc)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Service: %w", err)
 	}

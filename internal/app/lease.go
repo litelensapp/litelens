@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListLeases() ([]dto.Lease, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "leases") {
 		return []dto.Lease{}, nil
-	}
-	if h.IsForbidden("leases") {
-		return []dto.Lease{}, nil
-	}
-	<-h.GetSyncedChan("leases")
-	if h.IsForbidden("leases") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListLeases(h.Factory.Coordination().V1().Leases().Lister(), namespaces)
 	if err != nil {
@@ -39,17 +28,8 @@ func (a *App) ListLeases() ([]dto.Lease, error) {
 }
 
 func (a *App) GetLeaseByName(namespace, name string) (dto.Lease, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Lease{}, nil
-	}
-	if h.IsForbidden("leases") {
-		return dto.Lease{}, nil
-	}
-	<-h.GetSyncedChan("leases")
-	if h.IsForbidden("leases") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "leases") {
 		return dto.Lease{}, nil
 	}
 	result, err := kubeResources.GetLeaseByName(h.Factory.Coordination().V1().Leases().Lister(), namespace, name)
@@ -61,16 +41,14 @@ func (a *App) GetLeaseByName(namespace, name string) (dto.Lease, error) {
 }
 
 func (a *App) DeleteLease(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoordinationV1().Leases(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoordinationV1().Leases(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Lease: %w", err)
 	}
@@ -81,45 +59,28 @@ func (a *App) DeleteLease(namespace, name string) error {
 }
 
 func (a *App) DeleteLeases(items []dto.LeaseRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoordinationV1().Leases(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.LeaseRef) string { return r.Namespace },
+		func(r dto.LeaseRef) string { return r.Name },
+		"leases",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoordinationV1().Leases(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitLeases()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d leases: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitLeases() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("leases") {
-		return
-	}
-	<-h.GetSyncedChan("leases")
-	if h.IsForbidden("leases") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "leases") {
 		return
 	}
 	lister := h.Factory.Coordination().V1().Leases().Lister()
@@ -132,11 +93,9 @@ func (a *App) emitLeases() {
 }
 
 func (a *App) GetLeaseYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -155,15 +114,13 @@ func (a *App) GetLeaseYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateLeaseYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var lease coordinationv1.Lease
-	err := sigsyaml.Unmarshal([]byte(yamlString), &lease)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &lease)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Lease: %w", err)
 	}

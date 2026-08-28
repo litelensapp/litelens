@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -17,19 +16,9 @@ import (
 )
 
 func (a *App) ListSecrets() ([]dto.Secret, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "secrets") {
 		return []dto.Secret{}, nil
-	}
-	if h.IsForbidden("secrets") {
-		return []dto.Secret{}, nil
-	}
-	<-h.GetSyncedChan("secrets")
-	if h.IsForbidden("secrets") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListSecrets(h.Factory.Core().V1().Secrets().Lister(), namespaces)
 	if err != nil {
@@ -40,18 +29,9 @@ func (a *App) ListSecrets() ([]dto.Secret, error) {
 }
 
 func (a *App) GetSecretByName(namespace, name string) (*dto.SecretDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "secrets") {
 		return &dto.SecretDetail{}, nil
-	}
-	if h.IsForbidden("secrets") {
-		return &dto.SecretDetail{}, nil
-	}
-	<-h.GetSyncedChan("secrets")
-	if h.IsForbidden("secrets") {
-		return nil, nil
 	}
 	result, err := kubeResources.GetSecretByName(
 		h.Factory.Core().V1().Secrets().Lister(),
@@ -66,11 +46,9 @@ func (a *App) GetSecretByName(namespace, name string) (*dto.SecretDetail, error)
 }
 
 func (a *App) UpdateSecret(namespace, name string, data map[string]string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
@@ -92,16 +70,14 @@ func (a *App) UpdateSecret(namespace, name string, data map[string]string) error
 }
 
 func (a *App) DeleteSecret(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Secret: %w", err)
 	}
@@ -113,45 +89,28 @@ func (a *App) DeleteSecret(namespace, name string) error {
 
 // DeleteSecrets deletes multiple Secrets, handling best-effort deletion across namespaces.
 func (a *App) DeleteSecrets(items []dto.SecretRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().Secrets(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.SecretRef) string { return r.Namespace },
+		func(r dto.SecretRef) string { return r.Name },
+		"secrets",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitSecrets()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d secrets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitSecrets() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("secrets") {
-		return
-	}
-	<-h.GetSyncedChan("secrets")
-	if h.IsForbidden("secrets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "secrets") {
 		return
 	}
 	lister := h.Factory.Core().V1().Secrets().Lister()
@@ -164,11 +123,9 @@ func (a *App) emitSecrets() {
 }
 
 func (a *App) GetSecretYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -187,15 +144,13 @@ func (a *App) GetSecretYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateSecretYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var secret corev1.Secret
-	err := sigsyaml.Unmarshal([]byte(yamlString), &secret)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &secret)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Secret: %w", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
@@ -20,19 +19,9 @@ import (
 )
 
 func (a *App) ListDaemonSets() ([]dto.DaemonSet, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "daemonsets") {
 		return []dto.DaemonSet{}, nil
-	}
-	if h.IsForbidden("daemonsets") {
-		return []dto.DaemonSet{}, nil
-	}
-	<-h.GetSyncedChan("daemonsets")
-	if h.IsForbidden("daemonsets") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListDaemonSets(h.Factory.Apps().V1().DaemonSets().Lister(), namespaces)
 	if err != nil {
@@ -43,17 +32,8 @@ func (a *App) ListDaemonSets() ([]dto.DaemonSet, error) {
 }
 
 func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.DaemonSet{}, nil
-	}
-	if h.IsForbidden("daemonsets") {
-		return dto.DaemonSet{}, nil
-	}
-	<-h.GetSyncedChan("daemonsets")
-	if h.IsForbidden("daemonsets") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "daemonsets") {
 		return dto.DaemonSet{}, nil
 	}
 	result, err := kubeResources.GetDaemonSetByName(h.Factory.Apps().V1().DaemonSets().Lister(), namespace, name)
@@ -65,18 +45,8 @@ func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) 
 }
 
 func (a *App) GetDaemonSetsSummary() (dto.DaemonSetSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.DaemonSetSummary{}, nil
-	}
-	if h.IsForbidden("daemonsets") {
-		return dto.DaemonSetSummary{}, nil
-	}
-	<-h.GetSyncedChan("daemonsets")
-	if h.IsForbidden("daemonsets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "daemonsets") {
 		return dto.DaemonSetSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().DaemonSets().Lister()
@@ -102,11 +72,9 @@ func (a *App) GetDaemonSetsSummary() (dto.DaemonSetSummary, error) {
 }
 
 func (a *App) RestartDaemonSet(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 	patchBody := map[string]any{
 		"spec": map[string]any{
@@ -132,16 +100,14 @@ func (a *App) RestartDaemonSet(namespace, name string) error {
 }
 
 func (a *App) DeleteDaemonSet(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.AppsV1().DaemonSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.AppsV1().DaemonSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete DaemonSet: %w", err)
 	}
@@ -153,45 +119,28 @@ func (a *App) DeleteDaemonSet(namespace, name string) error {
 
 // DeleteDaemonSets deletes multiple DaemonSets, handling best-effort deletion across namespaces.
 func (a *App) DeleteDaemonSets(items []dto.DaemonSetRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.AppsV1().DaemonSets(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.DaemonSetRef) string { return r.Namespace },
+		func(r dto.DaemonSetRef) string { return r.Name },
+		"daemonsets",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.AppsV1().DaemonSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitDaemonSets()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d daemonsets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitDaemonSets() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("daemonsets") {
-		return
-	}
-	<-h.GetSyncedChan("daemonsets")
-	if h.IsForbidden("daemonsets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "daemonsets") {
 		return
 	}
 	lister := h.Factory.Apps().V1().DaemonSets().Lister()
@@ -204,11 +153,9 @@ func (a *App) emitDaemonSets() {
 }
 
 func (a *App) GetDaemonSetYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -227,15 +174,13 @@ func (a *App) GetDaemonSetYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateDaemonSetYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var ds appsv1.DaemonSet
-	err := sigsyaml.Unmarshal([]byte(yamlString), &ds)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &ds)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to DaemonSet: %w", err)
 	}

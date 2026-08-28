@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -16,17 +15,8 @@ import (
 )
 
 func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.HPADetail{}, nil
-	}
-	if h.IsForbidden("hpa") {
-		return dto.HPADetail{}, nil
-	}
-	<-h.GetSyncedChan("hpa")
-	if h.IsForbidden("hpa") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "hpa") {
 		return dto.HPADetail{}, nil
 	}
 	result, err := kubeResources.GetHPAByName(
@@ -42,19 +32,9 @@ func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
 }
 
 func (a *App) ListHPAs() ([]dto.HPA, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "hpa") {
 		return []dto.HPA{}, nil
-	}
-	if h.IsForbidden("hpa") {
-		return []dto.HPA{}, nil
-	}
-	<-h.GetSyncedChan("hpa")
-	if h.IsForbidden("hpa") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListHPAs(h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister(), namespaces)
 	if err != nil {
@@ -65,18 +45,8 @@ func (a *App) ListHPAs() ([]dto.HPA, error) {
 }
 
 func (a *App) emitHPAs() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("hpa") {
-		return
-	}
-	<-h.GetSyncedChan("hpa")
-	if h.IsForbidden("hpa") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "hpa") {
 		return
 	}
 	lister := h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister()
@@ -90,16 +60,14 @@ func (a *App) emitHPAs() {
 
 // DeleteHPA deletes an HPA from the specified namespace.
 func (a *App) DeleteHPA(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete HPA: %w", err)
 	}
@@ -112,38 +80,29 @@ func (a *App) DeleteHPA(namespace, name string) error {
 
 // DeleteHPAs deletes multiple HPAs, handling best-effort deletion across namespaces.
 func (a *App) DeleteHPAs(items []dto.HPARef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.AutoscalingV2().HorizontalPodAutoscalers(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.HPARef) string { return r.Namespace },
+		func(r dto.HPARef) string { return r.Name },
+		"hpas",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitHPAs()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d hpas: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetHPAYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -162,15 +121,13 @@ func (a *App) GetHPAYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateHPAYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var hpa autoscalingv2.HorizontalPodAutoscaler
-	err := sigsyaml.Unmarshal([]byte(yamlString), &hpa)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &hpa)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to HPA: %w", err)
 	}

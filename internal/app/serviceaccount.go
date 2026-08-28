@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -16,17 +15,8 @@ import (
 )
 
 func (a *App) GetServiceAccountByName(namespace, name string) (dto.ServiceAccount, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.ServiceAccount{}, nil
-	}
-	if h.IsForbidden("serviceaccounts") {
-		return dto.ServiceAccount{}, nil
-	}
-	<-h.GetSyncedChan("serviceaccounts")
-	if h.IsForbidden("serviceaccounts") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "serviceaccounts") {
 		return dto.ServiceAccount{}, nil
 	}
 	result, err := kubeResources.GetServiceAccountByName(
@@ -42,19 +32,9 @@ func (a *App) GetServiceAccountByName(namespace, name string) (dto.ServiceAccoun
 }
 
 func (a *App) ListServiceAccounts() ([]dto.ServiceAccount, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "serviceaccounts") {
 		return []dto.ServiceAccount{}, nil
-	}
-	if h.IsForbidden("serviceaccounts") {
-		return []dto.ServiceAccount{}, nil
-	}
-	<-h.GetSyncedChan("serviceaccounts")
-	if h.IsForbidden("serviceaccounts") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListServiceAccounts(
 		h.Factory.Core().V1().ServiceAccounts().Lister(),
@@ -68,16 +48,14 @@ func (a *App) ListServiceAccounts() ([]dto.ServiceAccount, error) {
 }
 
 func (a *App) DeleteServiceAccount(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().ServiceAccounts(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().ServiceAccounts(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete ServiceAccount: %w", err)
 	}
@@ -89,45 +67,28 @@ func (a *App) DeleteServiceAccount(namespace, name string) error {
 
 // DeleteServiceAccounts deletes multiple ServiceAccounts, handling best-effort deletion across namespaces.
 func (a *App) DeleteServiceAccounts(items []dto.ServiceAccountRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().ServiceAccounts(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.ServiceAccountRef) string { return r.Namespace },
+		func(r dto.ServiceAccountRef) string { return r.Name },
+		"serviceaccounts",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().ServiceAccounts(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitServiceAccounts()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d serviceaccounts: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitServiceAccounts() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("serviceaccounts") {
-		return
-	}
-	<-h.GetSyncedChan("serviceaccounts")
-	if h.IsForbidden("serviceaccounts") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "serviceaccounts") {
 		return
 	}
 	lister := h.Factory.Core().V1().ServiceAccounts().Lister()
@@ -140,11 +101,9 @@ func (a *App) emitServiceAccounts() {
 }
 
 func (a *App) GetServiceAccountYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -163,15 +122,13 @@ func (a *App) GetServiceAccountYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateServiceAccountYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var sa corev1.ServiceAccount
-	err := sigsyaml.Unmarshal([]byte(yamlString), &sa)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &sa)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to ServiceAccount: %w", err)
 	}

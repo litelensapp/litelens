@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListEndpoints() ([]dto.Endpoint, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "endpoints") {
 		return []dto.Endpoint{}, nil
-	}
-	if h.IsForbidden("endpoints") {
-		return []dto.Endpoint{}, nil
-	}
-	<-h.GetSyncedChan("endpoints")
-	if h.IsForbidden("endpoints") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListEndpoints(h.Factory.Core().V1().Endpoints().Lister(), namespaces)
 	if err != nil {
@@ -39,17 +28,8 @@ func (a *App) ListEndpoints() ([]dto.Endpoint, error) {
 }
 
 func (a *App) GetEndpointByName(namespace, name string) (dto.Endpoint, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Endpoint{}, nil
-	}
-	if h.IsForbidden("endpoints") {
-		return dto.Endpoint{}, nil
-	}
-	<-h.GetSyncedChan("endpoints")
-	if h.IsForbidden("endpoints") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "endpoints") {
 		return dto.Endpoint{}, nil
 	}
 	result, err := kubeResources.GetEndpointByName(h.Factory.Core().V1().Endpoints().Lister(), namespace, name)
@@ -62,16 +42,14 @@ func (a *App) GetEndpointByName(namespace, name string) (dto.Endpoint, error) {
 
 // DeleteEndpoint deletes an Endpoint from the specified namespace.
 func (a *App) DeleteEndpoint(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().Endpoints(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().Endpoints(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Endpoint: %w", err)
 	}
@@ -84,45 +62,28 @@ func (a *App) DeleteEndpoint(namespace, name string) error {
 
 // DeleteEndpoints deletes multiple Endpoints, handling best-effort deletion across namespaces.
 func (a *App) DeleteEndpoints(items []dto.EndpointRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().Endpoints(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.EndpointRef) string { return r.Namespace },
+		func(r dto.EndpointRef) string { return r.Name },
+		"endpoints",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().Endpoints(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitEndpoints()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d endpoints: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitEndpoints() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("endpoints") {
-		return
-	}
-	<-h.GetSyncedChan("endpoints")
-	if h.IsForbidden("endpoints") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "endpoints") {
 		return
 	}
 	lister := h.Factory.Core().V1().Endpoints().Lister()
@@ -135,11 +96,9 @@ func (a *App) emitEndpoints() {
 }
 
 func (a *App) GetEndpointYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -158,16 +117,14 @@ func (a *App) GetEndpointYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEndpointYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice; UpdateEndpointYAML edits the resource kind the user is viewing
 	var ep corev1.Endpoints
-	err := sigsyaml.Unmarshal([]byte(yamlString), &ep)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &ep)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Endpoint: %w", err)
 	}

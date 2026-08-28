@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	policyv1 "k8s.io/api/policy/v1"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListPodDisruptionBudgets() ([]dto.PodDisruptionBudget, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "pdbs") {
 		return []dto.PodDisruptionBudget{}, nil
-	}
-	if h.IsForbidden("pdbs") {
-		return []dto.PodDisruptionBudget{}, nil
-	}
-	<-h.GetSyncedChan("pdbs")
-	if h.IsForbidden("pdbs") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListPodDisruptionBudgets(h.Factory.Policy().V1().PodDisruptionBudgets().Lister(), namespaces)
 	if err != nil {
@@ -39,18 +28,9 @@ func (a *App) ListPodDisruptionBudgets() ([]dto.PodDisruptionBudget, error) {
 }
 
 func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisruptionBudgetDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "pdbs") {
 		return &dto.PodDisruptionBudgetDetail{}, nil
-	}
-	if h.IsForbidden("pdbs") {
-		return &dto.PodDisruptionBudgetDetail{}, nil
-	}
-	<-h.GetSyncedChan("pdbs")
-	if h.IsForbidden("pdbs") {
-		return nil, nil
 	}
 	result, err := kubeResources.GetPodDisruptionBudgetByName(
 		h.Factory.Policy().V1().PodDisruptionBudgets().Lister(),
@@ -65,18 +45,8 @@ func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisr
 }
 
 func (a *App) emitPodDisruptionBudgets() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("pdbs") {
-		return
-	}
-	<-h.GetSyncedChan("pdbs")
-	if h.IsForbidden("pdbs") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "pdbs") {
 		return
 	}
 	lister := h.Factory.Policy().V1().PodDisruptionBudgets().Lister()
@@ -90,16 +60,14 @@ func (a *App) emitPodDisruptionBudgets() {
 
 // DeletePodDisruptionBudget deletes a PodDisruptionBudget from the specified namespace.
 func (a *App) DeletePodDisruptionBudget(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.PolicyV1().PodDisruptionBudgets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.PolicyV1().PodDisruptionBudgets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete PodDisruptionBudget: %w", err)
 	}
@@ -112,38 +80,29 @@ func (a *App) DeletePodDisruptionBudget(namespace, name string) error {
 
 // DeletePodDisruptionBudgets deletes multiple PodDisruptionBudgets, handling best-effort deletion across namespaces.
 func (a *App) DeletePodDisruptionBudgets(items []dto.PodDisruptionBudgetRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.PolicyV1().PodDisruptionBudgets(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.PodDisruptionBudgetRef) string { return r.Namespace },
+		func(r dto.PodDisruptionBudgetRef) string { return r.Name },
+		"poddisruptionbudgets",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.PolicyV1().PodDisruptionBudgets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitPodDisruptionBudgets()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d poddisruptionbudgets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetPDBYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -162,15 +121,13 @@ func (a *App) GetPDBYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePDBYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var pdb policyv1.PodDisruptionBudget
-	err := sigsyaml.Unmarshal([]byte(yamlString), &pdb)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &pdb)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to PodDisruptionBudget: %w", err)
 	}

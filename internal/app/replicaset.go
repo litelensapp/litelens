@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -19,19 +18,9 @@ import (
 )
 
 func (a *App) ListReplicaSets() ([]dto.ReplicaSet, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "replicasets") {
 		return []dto.ReplicaSet{}, nil
-	}
-	if h.IsForbidden("replicasets") {
-		return []dto.ReplicaSet{}, nil
-	}
-	<-h.GetSyncedChan("replicasets")
-	if h.IsForbidden("replicasets") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListReplicaSets(h.Factory.Apps().V1().ReplicaSets().Lister(), namespaces)
 	if err != nil {
@@ -42,17 +31,8 @@ func (a *App) ListReplicaSets() ([]dto.ReplicaSet, error) {
 }
 
 func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.ReplicaSet{}, nil
-	}
-	if h.IsForbidden("replicasets") {
-		return dto.ReplicaSet{}, nil
-	}
-	<-h.GetSyncedChan("replicasets")
-	if h.IsForbidden("replicasets") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "replicasets") {
 		return dto.ReplicaSet{}, nil
 	}
 	result, err := kubeResources.GetReplicaSetByName(h.Factory.Apps().V1().ReplicaSets().Lister(), namespace, name)
@@ -64,18 +44,8 @@ func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error
 }
 
 func (a *App) GetReplicaSetsSummary() (dto.ReplicaSetSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.ReplicaSetSummary{}, nil
-	}
-	if h.IsForbidden("replicasets") {
-		return dto.ReplicaSetSummary{}, nil
-	}
-	<-h.GetSyncedChan("replicasets")
-	if h.IsForbidden("replicasets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "replicasets") {
 		return dto.ReplicaSetSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
@@ -101,11 +71,9 @@ func (a *App) GetReplicaSetsSummary() (dto.ReplicaSetSummary, error) {
 }
 
 func (a *App) ScaleReplicaSet(namespace, name string, replicas int32) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 	patchBody := map[string]any{
 		"spec": map[string]any{"replicas": replicas},
@@ -123,16 +91,14 @@ func (a *App) ScaleReplicaSet(namespace, name string, replicas int32) error {
 }
 
 func (a *App) DeleteReplicaSet(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.AppsV1().ReplicaSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.AppsV1().ReplicaSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete ReplicaSet: %w", err)
 	}
@@ -144,45 +110,28 @@ func (a *App) DeleteReplicaSet(namespace, name string) error {
 
 // DeleteReplicaSets deletes multiple ReplicaSets, handling best-effort deletion across namespaces.
 func (a *App) DeleteReplicaSets(items []dto.ReplicaSetRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.AppsV1().ReplicaSets(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.ReplicaSetRef) string { return r.Namespace },
+		func(r dto.ReplicaSetRef) string { return r.Name },
+		"replicasets",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.AppsV1().ReplicaSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitReplicaSets()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d replicasets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitReplicaSets() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("replicasets") {
-		return
-	}
-	<-h.GetSyncedChan("replicasets")
-	if h.IsForbidden("replicasets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "replicasets") {
 		return
 	}
 	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
@@ -195,11 +144,9 @@ func (a *App) emitReplicaSets() {
 }
 
 func (a *App) GetReplicaSetYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -218,15 +165,13 @@ func (a *App) GetReplicaSetYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateReplicaSetYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var rs appsv1.ReplicaSet
-	err := sigsyaml.Unmarshal([]byte(yamlString), &rs)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &rs)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to ReplicaSet: %w", err)
 	}

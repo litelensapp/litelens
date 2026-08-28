@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -17,17 +16,8 @@ import (
 )
 
 func (a *App) GetStatefulSetByName(namespace, name string) (dto.StatefulSet, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.StatefulSet{}, nil
-	}
-	if h.IsForbidden("statefulsets") {
-		return dto.StatefulSet{}, nil
-	}
-	<-h.GetSyncedChan("statefulsets")
-	if h.IsForbidden("statefulsets") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "statefulsets") {
 		return dto.StatefulSet{}, nil
 	}
 	result, err := kubeResources.GetStatefulSetByName(h.Factory.Apps().V1().StatefulSets().Lister(), namespace, name)
@@ -38,19 +28,9 @@ func (a *App) GetStatefulSetByName(namespace, name string) (dto.StatefulSet, err
 }
 
 func (a *App) ListStatefulSets() ([]dto.StatefulSet, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "statefulsets") {
 		return []dto.StatefulSet{}, nil
-	}
-	if h.IsForbidden("statefulsets") {
-		return []dto.StatefulSet{}, nil
-	}
-	<-h.GetSyncedChan("statefulsets")
-	if h.IsForbidden("statefulsets") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListStatefulSets(h.Factory.Apps().V1().StatefulSets().Lister(), namespaces)
 	if err != nil {
@@ -61,18 +41,8 @@ func (a *App) ListStatefulSets() ([]dto.StatefulSet, error) {
 }
 
 func (a *App) GetStatefulSetsSummary() (dto.StatefulSetSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.StatefulSetSummary{}, nil
-	}
-	if h.IsForbidden("statefulsets") {
-		return dto.StatefulSetSummary{}, nil
-	}
-	<-h.GetSyncedChan("statefulsets")
-	if h.IsForbidden("statefulsets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "statefulsets") {
 		return dto.StatefulSetSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().StatefulSets().Lister()
@@ -99,16 +69,14 @@ func (a *App) GetStatefulSetsSummary() (dto.StatefulSetSummary, error) {
 
 // DeleteStatefulSet deletes a StatefulSet from the specified namespace.
 func (a *App) DeleteStatefulSet(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete StatefulSet: %w", err)
 	}
@@ -121,45 +89,28 @@ func (a *App) DeleteStatefulSet(namespace, name string) error {
 
 // DeleteStatefulSets deletes multiple StatefulSets, handling best-effort deletion across namespaces.
 func (a *App) DeleteStatefulSets(items []dto.StatefulSetRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.AppsV1().StatefulSets(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.StatefulSetRef) string { return r.Namespace },
+		func(r dto.StatefulSetRef) string { return r.Name },
+		"statefulsets",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitStatefulSets()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d statefulsets: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitStatefulSets() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("statefulsets") {
-		return
-	}
-	<-h.GetSyncedChan("statefulsets")
-	if h.IsForbidden("statefulsets") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "statefulsets") {
 		return
 	}
 	lister := h.Factory.Apps().V1().StatefulSets().Lister()
@@ -172,11 +123,9 @@ func (a *App) emitStatefulSets() {
 }
 
 func (a *App) GetStatefulSetYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -195,15 +144,13 @@ func (a *App) GetStatefulSetYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateStatefulSetYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var ss appsv1.StatefulSet
-	err := sigsyaml.Unmarshal([]byte(yamlString), &ss)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &ss)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to StatefulSet: %w", err)
 	}

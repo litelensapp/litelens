@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -16,17 +15,8 @@ import (
 )
 
 func (a *App) GetRoleBindingByName(namespace, name string) (dto.RoleBinding, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.RoleBinding{}, nil
-	}
-	if h.IsForbidden("rolebindings") {
-		return dto.RoleBinding{}, nil
-	}
-	<-h.GetSyncedChan("rolebindings")
-	if h.IsForbidden("rolebindings") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "rolebindings") {
 		return dto.RoleBinding{}, nil
 	}
 	result, err := kubeResources.GetRoleBindingByName(
@@ -42,19 +32,9 @@ func (a *App) GetRoleBindingByName(namespace, name string) (dto.RoleBinding, err
 }
 
 func (a *App) ListRoleBindings() ([]dto.RoleBinding, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "rolebindings") {
 		return []dto.RoleBinding{}, nil
-	}
-	if h.IsForbidden("rolebindings") {
-		return []dto.RoleBinding{}, nil
-	}
-	<-h.GetSyncedChan("rolebindings")
-	if h.IsForbidden("rolebindings") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListRoleBindings(
 		h.Factory.Rbac().V1().RoleBindings().Lister(),
@@ -68,18 +48,8 @@ func (a *App) ListRoleBindings() ([]dto.RoleBinding, error) {
 }
 
 func (a *App) emitRoleBindings() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("rolebindings") {
-		return
-	}
-	<-h.GetSyncedChan("rolebindings")
-	if h.IsForbidden("rolebindings") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "rolebindings") {
 		return
 	}
 	lister := h.Factory.Rbac().V1().RoleBindings().Lister()
@@ -92,16 +62,14 @@ func (a *App) emitRoleBindings() {
 }
 
 func (a *App) DeleteRoleBinding(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.RbacV1().RoleBindings(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.RbacV1().RoleBindings(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete RoleBinding: %w", err)
 	}
@@ -112,38 +80,29 @@ func (a *App) DeleteRoleBinding(namespace, name string) error {
 }
 
 func (a *App) DeleteRoleBindings(items []dto.RoleBindingRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.RbacV1().RoleBindings(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.RoleBindingRef) string { return r.Namespace },
+		func(r dto.RoleBindingRef) string { return r.Name },
+		"rolebindings",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.RbacV1().RoleBindings(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitRoleBindings()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d rolebindings: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetRoleBindingYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -162,15 +121,13 @@ func (a *App) GetRoleBindingYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateRoleBindingYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var rb rbacv1.RoleBinding
-	err := sigsyaml.Unmarshal([]byte(yamlString), &rb)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &rb)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to RoleBinding: %w", err)
 	}

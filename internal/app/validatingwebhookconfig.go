@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,18 +15,9 @@ import (
 )
 
 func (a *App) ListValidatingWebhookConfigs() ([]dto.ValidatingWebhookConfig, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "validatingwebhookconfigs") {
 		return []dto.ValidatingWebhookConfig{}, nil
-	}
-	if h.IsForbidden("validatingwebhookconfigs") {
-		return []dto.ValidatingWebhookConfig{}, nil
-	}
-	<-h.GetSyncedChan("validatingwebhookconfigs")
-	if h.IsForbidden("validatingwebhookconfigs") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListValidatingWebhookConfigs(h.Factory.Admissionregistration().V1().ValidatingWebhookConfigurations().Lister())
 	if err != nil {
@@ -38,17 +28,8 @@ func (a *App) ListValidatingWebhookConfigs() ([]dto.ValidatingWebhookConfig, err
 }
 
 func (a *App) GetValidatingWebhookConfigByName(name string) (*dto.ValidatingWebhookConfigDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return nil, nil
-	}
-	if h.IsForbidden("validatingwebhookconfigs") {
-		return nil, nil
-	}
-	<-h.GetSyncedChan("validatingwebhookconfigs")
-	if h.IsForbidden("validatingwebhookconfigs") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "validatingwebhookconfigs") {
 		return nil, nil
 	}
 	result, err := kubeResources.GetValidatingWebhookConfigByName(
@@ -63,16 +44,14 @@ func (a *App) GetValidatingWebhookConfigByName(name string) (*dto.ValidatingWebh
 }
 
 func (a *App) DeleteValidatingWebhookConfig(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete ValidatingWebhookConfig: %w", err)
 	}
@@ -84,43 +63,28 @@ func (a *App) DeleteValidatingWebhookConfig(name string) error {
 
 // DeleteValidatingWebhookConfigs deletes multiple ValidatingWebhookConfigs, handling best-effort deletion.
 func (a *App) DeleteValidatingWebhookConfigs(names []string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, name := range names {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", name, err))
-		}
-	}
+	err = deleteRefsBestEffort(names,
+		nil,
+		func(name string) string { return name },
+		"validatingwebhookconfigs",
+		func(ctx context.Context, _, name string) error {
+			return cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitValidatingWebhookConfigs()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d validatingwebhookconfigs: %s", len(msgs), len(names), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitValidatingWebhookConfigs() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("validatingwebhookconfigs") {
-		return
-	}
-	<-h.GetSyncedChan("validatingwebhookconfigs")
-	if h.IsForbidden("validatingwebhookconfigs") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "validatingwebhookconfigs") {
 		return
 	}
 	data, err := kubeResources.ListValidatingWebhookConfigs(h.Factory.Admissionregistration().V1().ValidatingWebhookConfigurations().Lister())
@@ -132,11 +96,9 @@ func (a *App) emitValidatingWebhookConfigs() {
 }
 
 func (a *App) GetValidatingWebhookConfigYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -155,15 +117,13 @@ func (a *App) GetValidatingWebhookConfigYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateValidatingWebhookConfigYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var vwc admissionregistrationv1.ValidatingWebhookConfiguration
-	err := sigsyaml.Unmarshal([]byte(yamlString), &vwc)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &vwc)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to ValidatingWebhookConfig: %w", err)
 	}

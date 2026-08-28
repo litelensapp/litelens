@@ -27,19 +27,9 @@ func warningEvents(events []dto.Event) []dto.Event {
 }
 
 func (a *App) ListEvents() ([]dto.Event, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "events") {
 		return []dto.Event{}, nil
-	}
-	if h.IsForbidden("events") {
-		return []dto.Event{}, nil
-	}
-	<-h.GetSyncedChan("events")
-	if h.IsForbidden("events") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListEvents(
 		h.Factory.Core().V1().Events().Lister(),
@@ -53,19 +43,9 @@ func (a *App) ListEvents() ([]dto.Event, error) {
 }
 
 func (a *App) ListWarningEvents() ([]dto.Event, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "events") {
 		return []dto.Event{}, nil
-	}
-	if h.IsForbidden("events") {
-		return []dto.Event{}, nil
-	}
-	<-h.GetSyncedChan("events")
-	if h.IsForbidden("events") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListWarningEvents(
 		h.Factory.Core().V1().Events().Lister(),
@@ -79,17 +59,8 @@ func (a *App) ListWarningEvents() ([]dto.Event, error) {
 }
 
 func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Event{}, nil
-	}
-	if h.IsForbidden("events") {
-		return dto.Event{}, nil
-	}
-	<-h.GetSyncedChan("events")
-	if h.IsForbidden("events") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "events") {
 		return dto.Event{}, nil
 	}
 	result, err := kubeResources.GetEventByName(h.Factory.Core().V1().Events().Lister(), namespace, name)
@@ -101,18 +72,8 @@ func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
 }
 
 func (a *App) emitEvents() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("events") {
-		return
-	}
-	<-h.GetSyncedChan("events")
-	if h.IsForbidden("events") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "events") {
 		return
 	}
 	lister := h.Factory.Core().V1().Events().Lister()

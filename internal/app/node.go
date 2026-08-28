@@ -6,9 +6,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/litelensapp/litelens/internal/kube"
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -18,17 +18,8 @@ import (
 )
 
 func (a *App) GetNodeByName(name string) (dto.Node, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Node{}, nil
-	}
-	if h.IsForbidden("nodes") {
-		return dto.Node{}, nil
-	}
-	<-h.GetSyncedChan("nodes")
-	if h.IsForbidden("nodes") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "nodes") {
 		return dto.Node{}, nil
 	}
 	result, err := kubeResources.GetNodeByName(h.Factory.Core().V1().Nodes().Lister(), name)
@@ -40,19 +31,9 @@ func (a *App) GetNodeByName(name string) (dto.Node, error) {
 }
 
 func (a *App) ListNodes() ([]dto.Node, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	mc := a.metricsClients[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h, mc := a.activeFactoryAndMetrics()
+	if !waitForResourceSync(h, "nodes") {
 		return []dto.Node{}, nil
-	}
-	if h.IsForbidden("nodes") {
-		return []dto.Node{}, nil
-	}
-	<-h.GetSyncedChan("nodes")
-	if h.IsForbidden("nodes") {
-		return nil, nil
 	}
 	nodes, err := kubeResources.ListNodes(h.Factory.Core().V1().Nodes().Lister())
 	if err != nil {
@@ -68,18 +49,8 @@ func (a *App) ListNodes() ([]dto.Node, error) {
 }
 
 func (a *App) emitNodes() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	mc := a.metricsClients[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("nodes") {
-		return
-	}
-	<-h.GetSyncedChan("nodes")
-	if h.IsForbidden("nodes") {
+	h, mc := a.activeFactoryAndMetrics()
+	if !waitForResourceSync(h, "nodes") {
 		return
 	}
 	nodes, err := kubeResources.ListNodes(h.Factory.Core().V1().Nodes().Lister())
@@ -96,16 +67,14 @@ func (a *App) emitNodes() {
 }
 
 func (a *App) DeleteNode(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().Nodes().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().Nodes().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Node: %w", err)
 	}
@@ -116,37 +85,29 @@ func (a *App) DeleteNode(name string) error {
 }
 
 func (a *App) DeleteNodes(names []string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, name := range names {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().Nodes().Delete(ctx, name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", name, err))
-		}
-	}
+	err = deleteRefsBestEffort(names,
+		nil,
+		func(name string) string { return name },
+		"nodes",
+		func(ctx context.Context, _, name string) error {
+			return cs.CoreV1().Nodes().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitNodes()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d nodes: %s", len(msgs), len(names), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetNodeYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -165,15 +126,13 @@ func (a *App) GetNodeYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateNodeYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var node corev1.Node
-	err := sigsyaml.Unmarshal([]byte(yamlString), &node)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &node)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Node: %w", err)
 	}
@@ -191,11 +150,9 @@ func (a *App) UpdateNodeYAML(yamlString string) error {
 }
 
 func (a *App) CordonNode(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -218,11 +175,9 @@ func (a *App) CordonNode(name string) error {
 }
 
 func (a *App) UncordonNode(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -245,11 +200,9 @@ func (a *App) UncordonNode(name string) error {
 }
 
 func (a *App) DrainNode(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	// Step 1: Cordon the node

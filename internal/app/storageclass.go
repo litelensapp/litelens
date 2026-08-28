@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,18 +15,9 @@ import (
 )
 
 func (a *App) ListStorageClasses() ([]dto.StorageClass, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "storageclasses") {
 		return []dto.StorageClass{}, nil
-	}
-	if h.IsForbidden("storageclasses") {
-		return []dto.StorageClass{}, nil
-	}
-	<-h.GetSyncedChan("storageclasses")
-	if h.IsForbidden("storageclasses") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListStorageClasses(
 		h.Factory.Storage().V1().StorageClasses().Lister(),
@@ -40,17 +30,8 @@ func (a *App) ListStorageClasses() ([]dto.StorageClass, error) {
 }
 
 func (a *App) GetStorageClassByName(name string) (dto.StorageClass, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.StorageClass{}, nil
-	}
-	if h.IsForbidden("storageclasses") {
-		return dto.StorageClass{}, nil
-	}
-	<-h.GetSyncedChan("storageclasses")
-	if h.IsForbidden("storageclasses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "storageclasses") {
 		return dto.StorageClass{}, nil
 	}
 	result, err := kubeResources.GetStorageClassByName(h.Factory.Storage().V1().StorageClasses().Lister(), name)
@@ -62,17 +43,8 @@ func (a *App) GetStorageClassByName(name string) (dto.StorageClass, error) {
 }
 
 func (a *App) emitStorageClasses() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("storageclasses") {
-		return
-	}
-	<-h.GetSyncedChan("storageclasses")
-	if h.IsForbidden("storageclasses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "storageclasses") {
 		return
 	}
 	data, err := kubeResources.ListStorageClasses(
@@ -87,16 +59,14 @@ func (a *App) emitStorageClasses() {
 
 // DeleteStorageClass deletes a StorageClass.
 func (a *App) DeleteStorageClass(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.StorageV1().StorageClasses().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.StorageV1().StorageClasses().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete StorageClass: %w", err)
 	}
@@ -108,37 +78,29 @@ func (a *App) DeleteStorageClass(name string) error {
 
 // DeleteStorageClasses deletes multiple StorageClasses.
 func (a *App) DeleteStorageClasses(items []dto.StorageClassRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.StorageV1().StorageClasses().Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		nil,
+		func(r dto.StorageClassRef) string { return r.Name },
+		"storageclasses",
+		func(ctx context.Context, _, name string) error {
+			return cs.StorageV1().StorageClasses().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitStorageClasses()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d storageclasses: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetStorageClassYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -157,15 +119,13 @@ func (a *App) GetStorageClassYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateStorageClassYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var sc storagev1.StorageClass
-	err := sigsyaml.Unmarshal([]byte(yamlString), &sc)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &sc)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to StorageClass: %w", err)
 	}

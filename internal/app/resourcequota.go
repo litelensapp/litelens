@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -17,19 +16,9 @@ import (
 )
 
 func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "resourcequotas") {
 		return []dto.ResourceQuota{}, nil
-	}
-	if h.IsForbidden("resourcequotas") {
-		return []dto.ResourceQuota{}, nil
-	}
-	<-h.GetSyncedChan("resourcequotas")
-	if h.IsForbidden("resourcequotas") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListResourceQuotas(h.Factory.Core().V1().ResourceQuotas().Lister(), namespaces)
 	if err != nil {
@@ -40,17 +29,8 @@ func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
 }
 
 func (a *App) GetResourceQuotaByName(namespace, name string) (dto.ResourceQuotaDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.ResourceQuotaDetail{}, nil
-	}
-	if h.IsForbidden("resourcequotas") {
-		return dto.ResourceQuotaDetail{}, nil
-	}
-	<-h.GetSyncedChan("resourcequotas")
-	if h.IsForbidden("resourcequotas") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "resourcequotas") {
 		return dto.ResourceQuotaDetail{}, nil
 	}
 	result, err := kubeResources.GetResourceQuotaByName(h.Factory.Core().V1().ResourceQuotas().Lister(), namespace, name)
@@ -62,11 +42,9 @@ func (a *App) GetResourceQuotaByName(namespace, name string) (dto.ResourceQuotaD
 }
 
 func (a *App) CreateResourceQuota(namespace, name string, hard map[string]string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	resourceList := make(corev1.ResourceList)
@@ -90,22 +68,20 @@ func (a *App) CreateResourceQuota(namespace, name string, hard map[string]string
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	_, err := cs.CoreV1().ResourceQuotas(namespace).Create(ctx, rq, metav1.CreateOptions{})
+	_, err = cs.CoreV1().ResourceQuotas(namespace).Create(ctx, rq, metav1.CreateOptions{})
 	return err
 }
 
 // DeleteResourceQuota deletes a ResourceQuota from the specified namespace.
 func (a *App) DeleteResourceQuota(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().ResourceQuotas(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().ResourceQuotas(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete ResourceQuota: %w", err)
 	}
@@ -118,45 +94,28 @@ func (a *App) DeleteResourceQuota(namespace, name string) error {
 
 // DeleteResourceQuotas deletes multiple ResourceQuotas, handling best-effort deletion across namespaces.
 func (a *App) DeleteResourceQuotas(items []dto.ResourceQuotaRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().ResourceQuotas(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.ResourceQuotaRef) string { return r.Namespace },
+		func(r dto.ResourceQuotaRef) string { return r.Name },
+		"resourcequotas",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().ResourceQuotas(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitResourceQuotas()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d resourcequotas: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitResourceQuotas() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("resourcequotas") {
-		return
-	}
-	<-h.GetSyncedChan("resourcequotas")
-	if h.IsForbidden("resourcequotas") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "resourcequotas") {
 		return
 	}
 	lister := h.Factory.Core().V1().ResourceQuotas().Lister()
@@ -169,11 +128,9 @@ func (a *App) emitResourceQuotas() {
 }
 
 func (a *App) GetResourceQuotaYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -192,15 +149,13 @@ func (a *App) GetResourceQuotaYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateResourceQuotaYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var rq corev1.ResourceQuota
-	err := sigsyaml.Unmarshal([]byte(yamlString), &rq)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &rq)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to ResourceQuota: %w", err)
 	}
