@@ -1,14 +1,10 @@
 import { renderErrorToast } from "@litelens/design-system";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EventsOn } from "@wailsjs/runtime/runtime";
 import { IsResourceForbidden } from "@wailsjs/go/app/App";
 
 interface UseCatchForbiddenResourcesOptions {
-  open?: boolean;
-  resourceName?: string | null;
-  resourceLabel?: string | null;
-  onForbiddenDetected?: () => void;
-  labelMap?: Record<string, string>;
+  labelMap: Record<string, string>;
   activeContext?: string;
 }
 
@@ -16,92 +12,75 @@ interface UseCatchForbiddenResourcesResult {
   forbiddenResources: Set<string>;
 }
 
+// For a caller that depends on several resource kinds at once (e.g. a dashboard
+// aggregating pods/deployments/jobs summaries), rather than a single resource
+// list view — see useCatchForbiddenResource for the single-resource case.
 export const useCatchForbiddenResources = (
-  activeResource: string,
-  options?: UseCatchForbiddenResourcesOptions
+  activeResources: string[],
+  options: UseCatchForbiddenResourcesOptions
 ): UseCatchForbiddenResourcesResult => {
   const [forbiddenResources, setForbiddenResources] = useState<Set<string>>(new Set());
 
-  // Reset forbidden state when the drawer transitions from closed to open, or when
-  // the active cluster context changes. Using the React-approved derived-state pattern
-  // (setState during render with a prev-value guard) so the reset is synchronous,
-  // before paint, with no extra effect.
-  const [prevOpen, setPrevOpen] = useState(options?.open);
-  if (options?.open !== prevOpen) {
-    setPrevOpen(options?.open);
-    if (options?.open) setForbiddenResources(new Set());
-  }
-  const [prevActiveContext, setPrevActiveContext] = useState(options?.activeContext);
-  if (options?.activeContext !== prevActiveContext) {
-    setPrevActiveContext(options?.activeContext);
+  const normalizedResources = useMemo(() => new Set(activeResources), [activeResources]);
+
+  // Reset forbidden state when the active cluster context changes.
+  const [prevActiveContext, setPrevActiveContext] = useState(options.activeContext);
+  if (options.activeContext !== prevActiveContext) {
+    setPrevActiveContext(options.activeContext);
     setForbiddenResources(new Set());
   }
 
-  // Tracks whether a toast was already shown in the current open session to prevent
-  // a double-toast race between the live Wails event path and the poll below.
-  const drawerToastFiredRef = useRef(false);
+  // Tracks which resources already toasted (from either the mount-time poll or a
+  // live event) to prevent a double-toast race between the two paths.
+  const toastFiredRef = useRef(new Set<string>());
 
-  // Keep a single ref current so the Wails event handler always reads the latest values
+  // Keep refs current so the Wails event handler always reads the latest values
   // without being re-subscribed on every render.
-  const activeResourceRef = useRef(activeResource);
+  const activeResourcesRef = useRef(normalizedResources);
   const optionsRef = useRef(options);
   useEffect(() => {
-    activeResourceRef.current = activeResource;
+    activeResourcesRef.current = normalizedResources;
     optionsRef.current = options;
   });
 
   useEffect(() => {
     const unsub = EventsOn("resource:forbidden", (resource: string) => {
       setForbiddenResources((prev) => new Set([...prev, resource]));
-      if (activeResourceRef.current !== resource) return;
+      if (!activeResourcesRef.current.has(resource)) return;
+      if (toastFiredRef.current.has(resource)) return;
 
-      const opts = optionsRef.current;
-      if (opts?.resourceName && opts?.open) {
-        // Drawer mode: show per-resource "cannot get" toast and close the drawer
-        drawerToastFiredRef.current = true;
-        const label = opts.resourceLabel ?? activeResourceRef.current;
-        renderErrorToast({ title: `Access denied: cannot get ${label} "${opts.resourceName}"` });
-        opts.onForbiddenDetected?.();
-      } else if (opts?.labelMap) {
-        // List-view mode: show "cannot list X" toast using labelMap
-        const label = opts.labelMap[resource] ?? resource;
-        renderErrorToast({ title: `Access denied: cannot list ${label}` });
-      }
+      toastFiredRef.current.add(resource);
+      const label = optionsRef.current.labelMap[resource] ?? resource;
+      renderErrorToast({ title: `Access denied: cannot list ${label}` });
     });
     return () => {
       if (typeof unsub === "function") unsub();
     };
   }, []);
 
-  // On every open transition, check whether the resource is already forbidden in
-  // the informer cache and show the drawer toast immediately (handles the case
-  // where the 403 was received before the drawer was opened and won't be re-emitted).
-  const open = options?.open;
+  // On mount, check which of the watched resources are already forbidden in the
+  // informer cache (handles a 403 received before this hook mounted, which won't
+  // be re-emitted as an event).
   useEffect(() => {
     let cancelled = false;
-    if (!open) {
-      drawerToastFiredRef.current = false;
-      return;
-    }
-    // Drawer mode only — no labelMap.
     const opts = optionsRef.current;
-    if (!opts?.resourceName) return;
 
-    IsResourceForbidden(activeResourceRef.current).then((forbidden) => {
-      if (cancelled || !forbidden || drawerToastFiredRef.current) return;
-      const currentOpts = optionsRef.current;
-      if (!currentOpts?.resourceName) return;
-      drawerToastFiredRef.current = true;
-      const label = currentOpts.resourceLabel ?? activeResourceRef.current;
-      renderErrorToast({
-        title: `Access denied: cannot get ${label} "${currentOpts.resourceName}"`,
-      });
-      currentOpts.onForbiddenDetected?.();
+    const promises = Array.from(activeResourcesRef.current).map(async (resource) => {
+      const forbidden = await IsResourceForbidden(resource);
+      if (cancelled || !forbidden) return;
+
+      setForbiddenResources((prev) => new Set([...prev, resource]));
+      if (toastFiredRef.current.has(resource)) return;
+      toastFiredRef.current.add(resource);
+      const label = opts.labelMap[resource] ?? resource;
+      renderErrorToast({ title: `Access denied: cannot list ${label}` });
     });
+
+    Promise.all(promises);
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, []);
 
   return { forbiddenResources };
 };

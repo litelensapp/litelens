@@ -10,7 +10,7 @@ import type { Pod } from "../../api/resources";
 const useGetPodDetailMock = vi.hoisted(() => vi.fn());
 const useGetEventsMock = vi.hoisted(() => vi.fn());
 const useGetPortForwardsMock = vi.hoisted(() => vi.fn());
-const useCatchForbiddenResourcesMock = vi.hoisted(() => vi.fn());
+const useCatchForbiddenResourceMock = vi.hoisted(() => vi.fn());
 const onToggleNamespaceDetailMock = vi.hoisted(() => vi.fn());
 const onToggleNodeDetailMock = vi.hoisted(() => vi.fn());
 const useUnifiedTrayMock = vi.hoisted(() => vi.fn());
@@ -28,8 +28,8 @@ vi.mock("../../../../networks/portforwarding/hooks/data-access/useGetPortForward
   useGetPortForwards: useGetPortForwardsMock,
 }));
 
-vi.mock("../../../../../../shared/hooks/async-events/useCatchForbiddenResources", () => ({
-  useCatchForbiddenResources: useCatchForbiddenResourcesMock,
+vi.mock("../../../../../../shared/hooks/async-events/useCatchForbiddenResource", () => ({
+  useCatchForbiddenResource: useCatchForbiddenResourceMock,
 }));
 
 vi.mock("../../../../../MainLayoutContext", () => ({
@@ -173,7 +173,7 @@ beforeEach(() => {
   useGetPodDetailMock.mockReturnValue({ data: makePod() });
   useGetEventsMock.mockReturnValue({ data: [] });
   useGetPortForwardsMock.mockReturnValue({ data: [] });
-  useCatchForbiddenResourcesMock.mockReturnValue(undefined);
+  useCatchForbiddenResourceMock.mockReturnValue(undefined);
   vi.mocked(useMainLayoutContext).mockReturnValue({
     activeContext: "test-ctx",
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,

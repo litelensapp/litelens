@@ -21,7 +21,7 @@ import type { PersistentVolumeDetail } from "../api/resources";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useGetPersistentVolumeByName } from "../hooks/data-access/useGetPersistentVolumeByName";
 import { useDeletePersistentVolume } from "../hooks/data-mutation/useDeletePersistentVolume";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
@@ -201,7 +201,7 @@ const PersistentVolumeDrawerBody: FC<
   const { activeContext } = useMainLayoutContext();
 
   const { data: pv, isLoading } = useGetPersistentVolumeByName(activeContext, name);
-  useCatchForbiddenResources("persistentvolumes", {
+  useCatchForbiddenResource("persistentvolumes", {
     open,
     resourceName: name,
     resourceLabel: "PersistentVolume",

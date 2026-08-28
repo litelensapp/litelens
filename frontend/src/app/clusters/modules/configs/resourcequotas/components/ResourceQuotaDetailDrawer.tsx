@@ -17,7 +17,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -208,7 +208,7 @@ const ResourceQuotaDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: rq, isLoading } = useGetResourceQuotaDetail(activeContext, rqNamespace, rqName);
-  useCatchForbiddenResources("resourcequotas", {
+  useCatchForbiddenResource("resourcequotas", {
     open,
     resourceName: rqName,
     resourceLabel: "ResourceQuota",

@@ -20,7 +20,7 @@ import type { NetworkPolicyDetail, NetworkPolicyPeer } from "../api/resources";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useGetNetworkPolicyDetail } from "../hooks/data-access/useGetNetworkPolicyDetail";
 import { useDeleteNetworkPolicy } from "../hooks/data-mutation/useDeleteNetworkPolicy";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
@@ -322,7 +322,7 @@ const NetworkPolicyDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: np, isLoading } = useGetNetworkPolicyDetail(activeContext, npNamespace, npName);
-  useCatchForbiddenResources("networkpolicies", {
+  useCatchForbiddenResource("networkpolicies", {
     open,
     resourceName: npName,
     resourceLabel: "Network Policy",

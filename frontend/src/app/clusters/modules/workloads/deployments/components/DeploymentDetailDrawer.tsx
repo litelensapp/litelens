@@ -31,7 +31,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useMemo, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -512,7 +512,7 @@ const DeploymentDrawerBody: FC<
     deploymentNamespace,
     deploymentName
   );
-  useCatchForbiddenResources("deployments", {
+  useCatchForbiddenResource("deployments", {
     open,
     resourceName: deploymentName,
     resourceLabel: "Deployment",

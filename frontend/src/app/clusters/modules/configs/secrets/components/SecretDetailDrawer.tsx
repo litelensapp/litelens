@@ -26,7 +26,7 @@ import {
   useCopyToClipboard,
 } from "@litelens/design-system";
 import { FC, FormEvent, useEffect, useReducer, useRef, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -532,7 +532,7 @@ const SecretDrawerBody: FC<
     secretNamespace,
     secretName
   );
-  useCatchForbiddenResources("secrets", {
+  useCatchForbiddenResource("secrets", {
     open,
     resourceName: secretName,
     resourceLabel: "Secret",

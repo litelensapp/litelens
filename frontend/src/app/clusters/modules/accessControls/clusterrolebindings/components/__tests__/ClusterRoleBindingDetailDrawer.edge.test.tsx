@@ -10,7 +10,7 @@ import { UnifiedTrayProvider } from "../../../../../shared/components/trays/unif
 
 const useGetEventsMock = vi.hoisted(() => vi.fn());
 const useGetClusterRoleBindingDetailMock = vi.hoisted(() => vi.fn());
-const useCatchForbiddenResourcesMock = vi.hoisted(() => vi.fn());
+const useCatchForbiddenResourceMock = vi.hoisted(() => vi.fn());
 const onToggleNamespaceDetailMock = vi.hoisted(() => vi.fn());
 const onToggleClusterRoleDetailMock = vi.hoisted(() => vi.fn());
 const onToggleServiceAccountDetailMock = vi.hoisted(() => vi.fn());
@@ -23,8 +23,8 @@ vi.mock("../../hooks/data-access/useGetClusterRoleBindingDetail", () => ({
   useGetClusterRoleBindingDetail: useGetClusterRoleBindingDetailMock,
 }));
 
-vi.mock("../../../../../../shared/hooks/async-events/useCatchForbiddenResources", () => ({
-  useCatchForbiddenResources: useCatchForbiddenResourcesMock,
+vi.mock("../../../../../../shared/hooks/async-events/useCatchForbiddenResource", () => ({
+  useCatchForbiddenResource: useCatchForbiddenResourceMock,
 }));
 
 vi.mock("../../../../../MainLayoutContext", () => ({
@@ -94,7 +94,7 @@ function renderDrawer(
 beforeEach(() => {
   vi.clearAllMocks();
   useGetEventsMock.mockReturnValue({ data: [] });
-  useCatchForbiddenResourcesMock.mockReturnValue(undefined);
+  useCatchForbiddenResourceMock.mockReturnValue(undefined);
   (useMainLayoutContext as ReturnType<typeof vi.fn>).mockReturnValue({
     activeContext: "test-ctx",
     onToggleNamespaceDetail: onToggleNamespaceDetailMock,

@@ -16,7 +16,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -161,7 +161,7 @@ const NamespaceDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: ns, isLoading } = useGetNamespaceDetail(activeContext, namespaceName);
-  useCatchForbiddenResources("namespaces", {
+  useCatchForbiddenResource("namespaces", {
     open,
     resourceName: namespaceName,
     resourceLabel: "Namespace",

@@ -16,7 +16,7 @@ import {
   formatTs,
 } from "@litelens/design-system";
 import { FC } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -43,7 +43,7 @@ const EventDrawerBody: FC<
   const resourceLinks = useResourceLinks();
 
   const { data: event, isLoading } = useGetEventDetail(activeContext, eventNamespace, eventName);
-  useCatchForbiddenResources("events", {
+  useCatchForbiddenResource("events", {
     open,
     resourceName: eventName,
     resourceLabel: "Event",

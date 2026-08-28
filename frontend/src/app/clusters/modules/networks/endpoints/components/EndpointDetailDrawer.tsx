@@ -28,7 +28,7 @@ import type { Endpoint } from "../api/resources";
 import { useGetEndpointDetail } from "../hooks/data-access/useGetEndpointDetail";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useDeleteEndpoint } from "../hooks/data-mutation/useDeleteEndpoint";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -276,7 +276,7 @@ const EndpointDrawerBody: FC<
     endpointNamespace,
     endpointName
   );
-  useCatchForbiddenResources("endpoints", {
+  useCatchForbiddenResource("endpoints", {
     open,
     resourceName: endpointName,
     resourceLabel: "Endpoint",
