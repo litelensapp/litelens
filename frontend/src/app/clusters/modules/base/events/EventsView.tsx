@@ -8,7 +8,7 @@ export const EventsView: FC = () => {
   const { activeContext, namespaces } = useMainLayoutContext();
   const [search, setSearch] = useState("");
 
-  const { data: raw = [] } = useGetEvents({ context: activeContext, namespaces });
+  const { data: raw = [], isLoading } = useGetEvents({ context: activeContext, namespaces });
 
   const q = search.toLowerCase();
   const events = raw
@@ -39,7 +39,7 @@ export const EventsView: FC = () => {
         </div>
       </div>
 
-      <EventsTable events={events} />
+      <EventsTable events={events} isLoading={isLoading} />
     </div>
   );
 };

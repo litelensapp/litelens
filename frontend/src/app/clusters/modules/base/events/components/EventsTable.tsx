@@ -8,19 +8,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonLoader,
   formatTs,
 } from "@litelens/design-system";
 import { FC } from "react";
-import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
+import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import type { Event } from "../api/resources";
 import { EventTypeBadge } from "./EventTypeBadge";
 
 interface EventsTableProps {
   events: Event[];
+  isLoading?: boolean;
 }
 
-export const EventsTable: FC<EventsTableProps> = ({ events }) => {
+export const EventsTable: FC<EventsTableProps> = ({ events, isLoading }) => {
   const { onToggleNamespaceDetail, onToggleEventDetail } = useDetailDrawerContext();
   const resourceLinks = useResourceLinks();
 
@@ -42,7 +44,25 @@ export const EventsTable: FC<EventsTableProps> = ({ events }) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {events.length === 0 ? (
+        {isLoading ? (
+          <TableSkeletonLoader
+            rows={5}
+            columns={11}
+            columnWidths={[
+              "w-[30%]",
+              "w-[55%]",
+              "w-[70%]",
+              "w-[55%]",
+              "w-[45%]",
+              "w-[60%]",
+              "w-[60%]",
+              "w-[30%]",
+              "w-[30%]",
+              "w-[35%]",
+              "w-[50%]",
+            ]}
+          />
+        ) : events.length === 0 ? (
           <TableRow>
             <TableCell colSpan={11} className="px-0 py-0">
               <EmptyState

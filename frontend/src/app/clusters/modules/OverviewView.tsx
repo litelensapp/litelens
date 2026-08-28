@@ -37,33 +37,56 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
     }
   );
 
-  const { data: podsSummary = { Running: 0, Pending: 0, Failed: 0, Succeeded: 0, Evicted: 0 } } =
-    useGetPodsSummary({ context: activeContext, namespaces });
-  const { data: deploymentsSummary = { Running: 0, Pending: 0 } } = useGetDeploymentsSummary({
+  const {
+    data: podsSummary = { Running: 0, Pending: 0, Failed: 0, Succeeded: 0, Evicted: 0 },
+    isLoading: isPodsSummaryLoading,
+  } = useGetPodsSummary({ context: activeContext, namespaces });
+  const {
+    data: deploymentsSummary = { Running: 0, Pending: 0 },
+    isLoading: isDeploymentsSummaryLoading,
+  } = useGetDeploymentsSummary({
     context: activeContext,
     namespaces,
   });
-  const { data: daemonSetsSummary = { Running: 0, Pending: 0 } } = useGetDaemonSetsSummary({
+  const {
+    data: daemonSetsSummary = { Running: 0, Pending: 0 },
+    isLoading: isDaemonSetsSummaryLoading,
+  } = useGetDaemonSetsSummary({
     context: activeContext,
     namespaces,
   });
-  const { data: statefulSetsSummary = { Running: 0, Pending: 0 } } = useGetStatefulSetsSummary({
+  const {
+    data: statefulSetsSummary = { Running: 0, Pending: 0 },
+    isLoading: isStatefulSetsSummaryLoading,
+  } = useGetStatefulSetsSummary({
     context: activeContext,
     namespaces,
   });
-  const { data: replicaSetsSummary = { Running: 0, Pending: 0 } } = useGetReplicaSetsSummary({
+  const {
+    data: replicaSetsSummary = { Running: 0, Pending: 0 },
+    isLoading: isReplicaSetsSummaryLoading,
+  } = useGetReplicaSetsSummary({
     context: activeContext,
     namespaces,
   });
-  const { data: jobsSummary = { Succeeded: 0, Failed: 0, Pending: 0 } } = useGetJobsSummary({
+  const {
+    data: jobsSummary = { Succeeded: 0, Failed: 0, Pending: 0 },
+    isLoading: isJobsSummaryLoading,
+  } = useGetJobsSummary({
     context: activeContext,
     namespaces,
   });
-  const { data: cronJobsSummary = { Scheduled: 0, Suspended: 0 } } = useGetCronJobsSummary({
+  const {
+    data: cronJobsSummary = { Scheduled: 0, Suspended: 0 },
+    isLoading: isCronJobsSummaryLoading,
+  } = useGetCronJobsSummary({
     context: activeContext,
     namespaces,
   });
-  const { data: warningEvents = [] } = useGetWarningEvents({ context: activeContext, namespaces });
+  const { data: warningEvents = [], isLoading: isWarningEventsLoading } = useGetWarningEvents({
+    context: activeContext,
+    namespaces,
+  });
 
   const totalPods =
     podsSummary.Running +
@@ -95,6 +118,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Evicted", color: "red", count: podsSummary.Evicted },
           ]}
           onNavigate={() => onNavigateToView?.("pods")}
+          isLoading={isPodsSummaryLoading}
         />
         <DonutChart
           label="Deployments"
@@ -106,6 +130,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Pending", color: "amber", count: deploymentsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("deployments")}
+          isLoading={isDeploymentsSummaryLoading}
         />
         <DonutChart
           label="Daemon Sets"
@@ -117,6 +142,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Pending", color: "amber", count: daemonSetsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("daemonsets")}
+          isLoading={isDaemonSetsSummaryLoading}
         />
         <DonutChart
           label="Stateful Sets"
@@ -128,6 +154,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Pending", color: "amber", count: statefulSetsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("statefulsets")}
+          isLoading={isStatefulSetsSummaryLoading}
         />
         <DonutChart
           label="Replica Sets"
@@ -139,6 +166,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Pending", color: "amber", count: replicaSetsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("replicasets")}
+          isLoading={isReplicaSetsSummaryLoading}
         />
         <DonutChart
           label="Jobs"
@@ -152,6 +180,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Pending", color: "amber", count: jobsSummary.Pending },
           ]}
           onNavigate={() => onNavigateToView?.("jobs")}
+          isLoading={isJobsSummaryLoading}
         />
         <DonutChart
           label="Cron Jobs"
@@ -162,6 +191,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             { label: "Suspended", color: "amber", count: cronJobsSummary.Suspended },
           ]}
           onNavigate={() => onNavigateToView?.("cronjobs")}
+          isLoading={isCronJobsSummaryLoading}
         />
       </div>
 
@@ -173,7 +203,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
             Warning Events ({warningEvents.length})
           </ResourceLink>
         </span>
-        <EventsTable events={warningEvents} />
+        <EventsTable events={warningEvents} isLoading={isWarningEventsLoading} />
       </div>
     </div>
   );
