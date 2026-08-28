@@ -19,6 +19,10 @@
 - [Tailwind v4 @theme inline](tailwind_v4_theme_inline.md) — color-mix() must live directly in @theme inline, not behind an indirect var()
 - [Tinted shadow utilities](tinted_shadow_utilities.md) — .shadow-subtle/-depth-1/-depth-2, Dialog=depth-2, Sheet=depth-1
 
+## Workflow
+
+- [Development with plugins workflow](development_with_plugins_workflow.md) — plugin repo path, `pnpm build:local` for fresh builds, verify E2E at http://localhost:34115 in dev mode
+
 ## Feedback & Conventions
 
 - [Development workflow](development_workflow.md) — always run pnpm format + lint + go vet + go build before reporting done; sync auto memory after codebase changes
