@@ -194,7 +194,7 @@ const LeasesView = lazy(() =>
   }))
 );
 const OverviewView = lazy(() =>
-  import("./modules/overview/OverviewView").then((m) => ({
+  import("./modules/OverviewView").then((m) => ({
     default: m.OverviewView,
   }))
 );
