@@ -3,9 +3,9 @@ package app
 import (
 	"sort"
 
-	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/litelensapp/litelens/internal/kube"
 	corekube "github.com/litelensapp/litelens/packages/core/kube"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"k8s.io/client-go/tools/clientcmd"
 )
 

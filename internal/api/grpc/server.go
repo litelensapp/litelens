@@ -2,7 +2,9 @@ package grpc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -54,8 +56,10 @@ func NewHostPluginServer(eventEmitFn func(payload map[string]any), authManager *
 	}
 }
 
-// topicRegex validates topic names: alphanumeric, dots, underscores, hyphens.
-var topicRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+// topicRegex validates topic names: alphanumeric, dots, underscores, hyphens,
+// and colons (colons separate segments within a plugin's own event name, e.g.
+// "plugins.helm.helm:cleanup:complete").
+var topicRegex = regexp.MustCompile(`^[a-zA-Z0-9._:-]+$`)
 
 // isValidTopic checks if a topic name is valid.
 func isValidTopic(topic string) bool {
@@ -125,11 +129,12 @@ func (s *HostPluginServer) Publish(ctx context.Context, req *pb.PublishRequest) 
 
 	// Authorization check: plugins can only publish under plugins.<their-pluginID>.*
 	// Reserved namespaces (cluster.*, namespaces.*) are host-only.
+	var allowedPrefix string
 	if pluginID != "" {
 		if isHostOwnedTopic(topic) {
 			return nil, status.Error(codes.PermissionDenied, "plugins cannot publish to reserved namespaces")
 		}
-		allowedPrefix := fmt.Sprintf("plugins.%s.", pluginID)
+		allowedPrefix = fmt.Sprintf("plugins.%s.", pluginID)
 		if !strings.HasPrefix(topic, allowedPrefix) {
 			return nil, status.Error(codes.PermissionDenied, "plugins can only publish to their own namespace")
 		}
@@ -149,6 +154,41 @@ func (s *HostPluginServer) Publish(ctx context.Context, req *pb.PublishRequest) 
 	// Update last-message cache only for host-owned topics
 	if isHostOwnedTopic(topic) {
 		s.broker.setLastMessage(topic, msg)
+	}
+
+	// Bridge plugin-owned events to the frontend via Wails event emission.
+	// Only emit for plugin-published events (pluginID != ""), not host-originated publishes.
+	if pluginID != "" {
+		eventName := strings.TrimPrefix(topic, allowedPrefix)
+
+		// Unmarshal the payload JSON into an any type.
+		// If PayloadJson is empty, treat payload as nil (skip unmarshaling).
+		// If unmarshal fails, log a warning and set payload to nil (don't fail the RPC).
+		var payload any
+		if req.PayloadJson != "" {
+			if err := json.Unmarshal([]byte(req.PayloadJson), &payload); err != nil {
+				log.Printf("warning: failed to unmarshal payload for topic %q: %v", topic, err)
+				payload = nil
+			}
+		}
+
+		// Re-check stopped immediately before emitting: broker.publish above is
+		// harmless post-shutdown (subscribers already torn down drop it), but
+		// eventEmitFn drives wailsruntime.EventsEmit against the app context, so
+		// avoid firing it once shutdown has been signaled.
+		s.mu.RLock()
+		stopped := s.stopped
+		s.mu.RUnlock()
+
+		// eventEmitFn is set once in NewHostPluginServer and never reassigned,
+		// so reading it here without holding s.mu is safe.
+		if !stopped && s.eventEmitFn != nil {
+			s.eventEmitFn(map[string]any{
+				"pluginId":  pluginID,
+				"eventName": eventName,
+				"payload":   payload,
+			})
+		}
 	}
 
 	return &pb.Empty{}, nil

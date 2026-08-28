@@ -7,7 +7,6 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	discoveryv1listers "k8s.io/client-go/listers/discovery/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toEndpointSlice(es *discoveryv1.EndpointSlice) dto.EndpointSlice {
@@ -45,20 +44,7 @@ func toEndpointSlice(es *discoveryv1.EndpointSlice) dto.EndpointSlice {
 		})
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(es.ManagedFields))
-	for _, mf := range es.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(es)
 
 	lbl := es.Labels
 	if lbl == nil {
@@ -100,19 +86,7 @@ func ListEndpointSlices(lister discoveryv1listers.EndpointSliceLister, namespace
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := ess[:0:0]
-		for _, es := range ess {
-			if _, ok := nsSet[es.Namespace]; ok {
-				filtered = append(filtered, es)
-			}
-		}
-		ess = filtered
-	}
+	ess = filterByNamespaces(ess, namespaces)
 	result := make([]dto.EndpointSlice, len(ess))
 	for i, es := range ess {
 		result[i] = toEndpointSlice(es)

@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 // formatNodeResource converts a Kubernetes resource quantity to a human-readable string.
@@ -116,23 +115,7 @@ func toNode(node *corev1.Node) dto.Node {
 			}
 			return node.Annotations
 		}(),
-		ManagedFields: func() []dto.ManagedField {
-			out := make([]dto.ManagedField, 0, len(node.ManagedFields))
-			for _, mf := range node.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
-		}(),
+		ManagedFields: toManagedFields(node),
 		Addresses: func() []dto.NodeAddress {
 			out := make([]dto.NodeAddress, 0, len(node.Status.Addresses))
 			for _, a := range node.Status.Addresses {

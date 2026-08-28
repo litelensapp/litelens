@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toDaemonSet(ds *appsv1.DaemonSet) dto.DaemonSet {
@@ -45,23 +44,7 @@ func toDaemonSet(ds *appsv1.DaemonSet) dto.DaemonSet {
 			}
 			return ds.Annotations
 		}(),
-		ManagedFields: func() []dto.ManagedField {
-			out := make([]dto.ManagedField, 0, len(ds.ManagedFields))
-			for _, mf := range ds.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
-		}(),
+		ManagedFields: toManagedFields(ds),
 		Selector: func() string {
 			if ds.Spec.Selector == nil {
 				return ""
@@ -105,19 +88,7 @@ func ListDaemonSets(lister listersappsv1.DaemonSetLister, namespaces []string) (
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := dss[:0:0]
-		for _, ds := range dss {
-			if _, ok := nsSet[ds.Namespace]; ok {
-				filtered = append(filtered, ds)
-			}
-		}
-		dss = filtered
-	}
+	dss = filterByNamespaces(dss, namespaces)
 	result := make([]dto.DaemonSet, len(dss))
 	for i, ds := range dss {
 		result[i] = toDaemonSet(ds)

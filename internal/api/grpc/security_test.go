@@ -217,6 +217,7 @@ func TestTopicValidation_ValidTopics(t *testing.T) {
 		"foo-bar_baz",
 		"foo123",
 		"123foo",
+		"plugins.helm.helm:cleanup:complete", // colons separate segments within a plugin's own event name
 	}
 
 	for _, topic := range validTopics {
@@ -489,6 +490,214 @@ func TestPubSubBroker_BufferFull_DropsOldest(t *testing.T) {
 		t.Fatal("expected only one message in buffer")
 	default:
 		// OK
+	}
+}
+
+// ============================================================
+// Event Emission Tests (Wails Frontend Bridge)
+// ============================================================
+
+// TestPublish_EventEmitFn_ValidPayload verifies that Publish() invokes eventEmitFn
+// with the correct payload structure when a plugin publishes to its own namespace.
+func TestPublish_EventEmitFn_ValidPayload(t *testing.T) {
+	authManager := NewAuthTokenManager()
+	const testToken = "test-token"
+	const testPluginID = "helm"
+	authManager.RegisterToken(testToken, testPluginID)
+
+	var capturedPayload map[string]any
+	server := NewHostPluginServer(func(payload map[string]any) {
+		capturedPayload = payload
+	}, authManager)
+	defer server.MarkStopped()
+
+	ctx := injectPluginID(context.Background(), testPluginID)
+	_, err := server.Publish(ctx, &pb.PublishRequest{
+		Topic:       "plugins.helm.release.installed",
+		PayloadJson: `{"releaseName":"nginx","namespace":"default"}`,
+	})
+
+	if err != nil {
+		t.Fatalf("expected successful publish, got %v", err)
+	}
+
+	if capturedPayload == nil {
+		t.Fatal("expected eventEmitFn to be called with a payload")
+	}
+
+	// Verify payload structure
+	if pluginID, ok := capturedPayload["pluginId"].(string); !ok || pluginID != testPluginID {
+		t.Fatalf("expected pluginId %q, got %v", testPluginID, capturedPayload["pluginId"])
+	}
+
+	if eventName, ok := capturedPayload["eventName"].(string); !ok || eventName != "release.installed" {
+		t.Fatalf("expected eventName %q (with prefix stripped), got %v", "release.installed", capturedPayload["eventName"])
+	}
+
+	if payload, ok := capturedPayload["payload"].(map[string]any); !ok {
+		t.Fatalf("expected payload to be unmarshaled map, got %T", capturedPayload["payload"])
+	} else {
+		if releaseName, ok := payload["releaseName"].(string); !ok || releaseName != "nginx" {
+			t.Fatalf("expected releaseName=nginx in payload, got %v", payload["releaseName"])
+		}
+		if namespace, ok := payload["namespace"].(string); !ok || namespace != "default" {
+			t.Fatalf("expected namespace=default in payload, got %v", payload["namespace"])
+		}
+	}
+}
+
+// TestPublish_EventEmitFn_EmptyPayload verifies that Publish() handles empty
+// PayloadJson correctly (treating it as nil, not attempting unmarshal).
+func TestPublish_EventEmitFn_EmptyPayload(t *testing.T) {
+	authManager := NewAuthTokenManager()
+	const testToken = "test-token"
+	const testPluginID = "helm"
+	authManager.RegisterToken(testToken, testPluginID)
+
+	var capturedPayload map[string]any
+	server := NewHostPluginServer(func(payload map[string]any) {
+		capturedPayload = payload
+	}, authManager)
+	defer server.MarkStopped()
+
+	ctx := injectPluginID(context.Background(), testPluginID)
+	_, err := server.Publish(ctx, &pb.PublishRequest{
+		Topic:       "plugins.helm.release.installed",
+		PayloadJson: "",
+	})
+
+	if err != nil {
+		t.Fatalf("expected successful publish with empty payload, got %v", err)
+	}
+
+	if capturedPayload == nil {
+		t.Fatal("expected eventEmitFn to be called")
+	}
+
+	// Verify payload is nil when PayloadJson is empty
+	if payload := capturedPayload["payload"]; payload != nil {
+		t.Fatalf("expected payload to be nil for empty PayloadJson, got %v", payload)
+	}
+}
+
+// TestPublish_EventEmitFn_InvalidJSON verifies that Publish() logs a warning
+// and treats payload as nil when PayloadJson is invalid, without failing the RPC.
+func TestPublish_EventEmitFn_InvalidJSON(t *testing.T) {
+	authManager := NewAuthTokenManager()
+	const testToken = "test-token"
+	const testPluginID = "helm"
+	authManager.RegisterToken(testToken, testPluginID)
+
+	var capturedPayload map[string]any
+	server := NewHostPluginServer(func(payload map[string]any) {
+		capturedPayload = payload
+	}, authManager)
+	defer server.MarkStopped()
+
+	ctx := injectPluginID(context.Background(), testPluginID)
+	_, err := server.Publish(ctx, &pb.PublishRequest{
+		Topic:       "plugins.helm.release.installed",
+		PayloadJson: `{invalid json}`,
+	})
+
+	if err != nil {
+		t.Fatalf("expected RPC to succeed despite invalid JSON, got %v", err)
+	}
+
+	if capturedPayload == nil {
+		t.Fatal("expected eventEmitFn to be called even with invalid JSON")
+	}
+
+	// Verify payload is nil when JSON is invalid (not panicked, just nil)
+	if payload := capturedPayload["payload"]; payload != nil {
+		t.Fatalf("expected payload to be nil for invalid JSON, got %v", payload)
+	}
+
+	// Verify eventName is still present
+	if eventName, ok := capturedPayload["eventName"].(string); !ok || eventName != "release.installed" {
+		t.Fatalf("expected eventName to be extracted despite invalid JSON, got %v", capturedPayload["eventName"])
+	}
+}
+
+// TestPublish_EventEmitFn_NilEmitFn verifies that Publish() does not panic
+// when eventEmitFn is nil.
+func TestPublish_EventEmitFn_NilEmitFn(t *testing.T) {
+	authManager := NewAuthTokenManager()
+	const testToken = "test-token"
+	const testPluginID = "helm"
+	authManager.RegisterToken(testToken, testPluginID)
+
+	// Pass nil for eventEmitFn
+	server := NewHostPluginServer(nil, authManager)
+	defer server.MarkStopped()
+
+	ctx := injectPluginID(context.Background(), testPluginID)
+
+	// This should not panic
+	_, err := server.Publish(ctx, &pb.PublishRequest{
+		Topic:       "plugins.helm.release.installed",
+		PayloadJson: `{"releaseName":"nginx"}`,
+	})
+
+	if err != nil {
+		t.Fatalf("expected successful publish with nil eventEmitFn, got %v", err)
+	}
+}
+
+// TestPublish_EventEmitFn_NotCalledForHostPublish verifies that eventEmitFn
+// is NOT called for host-originated publishes (pluginID == "").
+func TestPublish_EventEmitFn_NotCalledForHostPublish(t *testing.T) {
+	authManager := NewAuthTokenManager()
+
+	var capturedPayload map[string]any
+	server := NewHostPluginServer(func(payload map[string]any) {
+		capturedPayload = payload
+	}, authManager)
+	defer server.MarkStopped()
+
+	// Host context (no pluginID)
+	ctx := context.Background()
+
+	_, err := server.Publish(ctx, &pb.PublishRequest{
+		Topic:       "cluster.context",
+		PayloadJson: `{"contextName":"test"}`,
+	})
+
+	if err != nil {
+		t.Fatalf("expected successful host publish, got %v", err)
+	}
+
+	if capturedPayload != nil {
+		t.Fatal("expected eventEmitFn NOT to be called for host-originated publish")
+	}
+}
+
+// TestPublish_EventEmitFn_PrefixStripping verifies that eventName correctly
+// strips the plugins.<pluginID>. prefix from the topic.
+func TestPublish_EventEmitFn_PrefixStripping(t *testing.T) {
+	authManager := NewAuthTokenManager()
+	const testToken = "test-token"
+	const testPluginID = "prometheus"
+	authManager.RegisterToken(testToken, testPluginID)
+
+	var capturedPayload map[string]any
+	server := NewHostPluginServer(func(payload map[string]any) {
+		capturedPayload = payload
+	}, authManager)
+	defer server.MarkStopped()
+
+	ctx := injectPluginID(context.Background(), testPluginID)
+	_, err := server.Publish(ctx, &pb.PublishRequest{
+		Topic:       "plugins.prometheus.alert.fired",
+		PayloadJson: `{}`,
+	})
+
+	if err != nil {
+		t.Fatalf("expected successful publish, got %v", err)
+	}
+
+	if eventName, ok := capturedPayload["eventName"].(string); !ok || eventName != "alert.fired" {
+		t.Fatalf("expected eventName %q with prefix stripped, got %v", "alert.fired", capturedPayload["eventName"])
 	}
 }
 

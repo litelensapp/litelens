@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
+	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,17 +15,8 @@ import (
 )
 
 func (a *App) GetClusterRoleByName(name string) (dto.ClusterRole, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.ClusterRole{}, nil
-	}
-	if h.IsForbidden("clusterroles") {
-		return dto.ClusterRole{}, nil
-	}
-	<-h.GetSyncedChan("clusterroles")
-	if h.IsForbidden("clusterroles") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "clusterroles") {
 		return dto.ClusterRole{}, nil
 	}
 	result, err := kubeResources.GetClusterRoleByName(
@@ -41,17 +31,8 @@ func (a *App) GetClusterRoleByName(name string) (dto.ClusterRole, error) {
 }
 
 func (a *App) ListClusterRoles() ([]dto.ClusterRole, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return []dto.ClusterRole{}, nil
-	}
-	if h.IsForbidden("clusterroles") {
-		return []dto.ClusterRole{}, nil
-	}
-	<-h.GetSyncedChan("clusterroles")
-	if h.IsForbidden("clusterroles") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "clusterroles") {
 		return []dto.ClusterRole{}, nil
 	}
 	result, err := kubeResources.ListClusterRoles(
@@ -65,13 +46,8 @@ func (a *App) ListClusterRoles() ([]dto.ClusterRole, error) {
 }
 
 func (a *App) emitClusterRoles() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("clusterroles") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "clusterroles") {
 		return
 	}
 	data, err := kubeResources.ListClusterRoles(
@@ -85,16 +61,14 @@ func (a *App) emitClusterRoles() {
 }
 
 func (a *App) DeleteClusterRole(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.RbacV1().ClusterRoles().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.RbacV1().ClusterRoles().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete ClusterRole: %w", err)
 	}
@@ -105,38 +79,29 @@ func (a *App) DeleteClusterRole(name string) error {
 }
 
 func (a *App) DeleteClusterRoles(items []dto.ClusterRoleRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.RbacV1().ClusterRoles().Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		nil,
+		func(r dto.ClusterRoleRef) string { return r.Name },
+		"clusterroles",
+		func(ctx context.Context, _, name string) error {
+			return cs.RbacV1().ClusterRoles().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitClusterRoles()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d clusterroles: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetClusterRoleYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -155,15 +120,13 @@ func (a *App) GetClusterRoleYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateClusterRoleYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var cr rbacv1.ClusterRole
-	err := sigsyaml.Unmarshal([]byte(yamlString), &cr)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &cr)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to ClusterRole: %w", err)
 	}

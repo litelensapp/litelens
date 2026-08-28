@@ -44,19 +44,7 @@ func ListSecrets(lister listerscorev1.SecretLister, namespaces []string) ([]dto.
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := secrets[:0:0]
-		for _, secret := range secrets {
-			if _, ok := nsSet[secret.Namespace]; ok {
-				filtered = append(filtered, secret)
-			}
-		}
-		secrets = filtered
-	}
+	secrets = filterByNamespaces(secrets, namespaces)
 	result := make([]dto.Secret, len(secrets))
 	for i, s := range secrets {
 		result[i] = toSecret(s)

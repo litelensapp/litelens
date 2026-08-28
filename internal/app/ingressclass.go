@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,18 +18,9 @@ import (
 )
 
 func (a *App) ListIngressClasses() ([]dto.IngressClass, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "ingressclasses") {
 		return []dto.IngressClass{}, nil
-	}
-	if h.IsForbidden("ingressclasses") {
-		return []dto.IngressClass{}, nil
-	}
-	<-h.GetSyncedChan("ingressclasses")
-	if h.IsForbidden("ingressclasses") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListIngressClasses(h.Factory.Networking().V1().IngressClasses().Lister())
 	if err != nil {
@@ -41,17 +31,8 @@ func (a *App) ListIngressClasses() ([]dto.IngressClass, error) {
 }
 
 func (a *App) GetIngressClassByName(name string) (dto.IngressClass, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.IngressClass{}, nil
-	}
-	if h.IsForbidden("ingressclasses") {
-		return dto.IngressClass{}, nil
-	}
-	<-h.GetSyncedChan("ingressclasses")
-	if h.IsForbidden("ingressclasses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "ingressclasses") {
 		return dto.IngressClass{}, nil
 	}
 	result, err := kubeResources.GetIngressClassByName(
@@ -94,18 +75,16 @@ func (a *App) SetIngressClassAsDefault(name string) error {
 }
 
 func (a *App) UnsetIngressClassAsDefault(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
 	return applyIngressClassDefault(ctx, cs, name, "false")
 }
 
-func applyIngressClassDefault(ctx context.Context, cs *kubernetes.Clientset, name, value string) error {
+func applyIngressClassDefault(ctx context.Context, cs kubernetes.Interface, name, value string) error {
 	patchBody := map[string]any{
 		"metadata": map[string]any{
 			"annotations": map[string]any{
@@ -124,16 +103,14 @@ func applyIngressClassDefault(ctx context.Context, cs *kubernetes.Clientset, nam
 }
 
 func (a *App) DeleteIngressClass(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.NetworkingV1().IngressClasses().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.NetworkingV1().IngressClasses().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete IngressClass: %w", err)
 	}
@@ -144,43 +121,28 @@ func (a *App) DeleteIngressClass(name string) error {
 }
 
 func (a *App) DeleteIngressClasses(items []dto.IngressClassRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.NetworkingV1().IngressClasses().Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		nil,
+		func(r dto.IngressClassRef) string { return r.Name },
+		"ingressclasses",
+		func(ctx context.Context, _, name string) error {
+			return cs.NetworkingV1().IngressClasses().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitIngressClasses()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d ingressclasses: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitIngressClasses() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("ingressclasses") {
-		return
-	}
-	<-h.GetSyncedChan("ingressclasses")
-	if h.IsForbidden("ingressclasses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "ingressclasses") {
 		return
 	}
 	data, err := kubeResources.ListIngressClasses(h.Factory.Networking().V1().IngressClasses().Lister())
@@ -192,11 +154,9 @@ func (a *App) emitIngressClasses() {
 }
 
 func (a *App) GetIngressClassYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -215,15 +175,13 @@ func (a *App) GetIngressClassYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateIngressClassYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var ic networkingv1.IngressClass
-	err := sigsyaml.Unmarshal([]byte(yamlString), &ic)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &ic)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to IngressClass: %w", err)
 	}

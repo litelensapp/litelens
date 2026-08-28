@@ -3,22 +3,13 @@ package app
 import (
 	"log"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 )
 
 func (a *App) GetPersistentVolumeByName(name string) (dto.PersistentVolumeDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.PersistentVolumeDetail{}, nil
-	}
-	if h.IsForbidden("pvs") {
-		return dto.PersistentVolumeDetail{}, nil
-	}
-	<-h.GetSyncedChan("pvs")
-	if h.IsForbidden("pvs") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "pvs") {
 		return dto.PersistentVolumeDetail{}, nil
 	}
 	result, err := kubeResources.GetPersistentVolumeByName(h.Factory.Core().V1().PersistentVolumes().Lister(), name)

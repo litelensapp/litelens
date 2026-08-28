@@ -8,7 +8,6 @@ import (
 	coordinationv1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscoordinationv1 "k8s.io/client-go/listers/coordination/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toLease(l *coordinationv1.Lease) dto.Lease {
@@ -37,20 +36,7 @@ func toLease(l *coordinationv1.Lease) dto.Lease {
 		acquireTime = l.Spec.AcquireTime.UTC().Format(time.RFC3339)
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(l.ManagedFields))
-	for _, mf := range l.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(l)
 
 	return dto.Lease{
 		Name:                 l.Name,
@@ -73,19 +59,7 @@ func ListLeases(lister listerscoordinationv1.LeaseLister, namespaces []string) (
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := leases[:0:0]
-		for _, lease := range leases {
-			if _, ok := nsSet[lease.Namespace]; ok {
-				filtered = append(filtered, lease)
-			}
-		}
-		leases = filtered
-	}
+	leases = filterByNamespaces(leases, namespaces)
 	result := make([]dto.Lease, len(leases))
 	for i, l := range leases {
 		result[i] = toLease(l)

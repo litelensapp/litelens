@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/litelensapp/litelens/internal/kube"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
@@ -18,19 +17,8 @@ import (
 )
 
 func (a *App) ListPods() ([]dto.Pod, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	mc := a.metricsClients[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return []dto.Pod{}, nil
-	}
-	if h.IsForbidden("pods") {
-		return []dto.Pod{}, nil
-	}
-	<-h.GetSyncedChan("pods")
-	if h.IsForbidden("pods") {
+	h, namespaces, mc := a.activeFactoryNamespacesAndMetrics()
+	if !waitForResourceSync(h, "pods") {
 		return []dto.Pod{}, nil
 	}
 	pods, err := kubeResources.ListPods(h.Factory.Core().V1().Pods().Lister(), namespaces)
@@ -52,17 +40,8 @@ func (a *App) ListPods() ([]dto.Pod, error) {
 }
 
 func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Pod{}, nil
-	}
-	if h.IsForbidden("pods") {
-		return dto.Pod{}, nil
-	}
-	<-h.GetSyncedChan("pods")
-	if h.IsForbidden("pods") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "pods") {
 		return dto.Pod{}, nil
 	}
 	result, err := kubeResources.GetPodByName(h.Factory.Core().V1().Pods().Lister(), namespace, name)
@@ -73,31 +52,29 @@ func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 	return result, nil
 }
 
-func (a *App) GetPodsSummary(namespace string) (dto.PodSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+func (a *App) GetPodsSummary() (dto.PodSummary, error) {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "pods") {
 		return dto.PodSummary{}, nil
 	}
-	if h.IsForbidden("pods") {
-		return dto.PodSummary{}, nil
-	}
-	<-h.GetSyncedChan("pods")
-	if h.IsForbidden("pods") {
-		return dto.PodSummary{}, nil
-	}
-	var pods []*corev1.Pod
-	var err error
 	lister := h.Factory.Core().V1().Pods().Lister()
-	if namespace == "" {
-		pods, err = lister.List(labels.Everything())
-	} else {
-		pods, err = lister.Pods(namespace).List(labels.Everything())
-	}
+	pods, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetPodsSummary: %v", err)
 		return dto.PodSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := pods[:0:0]
+		for _, p := range pods {
+			if _, ok := nsSet[p.Namespace]; ok {
+				filtered = append(filtered, p)
+			}
+		}
+		pods = filtered
 	}
 	return kubeResources.SummarizePods(pods), nil
 }
@@ -110,15 +87,8 @@ func (a *App) emitPods() {
 // selection (a.activeNamespaces). If allMetrics is nil, metrics are fetched
 // asynchronously to avoid blocking the initial emit.
 func (a *App) emitPodsWithMetrics(allMetrics map[string]dto.PodUsage) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	mc := a.metricsClients[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("pods") {
+	h, namespaces, mc := a.activeFactoryNamespacesAndMetrics()
+	if h == nil || h.IsForbidden("pods") {
 		return
 	}
 	lister := h.Factory.Core().V1().Pods().Lister()
@@ -153,16 +123,14 @@ func (a *App) emitPodsWithMetrics(allMetrics map[string]dto.PodUsage) {
 
 // DeletePod deletes a Pod from the specified namespace.
 func (a *App) DeletePod(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Pod: %w", err)
 	}
@@ -173,38 +141,29 @@ func (a *App) DeletePod(namespace, name string) error {
 
 // DeletePods deletes multiple Pods, handling best-effort deletion across namespaces.
 func (a *App) DeletePods(items []dto.PodRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().Pods(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.PodRef) string { return r.Namespace },
+		func(r dto.PodRef) string { return r.Name },
+		"pods",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitPods()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d pods: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetPodYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -223,15 +182,13 @@ func (a *App) GetPodYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePodYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var pod corev1.Pod
-	err := sigsyaml.Unmarshal([]byte(yamlString), &pod)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &pod)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Pod: %w", err)
 	}

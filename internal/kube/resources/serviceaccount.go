@@ -36,19 +36,7 @@ func ListServiceAccounts(saLister listerscorev1.ServiceAccountLister, namespaces
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := sas[:0:0]
-		for _, sa := range sas {
-			if _, ok := nsSet[sa.Namespace]; ok {
-				filtered = append(filtered, sa)
-			}
-		}
-		sas = filtered
-	}
+	sas = filterByNamespaces(sas, namespaces)
 	result := make([]dto.ServiceAccount, len(sas))
 	for i, sa := range sas {
 		result[i] = toServiceAccount(sa)

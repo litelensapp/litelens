@@ -8,7 +8,6 @@ import (
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersschedulingv1 "k8s.io/client-go/listers/scheduling/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toPriorityClass(pc *schedulingv1.PriorityClass) dto.PriorityClass {
@@ -17,20 +16,7 @@ func toPriorityClass(pc *schedulingv1.PriorityClass) dto.PriorityClass {
 		preemptionPolicy = string(*pc.PreemptionPolicy)
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(pc.ManagedFields))
-	for _, mf := range pc.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(pc)
 
 	return dto.PriorityClass{
 		Name:             pc.Name,

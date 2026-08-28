@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toReplicaSet(rs *appsv1.ReplicaSet) dto.ReplicaSet {
@@ -50,23 +49,7 @@ func toReplicaSet(rs *appsv1.ReplicaSet) dto.ReplicaSet {
 			}
 			return rs.Annotations
 		}(),
-		ManagedFields: func() []dto.ManagedField {
-			out := make([]dto.ManagedField, 0, len(rs.ManagedFields))
-			for _, mf := range rs.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
-		}(),
+		ManagedFields: toManagedFields(rs),
 		Selector: func() string {
 			if rs.Spec.Selector == nil {
 				return ""
@@ -131,19 +114,7 @@ func ListReplicaSets(lister listersappsv1.ReplicaSetLister, namespaces []string)
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := rss[:0:0]
-		for _, rs := range rss {
-			if _, ok := nsSet[rs.Namespace]; ok {
-				filtered = append(filtered, rs)
-			}
-		}
-		rss = filtered
-	}
+	rss = filterByNamespaces(rss, namespaces)
 	result := make([]dto.ReplicaSet, len(rss))
 	for i, rs := range rss {
 		result[i] = toReplicaSet(rs)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/litelensapp/litelens/internal/kube"
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
@@ -17,18 +16,9 @@ import (
 )
 
 func (a *App) ListNamespaces() ([]dto.Namespace, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "namespaces") {
 		return []dto.Namespace{}, nil
-	}
-	if h.IsForbidden("namespaces") {
-		return []dto.Namespace{}, nil
-	}
-	<-h.GetSyncedChan("namespaces")
-	if h.IsForbidden("namespaces") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListNamespaces(h.Factory.Core().V1().Namespaces().Lister())
 	if err != nil {
@@ -39,17 +29,8 @@ func (a *App) ListNamespaces() ([]dto.Namespace, error) {
 }
 
 func (a *App) GetNamespaceByName(name string) (dto.Namespace, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Namespace{}, nil
-	}
-	if h.IsForbidden("namespaces") {
-		return dto.Namespace{}, nil
-	}
-	<-h.GetSyncedChan("namespaces")
-	if h.IsForbidden("namespaces") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "namespaces") {
 		return dto.Namespace{}, nil
 	}
 	result, err := kubeResources.GetNamespaceByName(h.Factory.Core().V1().Namespaces().Lister(), name)
@@ -61,17 +42,8 @@ func (a *App) GetNamespaceByName(name string) (dto.Namespace, error) {
 }
 
 func (a *App) emitNamespaces() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("namespaces") {
-		return
-	}
-	<-h.GetSyncedChan("namespaces")
-	if h.IsForbidden("namespaces") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "namespaces") {
 		return
 	}
 	data, err := kubeResources.ListNamespaces(h.Factory.Core().V1().Namespaces().Lister())
@@ -121,16 +93,14 @@ func (a *App) GetNamespacesForContext(contextName string) ([]string, error) {
 }
 
 func (a *App) DeleteNamespace(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Namespace: %w", err)
 	}
@@ -141,37 +111,29 @@ func (a *App) DeleteNamespace(name string) error {
 }
 
 func (a *App) DeleteNamespaces(names []string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, name := range names {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", name, err))
-		}
-	}
+	err = deleteRefsBestEffort(names,
+		nil,
+		func(name string) string { return name },
+		"namespaces",
+		func(ctx context.Context, _, name string) error {
+			return cs.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitNamespaces()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d namespaces: %s", len(msgs), len(names), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) CreateNamespace(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ns := &corev1.Namespace{
@@ -182,16 +144,14 @@ func (a *App) CreateNamespace(name string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	_, err := cs.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+	_, err = cs.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 	return err
 }
 
 func (a *App) GetNamespaceYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -210,15 +170,13 @@ func (a *App) GetNamespaceYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateNamespaceYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var ns corev1.Namespace
-	err := sigsyaml.Unmarshal([]byte(yamlString), &ns)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &ns)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Namespace: %w", err)
 	}

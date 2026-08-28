@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListIngresses() ([]dto.Ingress, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "ingresses") {
 		return []dto.Ingress{}, nil
-	}
-	if h.IsForbidden("ingresses") {
-		return []dto.Ingress{}, nil
-	}
-	<-h.GetSyncedChan("ingresses")
-	if h.IsForbidden("ingresses") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListIngresses(h.Factory.Networking().V1().Ingresses().Lister(), namespaces)
 	if err != nil {
@@ -39,17 +28,8 @@ func (a *App) ListIngresses() ([]dto.Ingress, error) {
 }
 
 func (a *App) GetIngressByName(namespace, name string) (dto.IngressDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.IngressDetail{}, nil
-	}
-	if h.IsForbidden("ingresses") {
-		return dto.IngressDetail{}, nil
-	}
-	<-h.GetSyncedChan("ingresses")
-	if h.IsForbidden("ingresses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "ingresses") {
 		return dto.IngressDetail{}, nil
 	}
 	result, err := kubeResources.GetIngressByName(h.Factory.Networking().V1().Ingresses().Lister(), namespace, name)
@@ -62,16 +42,14 @@ func (a *App) GetIngressByName(namespace, name string) (dto.IngressDetail, error
 
 // DeleteIngress deletes an Ingress from the specified namespace.
 func (a *App) DeleteIngress(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.NetworkingV1().Ingresses(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.NetworkingV1().Ingresses(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Ingress: %w", err)
 	}
@@ -84,45 +62,28 @@ func (a *App) DeleteIngress(namespace, name string) error {
 
 // DeleteIngresses deletes multiple Ingresses, handling best-effort deletion across namespaces.
 func (a *App) DeleteIngresses(items []dto.IngressRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.NetworkingV1().Ingresses(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.IngressRef) string { return r.Namespace },
+		func(r dto.IngressRef) string { return r.Name },
+		"ingresses",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.NetworkingV1().Ingresses(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitIngresses()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d ingresses: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitIngresses() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("ingresses") {
-		return
-	}
-	<-h.GetSyncedChan("ingresses")
-	if h.IsForbidden("ingresses") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "ingresses") {
 		return
 	}
 	lister := h.Factory.Networking().V1().Ingresses().Lister()
@@ -135,11 +96,9 @@ func (a *App) emitIngresses() {
 }
 
 func (a *App) GetIngressYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -158,15 +117,13 @@ func (a *App) GetIngressYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateIngressYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var ing networkingv1.Ingress
-	err := sigsyaml.Unmarshal([]byte(yamlString), &ing)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &ing)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Ingress: %w", err)
 	}

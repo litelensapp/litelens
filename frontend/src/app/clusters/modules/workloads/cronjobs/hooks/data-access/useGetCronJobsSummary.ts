@@ -9,7 +9,7 @@ export const useGetCronJobsSummary = (input: { context: string; namespaces: stri
 
   return useQuery<CronJobSummary, Error>({
     queryKey: [QUERY_KEY_CRONJOBS, "summary", { context, namespaces }],
-    queryFn: () => GetCronJobsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetCronJobsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

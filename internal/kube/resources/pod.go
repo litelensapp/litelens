@@ -388,21 +388,7 @@ func toPod(pod *corev1.Pod, detail bool) dto.Pod {
 			if !detail {
 				return nil
 			}
-			out := make([]dto.ManagedField, 0, len(pod.ManagedFields))
-			for _, mf := range pod.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
+			return toManagedFields(pod)
 		}(),
 		Conditions: func() []dto.PodCondition {
 			out := make([]dto.PodCondition, 0, len(pod.Status.Conditions))
@@ -552,19 +538,7 @@ func ListPods(lister listerscorev1.PodLister, namespaces []string) ([]dto.Pod, e
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := pods[:0:0]
-		for _, p := range pods {
-			if _, ok := nsSet[p.Namespace]; ok {
-				filtered = append(filtered, p)
-			}
-		}
-		pods = filtered
-	}
+	pods = filterByNamespaces(pods, namespaces)
 	result := make([]dto.Pod, len(pods))
 	for i, p := range pods {
 		result[i] = toPod(p, false)

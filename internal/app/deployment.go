@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,19 +19,9 @@ import (
 )
 
 func (a *App) ListDeployments() ([]dto.Deployment, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "deployments") {
 		return []dto.Deployment{}, nil
-	}
-	if h.IsForbidden("deployments") {
-		return []dto.Deployment{}, nil
-	}
-	<-h.GetSyncedChan("deployments")
-	if h.IsForbidden("deployments") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListDeployments(h.Factory.Apps().V1().Deployments().Lister(), namespaces)
 	if err != nil {
@@ -43,17 +32,8 @@ func (a *App) ListDeployments() ([]dto.Deployment, error) {
 }
 
 func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Deployment{}, nil
-	}
-	if h.IsForbidden("deployments") {
-		return dto.Deployment{}, nil
-	}
-	<-h.GetSyncedChan("deployments")
-	if h.IsForbidden("deployments") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "deployments") {
 		return dto.Deployment{}, nil
 	}
 	result, err := kubeResources.GetDeploymentByName(h.Factory.Apps().V1().Deployments().Lister(), namespace, name)
@@ -64,41 +44,37 @@ func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error
 	return result, nil
 }
 
-func (a *App) GetDeploymentsSummary(namespace string) (dto.DeploymentSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+func (a *App) GetDeploymentsSummary() (dto.DeploymentSummary, error) {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "deployments") {
 		return dto.DeploymentSummary{}, nil
 	}
-	if h.IsForbidden("deployments") {
-		return dto.DeploymentSummary{}, nil
-	}
-	<-h.GetSyncedChan("deployments")
-	if h.IsForbidden("deployments") {
-		return dto.DeploymentSummary{}, nil
-	}
-	var deps []*appsv1.Deployment
-	var err error
 	lister := h.Factory.Apps().V1().Deployments().Lister()
-	if namespace == "" {
-		deps, err = lister.List(labels.Everything())
-	} else {
-		deps, err = lister.Deployments(namespace).List(labels.Everything())
-	}
+	deps, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetDeploymentsSummary: %v", err)
 		return dto.DeploymentSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := deps[:0:0]
+		for _, d := range deps {
+			if _, ok := nsSet[d.Namespace]; ok {
+				filtered = append(filtered, d)
+			}
+		}
+		deps = filtered
 	}
 	return kubeResources.SummarizeDeployments(deps), nil
 }
 
 func (a *App) RestartDeployment(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 	patchBody := map[string]any{
 		"spec": map[string]any{
@@ -124,11 +100,9 @@ func (a *App) RestartDeployment(namespace, name string) error {
 }
 
 func (a *App) ScaleDeployment(namespace, name string, replicas int32) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 	patchBody := map[string]any{
 		"spec": map[string]any{"replicas": replicas},
@@ -146,16 +120,14 @@ func (a *App) ScaleDeployment(namespace, name string, replicas int32) error {
 }
 
 func (a *App) DeleteDeployment(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.AppsV1().Deployments(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.AppsV1().Deployments(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Deployment: %w", err)
 	}
@@ -167,45 +139,28 @@ func (a *App) DeleteDeployment(namespace, name string) error {
 
 // DeleteDeployments deletes multiple Deployments, handling best-effort deletion across namespaces.
 func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.AppsV1().Deployments(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.DeploymentRef) string { return r.Namespace },
+		func(r dto.DeploymentRef) string { return r.Name },
+		"deployments",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.AppsV1().Deployments(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitDeployments()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d deployments: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitDeployments() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("deployments") {
-		return
-	}
-	<-h.GetSyncedChan("deployments")
-	if h.IsForbidden("deployments") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "deployments") {
 		return
 	}
 	lister := h.Factory.Apps().V1().Deployments().Lister()
@@ -218,11 +173,9 @@ func (a *App) emitDeployments() {
 }
 
 func (a *App) GetDeploymentYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -241,15 +194,13 @@ func (a *App) GetDeploymentYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateDeploymentYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var dep appsv1.Deployment
-	err := sigsyaml.Unmarshal([]byte(yamlString), &dep)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &dep)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Deployment: %w", err)
 	}

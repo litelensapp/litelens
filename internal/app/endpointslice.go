@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListEndpointSlices() ([]dto.EndpointSlice, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "endpointslices") {
 		return []dto.EndpointSlice{}, nil
-	}
-	if h.IsForbidden("endpointslices") {
-		return []dto.EndpointSlice{}, nil
-	}
-	<-h.GetSyncedChan("endpointslices")
-	if h.IsForbidden("endpointslices") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListEndpointSlices(h.Factory.Discovery().V1().EndpointSlices().Lister(), namespaces)
 	if err != nil {
@@ -39,17 +28,8 @@ func (a *App) ListEndpointSlices() ([]dto.EndpointSlice, error) {
 }
 
 func (a *App) GetEndpointSliceByName(namespace, name string) (dto.EndpointSlice, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.EndpointSlice{}, nil
-	}
-	if h.IsForbidden("endpointslices") {
-		return dto.EndpointSlice{}, nil
-	}
-	<-h.GetSyncedChan("endpointslices")
-	if h.IsForbidden("endpointslices") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "endpointslices") {
 		return dto.EndpointSlice{}, nil
 	}
 	result, err := kubeResources.GetEndpointSliceByName(h.Factory.Discovery().V1().EndpointSlices().Lister(), namespace, name)
@@ -62,16 +42,14 @@ func (a *App) GetEndpointSliceByName(namespace, name string) (dto.EndpointSlice,
 
 // DeleteEndpointSlice deletes an EndpointSlice from the specified namespace.
 func (a *App) DeleteEndpointSlice(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.DiscoveryV1().EndpointSlices(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.DiscoveryV1().EndpointSlices(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete EndpointSlice: %w", err)
 	}
@@ -84,45 +62,28 @@ func (a *App) DeleteEndpointSlice(namespace, name string) error {
 
 // DeleteEndpointSlices deletes multiple EndpointSlices, handling best-effort deletion across namespaces.
 func (a *App) DeleteEndpointSlices(items []dto.EndpointSliceRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.DiscoveryV1().EndpointSlices(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.EndpointSliceRef) string { return r.Namespace },
+		func(r dto.EndpointSliceRef) string { return r.Name },
+		"endpointslices",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.DiscoveryV1().EndpointSlices(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitEndpointSlices()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d endpointslices: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitEndpointSlices() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("endpointslices") {
-		return
-	}
-	<-h.GetSyncedChan("endpointslices")
-	if h.IsForbidden("endpointslices") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "endpointslices") {
 		return
 	}
 	lister := h.Factory.Discovery().V1().EndpointSlices().Lister()
@@ -135,11 +96,9 @@ func (a *App) emitEndpointSlices() {
 }
 
 func (a *App) GetEndpointSliceYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -158,15 +117,13 @@ func (a *App) GetEndpointSliceYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEndpointSliceYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var es discoveryv1.EndpointSlice
-	err := sigsyaml.Unmarshal([]byte(yamlString), &es)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &es)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to EndpointSlice: %w", err)
 	}

@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,18 +15,9 @@ import (
 )
 
 func (a *App) ListPersistentVolumes() ([]dto.PersistentVolume, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "pvs") {
 		return []dto.PersistentVolume{}, nil
-	}
-	if h.IsForbidden("pvs") {
-		return []dto.PersistentVolume{}, nil
-	}
-	<-h.GetSyncedChan("pvs")
-	if h.IsForbidden("pvs") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListPersistentVolumes(
 		h.Factory.Core().V1().PersistentVolumes().Lister(),
@@ -40,17 +30,8 @@ func (a *App) ListPersistentVolumes() ([]dto.PersistentVolume, error) {
 }
 
 func (a *App) emitPersistentVolumes() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("pvs") {
-		return
-	}
-	<-h.GetSyncedChan("pvs")
-	if h.IsForbidden("pvs") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "pvs") {
 		return
 	}
 	data, err := kubeResources.ListPersistentVolumes(
@@ -65,16 +46,14 @@ func (a *App) emitPersistentVolumes() {
 
 // DeletePersistentVolume deletes a PersistentVolume.
 func (a *App) DeletePersistentVolume(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().PersistentVolumes().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().PersistentVolumes().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete PersistentVolume: %w", err)
 	}
@@ -86,37 +65,29 @@ func (a *App) DeletePersistentVolume(name string) error {
 
 // DeletePersistentVolumes deletes multiple PersistentVolumes.
 func (a *App) DeletePersistentVolumes(items []dto.PersistentVolumeRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().PersistentVolumes().Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		nil,
+		func(r dto.PersistentVolumeRef) string { return r.Name },
+		"persistentvolumes",
+		func(ctx context.Context, _, name string) error {
+			return cs.CoreV1().PersistentVolumes().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitPersistentVolumes()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d persistentvolumes: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetPersistentVolumeYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -135,15 +106,13 @@ func (a *App) GetPersistentVolumeYAML(name string) (string, error) {
 }
 
 func (a *App) UpdatePersistentVolumeYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var pv corev1.PersistentVolume
-	err := sigsyaml.Unmarshal([]byte(yamlString), &pv)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &pv)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to PersistentVolume: %w", err)
 	}

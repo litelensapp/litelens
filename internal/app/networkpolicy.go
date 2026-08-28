@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "networkpolicies") {
 		return []dto.NetworkPolicy{}, nil
-	}
-	if h.IsForbidden("networkpolicies") {
-		return []dto.NetworkPolicy{}, nil
-	}
-	<-h.GetSyncedChan("networkpolicies")
-	if h.IsForbidden("networkpolicies") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListNetworkPolicies(h.Factory.Networking().V1().NetworkPolicies().Lister(), namespaces)
 	if err != nil {
@@ -39,17 +28,8 @@ func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
 }
 
 func (a *App) GetNetworkPolicyByName(namespace, name string) (*dto.NetworkPolicyDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return nil, nil
-	}
-	if h.IsForbidden("networkpolicies") {
-		return nil, nil
-	}
-	<-h.GetSyncedChan("networkpolicies")
-	if h.IsForbidden("networkpolicies") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "networkpolicies") {
 		return nil, nil
 	}
 	result, err := kubeResources.GetNetworkPolicyByName(h.Factory.Networking().V1().NetworkPolicies().Lister(), namespace, name)
@@ -62,16 +42,14 @@ func (a *App) GetNetworkPolicyByName(namespace, name string) (*dto.NetworkPolicy
 
 // DeleteNetworkPolicy deletes a NetworkPolicy from the specified namespace.
 func (a *App) DeleteNetworkPolicy(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.NetworkingV1().NetworkPolicies(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.NetworkingV1().NetworkPolicies(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete NetworkPolicy: %w", err)
 	}
@@ -84,45 +62,28 @@ func (a *App) DeleteNetworkPolicy(namespace, name string) error {
 
 // DeleteNetworkPolicies deletes multiple NetworkPolicies, handling best-effort deletion across namespaces.
 func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.NetworkingV1().NetworkPolicies(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.NetworkPolicyRef) string { return r.Namespace },
+		func(r dto.NetworkPolicyRef) string { return r.Name },
+		"networkpolicies",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.NetworkingV1().NetworkPolicies(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitNetworkPolicies()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d networkpolicies: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitNetworkPolicies() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("networkpolicies") {
-		return
-	}
-	<-h.GetSyncedChan("networkpolicies")
-	if h.IsForbidden("networkpolicies") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "networkpolicies") {
 		return
 	}
 	lister := h.Factory.Networking().V1().NetworkPolicies().Lister()
@@ -135,11 +96,9 @@ func (a *App) emitNetworkPolicies() {
 }
 
 func (a *App) GetNetworkPolicyYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -158,15 +117,13 @@ func (a *App) GetNetworkPolicyYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateNetworkPolicyYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var np networkingv1.NetworkPolicy
-	err := sigsyaml.Unmarshal([]byte(yamlString), &np)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &np)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to NetworkPolicy: %w", err)
 	}

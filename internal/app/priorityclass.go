@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
-	"github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,17 +15,8 @@ import (
 )
 
 func (a *App) GetPriorityClassByName(name string) (dto.PriorityClass, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.PriorityClass{}, nil
-	}
-	if h.IsForbidden("priorityclasses") {
-		return dto.PriorityClass{}, nil
-	}
-	<-h.GetSyncedChan("priorityclasses")
-	if h.IsForbidden("priorityclasses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "priorityclasses") {
 		return dto.PriorityClass{}, nil
 	}
 	result, err := kubeResources.GetPriorityClassByName(
@@ -41,18 +31,9 @@ func (a *App) GetPriorityClassByName(name string) (dto.PriorityClass, error) {
 }
 
 func (a *App) ListPriorityClasses() ([]dto.PriorityClass, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "priorityclasses") {
 		return []dto.PriorityClass{}, nil
-	}
-	if h.IsForbidden("priorityclasses") {
-		return []dto.PriorityClass{}, nil
-	}
-	<-h.GetSyncedChan("priorityclasses")
-	if h.IsForbidden("priorityclasses") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListPriorityClasses(
 		h.Factory.Scheduling().V1().PriorityClasses().Lister(),
@@ -65,16 +46,14 @@ func (a *App) ListPriorityClasses() ([]dto.PriorityClass, error) {
 }
 
 func (a *App) DeletePriorityClass(name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.SchedulingV1().PriorityClasses().Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.SchedulingV1().PriorityClasses().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete PriorityClass: %w", err)
 	}
@@ -85,43 +64,28 @@ func (a *App) DeletePriorityClass(name string) error {
 }
 
 func (a *App) DeletePriorityClasses(items []dto.PriorityClassRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.SchedulingV1().PriorityClasses().Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s: %v", ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		nil,
+		func(r dto.PriorityClassRef) string { return r.Name },
+		"priorityclasses",
+		func(ctx context.Context, _, name string) error {
+			return cs.SchedulingV1().PriorityClasses().Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitPriorityClasses()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d priorityclasses: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) emitPriorityClasses() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("priorityclasses") {
-		return
-	}
-	<-h.GetSyncedChan("priorityclasses")
-	if h.IsForbidden("priorityclasses") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "priorityclasses") {
 		return
 	}
 	data, err := kubeResources.ListPriorityClasses(
@@ -135,11 +99,9 @@ func (a *App) emitPriorityClasses() {
 }
 
 func (a *App) GetPriorityClassYAML(name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -158,15 +120,13 @@ func (a *App) GetPriorityClassYAML(name string) (string, error) {
 }
 
 func (a *App) UpdatePriorityClassYAML(yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var pc schedulingv1.PriorityClass
-	err := sigsyaml.Unmarshal([]byte(yamlString), &pc)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &pc)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to PriorityClass: %w", err)
 	}

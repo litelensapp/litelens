@@ -54,37 +54,13 @@ func ListPersistentVolumeClaims(
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := pvcs[:0:0]
-		for _, pvc := range pvcs {
-			if _, ok := nsSet[pvc.Namespace]; ok {
-				filtered = append(filtered, pvc)
-			}
-		}
-		pvcs = filtered
-	}
+	pvcs = filterByNamespaces(pvcs, namespaces)
 
 	// Build a map: namespace/claimName → []podName for fast lookup.
 	claimToPods := map[string][]string{}
 	pods, err := podLister.List(labels.Everything())
 	if err == nil {
-		if len(namespaces) > 0 {
-			nsSet := make(map[string]struct{}, len(namespaces))
-			for _, ns := range namespaces {
-				nsSet[ns] = struct{}{}
-			}
-			filtered := pods[:0:0]
-			for _, pod := range pods {
-				if _, ok := nsSet[pod.Namespace]; ok {
-					filtered = append(filtered, pod)
-				}
-			}
-			pods = filtered
-		}
+		pods = filterByNamespaces(pods, namespaces)
 		for _, pod := range pods {
 			for _, vol := range pod.Spec.Volumes {
 				if vol.PersistentVolumeClaim != nil {

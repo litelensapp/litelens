@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/litelensapp/litelens/internal/kube/resources"
+	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -16,19 +15,9 @@ import (
 )
 
 func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "pvcs") {
 		return []dto.PersistentVolumeClaim{}, nil
-	}
-	if h.IsForbidden("pvcs") {
-		return []dto.PersistentVolumeClaim{}, nil
-	}
-	<-h.GetSyncedChan("pvcs")
-	if h.IsForbidden("pvcs") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListPersistentVolumeClaims(
 		h.Factory.Core().V1().PersistentVolumeClaims().Lister(),
@@ -43,18 +32,9 @@ func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) 
 }
 
 func (a *App) GetPersistentVolumeClaimByName(namespace, name string) (*dto.PersistentVolumeClaimDetail, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "pvcs") {
 		return &dto.PersistentVolumeClaimDetail{}, nil
-	}
-	if h.IsForbidden("pvcs") {
-		return &dto.PersistentVolumeClaimDetail{}, nil
-	}
-	<-h.GetSyncedChan("pvcs")
-	if h.IsForbidden("pvcs") {
-		return nil, nil
 	}
 	result, err := kubeResources.GetPersistentVolumeClaimByName(
 		h.Factory.Core().V1().PersistentVolumeClaims().Lister(),
@@ -70,18 +50,8 @@ func (a *App) GetPersistentVolumeClaimByName(namespace, name string) (*dto.Persi
 }
 
 func (a *App) emitPersistentVolumeClaims() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("pvcs") {
-		return
-	}
-	<-h.GetSyncedChan("pvcs")
-	if h.IsForbidden("pvcs") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "pvcs") {
 		return
 	}
 	pvcLister := h.Factory.Core().V1().PersistentVolumeClaims().Lister()
@@ -96,16 +66,14 @@ func (a *App) emitPersistentVolumeClaims() {
 
 // DeletePersistentVolumeClaim deletes a PersistentVolumeClaim from the specified namespace.
 func (a *App) DeletePersistentVolumeClaim(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete PersistentVolumeClaim: %w", err)
 	}
@@ -117,38 +85,29 @@ func (a *App) DeletePersistentVolumeClaim(namespace, name string) error {
 
 // DeletePersistentVolumeClaims deletes multiple PersistentVolumeClaims, handling best-effort deletion across namespaces.
 func (a *App) DeletePersistentVolumeClaims(items []dto.PersistentVolumeClaimRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.CoreV1().PersistentVolumeClaims(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.PersistentVolumeClaimRef) string { return r.Namespace },
+		func(r dto.PersistentVolumeClaimRef) string { return r.Name },
+		"persistentvolumeclaims",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitPersistentVolumeClaims()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d persistentvolumeclaims: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetPersistentVolumeClaimYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -167,15 +126,13 @@ func (a *App) GetPersistentVolumeClaimYAML(namespace, name string) (string, erro
 }
 
 func (a *App) UpdatePersistentVolumeClaimYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var pvc corev1.PersistentVolumeClaim
-	err := sigsyaml.Unmarshal([]byte(yamlString), &pvc)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &pvc)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to PersistentVolumeClaim: %w", err)
 	}

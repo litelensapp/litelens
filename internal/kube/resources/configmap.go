@@ -7,11 +7,10 @@ import (
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	corev1 "k8s.io/api/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toConfigMap(cm *corev1.ConfigMap) dto.ConfigMap {
@@ -24,20 +23,7 @@ func toConfigMap(cm *corev1.ConfigMap) dto.ConfigMap {
 	}
 	sort.Strings(keys)
 
-	managedFields := make([]dto.ManagedField, 0, len(cm.ManagedFields))
-	for _, mf := range cm.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(cm)
 
 	return dto.ConfigMap{
 		Name:          cm.Name,
@@ -57,19 +43,7 @@ func ListConfigMaps(lister listerscorev1.ConfigMapLister, namespaces []string) (
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := cms[:0:0]
-		for _, cm := range cms {
-			if _, ok := nsSet[cm.Namespace]; ok {
-				filtered = append(filtered, cm)
-			}
-		}
-		cms = filtered
-	}
+	cms = filterByNamespaces(cms, namespaces)
 	result := make([]dto.ConfigMap, len(cms))
 	for i, cm := range cms {
 		result[i] = toConfigMap(cm)

@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersbatchv1 "k8s.io/client-go/listers/batch/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func humanDuration(d time.Duration) string {
@@ -105,23 +104,7 @@ func toJob(j *batchv1.Job) dto.Job {
 			}
 			return j.Annotations
 		}(),
-		ManagedFields: func() []dto.ManagedField {
-			out := make([]dto.ManagedField, 0, len(j.ManagedFields))
-			for _, mf := range j.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
-		}(),
+		ManagedFields: toManagedFields(j),
 		Selector: func() string {
 			if j.Spec.Selector == nil {
 				return ""
@@ -201,19 +184,7 @@ func ListJobs(lister listersbatchv1.JobLister, namespaces []string) ([]dto.Job, 
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := jobs[:0:0]
-		for _, job := range jobs {
-			if _, ok := nsSet[job.Namespace]; ok {
-				filtered = append(filtered, job)
-			}
-		}
-		jobs = filtered
-	}
+	jobs = filterByNamespaces(jobs, namespaces)
 	result := make([]dto.Job, len(jobs))
 	for i, j := range jobs {
 		result[i] = toJob(j)

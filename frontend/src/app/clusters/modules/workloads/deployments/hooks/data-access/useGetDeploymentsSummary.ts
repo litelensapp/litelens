@@ -9,7 +9,7 @@ export const useGetDeploymentsSummary = (input: { context: string; namespaces: s
 
   return useQuery<DeploymentSummary, Error>({
     queryKey: [QUERY_KEY_DEPLOYMENTS, "summary", { context, namespaces }],
-    queryFn: () => GetDeploymentsSummary(namespaces.length === 1 ? namespaces[0] : ""),
+    queryFn: () => GetDeploymentsSummary(),
     ...DEFAULT_QUERY_OPTIONS,
     enabled: !!context,
   });

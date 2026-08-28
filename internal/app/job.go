@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -17,17 +16,8 @@ import (
 )
 
 func (a *App) GetJobByName(namespace, name string) (dto.Job, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
-		return dto.Job{}, nil
-	}
-	if h.IsForbidden("jobs") {
-		return dto.Job{}, nil
-	}
-	<-h.GetSyncedChan("jobs")
-	if h.IsForbidden("jobs") {
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "jobs") {
 		return dto.Job{}, nil
 	}
 	result, err := kubeResources.GetJobByName(h.Factory.Batch().V1().Jobs().Lister(), namespace, name)
@@ -39,19 +29,9 @@ func (a *App) GetJobByName(namespace, name string) (dto.Job, error) {
 }
 
 func (a *App) ListJobs() ([]dto.Job, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "jobs") {
 		return []dto.Job{}, nil
-	}
-	if h.IsForbidden("jobs") {
-		return []dto.Job{}, nil
-	}
-	<-h.GetSyncedChan("jobs")
-	if h.IsForbidden("jobs") {
-		return nil, nil
 	}
 	result, err := kubeResources.ListJobs(h.Factory.Batch().V1().Jobs().Lister(), namespaces)
 	if err != nil {
@@ -61,48 +41,36 @@ func (a *App) ListJobs() ([]dto.Job, error) {
 	return result, nil
 }
 
-func (a *App) GetJobsSummary(namespace string) (dto.JobSummary, error) {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	a.mu.RUnlock()
-	if h == nil {
+func (a *App) GetJobsSummary() (dto.JobSummary, error) {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "jobs") {
 		return dto.JobSummary{}, nil
 	}
-	if h.IsForbidden("jobs") {
-		return dto.JobSummary{}, nil
-	}
-	<-h.GetSyncedChan("jobs")
-	if h.IsForbidden("jobs") {
-		return dto.JobSummary{}, nil
-	}
-	var jobs []*batchv1.Job
-	var err error
 	lister := h.Factory.Batch().V1().Jobs().Lister()
-	if namespace == "" {
-		jobs, err = lister.List(labels.Everything())
-	} else {
-		jobs, err = lister.Jobs(namespace).List(labels.Everything())
-	}
+	jobs, err := lister.List(labels.Everything())
 	if err != nil {
 		log.Printf("app: GetJobsSummary: %v", err)
 		return dto.JobSummary{}, nil
+	}
+	if len(namespaces) > 0 {
+		nsSet := make(map[string]struct{}, len(namespaces))
+		for _, ns := range namespaces {
+			nsSet[ns] = struct{}{}
+		}
+		filtered := jobs[:0:0]
+		for _, j := range jobs {
+			if _, ok := nsSet[j.Namespace]; ok {
+				filtered = append(filtered, j)
+			}
+		}
+		jobs = filtered
 	}
 	return kubeResources.SummarizeJobs(jobs), nil
 }
 
 func (a *App) emitJobs() {
-	a.mu.RLock()
-	h := a.factories[a.activeContext]
-	namespaces := a.activeNamespaces
-	a.mu.RUnlock()
-	if h == nil {
-		return
-	}
-	if h.IsForbidden("jobs") {
-		return
-	}
-	<-h.GetSyncedChan("jobs")
-	if h.IsForbidden("jobs") {
+	h, namespaces := a.activeFactoryAndNamespaces()
+	if !waitForResourceSync(h, "jobs") {
 		return
 	}
 	lister := h.Factory.Batch().V1().Jobs().Lister()
@@ -116,16 +84,14 @@ func (a *App) emitJobs() {
 
 // DeleteJob deletes a Job from the specified namespace.
 func (a *App) DeleteJob(namespace, name string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
 	defer cancel()
-	err := cs.BatchV1().Jobs(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err = cs.BatchV1().Jobs(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("delete Job: %w", err)
 	}
@@ -138,38 +104,29 @@ func (a *App) DeleteJob(namespace, name string) error {
 
 // DeleteJobs deletes multiple Jobs, handling best-effort deletion across namespaces.
 func (a *App) DeleteJobs(items []dto.JobRef) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
-	var msgs []string
-
-	for _, ref := range items {
-		ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
-		err := cs.BatchV1().Jobs(ref.Namespace).Delete(ctx, ref.Name, metav1.DeleteOptions{})
-		cancel()
-		if err != nil && !errors.IsNotFound(err) {
-			msgs = append(msgs, fmt.Sprintf("%s/%s: %v", ref.Namespace, ref.Name, err))
-		}
-	}
+	err = deleteRefsBestEffort(items,
+		func(r dto.JobRef) string { return r.Namespace },
+		func(r dto.JobRef) string { return r.Name },
+		"jobs",
+		func(ctx context.Context, namespace, name string) error {
+			return cs.BatchV1().Jobs(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+		},
+	)
 
 	a.emitJobs()
 
-	if len(msgs) > 0 {
-		return fmt.Errorf("failed to delete %d of %d jobs: %s", len(msgs), len(items), strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }
 
 func (a *App) GetJobYAML(namespace, name string) (string, error) {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return "", fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), apiReadTimeout)
@@ -188,15 +145,13 @@ func (a *App) GetJobYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateJobYAML(namespace, yamlString string) error {
-	a.mu.RLock()
-	cs := a.clients[a.activeContext]
-	a.mu.RUnlock()
-	if cs == nil {
-		return fmt.Errorf("not connected")
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
 	}
 
 	var job batchv1.Job
-	err := sigsyaml.Unmarshal([]byte(yamlString), &job)
+	err = sigsyaml.Unmarshal([]byte(yamlString), &job)
 	if err != nil {
 		return fmt.Errorf("unmarshal YAML to Job: %w", err)
 	}

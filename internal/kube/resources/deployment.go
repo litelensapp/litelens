@@ -38,23 +38,7 @@ func toDeployment(d *appsv1.Deployment) dto.Deployment {
 			}
 			return d.Annotations
 		}(),
-		ManagedFields: func() []dto.ManagedField {
-			out := make([]dto.ManagedField, 0, len(d.ManagedFields))
-			for _, mf := range d.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
-		}(),
+		ManagedFields: toManagedFields(d),
 		ReplicasDetail: func() string {
 			var desired int32 = 1
 			if d.Spec.Replicas != nil {
@@ -166,19 +150,7 @@ func ListDeployments(lister listersappsv1.DeploymentLister, namespaces []string)
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := deps[:0:0]
-		for _, dep := range deps {
-			if _, ok := nsSet[dep.Namespace]; ok {
-				filtered = append(filtered, dep)
-			}
-		}
-		deps = filtered
-	}
+	deps = filterByNamespaces(deps, namespaces)
 	result := make([]dto.Deployment, len(deps))
 	for i, d := range deps {
 		result[i] = toDeployment(d)

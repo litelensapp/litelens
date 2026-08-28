@@ -15,14 +15,9 @@ import (
 )
 
 // GetInstallSource reports which channel the running install came from
-// (homebrew, apt, winget, or manual), for display in the updater UI.
-// Install source is detected in a background goroutine at startup; this
-// blocks on installSourceReady rather than reading a.installSource directly,
-// since the update-available flow can call this before that goroutine
-// finishes (e.g. a fast GitHub check racing a slow `brew` subprocess) —
-// reading the zero-value "" early was mistaken by the frontend for a
-// (nonexistent) package-manager install source. Detection won't reflect a
-// mid-session uninstall via package manager (rare, acceptable tradeoff).
+// (homebrew, apt, winget, or manual). Install source is detected synchronously
+// during Startup, completing before the frontend JS runs. The channel-blocking
+// read here is now just a safety synchronization point (returns instantly post-startup).
 func (a *App) GetInstallSource() string {
 	<-a.installSourceReady
 	a.mu.RLock()

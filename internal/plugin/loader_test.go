@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -546,5 +547,74 @@ func TestPluginLoaderSetStatusNotReadyAfterError(t *testing.T) {
 	// IsAlive should be false (no process running)
 	if pl.IsAlive() {
 		t.Error("expected IsAlive() == false after failed Launch")
+	}
+}
+
+// TestPluginLoaderKillsOrphanedProcessNotOwnedByThisInstance is a regression
+// test for the bug where Launch() reused any lock file with a live PID,
+// regardless of whether this loader instance had ever spawned it. That
+// happens on every fresh host process (e.g. a wails-dev hot-reload restart
+// that never ran the old process through App.Shutdown()): the on-disk lock
+// file survives, still pointing at the previous host session's plugin
+// subprocess, which dialed the previous host's gRPC server (a fresh
+// ephemeral port + fresh in-memory AuthTokenManager every restart, per
+// NewGRPCServerConfig) and can never reconnect. Reusing it silently broke
+// the plugin's pub/sub event channel (helm:install:complete, etc.) while its
+// HTTP server kept responding fine, masking the failure entirely. Launch()
+// must instead recognize it does not own that PID, kill it, and spawn fresh.
+func TestPluginLoaderKillsOrphanedProcessNotOwnedByThisInstance(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Simulate an "orphan": a long-lived process this test process did not
+	// spawn via any PluginLoader (standing in for a previous host session's
+	// plugin subprocess that survived a host restart).
+	orphan := exec.Command("sleep", "3600")
+	if err := orphan.Start(); err != nil {
+		t.Fatalf("start orphan process: %v", err)
+	}
+	orphanPID := orphan.Process.Pid
+	defer func() {
+		_ = orphan.Process.Kill()
+		_ = orphan.Wait()
+	}()
+
+	binPath := filepath.Join(tmpDir, "mock-plugin-fresh")
+	script := `#!/bin/bash
+echo '{"type":"READY","version":"test","httpPort":54321}'
+sleep 3600
+`
+	if err := os.WriteFile(binPath, []byte(script), 0755); err != nil {
+		t.Fatalf("write mock plugin: %v", err)
+	}
+
+	pl := NewPluginLoader("test-helm", binPath)
+	pl.lockFilePath = filepath.Join(tmpDir, "test.lock")
+	defer pl.Shutdown()
+
+	// Plant a lock file pointing at the orphan, as if a previous host
+	// session had launched and left it running.
+	if err := pl.writeLockFile(orphanPID, 54321); err != nil {
+		t.Fatalf("write lock file: %v", err)
+	}
+
+	// This is the FIRST Launch() call on this fresh loader instance — it
+	// never spawned orphanPID itself, so it must not adopt it.
+	if err := pl.Launch(context.Background(), ""); err != nil {
+		t.Fatalf("Launch: %v", err)
+	}
+
+	if pl.pid == orphanPID {
+		t.Fatalf("Launch() adopted the orphaned PID %d instead of spawning a fresh process", orphanPID)
+	}
+	if !pl.IsAlive() {
+		t.Error("expected IsAlive() == true after Launch spawned a fresh process")
+	}
+
+	// The orphan must have been killed, not left running and forgotten.
+	if err := orphan.Wait(); err == nil {
+		t.Error("expected orphan process to have been killed by Launch(), but it exited cleanly on its own")
+	}
+	if isProcessAlive(orphanPID) {
+		t.Errorf("expected orphan process %d to be killed, but it is still alive", orphanPID)
 	}
 }
