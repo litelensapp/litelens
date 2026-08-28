@@ -101,7 +101,7 @@ func Test_GetReleasesBaseURL_EmptyStringWhenSetToEmpty(t *testing.T) {
 func Test_GetMarketplaceBaseURL_DefaultAndOverride(t *testing.T) {
 	t.Run("default when unset", func(t *testing.T) {
 		result := GetMarketplaceBaseURL()
-		expected := "https://api.github.com/repos/litelensapp/litelens-plugins/releases"
+		expected := "https://github.com/litelensapp/litelens-plugins"
 		if result != expected {
 			t.Errorf("expected default URL %s, got %s", expected, result)
 		}
@@ -121,7 +121,7 @@ func Test_GetMarketplaceBaseURL_DefaultAndOverride(t *testing.T) {
 		t.Setenv("APP_VERSION_RELEASES_BASE_URL", "https://releases.example.com")
 
 		result := GetMarketplaceBaseURL()
-		expected := "https://api.github.com/repos/litelensapp/litelens-plugins/releases"
+		expected := "https://github.com/litelensapp/litelens-plugins"
 		if result != expected {
 			t.Errorf("expected GetMarketplaceBaseURL to ignore APP_VERSION_RELEASES_BASE_URL, got %s", result)
 		}

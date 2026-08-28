@@ -23,15 +23,15 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetNamespaces } from "./hooks/data-access/useGetNamespaces";
-import { useDeleteNamespace } from "./hooks/data-mutation/useDeleteNamespace";
-import { useDeleteNamespaces } from "./hooks/data-mutation/useDeleteNamespaces";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { NamespaceCreationModal } from "./components/NamespaceCreationModal";
 import { NamespaceDeleteConfirmationModal } from "./components/NamespaceDeleteConfirmationModal";
 import { NamespaceStatusBadge } from "./components/NamespaceStatusBadge";
+import { useGetNamespaces } from "./hooks/data-access/useGetNamespaces";
+import { useDeleteNamespace } from "./hooks/data-mutation/useDeleteNamespace";
+import { useDeleteNamespaces } from "./hooks/data-mutation/useDeleteNamespaces";
 
 const NamespaceTableCtaButtons: FC<{ name: string }> = ({ name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);

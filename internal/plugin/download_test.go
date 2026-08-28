@@ -225,17 +225,21 @@ func TestFetchLatestRelease_PrivateSelectsAPIURL(t *testing.T) {
 	}
 
 	// Check manifest URL: must be the API URL, not browser_download_url
-	manifestURL := assets["litelens-plugin-helm-manifest.json"]
+	manifestURL, ok := assets.Lookup("litelens-plugin-helm-manifest.json")
 	wantManifestURL := "https://api.github.com/repos/test/test/releases/assets/123"
-	if manifestURL != wantManifestURL {
-		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	if !ok {
+		t.Errorf("Lookup(manifest) returned ok=false")
+	} else if manifestURL != wantManifestURL {
+		t.Errorf("assets.Lookup(manifest) = %q; want %q", manifestURL, wantManifestURL)
 	}
 
 	// Check bundle URL: must be the API URL, not browser_download_url
-	bundleURL := assets["litelens-plugin-helm-frontend.tar.gz"]
+	bundleURL, ok := assets.Lookup("litelens-plugin-helm-frontend.tar.gz")
 	wantBundleURL := "https://api.github.com/repos/test/test/releases/assets/124"
-	if bundleURL != wantBundleURL {
-		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	if !ok {
+		t.Errorf("Lookup(bundle) returned ok=false")
+	} else if bundleURL != wantBundleURL {
+		t.Errorf("assets.Lookup(bundle) = %q; want %q", bundleURL, wantBundleURL)
 	}
 }
 
@@ -270,8 +274,11 @@ func TestFetchLatestRelease_PublicSelectsBrowserURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Call with private=false; should select asset.BrowserDownloadURL
-	assets, tag, err := FetchLatestRelease(ctx, server.URL, "", false)
+	// Call with private=false but a token supplied (e.g. a public repo configured
+	// with a token to raise the rate limit): this still goes through the
+	// authenticated API path (a token means the unauthenticated redirect path is
+	// skipped) and should select asset.BrowserDownloadURL, not asset.URL.
+	assets, tag, err := FetchLatestRelease(ctx, server.URL, "test-token", false)
 	if err != nil {
 		t.Fatalf("FetchLatestRelease() error = %v", err)
 	}
@@ -281,17 +288,21 @@ func TestFetchLatestRelease_PublicSelectsBrowserURL(t *testing.T) {
 	}
 
 	// Check manifest URL: must be the browser download URL, not the API URL
-	manifestURL := assets["litelens-plugin-kustomize-manifest.json"]
+	manifestURL, ok := assets.Lookup("litelens-plugin-kustomize-manifest.json")
 	wantManifestURL := "https://github.com/test/test/releases/download/v2.1.0/litelens-plugin-kustomize-manifest.json"
-	if manifestURL != wantManifestURL {
-		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	if !ok {
+		t.Errorf("Lookup(manifest) returned ok=false")
+	} else if manifestURL != wantManifestURL {
+		t.Errorf("assets.Lookup(manifest) = %q; want %q", manifestURL, wantManifestURL)
 	}
 
 	// Check bundle URL: must be the browser download URL, not the API URL
-	bundleURL := assets["litelens-plugin-kustomize-frontend.tar.gz"]
+	bundleURL, ok := assets.Lookup("litelens-plugin-kustomize-frontend.tar.gz")
 	wantBundleURL := "https://github.com/test/test/releases/download/v2.1.0/litelens-plugin-kustomize-frontend.tar.gz"
-	if bundleURL != wantBundleURL {
-		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	if !ok {
+		t.Errorf("Lookup(bundle) returned ok=false")
+	} else if bundleURL != wantBundleURL {
+		t.Errorf("assets.Lookup(bundle) = %q; want %q", bundleURL, wantBundleURL)
 	}
 }
 
@@ -337,17 +348,21 @@ func TestFetchRelease_PrivateSelectsAPIURL(t *testing.T) {
 	}
 
 	// Check manifest URL: must be the API URL
-	manifestURL := assets["litelens-plugin-flux-manifest.json"]
+	manifestURL, ok := assets.Lookup("litelens-plugin-flux-manifest.json")
 	wantManifestURL := "https://api.github.com/repos/test/test/releases/assets/555"
-	if manifestURL != wantManifestURL {
-		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	if !ok {
+		t.Errorf("Lookup(manifest) returned ok=false")
+	} else if manifestURL != wantManifestURL {
+		t.Errorf("assets.Lookup(manifest) = %q; want %q", manifestURL, wantManifestURL)
 	}
 
 	// Check bundle URL: must be the API URL
-	bundleURL := assets["litelens-plugin-flux-frontend.tar.gz"]
+	bundleURL, ok := assets.Lookup("litelens-plugin-flux-frontend.tar.gz")
 	wantBundleURL := "https://api.github.com/repos/test/test/releases/assets/556"
-	if bundleURL != wantBundleURL {
-		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	if !ok {
+		t.Errorf("Lookup(bundle) returned ok=false")
+	} else if bundleURL != wantBundleURL {
+		t.Errorf("assets.Lookup(bundle) = %q; want %q", bundleURL, wantBundleURL)
 	}
 }
 
@@ -382,8 +397,10 @@ func TestFetchRelease_PublicSelectsBrowserURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Call with private=false and a specific tag; should select asset.BrowserDownloadURL
-	assets, tag, err := FetchRelease(ctx, server.URL, "", "v1.2.3", false)
+	// Call with private=false, a specific tag, and a token supplied (e.g. a public
+	// repo configured with a token): this still goes through the authenticated API
+	// path and should select asset.BrowserDownloadURL, not asset.URL.
+	assets, tag, err := FetchRelease(ctx, server.URL, "test-token", "v1.2.3", false)
 	if err != nil {
 		t.Fatalf("FetchRelease() error = %v", err)
 	}
@@ -393,17 +410,21 @@ func TestFetchRelease_PublicSelectsBrowserURL(t *testing.T) {
 	}
 
 	// Check manifest URL: must be the browser download URL
-	manifestURL := assets["litelens-plugin-argocd-manifest.json"]
+	manifestURL, ok := assets.Lookup("litelens-plugin-argocd-manifest.json")
 	wantManifestURL := "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-manifest.json"
-	if manifestURL != wantManifestURL {
-		t.Errorf("assets[manifest] = %q; want %q", manifestURL, wantManifestURL)
+	if !ok {
+		t.Errorf("Lookup(manifest) returned ok=false")
+	} else if manifestURL != wantManifestURL {
+		t.Errorf("assets.Lookup(manifest) = %q; want %q", manifestURL, wantManifestURL)
 	}
 
 	// Check bundle URL: must be the browser download URL
-	bundleURL := assets["litelens-plugin-argocd-frontend.tar.gz"]
+	bundleURL, ok := assets.Lookup("litelens-plugin-argocd-frontend.tar.gz")
 	wantBundleURL := "https://github.com/test/test/releases/download/v1.2.3/litelens-plugin-argocd-frontend.tar.gz"
-	if bundleURL != wantBundleURL {
-		t.Errorf("assets[bundle] = %q; want %q", bundleURL, wantBundleURL)
+	if !ok {
+		t.Errorf("Lookup(bundle) returned ok=false")
+	} else if bundleURL != wantBundleURL {
+		t.Errorf("assets.Lookup(bundle) = %q; want %q", bundleURL, wantBundleURL)
 	}
 }
 
@@ -418,7 +439,9 @@ func TestFetchLatestRelease_RateLimitReturnsActionableError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := FetchLatestRelease(ctx, server.URL, "", false)
+	// Rate limiting only applies to the authenticated API path (a token or
+	// private=true); the public/no-token path never hits api.github.com.
+	_, _, err := FetchLatestRelease(ctx, server.URL, "test-token", false)
 	if err == nil {
 		t.Fatal("FetchLatestRelease() error = nil; want rate limit error")
 	}
@@ -438,12 +461,179 @@ func TestFetchLatestRelease_ForbiddenWithoutRateLimitHeaderReturnsGenericError(t
 	}))
 	defer server.Close()
 
-	_, _, err := FetchLatestRelease(ctx, server.URL, "", false)
+	_, _, err := FetchLatestRelease(ctx, server.URL, "test-token", false)
 	if err == nil {
 		t.Fatal("FetchLatestRelease() error = nil; want error")
 	}
 	if !strings.Contains(err.Error(), "status 403") {
 		t.Errorf("error = %q; want generic status-code error when not rate-limited", err.Error())
+	}
+}
+
+func TestResolveLatestTagUnauthenticated(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup a mock HTTP server that serves a redirect from /releases/latest to /releases/tag/v1.2.3
+	// We need to declare server first so the handler can reference it
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/releases/latest" {
+			// Send a redirect (this is how GitHub's public releases/latest endpoint works)
+			http.Redirect(w, r, server.URL+"/releases/tag/v1.2.3", http.StatusMovedPermanently)
+			return
+		}
+		if r.URL.Path == "/releases/tag/v1.2.3" {
+			// The redirect target doesn't need to serve anything; we just extract the tag from the URL
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	tag, err := resolveLatestTagUnauthenticated(ctx, server.URL)
+	if err != nil {
+		t.Fatalf("resolveLatestTagUnauthenticated() error = %v", err)
+	}
+	if tag != "v1.2.3" {
+		t.Errorf("tag = %q; want %q", tag, "v1.2.3")
+	}
+}
+
+func TestResolveLatestTagUnauthenticated_MissingTag(t *testing.T) {
+	ctx := context.Background()
+
+	// Server that doesn't redirect properly
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Return OK but at the wrong URL (no /releases/tag/ in path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	_, err := resolveLatestTagUnauthenticated(ctx, server.URL+"/releases/latest")
+	if err == nil {
+		t.Fatal("resolveLatestTagUnauthenticated() error = nil; want error")
+	}
+	if !strings.Contains(err.Error(), "could not find tag") {
+		t.Errorf("error = %q; want to mention tag not found", err.Error())
+	}
+}
+
+func TestFetchLatestRelease_UnauthenticatedPath(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup a mock HTTP server that serves GitHub's public releases/latest redirect.
+	// With private=false and no token, FetchLatestRelease treats baseURL as a public
+	// github.com base directly (no shape detection, no api.github.com fallback) and
+	// makes no further request beyond resolving the redirect.
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/releases/latest" {
+			http.Redirect(w, r, server.URL+"/releases/tag/v1.5.0", http.StatusMovedPermanently)
+			return
+		}
+		if r.URL.Path == "/releases/tag/v1.5.0" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	assets, tag, err := FetchLatestRelease(ctx, server.URL, "", false)
+	if err != nil {
+		t.Fatalf("FetchLatestRelease() error = %v", err)
+	}
+
+	if tag != "v1.5.0" {
+		t.Errorf("tag = %q; want %q", tag, "v1.5.0")
+	}
+
+	// Verify Lookup constructs the deterministic download URL, no API call needed
+	url, ok := assets.Lookup("manifest.json")
+	if !ok {
+		t.Errorf("Lookup(manifest.json) returned ok=false")
+	}
+	want := server.URL + "/releases/download/v1.5.0/manifest.json"
+	if url != want {
+		t.Errorf("Lookup(manifest.json) = %q; want %q", url, want)
+	}
+}
+
+func TestFetchLatestRelease_UnauthenticatedPath_RedirectFailurePropagates(t *testing.T) {
+	ctx := context.Background()
+
+	// A public repo (private=false, token="") whose redirect can't be resolved
+	// (e.g. an unexpected response shape) should return the error directly —
+	// there's no authenticated-API fallback anymore.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	_, _, err := FetchLatestRelease(ctx, server.URL, "", false)
+	if err == nil {
+		t.Fatal("FetchLatestRelease() error = nil; want error when redirect resolution fails")
+	}
+}
+
+func TestFetchRelease_UnauthenticatedPath(t *testing.T) {
+	ctx := context.Background()
+
+	// Test that when a specific tag is provided for a public repo without a token,
+	// the function returns ReleaseAssets that constructs URLs deterministically
+	// without making any API calls to fetch the release.
+	assets, tag, err := FetchRelease(ctx, "https://github.com/test/repo", "", "v1.3.2", false)
+	if err != nil {
+		t.Fatalf("FetchRelease() error = %v", err)
+	}
+
+	if tag != "v1.3.2" {
+		t.Errorf("tag = %q; want %q", tag, "v1.3.2")
+	}
+
+	// The assets should construct URLs on demand without needing any API calls
+	url, ok := assets.Lookup("manifest.json")
+	if !ok {
+		t.Errorf("Lookup(manifest.json) returned ok=false")
+	}
+	expectedURL := "https://github.com/test/repo/releases/download/v1.3.2/manifest.json"
+	if url != expectedURL {
+		t.Errorf("Lookup(manifest.json) = %q; want %q", url, expectedURL)
+	}
+
+	// Test that Lookup handles asset names as-is (no URL encoding of names, only tags)
+	url, ok = assets.Lookup("asset-with-dashes.tar.gz")
+	if !ok {
+		t.Errorf("Lookup(asset-with-dashes.tar.gz) returned ok=false")
+	}
+	if !strings.Contains(url, "asset-with-dashes.tar.gz") {
+		t.Errorf("Lookup(asset-with-dashes) = %q; want to contain exact asset name", url)
+	}
+}
+
+func TestReleaseAssets_LookupNotFound(t *testing.T) {
+	// Test that Lookup returns ok=false for assets that don't exist
+	// when using the map-backed (API) mode
+	assets := ReleaseAssets{
+		tag:     "v1.0.0",
+		fromMap: map[string]string{"existing": "https://example.com/existing"},
+	}
+
+	_, ok := assets.Lookup("nonexistent")
+	if ok {
+		t.Errorf("Lookup(nonexistent) returned ok=true; want false")
+	}
+
+	// In unauthenticated mode, Lookup always returns ok=true (GitHub will return 404 if it doesn't exist)
+	unauthAssets := ReleaseAssets{
+		tag:      "v1.0.0",
+		htmlBase: "https://github.com/test/repo",
+	}
+
+	_, ok = unauthAssets.Lookup("anything")
+	if !ok {
+		t.Errorf("Lookup in unauthenticated mode returned ok=false; want true")
 	}
 }
 

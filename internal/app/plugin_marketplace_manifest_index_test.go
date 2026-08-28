@@ -54,7 +54,7 @@ func TestManifestIndexDiscovery_Present(t *testing.T) {
 	}))
 	defer server.Close()
 
-	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "", false)
+	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "test-token", false)
 	if err != nil {
 		t.Fatalf("FetchLatestRelease() failed: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestManifestIndexDiscovery_Absent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "", false)
+	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "test-token", false)
 	if err != nil {
 		t.Fatalf("FetchLatestRelease() failed: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestManifestIndexDiscovery_Malformed(t *testing.T) {
 	}))
 	defer server.Close()
 
-	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "", false)
+	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "test-token", false)
 	if err != nil {
 		t.Fatalf("FetchLatestRelease() failed: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestManifestIndexDiscovery_HTTPError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "", false)
+	assets, _, err := plugin.FetchLatestRelease(context.Background(), server.URL+"/repos/test/plugins/releases", "test-token", false)
 	if err != nil {
 		t.Fatalf("FetchLatestRelease() failed: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestGetPluginsFromMarketplace_ManifestIndex(t *testing.T) {
 	app := &App{
 		settings: config.Settings{
 			MarketplaceRepositories: []config.MarketplaceRepository{
-				{URL: server.URL + "/repos/test/plugins/releases"},
+				{URL: server.URL + "/repos/test/plugins/releases", AccessToken: "test-token"},
 			},
 		},
 	}
@@ -322,7 +322,7 @@ func TestGetPluginsFromMarketplace_ManifestIndexMissing(t *testing.T) {
 	app := &App{
 		settings: config.Settings{
 			MarketplaceRepositories: []config.MarketplaceRepository{
-				{URL: sourceURL},
+				{URL: sourceURL, AccessToken: "test-token"},
 			},
 		},
 	}
@@ -382,8 +382,12 @@ func TestInstallPlugin_UsesManifestIndex(t *testing.T) {
 
 	t.Setenv("MARKETPLACE_ENABLED", "true")
 	app := NewApp("test")
+	sourceURL := server.URL + "/repos/test/plugins/releases"
+	app.settings.MarketplaceRepositories = []config.MarketplaceRepository{
+		{URL: sourceURL, AccessToken: "test-token"},
+	}
 
-	if err := app.InstallPlugin("helm", "", server.URL+"/repos/test/plugins/releases"); err != nil {
+	if err := app.InstallPlugin("helm", "", sourceURL); err != nil {
 		t.Fatalf("InstallPlugin() sync error = %v; want nil", err)
 	}
 

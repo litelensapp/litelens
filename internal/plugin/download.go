@@ -22,6 +22,31 @@ import (
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
+// ReleaseAssets resolves a release asset's download URL by name. In
+// authenticated/API mode it's backed by the asset listing GitHub's JSON API
+// returned. In unauthenticated (public, no token) mode, GitHub release asset
+// URLs are deterministic (releases/download/<tag>/<name>), so URLs are
+// constructed on lookup with no further network call.
+type ReleaseAssets struct {
+	tag      string
+	fromMap  map[string]string // non-nil in authenticated/API mode
+	htmlBase string            // non-empty in unauthenticated mode (e.g. https://github.com/owner/repo)
+}
+
+// Lookup returns the download URL for an asset by name, and whether the asset exists.
+// In authenticated/API mode, returns the pre-fetched asset map value.
+// In unauthenticated mode, constructs and returns the deterministic GitHub release download URL.
+func (a ReleaseAssets) Lookup(name string) (string, bool) {
+	if a.fromMap != nil {
+		url, ok := a.fromMap[name]
+		return url, ok
+	}
+	if a.htmlBase == "" {
+		return "", false
+	}
+	return fmt.Sprintf("%s/releases/download/%s/%s", a.htmlBase, neturl.PathEscape(a.tag), name), true
+}
+
 const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"
 
 // manifestIndexAssetName is the repo-wide release asset that acts as the
@@ -29,6 +54,40 @@ const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"
 // each plugin's complete manifest directly, so no separate per-plugin
 // manifest asset is needed (or published by real litelens-plugins releases).
 const manifestIndexAssetName = "manifest.json"
+
+// resolveLatestTagUnauthenticated resolves the latest release tag via
+// GitHub's unauthenticated releases/latest redirect, which is not subject to
+// the api.github.com rate limit. It follows the redirect (the default
+// behavior of http.DefaultClient) and extracts the tag from the final URL's
+// /releases/tag/{tag} path.
+func resolveLatestTagUnauthenticated(ctx context.Context, htmlBase string) (string, error) {
+	url := htmlBase + "/releases/latest"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("User-Agent", pluginInstallerUserAgent)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("resolve latest release: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("resolve latest release: HTTP %d", resp.StatusCode)
+	}
+
+	finalURL := resp.Request.URL.String()
+	_, tag, found := strings.Cut(finalURL, "/releases/tag/")
+	if !found {
+		return "", fmt.Errorf("resolve latest release: could not find tag in resolved URL %q", finalURL)
+	}
+	if tag == "" {
+		return "", fmt.Errorf("resolve latest release: empty tag in resolved URL %q", finalURL)
+	}
+	return tag, nil
+}
 
 // newGitHubAPIRequest builds a GET request with the headers GitHub's REST API
 // expects, plus a Bearer token when the target repo is private.
@@ -83,40 +142,58 @@ func checkGitHubAPIResponse(resp *http.Response) error {
 	return fmt.Errorf("github API returned status %d", resp.StatusCode)
 }
 
-// FetchLatestRelease fetches the latest release from GitHub API.
+// FetchLatestRelease fetches the latest release from GitHub.
 // If baseURL is empty, uses config.GetMarketplaceBaseURL() (env-var/default behavior).
-// If baseURL is non-empty, uses it directly (expected to be in the form: https://api.github.com/repos/owner/repo/releases).
-// Token is sent as a Bearer header when non-empty, so private repos work identically.
 // private indicates whether to use the authenticated API asset endpoint (asset.URL) for private repos
 // or the public browser_download_url (asset.BrowserDownloadURL) for public repos.
-// Returns a map of asset name -> download URL and the release tag name.
-func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool) (assets map[string]string, tag string, err error) {
+//
+// For a public repository with no token (private=false, token=""), baseURL is expected
+// in the public form https://github.com/<owner>/<repo> (matching GetReleasesBaseURL's
+// default shape): the latest tag is resolved via GitHub's unauthenticated releases/latest
+// redirect and asset URLs are constructed deterministically (releases/download/<tag>/<name>),
+// bypassing the api.github.com 60 req/hr rate limit entirely — no API call is made.
+//
+// For a private repository or when a token is supplied, baseURL is expected in the
+// api.github.com form https://api.github.com/repos/<owner>/<repo>/releases, and the
+// release plus its full asset listing are fetched via GitHub's authenticated REST API.
+//
+// Returns ReleaseAssets (which resolves asset URLs on demand) and the release tag name.
+func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool) (ReleaseAssets, string, error) {
 	if baseURL == "" {
 		baseURL = config.GetMarketplaceBaseURL()
 	}
-	url := baseURL + "/latest"
 
+	if !private && token == "" {
+		tag, err := resolveLatestTagUnauthenticated(ctx, baseURL)
+		if err != nil {
+			return ReleaseAssets{}, "", err
+		}
+		return ReleaseAssets{tag: tag, htmlBase: baseURL}, tag, nil
+	}
+
+	// Authenticated API path (private repo or token supplied)
+	url := baseURL + "/latest"
 	req, err := newGitHubAPIRequest(ctx, url, token)
 	if err != nil {
-		return nil, "", fmt.Errorf("creating request: %w", err)
+		return ReleaseAssets{}, "", fmt.Errorf("creating request: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("fetching release: %w", err)
+		return ReleaseAssets{}, "", fmt.Errorf("fetching release: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if err := checkGitHubAPIResponse(resp); err != nil {
-		return nil, "", err
+		return ReleaseAssets{}, "", err
 	}
 
 	var release dto.GitHubRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, "", fmt.Errorf("parsing release JSON: %w", err)
+		return ReleaseAssets{}, "", fmt.Errorf("parsing release JSON: %w", err)
 	}
 
-	assets = make(map[string]string)
+	assets := make(map[string]string)
 	for _, asset := range release.Assets {
 		if private {
 			assets[asset.Name] = asset.URL
@@ -125,17 +202,24 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool
 		}
 	}
 
-	return assets, release.TagName, nil
+	return ReleaseAssets{tag: release.TagName, fromMap: assets}, release.TagName, nil
 }
 
-// FetchRelease fetches a specific release by tag from GitHub API.
+// FetchRelease fetches a specific release by tag from GitHub.
 // If baseURL is empty, uses config.GetMarketplaceBaseURL() (env-var/default behavior).
-// If baseURL is non-empty, uses it directly (expected to be in the form: https://api.github.com/repos/owner/repo/releases).
 // If tag is empty, behaves identically to FetchLatestRelease.
 // private indicates whether to use the authenticated API asset endpoint (asset.URL) for private repos
 // or the public browser_download_url (asset.BrowserDownloadURL) for public repos.
-// Returns a map of asset name -> download URL and the resolved tag name.
-func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool) (assets map[string]string, resolvedTag string, err error) {
+//
+// For a public repository with no token (private=false, token=""), baseURL is expected
+// in the public form https://github.com/<owner>/<repo>; since the tag is already known,
+// asset URLs are constructed deterministically with no API call at all.
+// For a private repository or when a token is supplied, baseURL is expected in the
+// api.github.com form https://api.github.com/repos/<owner>/<repo>/releases, and the
+// release plus its full asset listing are fetched via GitHub's authenticated REST API.
+//
+// Returns ReleaseAssets (which resolves asset URLs on demand) and the tag name.
+func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool) (ReleaseAssets, string, error) {
 	if tag == "" {
 		return FetchLatestRelease(ctx, baseURL, token, private)
 	}
@@ -143,29 +227,35 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool)
 	if baseURL == "" {
 		baseURL = config.GetMarketplaceBaseURL()
 	}
-	url := baseURL + "/tags/" + neturl.PathEscape(tag)
 
+	if !private && token == "" {
+		// Tag is known; asset URLs are deterministic, no API call needed.
+		return ReleaseAssets{tag: tag, htmlBase: baseURL}, tag, nil
+	}
+
+	// Authenticated API path (private repo or token supplied)
+	url := baseURL + "/tags/" + neturl.PathEscape(tag)
 	req, err := newGitHubAPIRequest(ctx, url, token)
 	if err != nil {
-		return nil, "", fmt.Errorf("creating request: %w", err)
+		return ReleaseAssets{}, "", fmt.Errorf("creating request: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("fetching release: %w", err)
+		return ReleaseAssets{}, "", fmt.Errorf("fetching release: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if err := checkGitHubAPIResponse(resp); err != nil {
-		return nil, "", err
+		return ReleaseAssets{}, "", err
 	}
 
 	var release dto.GitHubRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, "", fmt.Errorf("parsing release JSON: %w", err)
+		return ReleaseAssets{}, "", fmt.Errorf("parsing release JSON: %w", err)
 	}
 
-	assets = make(map[string]string)
+	assets := make(map[string]string)
 	for _, asset := range release.Assets {
 		if private {
 			assets[asset.Name] = asset.URL
@@ -174,15 +264,15 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool)
 		}
 	}
 
-	return assets, release.TagName, nil
+	return ReleaseAssets{tag: release.TagName, fromMap: assets}, release.TagName, nil
 }
 
 // FetchManifestIndex fetches and parses the repo-wide manifest.json index
 // asset from a release — the single source of truth for every plugin the
 // release publishes. Returns an error if the asset is missing or fails to
 // fetch/parse.
-func FetchManifestIndex(ctx context.Context, assets map[string]string, token string) (*dto.ManifestIndex, error) {
-	url, ok := assets[manifestIndexAssetName]
+func FetchManifestIndex(ctx context.Context, assets ReleaseAssets, token string) (*dto.ManifestIndex, error) {
+	url, ok := assets.Lookup(manifestIndexAssetName)
 	if !ok {
 		return nil, fmt.Errorf("%q not found in release", manifestIndexAssetName)
 	}
