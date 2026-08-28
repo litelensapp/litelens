@@ -67,13 +67,33 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	// there is no network health check here; App.GetPluginBackendAddr does an
 	// on-demand TCP dial check before returning an address and relaunches if
 	// the process is alive but its HTTP listener isn't responding.
+	//
+	// Reuse is only valid if THIS loader instance is the one that spawned that
+	// PID (pl.processCmd tracks the *exec.Cmd from our own cmd.Start() call).
+	// A lock file surviving a full host-process restart (e.g. wails dev's
+	// hot-reload, which doesn't run the old process through App.Shutdown())
+	// points at an orphan: it dialed the *previous* host's gRPC server, which
+	// no longer exists — every restart binds a fresh ephemeral port
+	// (NewGRPCServerConfig listens on "127.0.0.1:0") and a fresh in-memory
+	// AuthTokenManager, so the orphan's pub/sub connection is permanently
+	// dead even though the OS process itself is still alive. Blindly reusing
+	// it (as before) left the plugin's HTTP calls working (unaffected by
+	// gRPC) while every Publish()-driven event silently vanished. Kill the
+	// orphan and fall through to a fresh spawn instead of adopting it.
 	if lockData, err := pl.readLockFile(); err == nil && lockData != nil {
-		if isProcessAlive(lockData.PID) {
+		ownedByUs := pl.processCmd != nil && pl.processCmd.Process != nil && pl.processCmd.Process.Pid == lockData.PID
+		alive := isProcessAlive(lockData.PID)
+		if ownedByUs && alive {
 			pl.pid = lockData.PID
 			pl.status = dto.PluginStatusReady
 			return nil
 		}
-		// Stale lock, delete it
+		if alive && !ownedByUs {
+			if proc, findErr := os.FindProcess(lockData.PID); findErr == nil {
+				proc.Kill()
+			}
+		}
+		// Stale (dead, or orphaned-and-just-killed) lock; delete it.
 		if err := os.Remove(pl.lockFilePath); err != nil && !os.IsNotExist(err) {
 			fmt.Printf("plugin %q: failed to remove stale lock file %q: %v\n", pl.id, pl.lockFilePath, err)
 		}
