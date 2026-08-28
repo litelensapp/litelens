@@ -21,7 +21,7 @@ import type { StorageClass } from "../api/resources";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useGetStorageClassByName } from "../hooks/data-access/useGetStorageClassByName";
 import { useDeleteStorageClass } from "../hooks/data-mutation/useDeleteStorageClass";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -207,7 +207,7 @@ const StorageClassDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: sc, isLoading } = useGetStorageClassByName(activeContext, name);
-  useCatchForbiddenResources("storageclasses", {
+  useCatchForbiddenResource("storageclasses", {
     open,
     resourceName: name,
     resourceLabel: "Storage Class",

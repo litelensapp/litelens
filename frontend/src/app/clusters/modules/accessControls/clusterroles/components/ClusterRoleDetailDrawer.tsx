@@ -17,7 +17,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
@@ -249,7 +249,7 @@ const ClusterRoleDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: cr, isLoading } = useGetClusterRoleDetail(activeContext, clusterRoleName);
-  useCatchForbiddenResources("clusterroles", {
+  useCatchForbiddenResource("clusterroles", {
     open,
     resourceName: clusterRoleName,
     resourceLabel: "ClusterRole",

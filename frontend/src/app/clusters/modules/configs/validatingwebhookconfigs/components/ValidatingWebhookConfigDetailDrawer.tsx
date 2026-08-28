@@ -20,7 +20,7 @@ import type { ValidatingWebhookConfigDetail, WebhookDetail } from "../api/resour
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useGetValidatingWebhookConfigDetail } from "../hooks/data-access/useGetValidatingWebhookConfigDetail";
 import { useDeleteValidatingWebhookConfig } from "../hooks/data-mutation/useDeleteValidatingWebhookConfig";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -258,7 +258,7 @@ const ValidatingWebhookConfigDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: vwc, isLoading } = useGetValidatingWebhookConfigDetail(activeContext, vwcName);
-  useCatchForbiddenResources("validatingwebhookconfigs", {
+  useCatchForbiddenResource("validatingwebhookconfigs", {
     open,
     resourceName: vwcName,
     resourceLabel: "Validating Webhook Configuration",

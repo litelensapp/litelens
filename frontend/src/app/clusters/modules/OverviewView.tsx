@@ -1,16 +1,17 @@
 import { Divider, DonutChart, ResourceLink } from "@litelens/design-system";
 import { FC } from "react";
-import { useMainLayoutContext } from "../../MainLayoutContext";
-import { ViewType } from "../../navConfig";
-import { EventsTable } from "../base/events/components/EventsTable";
-import { useGetWarningEvents } from "../base/events/hooks/data-access/useGetWarningEvents";
-import { useGetCronJobsSummary } from "../workloads/cronjobs/hooks/data-access/useGetCronJobsSummary";
-import { useGetDaemonSetsSummary } from "../workloads/daemonsets/hooks/data-access/useGetDaemonSetsSummary";
-import { useGetDeploymentsSummary } from "../workloads/deployments/hooks/data-access/useGetDeploymentsSummary";
-import { useGetJobsSummary } from "../workloads/jobs/hooks/data-access/useGetJobsSummary";
-import { useGetPodsSummary } from "../workloads/pods/hooks/data-access/useGetPodsSummary";
-import { useGetReplicaSetsSummary } from "../workloads/replicasets/hooks/data-access/useGetReplicaSetsSummary";
-import { useGetStatefulSetsSummary } from "../workloads/statefulsets/hooks/data-access/useGetStatefulSetsSummary";
+import { useCatchForbiddenResources } from "../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useMainLayoutContext } from "../MainLayoutContext";
+import { RESOURCE_LABEL, ViewType } from "../navConfig";
+import { EventsTable } from "./base/events/components/EventsTable";
+import { useGetWarningEvents } from "./base/events/hooks/data-access/useGetWarningEvents";
+import { useGetCronJobsSummary } from "./workloads/cronjobs/hooks/data-access/useGetCronJobsSummary";
+import { useGetDaemonSetsSummary } from "./workloads/daemonsets/hooks/data-access/useGetDaemonSetsSummary";
+import { useGetDeploymentsSummary } from "./workloads/deployments/hooks/data-access/useGetDeploymentsSummary";
+import { useGetJobsSummary } from "./workloads/jobs/hooks/data-access/useGetJobsSummary";
+import { useGetPodsSummary } from "./workloads/pods/hooks/data-access/useGetPodsSummary";
+import { useGetReplicaSetsSummary } from "./workloads/replicasets/hooks/data-access/useGetReplicaSetsSummary";
+import { useGetStatefulSetsSummary } from "./workloads/statefulsets/hooks/data-access/useGetStatefulSetsSummary";
 
 interface OverviewViewProps {
   onNavigateToView?: (view: ViewType) => void;
@@ -18,6 +19,23 @@ interface OverviewViewProps {
 
 export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
   const { activeContext, namespaces } = useMainLayoutContext();
+
+  useCatchForbiddenResources(
+    [
+      "pods",
+      "deployments",
+      "daemonsets",
+      "statefulsets",
+      "replicasets",
+      "jobs",
+      "cronjobs",
+      "events",
+    ],
+    {
+      labelMap: RESOURCE_LABEL,
+      activeContext,
+    }
+  );
 
   const { data: podsSummary = { Running: 0, Pending: 0, Failed: 0, Succeeded: 0, Evicted: 0 } } =
     useGetPodsSummary({ context: activeContext, namespaces });

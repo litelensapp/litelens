@@ -17,7 +17,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, Fragment, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -208,7 +208,7 @@ const LimitRangeDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: lr, isLoading } = useGetLimitRangeDetail(activeContext, lrNamespace, lrName);
-  useCatchForbiddenResources("limitranges", {
+  useCatchForbiddenResource("limitranges", {
     open,
     resourceName: lrName,
     resourceLabel: "LimitRange",

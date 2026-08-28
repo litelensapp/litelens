@@ -27,7 +27,7 @@ import { useGetIngressClassDetail } from "../hooks/data-access/useGetIngressClas
 import { useDeleteIngressClass } from "../hooks/data-mutation/useDeleteIngressClass";
 import { useSetIngressClassAsDefault } from "../hooks/data-mutation/useSetIngressClassAsDefault";
 import { useUnsetIngressClassAsDefault } from "../hooks/data-mutation/useUnsetIngressClassAsDefault";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
@@ -185,7 +185,7 @@ const IngressClassDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: ic, isLoading } = useGetIngressClassDetail(activeContext, ingressClassName);
-  useCatchForbiddenResources("ingressclasses", {
+  useCatchForbiddenResource("ingressclasses", {
     open,
     resourceName: ingressClassName,
     resourceLabel: "IngressClass",

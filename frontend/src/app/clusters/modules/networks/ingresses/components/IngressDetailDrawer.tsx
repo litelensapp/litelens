@@ -20,7 +20,7 @@ import type { IngressDetail, IngressRule } from "../api/resources";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useGetIngressDetail } from "../hooks/data-access/useGetIngressDetail";
 import { useDeleteIngress } from "../hooks/data-mutation/useDeleteIngress";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -249,7 +249,7 @@ const IngressDrawerBody: FC<
     ingressNamespace,
     ingressName
   );
-  useCatchForbiddenResources("ingresses", {
+  useCatchForbiddenResource("ingresses", {
     open,
     resourceName: ingressName,
     resourceLabel: "Ingress",

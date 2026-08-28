@@ -22,7 +22,7 @@ import type { PersistentVolumeClaimDetail } from "../api/resources";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useGetPersistentVolumeClaimDetail } from "../hooks/data-access/useGetPersistentVolumeClaimDetail";
 import { useDeletePersistentVolumeClaim } from "../hooks/data-mutation/useDeletePersistentVolumeClaim";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -249,7 +249,7 @@ const PVCDrawerBody: FC<
     pvcNamespace,
     pvcName
   );
-  useCatchForbiddenResources("persistentvolumeclaims", {
+  useCatchForbiddenResource("persistentvolumeclaims", {
     open,
     resourceName: pvcName,
     resourceLabel: "PersistentVolumeClaim",

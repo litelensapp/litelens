@@ -24,7 +24,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, FormEvent, useEffect, useReducer, useRef, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -481,7 +481,7 @@ const ConfigMapDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: cm, isLoading } = useGetConfigMapDetail(activeContext, cmNamespace, cmName);
-  useCatchForbiddenResources("configmaps", {
+  useCatchForbiddenResource("configmaps", {
     open,
     resourceName: cmName,
     resourceLabel: "ConfigMap",

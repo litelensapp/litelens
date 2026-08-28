@@ -333,6 +333,7 @@ export const App: FC = () => {
         )}
 
         <ClusterSettingsModal
+          key={clusterSettingsCtx ?? "closed"}
           contextName={clusterSettingsCtx}
           onClose={() => dispatch({ type: "CLOSE_CLUSTER_SETTINGS" })}
         />

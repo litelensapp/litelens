@@ -18,7 +18,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
@@ -270,7 +270,7 @@ const RoleDrawerBody: FC<
   const [eventsVisible, setEventsVisible] = useState(false);
 
   const { data: role, isLoading } = useGetRoleDetail(activeContext, roleNamespace, roleName);
-  useCatchForbiddenResources("roles", {
+  useCatchForbiddenResource("roles", {
     open,
     resourceName: roleName,
     resourceLabel: "Role",

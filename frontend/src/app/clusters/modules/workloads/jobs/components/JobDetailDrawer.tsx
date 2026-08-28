@@ -24,7 +24,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
@@ -323,7 +323,7 @@ const JobDrawerBody: FC<
   const { activeContext } = useMainLayoutContext();
 
   const { data: job, isLoading } = useGetJobDetail(activeContext, jobNamespace, jobName);
-  useCatchForbiddenResources("jobs", {
+  useCatchForbiddenResource("jobs", {
     open,
     resourceName: jobName,
     resourceLabel: "Job",

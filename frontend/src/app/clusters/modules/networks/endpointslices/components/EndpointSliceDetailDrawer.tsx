@@ -28,7 +28,7 @@ import type { EndpointSlice } from "../api/resources";
 import { useGetEndpointSliceByName } from "../hooks/data-access/useGetEndpointSliceByName";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { useDeleteEndpointSlice } from "../hooks/data-mutation/useDeleteEndpointSlice";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -318,7 +318,7 @@ const EndpointSliceDrawerBody: FC<
     sliceNamespace,
     sliceName
   );
-  useCatchForbiddenResources("endpointslices", {
+  useCatchForbiddenResource("endpointslices", {
     open,
     resourceName: sliceName,
     resourceLabel: "Endpoint Slice",

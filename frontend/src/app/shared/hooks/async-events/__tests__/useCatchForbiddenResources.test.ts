@@ -1,16 +1,8 @@
 /**
- * Tests for useCatchForbiddenResources
- *
- * Bug fixed: the list-view branch was matching closed-drawer callers that pass
- * no labelMap (resourceName=null, no opts). The fix guards the branch with
- * `opts?.labelMap &&` so only explicit list-view callers enter it.
- *
- * Scenarios verified:
- *   A - Closed drawer (open=false, resourceName=null, no labelMap) → no toast
- *   B - Open drawer (open=true, resourceName="my-node") → toast + onForbiddenDetected
- *   C - List-view caller (labelMap present, no resourceName) → human-readable toast
- *   D - Event for a different resource → hook ignores it (no toast, no callback)
- *   E - forbiddenResources set is always updated regardless of branch
+ * Tests for useCatchForbiddenResources — the multi-resource variant used by
+ * callers (e.g. OverviewView) that aggregate several resource kinds at once,
+ * rather than a single active resource list view (see useCatchForbiddenResource
+ * for that case).
  */
 
 import { vi, describe, it, expect, beforeEach } from "vitest";
@@ -18,8 +10,6 @@ import { renderHook, act } from "@testing-library/react";
 import { useCatchForbiddenResources } from "../useCatchForbiddenResources";
 
 // ─── Wails runtime mock ───────────────────────────────────────────────────────
-// vi.hoisted runs before vi.mock hoisting, letting us share state between the
-// mock factory and the test body.
 type EventHandler = (resource: string) => void;
 
 const { getHandler, setHandler } = vi.hoisted(() => {
@@ -62,6 +52,14 @@ function fireForbiddenEvent(resource: string) {
   });
 }
 
+const LABEL_MAP: Record<string, string> = {
+  pods: "Pods",
+  deployments: "Deployments",
+  nodes: "Nodes",
+  services: "Services",
+  cronjobs: "CronJobs",
+};
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 describe("useCatchForbiddenResources", () => {
   beforeEach(() => {
@@ -70,196 +68,119 @@ describe("useCatchForbiddenResources", () => {
     isResourceForbiddenMock.mockClear();
   });
 
-  // ── Scenario A ──────────────────────────────────────────────────────────────
-  describe("Scenario A: closed drawer (no labelMap, resourceName=null, open=false)", () => {
-    it("does NOT show a toast when a forbidden event arrives for the active resource", () => {
+  describe("live event handling", () => {
+    it("shows a toast when the event resource is in the watched array", () => {
       renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: false,
-          resourceName: null,
-          onForbiddenDetected: vi.fn(),
-        })
-      );
-
-      fireForbiddenEvent("nodes");
-
-      expect(ErrorToastSpy).not.toHaveBeenCalled();
-    });
-
-    it("still records the resource in the forbiddenResources set", () => {
-      const { result } = renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: false,
-          resourceName: null,
-        })
-      );
-
-      fireForbiddenEvent("nodes");
-
-      expect(result.current.forbiddenResources.has("nodes")).toBe(true);
-    });
-  });
-
-  // ── Scenario B ──────────────────────────────────────────────────────────────
-  describe("Scenario B: open drawer (open=true, resourceName present)", () => {
-    it("shows a specific 'cannot get' toast with the resource name", () => {
-      renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: true,
-          resourceName: "my-node",
-          resourceLabel: "Node",
-          onForbiddenDetected: vi.fn(),
-        })
-      );
-
-      fireForbiddenEvent("nodes");
-
-      expect(ErrorToastSpy).toHaveBeenCalledOnce();
-      expect(ErrorToastSpy).toHaveBeenCalledWith({
-        title: 'Access denied: cannot get Node "my-node"',
-      });
-    });
-
-    it("calls onForbiddenDetected when the drawer's resource is forbidden", () => {
-      const onForbiddenDetected = vi.fn();
-      renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: true,
-          resourceName: "my-node",
-          resourceLabel: "Node",
-          onForbiddenDetected,
-        })
-      );
-
-      fireForbiddenEvent("nodes");
-
-      expect(onForbiddenDetected).toHaveBeenCalledOnce();
-    });
-
-    it("falls back to activeResource as the label when resourceLabel is omitted", () => {
-      renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: true,
-          resourceName: "my-node",
-          onForbiddenDetected: vi.fn(),
-        })
-      );
-
-      fireForbiddenEvent("nodes");
-
-      expect(ErrorToastSpy).toHaveBeenCalledWith({
-        title: 'Access denied: cannot get nodes "my-node"',
-      });
-    });
-  });
-
-  // ── Scenario C ──────────────────────────────────────────────────────────────
-  describe("Scenario C: list-view caller (labelMap present, no resourceName)", () => {
-    const LABEL_MAP: Record<string, string> = {
-      nodes: "Nodes",
-      pods: "Pods",
-    };
-
-    it("shows a human-readable 'cannot list' toast using the labelMap", () => {
-      renderHook(() => useCatchForbiddenResources("nodes", { labelMap: LABEL_MAP }));
-
-      fireForbiddenEvent("nodes");
-
-      expect(ErrorToastSpy).toHaveBeenCalledOnce();
-      expect(ErrorToastSpy).toHaveBeenCalledWith({
-        title: "Access denied: cannot list Nodes",
-      });
-    });
-
-    it("does NOT toast for an event whose resource does not match the active resource", () => {
-      // activeResource='nodes', but the event fires for 'secrets'
-      // The early return `if (activeResourceRef.current !== resource)` blocks it.
-      renderHook(() => useCatchForbiddenResources("nodes", { labelMap: LABEL_MAP }));
-
-      fireForbiddenEvent("secrets");
-
-      expect(ErrorToastSpy).not.toHaveBeenCalled();
-    });
-
-    it("does NOT call onForbiddenDetected (list-view branch has no callback path)", () => {
-      const onForbiddenDetected = vi.fn();
-      renderHook(() =>
-        useCatchForbiddenResources("nodes", {
+        useCatchForbiddenResources(["pods", "deployments", "nodes"], {
           labelMap: LABEL_MAP,
-          onForbiddenDetected,
         })
       );
 
-      fireForbiddenEvent("nodes");
+      fireForbiddenEvent("deployments");
 
-      expect(onForbiddenDetected).not.toHaveBeenCalled();
+      expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: "Access denied: cannot list Deployments",
+      });
     });
-  });
 
-  // ── Scenario D: different resource ──────────────────────────────────────────
-  describe("Scenario D: event for a different resource", () => {
-    it("ignores events that do not match the active resource (no toast, no callback)", () => {
-      const onForbiddenDetected = vi.fn();
-      const { result } = renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: true,
-          resourceName: "my-node",
-          resourceLabel: "Node",
-          onForbiddenDetected,
-        })
-      );
-
-      fireForbiddenEvent("pods"); // different resource
-
-      expect(ErrorToastSpy).not.toHaveBeenCalled();
-      expect(onForbiddenDetected).not.toHaveBeenCalled();
-      // set still accumulates mismatched resources (setForbiddenResources fires before the guard)
-      expect(result.current.forbiddenResources.has("pods")).toBe(true);
-    });
-  });
-
-  // ── Scenario E: forbiddenResources set ──────────────────────────────────────
-  describe("Scenario E: forbiddenResources set accumulates regardless of branch", () => {
-    it("accumulates all forbidden resources from any caller pattern", () => {
-      const { result } = renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: true,
-          resourceName: "my-node",
-          resourceLabel: "Node",
-          onForbiddenDetected: vi.fn(),
+    it("toasts for multiple events in the array", () => {
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
         })
       );
 
       fireForbiddenEvent("pods");
-      fireForbiddenEvent("nodes");
+      fireForbiddenEvent("deployments");
 
-      expect(result.current.forbiddenResources.has("pods")).toBe(true);
-      expect(result.current.forbiddenResources.has("nodes")).toBe(true);
+      expect(ErrorToastSpy).toHaveBeenCalledTimes(2);
+      expect(ErrorToastSpy).toHaveBeenNthCalledWith(1, {
+        title: "Access denied: cannot list Pods",
+      });
+      expect(ErrorToastSpy).toHaveBeenNthCalledWith(2, {
+        title: "Access denied: cannot list Deployments",
+      });
     });
-  });
 
-  // ── Regression guard: the original bug ─────────────────────────────────────
-  describe("Regression: closed drawer must NOT toast (original bug)", () => {
-    it("no toast fires when opts has no labelMap and resourceName is null", () => {
-      // Pre-fix: `else if (!opts?.resourceName)` matched this caller and fired
-      // toast.custom. Post-fix: guard `opts?.labelMap &&` prevents the branch.
+    it("does NOT toast for an event not in the array, but still records it", () => {
       const { result } = renderHook(() =>
-        useCatchForbiddenResources("nodes", {
-          open: false,
-          resourceName: null,
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
         })
       );
 
-      fireForbiddenEvent("nodes");
+      fireForbiddenEvent("services");
 
       expect(ErrorToastSpy).not.toHaveBeenCalled();
-      expect(result.current.forbiddenResources.has("nodes")).toBe(true);
+      expect(result.current.forbiddenResources.has("services")).toBe(true);
     });
 
-    it("no toast fires when opts is entirely undefined", () => {
-      renderHook(() => useCatchForbiddenResources("nodes"));
+    it("falls back to the raw resource name when the label is missing from labelMap", () => {
+      renderHook(() => useCatchForbiddenResources(["unknown-kind"], { labelMap: LABEL_MAP }));
 
-      fireForbiddenEvent("nodes");
+      fireForbiddenEvent("unknown-kind");
+
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: "Access denied: cannot list unknown-kind",
+      });
+    });
+
+    it("resets forbidden state when activeContext changes", () => {
+      const { result, rerender } = renderHook(
+        ({ context }: { context?: string }) =>
+          useCatchForbiddenResources(["pods", "deployments"], {
+            labelMap: LABEL_MAP,
+            activeContext: context,
+          }),
+        { initialProps: { context: "cluster1" } }
+      );
+
+      fireForbiddenEvent("pods");
+      expect(result.current.forbiddenResources.has("pods")).toBe(true);
+
+      rerender({ context: "cluster2" });
+      expect(result.current.forbiddenResources.size).toBe(0);
+    });
+  });
+
+  describe("mount-time poll", () => {
+    it("toasts for resources already forbidden at mount", async () => {
+      isResourceForbiddenMock.mockImplementation((resource: string) => {
+        return Promise.resolve(resource === "deployments");
+      });
+
+      const { result } = renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments", "cronjobs"], {
+          labelMap: LABEL_MAP,
+        })
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: "Access denied: cannot list Deployments",
+      });
+      expect(result.current.forbiddenResources.has("deployments")).toBe(true);
+    });
+
+    it("does not toast twice when both the mount-time poll and a live event find the same resource", async () => {
+      isResourceForbiddenMock.mockImplementation((resource: string) =>
+        Promise.resolve(resource === "pods")
+      );
+
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
+        })
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      ErrorToastSpy.mockClear();
+
+      fireForbiddenEvent("pods");
 
       expect(ErrorToastSpy).not.toHaveBeenCalled();
     });

@@ -2,7 +2,7 @@ import { NavItem } from "@litelens/core";
 import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInstalledPlugins } from "../marketplace/hooks/data-access/useGetInstalledPlugins";
-import { useCatchForbiddenResources } from "../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../shared/hooks/async-events/useCatchForbiddenResource";
 import { isPluginMounted, shouldResetActiveResource } from "./MainLayout.utils";
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
@@ -194,7 +194,7 @@ const LeasesView = lazy(() =>
   }))
 );
 const OverviewView = lazy(() =>
-  import("./modules/overview/OverviewView").then((m) => ({
+  import("./modules/OverviewView").then((m) => ({
     default: m.OverviewView,
   }))
 );
@@ -335,7 +335,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
     [pluginTrayFamilies]
   );
 
-  const { forbiddenResources } = useCatchForbiddenResources(activeResource, {
+  const { forbiddenResources } = useCatchForbiddenResource(activeResource, {
     labelMap: mergedResourceLabels,
     activeContext,
   });
@@ -356,7 +356,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
 
   function handleSelectItem(item: NavItem<ViewType>) {
     if (item.view) {
-      setActiveResource(item.view as ViewType);
+      setActiveResource(item.view);
       if (forbiddenResources.has(item.view)) {
         const label =
           mergedResourceLabels[item.view as keyof typeof mergedResourceLabels] ?? item.view;

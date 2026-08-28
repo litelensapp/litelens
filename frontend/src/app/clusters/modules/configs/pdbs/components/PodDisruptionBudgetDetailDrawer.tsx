@@ -17,7 +17,7 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -205,7 +205,7 @@ const PDBDrawerBody: FC<
     pdbNamespace,
     pdbName
   );
-  useCatchForbiddenResources("pdbs", {
+  useCatchForbiddenResource("pdbs", {
     open,
     resourceName: pdbName,
     resourceLabel: "Pod Disruption Budget",

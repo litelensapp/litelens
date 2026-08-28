@@ -36,7 +36,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import { useCatchForbiddenResources } from "../../../../../shared/hooks/async-events/useCatchForbiddenResources";
+import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
@@ -908,7 +908,7 @@ const PodDrawerBody: FC<
   const { activeContext } = useMainLayoutContext();
 
   const { data: pod, isLoading } = useGetPodDetail(activeContext, podNamespace, podName);
-  useCatchForbiddenResources("pods", {
+  useCatchForbiddenResource("pods", {
     open,
     resourceName: podName,
     resourceLabel: "Pod",
