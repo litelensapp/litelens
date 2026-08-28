@@ -7,26 +7,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersrbacv1 "k8s.io/client-go/listers/rbac/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toClusterRole(cr *rbacv1.ClusterRole) dto.ClusterRole {
-	managedFields := make([]dto.ManagedField, 0, len(cr.ManagedFields))
-	for _, mf := range cr.ManagedFields {
-		fieldsYAML := ""
-		if mf.FieldsV1 != nil {
-			if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-				if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-					fieldsYAML = string(yamlBytes)
-				}
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(cr)
 
 	lbls := cr.Labels
 	if lbls == nil {

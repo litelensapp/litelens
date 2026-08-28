@@ -37,19 +37,7 @@ func ListPodDisruptionBudgets(lister listerspolicyv1.PodDisruptionBudgetLister, 
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := pdbs[:0:0]
-		for _, pdb := range pdbs {
-			if _, ok := nsSet[pdb.Namespace]; ok {
-				filtered = append(filtered, pdb)
-			}
-		}
-		pdbs = filtered
-	}
+	pdbs = filterByNamespaces(pdbs, namespaces)
 	result := make([]dto.PodDisruptionBudget, len(pdbs))
 	for i, pdb := range pdbs {
 		result[i] = toPodDisruptionBudget(pdb)

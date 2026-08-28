@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
@@ -37,23 +36,7 @@ func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 			}
 			return ss.Annotations
 		}(),
-		ManagedFields: func() []dto.ManagedField {
-			out := make([]dto.ManagedField, 0, len(ss.ManagedFields))
-			for _, mf := range ss.ManagedFields {
-				fieldsYAML := ""
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-				out = append(out, dto.ManagedField{
-					Manager:    mf.Manager,
-					Operation:  string(mf.Operation),
-					FieldsYAML: fieldsYAML,
-				})
-			}
-			return out
-		}(),
+		ManagedFields: toManagedFields(ss),
 		Selector: func() string {
 			if ss.Spec.Selector == nil {
 				return ""
@@ -91,19 +74,7 @@ func ListStatefulSets(lister listersappsv1.StatefulSetLister, namespaces []strin
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := sss[:0:0]
-		for _, ss := range sss {
-			if _, ok := nsSet[ss.Namespace]; ok {
-				filtered = append(filtered, ss)
-			}
-		}
-		sss = filtered
-	}
+	sss = filterByNamespaces(sss, namespaces)
 	result := make([]dto.StatefulSet, len(sss))
 	for i, ss := range sss {
 		result[i] = toStatefulSet(ss)

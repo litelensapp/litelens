@@ -65,19 +65,7 @@ func ListIngresses(lister listersnetworkingv1.IngressLister, namespaces []string
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := ings[:0:0]
-		for _, ing := range ings {
-			if _, ok := nsSet[ing.Namespace]; ok {
-				filtered = append(filtered, ing)
-			}
-		}
-		ings = filtered
-	}
+	ings = filterByNamespaces(ings, namespaces)
 	result := make([]dto.Ingress, len(ings))
 	for i, ing := range ings {
 		result[i] = toIngress(ing)

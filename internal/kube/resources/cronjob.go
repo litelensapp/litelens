@@ -6,7 +6,6 @@ import (
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	batchv1 "k8s.io/api/batch/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 	"k8s.io/apimachinery/pkg/labels"
 	listersbatchv1 "k8s.io/client-go/listers/batch/v1"
 )
@@ -68,20 +67,7 @@ func toCronJob(cj *batchv1.CronJob) dto.CronJob {
 		annotations = cj.Annotations
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(cj.ManagedFields))
-	for _, mf := range cj.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(cj)
 
 	return dto.CronJob{
 		Name:         cj.Name,
@@ -122,19 +108,7 @@ func ListCronJobs(lister listersbatchv1.CronJobLister, namespaces []string) ([]d
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := cjs[:0:0]
-		for _, cj := range cjs {
-			if _, ok := nsSet[cj.Namespace]; ok {
-				filtered = append(filtered, cj)
-			}
-		}
-		cjs = filtered
-	}
+	cjs = filterByNamespaces(cjs, namespaces)
 	result := make([]dto.CronJob, len(cjs))
 	for i, cj := range cjs {
 		result[i] = toCronJob(cj)

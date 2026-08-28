@@ -7,7 +7,6 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersstoragev1 "k8s.io/client-go/listers/storage/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toStorageClass(sc *storagev1.StorageClass) dto.StorageClass {
@@ -23,22 +22,7 @@ func toStorageClass(sc *storagev1.StorageClass) dto.StorageClass {
 		volumeBindingMode = string(*sc.VolumeBindingMode)
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(sc.ManagedFields))
-	for _, mf := range sc.ManagedFields {
-		fieldsYAML := ""
-		if mf.FieldsV1 != nil {
-			if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-				if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-					fieldsYAML = string(yamlBytes)
-				}
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(sc)
 
 	labels := sc.Labels
 	if labels == nil {

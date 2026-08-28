@@ -5,7 +5,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toEvent(e *corev1.Event) dto.Event {
@@ -23,20 +22,7 @@ func toEvent(e *corev1.Event) dto.Event {
 		firstSeenAt = e.FirstTimestamp.Unix()
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(e.ManagedFields))
-	for _, mf := range e.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(e)
 
 	return dto.Event{
 		Type:               e.Type,
@@ -74,19 +60,7 @@ func ListEvents(lister listerscorev1.EventLister, namespaces []string) ([]dto.Ev
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := events[:0:0]
-		for _, e := range events {
-			if _, ok := nsSet[e.Namespace]; ok {
-				filtered = append(filtered, e)
-			}
-		}
-		events = filtered
-	}
+	events = filterByNamespaces(events, namespaces)
 	result := make([]dto.Event, len(events))
 	for i, e := range events {
 		result[i] = toEvent(e)

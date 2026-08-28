@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toService(svc *corev1.Service) dto.Service {
@@ -53,20 +52,7 @@ func toService(svc *corev1.Service) dto.Service {
 	annotations := make(map[string]string, len(svc.Annotations))
 	maps.Copy(annotations, svc.Annotations)
 
-	managedFields := make([]dto.ManagedField, 0, len(svc.ManagedFields))
-	for _, mf := range svc.ManagedFields {
-		fieldsYAML := ""
-		if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-			if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-				fieldsYAML = string(yamlBytes)
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(svc)
 
 	sessionAffinity := string(svc.Spec.SessionAffinity)
 	if sessionAffinity == "" {
@@ -139,19 +125,7 @@ func ListServices(lister listerscorev1.ServiceLister, namespaces []string) ([]dt
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := svcs[:0:0]
-		for _, svc := range svcs {
-			if _, ok := nsSet[svc.Namespace]; ok {
-				filtered = append(filtered, svc)
-			}
-		}
-		svcs = filtered
-	}
+	svcs = filterByNamespaces(svcs, namespaces)
 	result := make([]dto.Service, len(svcs))
 	for i, s := range svcs {
 		result[i] = toService(s)

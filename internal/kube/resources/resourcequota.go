@@ -22,19 +22,7 @@ func ListResourceQuotas(lister listerscorev1.ResourceQuotaLister, namespaces []s
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := rqs[:0:0]
-		for _, rq := range rqs {
-			if _, ok := nsSet[rq.Namespace]; ok {
-				filtered = append(filtered, rq)
-			}
-		}
-		rqs = filtered
-	}
+	rqs = filterByNamespaces(rqs, namespaces)
 	result := make([]dto.ResourceQuota, len(rqs))
 	for i, rq := range rqs {
 		result[i] = toResourceQuota(rq)

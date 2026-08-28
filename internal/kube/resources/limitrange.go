@@ -22,19 +22,7 @@ func ListLimitRanges(lister listerscorev1.LimitRangeLister, namespaces []string)
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := lrs[:0:0]
-		for _, lr := range lrs {
-			if _, ok := nsSet[lr.Namespace]; ok {
-				filtered = append(filtered, lr)
-			}
-		}
-		lrs = filtered
-	}
+	lrs = filterByNamespaces(lrs, namespaces)
 	result := make([]dto.LimitRange, len(lrs))
 	for i, lr := range lrs {
 		result[i] = toLimitRange(lr)

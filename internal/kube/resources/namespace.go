@@ -6,7 +6,6 @@ import (
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func ListNamespaces(lister listerscorev1.NamespaceLister) ([]dto.Namespace, error) {
@@ -16,22 +15,7 @@ func ListNamespaces(lister listerscorev1.NamespaceLister) ([]dto.Namespace, erro
 	}
 	result := make([]dto.Namespace, len(nss))
 	for i, ns := range nss {
-		managedFields := make([]dto.ManagedField, 0, len(ns.ManagedFields))
-		for _, mf := range ns.ManagedFields {
-			fieldsYAML := ""
-			if mf.FieldsV1 != nil {
-				if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-					if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-						fieldsYAML = string(yamlBytes)
-					}
-				}
-			}
-			managedFields = append(managedFields, dto.ManagedField{
-				Manager:    mf.Manager,
-				Operation:  string(mf.Operation),
-				FieldsYAML: fieldsYAML,
-			})
-		}
+		managedFields := toManagedFields(ns)
 
 		lbls := ns.Labels
 		if lbls == nil {
@@ -62,22 +46,7 @@ func GetNamespaceByName(lister listerscorev1.NamespaceLister, name string) (dto.
 	if err != nil {
 		return dto.Namespace{}, err
 	}
-	managedFields := make([]dto.ManagedField, 0, len(ns.ManagedFields))
-	for _, mf := range ns.ManagedFields {
-		fieldsYAML := ""
-		if mf.FieldsV1 != nil {
-			if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-				if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-					fieldsYAML = string(yamlBytes)
-				}
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(ns)
 	lbls := ns.Labels
 	if lbls == nil {
 		lbls = map[string]string{}

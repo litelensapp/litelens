@@ -77,7 +77,6 @@ func TestListReplicaSets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 	}
 }
 
-
 func TestToReplicaSet_NilReplicas_DefaultsToOne(t *testing.T) {
 	rs := makeReplicaSet("rs", "default")
 	rs.Spec.Replicas = nil

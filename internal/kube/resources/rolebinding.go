@@ -8,7 +8,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listersrbacv1 "k8s.io/client-go/listers/rbac/v1"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func toRoleBinding(rb *rbacv1.RoleBinding) dto.RoleBinding {
@@ -29,22 +28,7 @@ func toRoleBinding(rb *rbacv1.RoleBinding) dto.RoleBinding {
 		bindings = "-"
 	}
 
-	managedFields := make([]dto.ManagedField, 0, len(rb.ManagedFields))
-	for _, mf := range rb.ManagedFields {
-		fieldsYAML := ""
-		if mf.FieldsV1 != nil {
-			if raw := mf.FieldsV1.GetRawBytes(); len(raw) > 0 {
-				if yamlBytes, err := sigsyaml.JSONToYAML(raw); err == nil {
-					fieldsYAML = string(yamlBytes)
-				}
-			}
-		}
-		managedFields = append(managedFields, dto.ManagedField{
-			Manager:    mf.Manager,
-			Operation:  string(mf.Operation),
-			FieldsYAML: fieldsYAML,
-		})
-	}
+	managedFields := toManagedFields(rb)
 
 	lbls := rb.Labels
 	if lbls == nil {
@@ -85,19 +69,7 @@ func ListRoleBindings(lister listersrbacv1.RoleBindingLister, namespaces []strin
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
-		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := rbs[:0:0]
-		for _, rb := range rbs {
-			if _, ok := nsSet[rb.Namespace]; ok {
-				filtered = append(filtered, rb)
-			}
-		}
-		rbs = filtered
-	}
+	rbs = filterByNamespaces(rbs, namespaces)
 	result := make([]dto.RoleBinding, len(rbs))
 	for i, rb := range rbs {
 		result[i] = toRoleBinding(rb)

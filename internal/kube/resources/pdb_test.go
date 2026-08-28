@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	listerspolicyv1 "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/cache"
@@ -89,7 +89,6 @@ func TestListPodDisruptionBudgets_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 		t.Errorf("expected empty result; got %d items", len(result))
 	}
 }
-
 
 func TestToPodDisruptionBudget_NilMinAvailable_IsDash(t *testing.T) {
 	pdb := makePDB("pdb", "default")
