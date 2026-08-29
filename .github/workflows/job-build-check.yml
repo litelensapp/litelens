@@ -59,5 +59,8 @@ jobs:
         with:
           ignore-scripts: "false"
 
-      - name: Build packages/core (Go + frontend)
+      - name: Build design-system
+        run: pnpm build:ds
+
+      - name: Build packages/core (Go + frontend, incl. plugin vendor shims)
         run: pnpm build:core

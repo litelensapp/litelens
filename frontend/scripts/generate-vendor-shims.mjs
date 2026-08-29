@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Regenerates frontend/public/vendor/**/*.js from the actual installed/built
 // module each shim re-exports, instead of a human hand-copying
-// Object.keys(). Run via `pnpm generate:vendor` after any dependency bump or
-// @litelens/design-system / @litelens/core build (see package.json — wired
-// into `build:app:fe`).
+// Object.keys(). Run via `pnpm generate:vendor` directly, or implicitly via
+// `pnpm build:core:fe` (its last step — see package.json), which in turn is
+// wired into `build:app:fe` / `build:core`.
 //
 // Each shim redirects a bare specifier (react, react-dom,
 // @litelens/design-system, ...) to window.__LITELENS_VENDOR__, the host's

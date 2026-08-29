@@ -1,5 +1,5 @@
 name: Build frontend bundles
-description: Build design-system, @litelens/core (frontend), and regenerate the plugin vendor shims
+description: Build design-system and @litelens/core (frontend), which also regenerates the plugin vendor shims
 
 runs:
   using: composite
@@ -8,10 +8,6 @@ runs:
       shell: bash
       run: pnpm build:ds
 
-    - name: Build @litelens/core (frontend)
+    - name: Build @litelens/core (frontend) + plugin vendor shims
       shell: bash
       run: pnpm build:core:fe
-
-    - name: Generate plugin vendor shims
-      shell: bash
-      run: pnpm generate:vendor

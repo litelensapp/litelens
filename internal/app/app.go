@@ -216,6 +216,11 @@ func (a *App) Connect(contextName string, seq int64) error {
 		return nil
 	}
 
+	// Clear every plugin's cached activeContext/activeNamespaces before doing any
+	// of the slow work below — see clearPluginClusterState for why this has to be
+	// the first step, not an afterthought.
+	a.clearPluginClusterState()
+
 	a.emitConnectStatus(contextName, "Loading cluster configuration...")
 
 	a.mu.RLock()

@@ -21,11 +21,64 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// pluginAckTimeout bounds how long Connect() waits for running plugins to ack a
+// cluster-context/active-namespaces push before proceeding anyway (fail open) — a
+// slow or wedged plugin process must never hang a cluster switch.
+const pluginAckTimeout = 2 * time.Second
+
+// runningPluginCount returns the number of currently-loaded plugin processes, used
+// as the "how many acks to expect" bound for PublishAndAwaitAck. Best-effort: a
+// plugin can start or exit between this read and the wait completing, so callers
+// must already treat a partial ack count as fail-open, not an error.
+func (a *App) runningPluginCount() int {
+	a.pluginsMu.RLock()
+	defer a.pluginsMu.RUnlock()
+	return len(a.pluginLoaders)
+}
+
+// clearPluginClusterState tells every running plugin to drop its cached
+// activeContext/activeNamespaces labels, and blocks (bounded, fail-open) until each
+// acks having done so. Call this as literally the first step of a cluster switch,
+// before building the new clientset or resolving the new context's kubeconfig path:
+// business HTTP calls reach a plugin's backend directly from its frontend, bypassing
+// the host, so without this step a call racing in during the switch could be served
+// against the *previous* cluster's still-cached context/namespaces and look like a
+// valid (but wrong) answer. Clearing first turns that failure mode into "no active
+// context yet" instead of "silently the wrong cluster" — see emitActiveContextToPlugins
+// and emitActiveNamespacesToPlugins for the corresponding final, authoritative push.
+func (a *App) clearPluginClusterState() {
+	if a.grpcServerCfg == nil {
+		return
+	}
+	expected := a.runningPluginCount()
+	if expected == 0 {
+		return
+	}
+
+	server := a.grpcServerCfg.PluginServer()
+
+	clearContextJSON, err := json.Marshal(map[string]bool{"clearing": true})
+	if err != nil {
+		log.Printf("marshal cluster-context clear payload: %v", err)
+	} else if acked := server.PublishAndAwaitAck(string(async.EventTopicClusterContext), string(clearContextJSON), expected, pluginAckTimeout); acked < expected {
+		log.Printf("warning: only %d/%d plugins acked cluster-context clear before switch", acked, expected)
+	}
+
+	clearNamespacesJSON, err := json.Marshal(map[string]bool{"clearing": true})
+	if err != nil {
+		log.Printf("marshal active-namespaces clear payload: %v", err)
+	} else if acked := server.PublishAndAwaitAck(string(async.EventTopicNamespacesActive), string(clearNamespacesJSON), expected, pluginAckTimeout); acked < expected {
+		log.Printf("warning: only %d/%d plugins acked active-namespaces clear before switch", acked, expected)
+	}
+}
+
 // emitActiveContextToPlugins pushes the active cluster context to all running
-// plugins with HTTP backends. Phase 2 design decision: "The host pushes POST
-// on every cluster switch." Callers must not hold a.mu while calling this:
-// GetContextKubeconfigPath takes its own RLock on a.mu, and a.mu is not
-// reentrant.
+// plugins with HTTP backends, and blocks (bounded, fail-open) until each acks
+// having applied it — so that once Connect() returns, every plugin's backend is
+// already serving the new cluster, closing the race a fire-and-forget push would
+// leave open for the direct frontend->plugin-backend HTTP path. Callers must not
+// hold a.mu while calling this: GetContextKubeconfigPath takes its own RLock on
+// a.mu, and a.mu is not reentrant.
 func (a *App) emitActiveContextToPlugins(contextName string) {
 	kubeconfigPath, err := a.GetContextKubeconfigPath(contextName)
 	if err != nil {
@@ -43,12 +96,16 @@ func (a *App) emitActiveContextToPlugins(contextName string) {
 		log.Printf("marshal cluster-context payload for plugin push (context %q): %v", contextName, err)
 		return
 	}
-	a.grpcServerCfg.PluginServer().PublishToHost(string(async.EventTopicClusterContext), string(payloadJSON))
+	expected := a.runningPluginCount()
+	if acked := a.grpcServerCfg.PluginServer().PublishAndAwaitAck(string(async.EventTopicClusterContext), string(payloadJSON), expected, pluginAckTimeout); acked < expected {
+		log.Printf("warning: only %d/%d plugins acked cluster-context %q before Connect returned", acked, expected, contextName)
+	}
 }
 
 // emitActiveNamespacesToPlugins pushes the active namespace filter to all
-// running plugins with HTTP backends, same "host pushes on every change"
-// design as the cluster-context push.
+// running plugins with HTTP backends, and blocks (bounded, fail-open) until each
+// acks having applied it — same "wait for confirmed apply" design as
+// emitActiveContextToPlugins.
 func (a *App) emitActiveNamespacesToPlugins(namespaces []string) {
 	if a.grpcServerCfg == nil {
 		return
@@ -58,7 +115,10 @@ func (a *App) emitActiveNamespacesToPlugins(namespaces []string) {
 		log.Printf("marshal active-namespaces payload for plugin push: %v", err)
 		return
 	}
-	a.grpcServerCfg.PluginServer().PublishToHost(string(async.EventTopicNamespacesActive), string(payloadJSON))
+	expected := a.runningPluginCount()
+	if acked := a.grpcServerCfg.PluginServer().PublishAndAwaitAck(string(async.EventTopicNamespacesActive), string(payloadJSON), expected, pluginAckTimeout); acked < expected {
+		log.Printf("warning: only %d/%d plugins acked active-namespaces push before Connect returned", acked, expected)
+	}
 }
 
 // pluginsRootDir returns the directory all installed plugins live under: ~/.litelens/plugins.

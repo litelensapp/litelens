@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/litelensapp/litelens/packages/core/pb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,6 +24,12 @@ type HostPluginServer struct {
 
 	// Native pub/sub broker
 	broker *PubSubBroker
+
+	// ackWaiters tracks in-flight PublishAndAwaitAck calls: requestID -> a channel
+	// that each matching "plugins.<id>.ack" publish sends one value into. Guarded
+	// by mu (the same lock stopped/eventEmitFn already use), not a separate lock,
+	// since ack bookkeeping is a tiny, infrequent addition to the same struct.
+	ackWaiters map[string]chan struct{}
 
 	stopped     bool // flag to prevent publishing during shutdown
 	eventEmitFn func(payload map[string]any)
@@ -51,9 +58,17 @@ func NewPubSubBroker() *PubSubBroker {
 func NewHostPluginServer(eventEmitFn func(payload map[string]any), authManager *AuthTokenManager) *HostPluginServer {
 	return &HostPluginServer{
 		broker:      NewPubSubBroker(),
+		ackWaiters:  make(map[string]chan struct{}),
 		eventEmitFn: eventEmitFn,
 		authManager: authManager,
 	}
+}
+
+// isAckTopic reports whether topic is a plugin's ack sink (plugins.<id>.ack), the
+// convention PublishAndAwaitAck's callers use to learn a plugin applied a pushed
+// value — see PublishAndAwaitAck.
+func isAckTopic(topic string) bool {
+	return strings.HasSuffix(topic, ".ack")
 }
 
 // topicRegex validates topic names: alphanumeric, dots, underscores, hyphens,
@@ -156,6 +171,29 @@ func (s *HostPluginServer) Publish(ctx context.Context, req *pb.PublishRequest) 
 		s.broker.setLastMessage(topic, msg)
 	}
 
+	// Route ack sink publishes to any PublishAndAwaitAck call blocked on this
+	// requestID, instead of (also) bridging them to the frontend as a plugin event
+	// below — an ack is host-internal bookkeeping, not something the UI cares about.
+	if isAckTopic(topic) {
+		var ack struct {
+			RequestID string `json:"requestId"`
+		}
+		if err := json.Unmarshal([]byte(req.PayloadJson), &ack); err != nil {
+			log.Printf("warning: unmarshal ack payload on topic %q: %v", topic, err)
+			return &pb.Empty{}, nil
+		}
+		s.mu.RLock()
+		ch, ok := s.ackWaiters[ack.RequestID]
+		s.mu.RUnlock()
+		if ok {
+			select {
+			case ch <- struct{}{}:
+			default:
+			}
+		}
+		return &pb.Empty{}, nil
+	}
+
 	// Bridge plugin-owned events to the frontend via Wails event emission.
 	// Only emit for plugin-published events (pluginID != ""), not host-originated publishes.
 	if pluginID != "" {
@@ -223,6 +261,76 @@ func (s *HostPluginServer) PublishToHost(topic string, payloadJSON string) bool 
 		s.broker.setLastMessage(topic, msg)
 	}
 	return true
+}
+
+// PublishAndAwaitAck publishes payloadJSON (with a fresh "requestId" field merged in)
+// to topic, then blocks until `expected` distinct "plugins.<id>.ack" publishes carrying
+// that requestId arrive, or timeout elapses. Callers use this to know a pushed
+// cluster-context/active-namespaces value was actually applied by every running
+// plugin before proceeding — closing the race where a plugin's HTTP backend, reachable
+// directly by its frontend bypassing the host, serves a business call before the
+// host's async push has landed (see internal/app.Connect).
+//
+// expected is the caller's best-effort count of currently-running plugins: a plugin
+// process could start or exit mid-wait, so this is bounded/fail-open, not a hard
+// guarantee — callers must treat a return value below expected as "proceed anyway,
+// but log a warning" rather than an error.
+func (s *HostPluginServer) PublishAndAwaitAck(topic, payloadJSON string, expected int, timeout time.Duration) int {
+	if expected <= 0 {
+		s.PublishToHost(topic, payloadJSON)
+		return 0
+	}
+
+	requestID := uuid.NewString()
+	payload, err := mergeRequestID(payloadJSON, requestID)
+	if err != nil {
+		log.Printf("warning: merge requestId into payload for topic %q: %v", topic, err)
+		s.PublishToHost(topic, payloadJSON)
+		return 0
+	}
+
+	ch := make(chan struct{}, expected)
+	s.mu.Lock()
+	s.ackWaiters[requestID] = ch
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		delete(s.ackWaiters, requestID)
+		s.mu.Unlock()
+	}()
+
+	if !s.PublishToHost(topic, payload) {
+		return 0
+	}
+
+	got := 0
+	deadline := time.After(timeout)
+	for got < expected {
+		select {
+		case <-ch:
+			got++
+		case <-deadline:
+			return got
+		}
+	}
+	return got
+}
+
+// mergeRequestID decodes payloadJSON as a JSON object, sets its "requestId" field,
+// and re-encodes it. An empty payloadJSON is treated as "{}".
+func mergeRequestID(payloadJSON, requestID string) (string, error) {
+	m := map[string]any{}
+	if payloadJSON != "" {
+		if err := json.Unmarshal([]byte(payloadJSON), &m); err != nil {
+			return "", fmt.Errorf("unmarshal payload: %w", err)
+		}
+	}
+	m["requestId"] = requestID
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("marshal payload: %w", err)
+	}
+	return string(b), nil
 }
 
 // Broker helper methods
