@@ -16,10 +16,13 @@ This package is a **type/documentation surface only** — every export in `src/i
 
 So this package exists to give plugin authors real types, JSDoc, and editor autocomplete during development, while the host controls the actual behavior. If a hook's signature changes on the host side (`frontend/src/expose/hooks/`), update the matching declaration here to keep them in sync — there is no automated check that they match.
 
+The one exception is `createPluginBridge` (see "Using `createPluginBridge`" below): it is a real, self-contained implementation that lives in this package, not a stub. `frontend/src/expose/index.tsx` still wires it onto `window.__LITELENS_VENDOR__.core` like everything else here, but only as a straight pass-through — there is no separate host-side implementation for it to substitute.
+
 ## Contents
 
-- **`src/clusterWideAPI.ts`** (exported as `clusterWideAPI`) — capabilities scoped to the single-cluster view. See "Using `clusterWideAPI`" below.
-- **`src/appWideAPI.ts`** (exported as `appWideAPI`) — capabilities with no single-cluster-view constraint. See "Using `appWideAPI`" below.
+- **`src/api/clusterWideAPI.ts`** (exported as `clusterWideAPI`) — capabilities scoped to the single-cluster view. See "Using `clusterWideAPI`" below.
+- **`src/api/appWideAPI.ts`** (exported as `appWideAPI`) — capabilities with no single-cluster-view constraint. See "Using `appWideAPI`" below.
+- **`src/api/frontendBridgeAPI.ts`** (exported as `createPluginBridge`) — factory for a plugin's HTTP bridge to its own backend. See "Using `createPluginBridge`" below.
 - **`src/types/`** — shared TypeScript types re-exported alongside the API namespaces above (`api`, `nav`, `resources`, `tray`).
 - **`src/build/tsupPreset.ts`** (exported as `@litelens/core/tsup-preset`) — shared tsup build config for plugin frontends: Node-only build tooling, kept out of the `.` export above so it never ships in the browser bundle the vendor shim substitutes for. See "Shared plugin build config" below.
 
@@ -68,6 +71,21 @@ function HelmChartListView() {
 
 - **`registerStylesheets(pluginId, stylesheets)`** — registers your plugin's global stylesheet(s) (e.g. compiled Tailwind output), loaded once at the app level regardless of which of your views is active. Call this once at module scope, alongside the `clusterWideAPI` registration calls above — don't use per-view `stylesheet` on `registerViews` for CSS that should apply across all of your views.
 - **`getQueryClient()`** — returns the host's singleton `QueryClient`. Use this from code that isn't a mounted React component (e.g. the module-scope `registerEvents` handler above) and therefore can't call `useQueryClient()`.
+
+## Using `createPluginBridge`
+
+Business calls (`listCharts`, `installChart`, etc.) go straight from a plugin's frontend to its own backend over localhost HTTP, bypassing the host — see `litelens-plugins`' architecture notes for the full call-path rationale. `createPluginBridge(pluginID)` builds the fetch machinery for that path: it resolves the plugin's backend address via `window.go.app.App.GetPluginBackendAddr`, caches it, and retries once against a freshly-resolved address if a call fails with a network-level `TypeError` (the address went stale, e.g. the backend process restarted) — a `PluginError` response body from a reachable backend is not retried.
+
+Each plugin calls this once and wraps the returned `fetchWithRetry` in its own typed, per-endpoint exports, since payload shapes differ per plugin:
+
+```ts
+const { fetchWithRetry } = createPluginBridge("helm");
+
+export const ListHelmCharts = (): Promise<HelmChart[]> =>
+  fetchWithRetry<HelmChart[]>("listCharts", {});
+```
+
+`invalidateBackendAddrCache()` is exposed for callers that learn independently that the cached address is stale (e.g. a "plugin restarted" event) and want to force a fresh lookup on the next call.
 
 ## Shared plugin build config
 

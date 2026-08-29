@@ -28,7 +28,8 @@
     "test:be:coverage": "go test -race -v -cover -coverprofile=coverage.out ./internal/...",
     "prepare": "husky",
     "upgrade:all:fe": "ncu -u -t minor --dep prod,dev,optional --workspaces --root && pnpm install",
-    "upgrade:all:be": "go get -u -t ./... && go mod tidy && go get -C packages/core -u -t ./... && go mod tidy -C packages/core"
+    "upgrade:all:be": "go get -u -t ./... && go mod tidy && go get -C packages/core -u -t ./... && go mod tidy -C packages/core",
+    "upgrade:all": "pnpm upgrade:all:fe && pnpm upgrade:all:be"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
