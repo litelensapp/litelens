@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { NavEntry, SharedUnifiedTrayContentProps } from "./types";
+import type { NavEntry, SharedUnifiedTrayContentProps } from "../types";
 
 /**
  * Hook to access cluster-scoped property values exposed to plugins. Valid

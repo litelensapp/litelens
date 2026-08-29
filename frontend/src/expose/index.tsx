@@ -1,3 +1,4 @@
+import { createPluginBridge } from "@litelens/core";
 import * as DesignSystem from "@litelens/design-system";
 import * as ReactQuery from "@tanstack/react-query";
 import * as React from "react";
@@ -48,6 +49,7 @@ declare global {
           registerTrayFamilies: typeof pluginTrayRegistry.registerTrayFamilies;
           registerEvents: typeof pluginEventRegistry.registerEvents;
         };
+        createPluginBridge: typeof createPluginBridge;
       };
       reactQuery: typeof ReactQuery;
     };
@@ -73,6 +75,7 @@ window.__LITELENS_VENDOR__ = {
       registerTrayFamilies: pluginTrayRegistry.registerTrayFamilies.bind(pluginTrayRegistry),
       registerEvents: pluginEventRegistry.registerEvents.bind(pluginEventRegistry),
     },
+    createPluginBridge,
   },
   reactQuery: ReactQuery,
 };

@@ -7,5 +7,7 @@ export * from "./types";
  * are provided by the host at runtime via import injection.
  */
 
-export { clusterWideAPI } from "./clusterWideAPI";
-export { appWideAPI } from "./appWideAPI";
+export { clusterWideAPI } from "./api/clusterWideAPI";
+export { appWideAPI } from "./api/appWideAPI";
+export { createPluginBridge } from "./api/frontendBridgeAPI";
+export type { PluginBridge, PluginError } from "./api/frontendBridgeAPI";
