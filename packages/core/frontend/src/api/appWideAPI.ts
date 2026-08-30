@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { PluginSettingsTab } from "../types/settings";
 
 /**
  * Register the plugin's global stylesheet(s) with the host. Unlike
@@ -23,6 +24,29 @@ function registerStylesheets(
   // If you see this error, registerStylesheets was called before the host injected the real implementation.
   throw new Error(
     "appWideAPI.registerStylesheets is not available. This function must be imported from " +
+      "'@litelens/core' within a plugin bundle loaded by the litelens host."
+  );
+}
+
+/**
+ * Register a settings tab for the plugin. The tab will appear in the host's
+ * settings panel under a plugin section, with the given label and component.
+ *
+ * Example:
+ *   appWideAPI.registerSettingsTab(PLUGIN_ID, { id: PLUGIN_ID, label: "Helm", component: HelmSettingsTab });
+ *
+ * This function is replaced at runtime by the host's actual implementation
+ * (injected in frontend/src/expose/index.tsx). If you see this error,
+ * registerSettingsTab was called before the host initialized the injection.
+ */
+function registerSettingsTab(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  pluginId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  tab: PluginSettingsTab
+): void {
+  throw new Error(
+    "appWideAPI.registerSettingsTab is not available. This function must be imported from " +
       "'@litelens/core' within a plugin bundle loaded by the litelens host."
   );
 }
@@ -53,5 +77,6 @@ function getQueryClient(): QueryClient {
  */
 export const appWideAPI = {
   registerStylesheets,
+  registerSettingsTab,
   getQueryClient,
 };

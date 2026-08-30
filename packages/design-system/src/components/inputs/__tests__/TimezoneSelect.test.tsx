@@ -4,6 +4,14 @@ import { TimezoneSelect } from "../TimezoneSelect";
 
 afterEach(() => cleanup());
 
+function selectOption(option: Element) {
+  fireEvent.pointerDown(option);
+  fireEvent.mouseDown(option);
+  fireEvent.pointerUp(option);
+  fireEvent.mouseUp(option);
+  fireEvent.click(option);
+}
+
 describe("TimezoneSelect", () => {
   it("renders trigger button with current value", () => {
     const { getByText } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
@@ -20,7 +28,7 @@ describe("TimezoneSelect", () => {
     const { getByRole, queryByRole } = render(
       <TimezoneSelect value="America/New_York" onChange={vi.fn()} />
     );
-    const button = getByRole("button");
+    const button = getByRole("combobox");
     fireEvent.click(button);
     await waitFor(() => {
       const listbox = queryByRole("listbox");
@@ -30,7 +38,7 @@ describe("TimezoneSelect", () => {
 
   it("renders search input when dropdown is open", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
     await waitFor(() => {
       const searchInput = document.querySelector("input[placeholder*='Search']");
       expect(searchInput).toBeTruthy();
@@ -39,7 +47,7 @@ describe("TimezoneSelect", () => {
 
   it("filters timezones based on search input", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const searchInput = document.querySelector(
@@ -56,7 +64,7 @@ describe("TimezoneSelect", () => {
 
   it("shows no results message when search has no matches", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const searchInput = document.querySelector(
@@ -75,12 +83,12 @@ describe("TimezoneSelect", () => {
     const { getByRole, queryAllByRole } = render(
       <TimezoneSelect value="America/New_York" onChange={onChange} />
     );
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const options = queryAllByRole("option");
       if (options.length > 0) {
-        fireEvent.click(options[0]);
+        selectOption(options[0]);
       }
     });
 
@@ -91,12 +99,12 @@ describe("TimezoneSelect", () => {
     const { getByRole, queryByRole, queryAllByRole } = render(
       <TimezoneSelect value="America/New_York" onChange={vi.fn()} />
     );
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const options = queryAllByRole("option");
       expect(options.length).toBeGreaterThan(0);
-      fireEvent.click(options[0]);
+      selectOption(options[0]);
     });
 
     await waitFor(() => {
@@ -106,7 +114,7 @@ describe("TimezoneSelect", () => {
 
   it("marks current value as selected with CheckIcon", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const selected = document.querySelector('[aria-selected="true"]');
@@ -124,13 +132,13 @@ describe("TimezoneSelect", () => {
 
   it("sets aria-haspopup on trigger button", () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    const button = getByRole("button");
+    const button = getByRole("combobox");
     expect(button.getAttribute("aria-haspopup")).toBe("listbox");
   });
 
   it("sets aria-expanded to true when open", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    const button = getByRole("button");
+    const button = getByRole("combobox");
     expect(button.getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.click(button);
@@ -142,7 +150,7 @@ describe("TimezoneSelect", () => {
   it("handles keyboard selection with Enter key", async () => {
     const onChange = vi.fn();
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={onChange} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const option = document.querySelector("[role='option']") as HTMLElement;
@@ -155,7 +163,7 @@ describe("TimezoneSelect", () => {
   it("handles keyboard selection with Space key", async () => {
     const onChange = vi.fn();
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={onChange} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const option = document.querySelector("[role='option']") as HTMLElement;
@@ -173,7 +181,7 @@ describe("TimezoneSelect", () => {
       </>
     );
 
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
     await waitFor(() => {
       expect(queryByRole("listbox")).toBeTruthy();
     });
@@ -186,7 +194,7 @@ describe("TimezoneSelect", () => {
 
   it("handles empty search correctly", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const searchInput = document.querySelector(
@@ -203,7 +211,7 @@ describe("TimezoneSelect", () => {
 
   it("case-insensitive search", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
       const searchInput = document.querySelector(
@@ -220,12 +228,12 @@ describe("TimezoneSelect", () => {
 
   it("renders list with proper scrolling container", async () => {
     const { getByRole } = render(<TimezoneSelect value="America/New_York" onChange={vi.fn()} />);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("combobox"));
 
     await waitFor(() => {
-      const listbox = document.querySelector("[role='listbox']");
-      expect(listbox?.className).toContain("max-h-56");
-      expect(listbox?.className).toContain("overflow-y-auto");
+      const content = document.querySelector("[data-slot='select-content']");
+      expect(content?.className).toContain("max-h-72");
+      expect(content?.className).toContain("overflow-y-auto");
     });
   });
 

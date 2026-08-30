@@ -255,11 +255,51 @@ func (a *App) restoreInstalledPlugins() {
 	}
 }
 
+// kubeconfigForRelaunch resolves the kubeconfig path to hand a plugin subprocess
+// being (re)launched: the active cluster's kubeconfig if one is connected, or ""
+// when none is. Plugins run app-wide regardless of cluster state — cluster
+// context/namespaces are synced separately over gRPC once a cluster actually
+// connects (see emitActiveContextToPlugins/emitActiveNamespacesToPlugins), never
+// via this launch-time argument.
+func (a *App) kubeconfigForRelaunch(activeContextName string) string {
+	if activeContextName == "" {
+		return ""
+	}
+	kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
+	if err != nil {
+		return ""
+	}
+	return kubeconfigPath
+}
+
+// launchInstalledPlugins starts every installed, enabled plugin's subprocess at
+// app startup, independent of any cluster connection, so app-wide plugin
+// surfaces (e.g. a Settings tab) work before the user ever selects a cluster.
+// Runs in the background so a slow or failing launch never blocks Startup.
+func (a *App) launchInstalledPlugins() {
+	a.pluginsMu.RLock()
+	loaders := make(map[string]*plugin.PluginLoader, len(a.pluginLoaders))
+	maps.Copy(loaders, a.pluginLoaders)
+	a.pluginsMu.RUnlock()
+
+	for pluginID, loader := range loaders {
+		if loader.Status() != dto.PluginStatusReady || loader.IsAlive() {
+			continue
+		}
+		if a.grpcServerCfg != nil {
+			loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+			loader.SetTokenManager(a.grpcServerCfg)
+		}
+		if err := loader.Launch(context.Background(), ""); err != nil {
+			log.Printf("plugin %q: startup launch failed: %v", pluginID, err)
+		}
+	}
+}
+
 // prewarmRestoredPlugins launches any installed-but-not-yet-launched plugin
-// loaders now that a cluster context is active. restoreInstalledPlugins marks
-// restored plugins READY without launching them (the kubeconfig needed for
-// Launch isn't known until a context connects), so without this the first
-// proxied RPC (e.g. ListHelmCharts) would pay the launch/handshake cost
+// loaders once a cluster context is active — a safety net for a plugin that
+// crashed or failed its app-startup launch (launchInstalledPlugins), so the
+// first proxied RPC (e.g. ListHelmCharts) doesn't pay the launch/handshake cost
 // synchronously on the Wails IPC path. Runs in the background so a slow or
 // failing launch never blocks Connect.
 func (a *App) prewarmRestoredPlugins(contextName string) {
@@ -663,32 +703,23 @@ func (a *App) InstallPlugin(pluginID, targetTag, sourceURL string) error {
 		// backup is no longer needed and will be discarded by the deferred cleanup.
 		installSucceeded = true
 
-		// 9. Conditionally launch the plugin if an active context is present
-		// If no active context, defer launch to helmPluginClient lazy-launch logic.
-		// This allows install to succeed as a metadata-level operation.
+		// 9. Launch the plugin now — it runs app-wide, independent of any active
+		// cluster context. A failure here is not install failure — the binary and
+		// metadata are already valid, so fall through to READY and let
+		// GetPluginBackendAddr's lazy-launch retry on first use.
 		a.mu.RLock()
 		activeContextName := a.activeContext
 		a.mu.RUnlock()
 
-		launchFailed := false
-		if activeContextName != "" {
-			// Active context exists; resolve kubeconfig and launch now.
-			// A failure here is not install failure — the binary and metadata are
-			// already valid, so fall through to READY and let helmPluginClient's
-			// lazy-launch retry once a valid context is available.
-			kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
-			if err == nil {
-				if a.grpcServerCfg != nil {
-					loader.SetHostGRPCPort(a.grpcServerCfg.Port())
-					loader.SetTokenManager(a.grpcServerCfg)
-				}
-				if launchErr := loader.Launch(ctx, kubeconfigPath); launchErr != nil {
-					fmt.Printf("plugin %q: post-install launch failed: %v\n", pluginID, launchErr)
-					launchFailed = true
-				}
-			}
+		if a.grpcServerCfg != nil {
+			loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+			loader.SetTokenManager(a.grpcServerCfg)
 		}
-		// If no active context, skip launch; helmPluginClient will do lazy launch on first use
+		launchFailed := false
+		if launchErr := loader.Launch(ctx, a.kubeconfigForRelaunch(activeContextName)); launchErr != nil {
+			fmt.Printf("plugin %q: post-install launch failed: %v\n", pluginID, launchErr)
+			launchFailed = true
+		}
 
 		if !launchFailed {
 			loader.SetStatus(dto.PluginStatusReady)
@@ -843,9 +874,8 @@ func (a *App) DisablePlugin(pluginID string) error {
 	return nil
 }
 
-// EnablePlugin enables a disabled plugin by ID. If an active cluster context is present,
-// the plugin is launched. Returns an error if the plugin is not installed or if the kubeconfig
-// cannot be resolved.
+// EnablePlugin enables a disabled plugin by ID and launches its subprocess (app-wide,
+// independent of any active cluster context). Returns an error if the plugin is not installed.
 func (a *App) EnablePlugin(pluginID string) error {
 	// Gate marketplace feature if disabled
 	if !config.IsMarketplaceEnabled() {
@@ -880,22 +910,15 @@ func (a *App) EnablePlugin(pluginID string) error {
 	// Set loader status to READY
 	loader.SetStatus(dto.PluginStatusReady)
 
-	// If an active context exists, launch the plugin
-	if activeContextName != "" {
-		kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
-		if err != nil {
-			// Log but don't fail — the plugin is now enabled and will be launched on next use
-			log.Printf("plugin %q: resolve kubeconfig failed: %v", pluginID, err)
-		} else {
-			if a.grpcServerCfg != nil {
-				loader.SetHostGRPCPort(a.grpcServerCfg.Port())
-				loader.SetTokenManager(a.grpcServerCfg)
-			}
-			if err := loader.Launch(context.Background(), kubeconfigPath); err != nil {
-				// Log but don't fail — matches crash-recovery behavior
-				log.Printf("plugin %q: launch failed: %v", pluginID, err)
-			}
-		}
+	// Launch the plugin now — it runs app-wide, independent of any active
+	// cluster context.
+	if a.grpcServerCfg != nil {
+		loader.SetHostGRPCPort(a.grpcServerCfg.Port())
+		loader.SetTokenManager(a.grpcServerCfg)
+	}
+	if err := loader.Launch(context.Background(), a.kubeconfigForRelaunch(activeContextName)); err != nil {
+		// Log but don't fail — the plugin is now enabled and will be relaunched on next use
+		log.Printf("plugin %q: launch failed: %v", pluginID, err)
 	}
 
 	// Emit plugin:enabled event (skip if context is invalid, e.g. in tests)
@@ -1077,18 +1100,12 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 	a.mu.RUnlock()
 
 	if !loader.IsAlive() {
-		// Lazily relaunch: the plugin may have crashed, been killed externally,
-		// or simply never been started for this context (prewarmRestoredPlugins
-		// only relaunches on Connect, not on-demand). Mirrors the launch pattern
-		// used by InstallPlugin/prewarmRestoredPlugins.
-		if activeContextName == "" {
-			return "", fmt.Errorf("plugin %q is not running", pluginID)
-		}
-
-		kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
-		if err != nil {
-			return "", fmt.Errorf("plugin %q is not running", pluginID)
-		}
+		// Lazily relaunch: the plugin may have crashed, been killed externally, or
+		// simply hasn't started yet (launchInstalledPlugins/prewarmRestoredPlugins
+		// only relaunch at startup/Connect, not on-demand). Plugins run app-wide,
+		// so this must succeed with no active cluster context too — pass whatever
+		// kubeconfig is available (possibly none).
+		kubeconfigPath := a.kubeconfigForRelaunch(activeContextName)
 
 		if a.grpcServerCfg != nil {
 			loader.SetHostGRPCPort(a.grpcServerCfg.Port())
@@ -1120,19 +1137,12 @@ func (a *App) GetPluginBackendAddr(pluginID string) (string, error) {
 		return addr, nil
 	}
 
-	// Backend not responding. Try to relaunch if we can.
-	if activeContextName == "" {
-		return "", fmt.Errorf("plugin %q: backend not responding and no active context to relaunch", pluginID)
-	}
-
+	// Backend not responding. Try to relaunch, with or without an active cluster context.
 	if err := loader.Shutdown(); err != nil {
 		fmt.Printf("plugin %q: shutdown before relaunch: %v\n", pluginID, err)
 	}
 
-	kubeconfigPath, err := a.GetContextKubeconfigPath(activeContextName)
-	if err != nil {
-		return "", fmt.Errorf("plugin %q: backend not responding, relaunch failed: %v", pluginID, err)
-	}
+	kubeconfigPath := a.kubeconfigForRelaunch(activeContextName)
 	if a.grpcServerCfg != nil {
 		loader.SetHostGRPCPort(a.grpcServerCfg.Port())
 		loader.SetTokenManager(a.grpcServerCfg)

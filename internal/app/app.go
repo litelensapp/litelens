@@ -121,6 +121,12 @@ func (a *App) Startup(ctx context.Context) {
 	a.restoreInstalledPlugins()
 	a.runServer()
 	go a.checkForUpdate(3)
+
+	// Launch every installed plugin's subprocess now, independent of any cluster
+	// connection: plugins can contribute app-wide UI (e.g. a Settings tab) that
+	// must work before the user ever selects a cluster. Runs in the background
+	// since spawning + handshaking a subprocess is too slow to block Startup.
+	go a.launchInstalledPlugins()
 }
 
 // runServer starts the plugin cluster context gRPC server. This is required

@@ -8,6 +8,7 @@ import { pluginEventRegistry } from "../app/clusters/plugins/hooks/registry/even
 import { pluginNavRegistry } from "../app/clusters/plugins/hooks/registry/nav/pluginNavRegistry";
 import { pluginTrayRegistry } from "../app/clusters/plugins/hooks/registry/tray/pluginTrayRegistry";
 import { pluginViewRegistry } from "../app/clusters/plugins/hooks/registry/view/pluginViewRegistry";
+import { pluginSettingsRegistry } from "../app/plugins/hooks/registry/settings/pluginSettingsRegistry";
 import { pluginStylesheetRegistry } from "../app/plugins/hooks/registry/stylesheet/pluginStylesheetRegistry";
 import { queryClient } from "../queryClient";
 import { useExposeMethods } from "./hooks/useExposeMethods";
@@ -39,6 +40,7 @@ declare global {
       core: {
         appWideAPI: {
           registerStylesheets: typeof pluginStylesheetRegistry.registerStylesheets;
+          registerSettingsTab: typeof pluginSettingsRegistry.registerSettingsTab;
           getQueryClient: typeof getQueryClient;
         };
         clusterWideAPI: {
@@ -65,6 +67,7 @@ window.__LITELENS_VENDOR__ = {
     appWideAPI: {
       registerStylesheets:
         pluginStylesheetRegistry.registerStylesheets.bind(pluginStylesheetRegistry),
+      registerSettingsTab: pluginSettingsRegistry.registerSettingsTab.bind(pluginSettingsRegistry),
       getQueryClient,
     },
     clusterWideAPI: {

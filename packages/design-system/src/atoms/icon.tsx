@@ -69,6 +69,7 @@ export {
   ShieldAlertIcon,
   ShieldCheckIcon,
   ShieldIcon,
+  ShipWheelIcon,
   SlidersHorizontalIcon,
   SquareIcon,
   StarIcon,
