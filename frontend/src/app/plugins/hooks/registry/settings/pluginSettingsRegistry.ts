@@ -1,5 +1,4 @@
 import type { PluginSettingsTab } from "@litelens/core";
-import { useSyncExternalStore } from "react";
 
 type Listener = () => void;
 
@@ -45,10 +44,3 @@ class PluginSettingsRegistry {
 }
 
 export const pluginSettingsRegistry = new PluginSettingsRegistry();
-
-export function usePluginSettingsTabs(): PluginSettingsTab[] {
-  return useSyncExternalStore(
-    pluginSettingsRegistry.subscribeSettingsRegistry.bind(pluginSettingsRegistry),
-    pluginSettingsRegistry.getSettingsTabs.bind(pluginSettingsRegistry)
-  );
-}

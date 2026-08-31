@@ -1,6 +1,6 @@
 import { cn } from "@litelens/design-system";
 import { useState, type FC } from "react";
-import { usePluginSettingsTabs } from "../plugins/hooks/registry/settings/pluginSettingsRegistry";
+import { usePluginSettingsTabs } from "../plugins/hooks/registry/settings/usePluginSettingsTabs";
 import { useIsMarketplaceEnabled } from "../shared/hooks/useIsMarketplaceEnabled";
 import { AppContent } from "./components/AppContent";
 import { K8sContent } from "./components/K8sContent";

@@ -10,7 +10,7 @@ import {
 } from "@litelens/design-system";
 
 import { type FC } from "react";
-import { usePluginSettingsTabs } from "../../plugins/hooks/registry/settings/pluginSettingsRegistry";
+import { usePluginSettingsTabs } from "../../plugins/hooks/registry/settings/usePluginSettingsTabs";
 import { useIsMarketplaceEnabled } from "../../shared/hooks/useIsMarketplaceEnabled";
 import { useIsPrivateRepoAccess } from "../hooks/data-access/useIsPrivateRepoAccess";
 import { Section, SECTION_HEADER } from "./types";
