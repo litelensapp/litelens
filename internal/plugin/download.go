@@ -13,12 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/github_release"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 )
 
@@ -47,100 +46,11 @@ func (a ReleaseAssets) Lookup(name string) (string, bool) {
 	return fmt.Sprintf("%s/releases/download/%s/%s", a.htmlBase, neturl.PathEscape(a.tag), name), true
 }
 
-const pluginInstallerUserAgent = "litelens-plugin-installer/1.0"
-
 // manifestIndexAssetName is the repo-wide release asset that acts as the
 // single source of truth for every plugin published in a release: it embeds
 // each plugin's complete manifest directly, so no separate per-plugin
 // manifest asset is needed (or published by real litelens-plugins releases).
 const manifestIndexAssetName = "manifest.json"
-
-// resolveLatestTagUnauthenticated resolves the latest release tag via
-// GitHub's unauthenticated releases/latest redirect, which is not subject to
-// the api.github.com rate limit. It follows the redirect (the default
-// behavior of http.DefaultClient) and extracts the tag from the final URL's
-// /releases/tag/{tag} path.
-func resolveLatestTagUnauthenticated(ctx context.Context, htmlBase string) (string, error) {
-	url := htmlBase + "/releases/latest"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("User-Agent", pluginInstallerUserAgent)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("resolve latest release: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("resolve latest release: HTTP %d", resp.StatusCode)
-	}
-
-	finalURL := resp.Request.URL.String()
-	_, tag, found := strings.Cut(finalURL, "/releases/tag/")
-	if !found {
-		return "", fmt.Errorf("resolve latest release: could not find tag in resolved URL %q", finalURL)
-	}
-	if tag == "" {
-		return "", fmt.Errorf("resolve latest release: empty tag in resolved URL %q", finalURL)
-	}
-	return tag, nil
-}
-
-// newGitHubAPIRequest builds a GET request with the headers GitHub's REST API
-// expects, plus a Bearer token when the target repo is private.
-func newGitHubAPIRequest(ctx context.Context, url, token string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", pluginInstallerUserAgent)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	return req, nil
-}
-
-// newAssetDownloadRequest builds a GET request for a release asset's
-// browser_download_url. Private-repo assets require the same Bearer auth as
-// the API endpoints (see internal/app/updater.go's performWindowsUpdate).
-func newAssetDownloadRequest(ctx context.Context, url, token string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", pluginInstallerUserAgent)
-	req.Header.Set("Accept", "application/octet-stream")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	return req, nil
-}
-
-// checkGitHubAPIResponse turns a non-200 GitHub API response into an error,
-// giving a specific, actionable message when the failure is due to the
-// unauthenticated rate limit (60 requests/hour per IP) rather than a generic
-// "status 403" — that limit is shared by anything else on the same network
-// calling GitHub's API, so it's routinely hit without the plugin fetch itself
-// being at fault.
-func checkGitHubAPIResponse(resp *http.Response) error {
-	if resp.StatusCode == http.StatusOK {
-		return nil
-	}
-	if (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) &&
-		resp.Header.Get("X-RateLimit-Remaining") == "0" {
-		resetAt := "an unknown time"
-		if resetUnix, err := strconv.ParseInt(resp.Header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
-			resetAt = time.Unix(resetUnix, 0).Local().Format("15:04:05 MST")
-		}
-		return fmt.Errorf("github API rate limit exceeded for this network (resets at %s); this limit is shared by anything else on your network calling GitHub's API and is unrelated to plugin availability", resetAt)
-	}
-	return fmt.Errorf("github API returned status %d", resp.StatusCode)
-}
 
 // FetchLatestRelease fetches the latest release from GitHub.
 // If baseURL is empty, uses config.GetMarketplaceBaseURL() (env-var/default behavior).
@@ -164,7 +74,7 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool
 	}
 
 	if !private && token == "" {
-		tag, err := resolveLatestTagUnauthenticated(ctx, baseURL)
+		tag, err := githubrelease.ResolveLatestTag(ctx, baseURL)
 		if err != nil {
 			return ReleaseAssets{}, "", err
 		}
@@ -173,7 +83,7 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool
 
 	// Authenticated API path (private repo or token supplied)
 	url := baseURL + "/latest"
-	req, err := newGitHubAPIRequest(ctx, url, token)
+	req, err := githubrelease.NewAPIRequest(ctx, url, token)
 	if err != nil {
 		return ReleaseAssets{}, "", fmt.Errorf("creating request: %w", err)
 	}
@@ -184,7 +94,7 @@ func FetchLatestRelease(ctx context.Context, baseURL, token string, private bool
 	}
 	defer resp.Body.Close()
 
-	if err := checkGitHubAPIResponse(resp); err != nil {
+	if err := githubrelease.CheckAPIResponse(resp); err != nil {
 		return ReleaseAssets{}, "", err
 	}
 
@@ -235,7 +145,7 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool)
 
 	// Authenticated API path (private repo or token supplied)
 	url := baseURL + "/tags/" + neturl.PathEscape(tag)
-	req, err := newGitHubAPIRequest(ctx, url, token)
+	req, err := githubrelease.NewAPIRequest(ctx, url, token)
 	if err != nil {
 		return ReleaseAssets{}, "", fmt.Errorf("creating request: %w", err)
 	}
@@ -246,7 +156,7 @@ func FetchRelease(ctx context.Context, baseURL, token, tag string, private bool)
 	}
 	defer resp.Body.Close()
 
-	if err := checkGitHubAPIResponse(resp); err != nil {
+	if err := githubrelease.CheckAPIResponse(resp); err != nil {
 		return ReleaseAssets{}, "", err
 	}
 
@@ -277,7 +187,7 @@ func FetchManifestIndex(ctx context.Context, assets ReleaseAssets, token string)
 		return nil, fmt.Errorf("%q not found in release", manifestIndexAssetName)
 	}
 
-	req, err := newAssetDownloadRequest(ctx, url, token)
+	req, err := githubrelease.NewAssetRequest(ctx, url, token)
 	if err != nil {
 		return nil, fmt.Errorf("creating manifest index request: %w", err)
 	}
@@ -409,67 +319,7 @@ func IsHostVersionCompatible(hostVersion, minVersion, maxVersion string) (bool, 
 // onProgress is an optional callback that receives progress updates as a percentage (0-100).
 // If onProgress is nil or resp.ContentLength is unknown (<=0), no progress callbacks are made.
 func DownloadToFile(ctx context.Context, url, destPath, token string, onProgress func(pct int)) error {
-	// Ensure parent directory exists
-	parentDir := filepath.Dir(destPath)
-	if err := os.MkdirAll(parentDir, 0755); err != nil {
-		return fmt.Errorf("creating directory %q: %w", parentDir, err)
-	}
-
-	// Download to a temporary file in the same directory to ensure atomic move
-	tempFile := destPath + ".tmp"
-
-	// Remove any stale temp file
-	_ = os.Remove(tempFile)
-
-	req, err := newAssetDownloadRequest(ctx, url, token)
-	if err != nil {
-		return fmt.Errorf("creating download request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("downloading from %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download returned status %d", resp.StatusCode)
-	}
-
-	// Write to temp file
-	f, err := os.Create(tempFile)
-	if err != nil {
-		return fmt.Errorf("creating temp file %q: %w", tempFile, err)
-	}
-	defer f.Close()
-
-	// Wrap resp.Body with progress tracking if ContentLength is known and onProgress is provided
-	var body io.Reader = resp.Body
-	if onProgress != nil && resp.ContentLength > 0 {
-		body = &progressReader{
-			reader:        resp.Body,
-			contentLength: resp.ContentLength,
-			onProgress:    onProgress,
-		}
-	}
-
-	if _, err := io.Copy(f, body); err != nil {
-		_ = os.Remove(tempFile)
-		return fmt.Errorf("writing to temp file: %w", err)
-	}
-
-	if err := f.Close(); err != nil {
-		_ = os.Remove(tempFile)
-		return fmt.Errorf("closing temp file: %w", err)
-	}
-
-	// Atomically move temp file to final location
-	if err := os.Rename(tempFile, destPath); err != nil {
-		_ = os.Remove(tempFile)
-		return fmt.Errorf("moving temp file to %q: %w", destPath, err)
-	}
-
-	return nil
+	return githubrelease.ToFile(ctx, url, destPath, token, onProgress)
 }
 
 // AssetBackup tracks an installed plugin's existing binary, dist directory,
@@ -563,32 +413,6 @@ func (b *AssetBackup) Discard() error {
 		return nil
 	}
 	return os.RemoveAll(b.dir)
-}
-
-// progressReader wraps an io.Reader and tracks progress with callbacks.
-// It only calls onProgress when the percentage actually changes to avoid flooding callbacks.
-type progressReader struct {
-	reader        io.Reader
-	contentLength int64
-	bytesRead     int64
-	lastReported  int
-	onProgress    func(pct int)
-}
-
-func (pr *progressReader) Read(p []byte) (n int, err error) {
-	n, err = pr.reader.Read(p)
-	pr.bytesRead += int64(n)
-
-	// Only invoke onProgress if percentage changes
-	if pr.contentLength > 0 && pr.onProgress != nil {
-		pct := int(pr.bytesRead * 100 / pr.contentLength)
-		if pct > pr.lastReported {
-			pr.lastReported = pct
-			pr.onProgress(pct)
-		}
-	}
-
-	return n, err
 }
 
 // VerifySHA256 verifies that a file's SHA256 hash matches the expected hex string (case-insensitive)

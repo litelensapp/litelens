@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
+	"github.com/litelensapp/litelens/internal/lib/github_release"
 	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
 	"github.com/litelensapp/litelens/internal/plugin"
 	"github.com/litelensapp/litelens/internal/storage"
@@ -269,13 +270,9 @@ func (a *App) performLinuxUpdate(version, token string) error {
 	}
 	checksumHex := rel.SHA256
 
-	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, rel.AssetURL, nil)
+	req, err := githubrelease.NewAssetRequest(a.ctx, rel.AssetURL, token)
 	if err != nil {
 		return fmt.Errorf("download binary: %w", err)
-	}
-	req.Header.Set("Accept", "application/octet-stream")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -506,13 +503,9 @@ func (a *App) performWindowsUpdate(version, token string) error {
 	}
 	checksumHex := rel.SHA256
 
-	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, rel.AssetURL, nil)
+	req, err := githubrelease.NewAssetRequest(a.ctx, rel.AssetURL, token)
 	if err != nil {
 		return fmt.Errorf("download update: %w", err)
-	}
-	req.Header.Set("Accept", "application/octet-stream")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
