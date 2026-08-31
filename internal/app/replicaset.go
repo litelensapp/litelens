@@ -49,23 +49,25 @@ func (a *App) GetReplicaSetsSummary() (dto.ReplicaSetSummary, error) {
 		return dto.ReplicaSetSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
-	rss, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetReplicaSetsSummary: %v", err)
-		return dto.ReplicaSetSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var rss []*appsv1.ReplicaSet
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetReplicaSetsSummary: %v", err)
+			return dto.ReplicaSetSummary{}, nil
+		}
+		rss = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := rss[:0:0]
-		for _, rs := range rss {
-			if _, ok := nsSet[rs.Namespace]; ok {
-				filtered = append(filtered, rs)
+			nsRss, err := lister.ReplicaSets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetReplicaSetsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			rss = append(rss, nsRss...)
 		}
-		rss = filtered
 	}
 	return kubeResources.SummarizeReplicaSets(rss), nil
 }

@@ -50,23 +50,25 @@ func (a *App) GetDaemonSetsSummary() (dto.DaemonSetSummary, error) {
 		return dto.DaemonSetSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().DaemonSets().Lister()
-	dss, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetDaemonSetsSummary: %v", err)
-		return dto.DaemonSetSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var dss []*appsv1.DaemonSet
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetDaemonSetsSummary: %v", err)
+			return dto.DaemonSetSummary{}, nil
+		}
+		dss = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := dss[:0:0]
-		for _, ds := range dss {
-			if _, ok := nsSet[ds.Namespace]; ok {
-				filtered = append(filtered, ds)
+			nsDaemonSets, err := lister.DaemonSets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetDaemonSetsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			dss = append(dss, nsDaemonSets...)
 		}
-		dss = filtered
 	}
 	return kubeResources.SummarizeDaemonSets(dss), nil
 }

@@ -48,7 +48,7 @@ func TestListDaemonSets_SingleNamespace(t *testing.T) {
 	}
 }
 
-func TestListDaemonSets_EmptyNamespaceReturnsAll(t *testing.T) {
+func TestListDaemonSets_EmptyNamespaceReturnsEmpty(t *testing.T) {
 	ds1 := makeDaemonSet("ds-a", "ns-a")
 	ds2 := makeDaemonSet("ds-b", "ns-b")
 	lister := newDaemonSetLister(ds1, ds2)
@@ -58,7 +58,7 @@ func TestListDaemonSets_EmptyNamespaceReturnsAll(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 results, got %d", len(result))
+		t.Errorf("expected 2 results (cluster-wide list) for nil namespaces, got %d", len(result))
 	}
 }
 

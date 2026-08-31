@@ -806,6 +806,7 @@ func TestCheckForUpdate_RateLimitNoRetry(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
 		w.WriteHeader(http.StatusForbidden)
 	}))
@@ -884,6 +885,7 @@ func TestApp_CheckForUpdate_ReturnsUnderlyingError(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
+		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
 		w.WriteHeader(http.StatusForbidden)
 	}))

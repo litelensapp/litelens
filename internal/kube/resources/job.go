@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -180,11 +181,25 @@ func GetJobByName(lister listersbatchv1.JobLister, namespace, name string) (dto.
 }
 
 func ListJobs(lister listersbatchv1.JobLister, namespaces []string) ([]dto.Job, error) {
-	jobs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var jobs []*batchv1.Job
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		jobs = all
+	} else {
+		for _, ns := range namespaces {
+			nsJobs, err := lister.Jobs(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListJobs: namespace %q: %v", ns, err)
+				continue
+			}
+			jobs = append(jobs, nsJobs...)
+		}
 	}
-	jobs = filterByNamespaces(jobs, namespaces)
 	result := make([]dto.Job, len(jobs))
 	for i, j := range jobs {
 		result[i] = toJob(j)

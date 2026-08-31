@@ -465,59 +465,14 @@ func TestFetchLatestRelease_ForbiddenWithoutRateLimitHeaderReturnsGenericError(t
 	if err == nil {
 		t.Fatal("FetchLatestRelease() error = nil; want error")
 	}
-	if !strings.Contains(err.Error(), "status 403") {
+	if !strings.Contains(err.Error(), "HTTP 403") {
 		t.Errorf("error = %q; want generic status-code error when not rate-limited", err.Error())
 	}
 }
 
-func TestResolveLatestTagUnauthenticated(t *testing.T) {
-	ctx := context.Background()
-
-	// Setup a mock HTTP server that serves a redirect from /releases/latest to /releases/tag/v1.2.3
-	// We need to declare server first so the handler can reference it
-	var server *httptest.Server
-	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/releases/latest" {
-			// Send a redirect (this is how GitHub's public releases/latest endpoint works)
-			http.Redirect(w, r, server.URL+"/releases/tag/v1.2.3", http.StatusMovedPermanently)
-			return
-		}
-		if r.URL.Path == "/releases/tag/v1.2.3" {
-			// The redirect target doesn't need to serve anything; we just extract the tag from the URL
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		http.NotFound(w, r)
-	}))
-	defer server.Close()
-
-	tag, err := resolveLatestTagUnauthenticated(ctx, server.URL)
-	if err != nil {
-		t.Fatalf("resolveLatestTagUnauthenticated() error = %v", err)
-	}
-	if tag != "v1.2.3" {
-		t.Errorf("tag = %q; want %q", tag, "v1.2.3")
-	}
-}
-
-func TestResolveLatestTagUnauthenticated_MissingTag(t *testing.T) {
-	ctx := context.Background()
-
-	// Server that doesn't redirect properly
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Return OK but at the wrong URL (no /releases/tag/ in path)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	_, err := resolveLatestTagUnauthenticated(ctx, server.URL+"/releases/latest")
-	if err == nil {
-		t.Fatal("resolveLatestTagUnauthenticated() error = nil; want error")
-	}
-	if !strings.Contains(err.Error(), "could not find tag") {
-		t.Errorf("error = %q; want to mention tag not found", err.Error())
-	}
-}
+// resolveLatestTagUnauthenticated's own behavior (redirect-following,
+// tag extraction, missing-tag error) is now owned and tested by
+// internal/lib/github_release (ResolveLatestTag); see github_release_test.go there.
 
 func TestFetchLatestRelease_UnauthenticatedPath(t *testing.T) {
 	ctx := context.Background()

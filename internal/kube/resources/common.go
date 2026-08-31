@@ -30,26 +30,6 @@ func derefInt32(i *int32) int32 {
 	return *i
 }
 
-// filterByNamespaces returns items whose namespace is in namespaces,
-// preserving order. An empty namespaces list is interpreted as "all
-// namespaces" and returns items unchanged.
-func filterByNamespaces[T metav1.Object](items []T, namespaces []string) []T {
-	if len(namespaces) == 0 {
-		return items
-	}
-	nsSet := make(map[string]struct{}, len(namespaces))
-	for _, ns := range namespaces {
-		nsSet[ns] = struct{}{}
-	}
-	filtered := items[:0:0]
-	for _, item := range items {
-		if _, ok := nsSet[item.GetNamespace()]; ok {
-			filtered = append(filtered, item)
-		}
-	}
-	return filtered
-}
-
 // toManagedFields converts an object's ManagedFields into their DTO form,
 // rendering each field's FieldsV1 as YAML.
 func toManagedFields(obj metav1.Object) []dto.ManagedField {

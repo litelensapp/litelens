@@ -1,6 +1,8 @@
 package kubeResources
 
 import (
+	"log"
+
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -56,11 +58,25 @@ func GetEventByName(lister listerscorev1.EventLister, namespace, name string) (d
 }
 
 func ListEvents(lister listerscorev1.EventLister, namespaces []string) ([]dto.Event, error) {
-	events, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var events []*corev1.Event
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		events = all
+	} else {
+		for _, ns := range namespaces {
+			nsEvents, err := lister.Events(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListEvents: namespace %q: %v", ns, err)
+				continue
+			}
+			events = append(events, nsEvents...)
+		}
 	}
-	events = filterByNamespaces(events, namespaces)
 	result := make([]dto.Event, len(events))
 	for i, e := range events {
 		result[i] = toEvent(e)

@@ -56,8 +56,8 @@ func makePod(name, namespace string) *corev1.Pod {
 	}
 }
 
-// TestListPods_EmptyNamespace_ReturnsAll verifies namespace="" lists across all namespaces.
-func TestListPods_EmptyNamespace_ReturnsAll(t *testing.T) {
+// TestListPods_EmptyNamespace_ReturnsEmpty verifies namespace=nil returns empty (no active namespaces).
+func TestListPods_EmptyNamespace_ReturnsEmpty(t *testing.T) {
 	p1 := makePod("pod-a", "ns-a")
 	p2 := makePod("pod-b", "ns-b")
 	result, err := ListPods(newPodLister(p1, p2), nil)
@@ -65,7 +65,7 @@ func TestListPods_EmptyNamespace_ReturnsAll(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 results, got %d", len(result))
+		t.Errorf("expected 2 results (cluster-wide list) for nil namespaces, got %d", len(result))
 	}
 }
 
@@ -85,12 +85,15 @@ func TestListPods_SpecificNamespace_Filters(t *testing.T) {
 	}
 }
 
-// TestListPods_ErrorPropagation_GlobalScope verifies errors from the cluster-scope lister are returned.
+// TestListPods_ErrorPropagation_GlobalScope verifies a cluster-wide list error propagates for nil namespaces.
 func TestListPods_ErrorPropagation_GlobalScope(t *testing.T) {
 	sentinel := errors.New("lister unavailable")
-	_, err := ListPods(&errorPodLister{err: sentinel}, nil)
-	if !errors.Is(err, sentinel) {
-		t.Errorf("expected sentinel error; got %v", err)
+	result, err := ListPods(&errorPodLister{err: sentinel}, nil)
+	if err == nil {
+		t.Fatal("expected error for nil namespaces (cluster-wide list) to propagate")
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result on cluster-wide list error; got %d items", len(result))
 	}
 }
 
@@ -776,12 +779,16 @@ func TestListPods_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
 	}
 }
 
-// TestListPods_ErrorPropagation_NamespacedScope verifies namespaced lister errors propagate.
+// TestListPods_ErrorPropagation_NamespacedScope verifies per-namespace errors are tolerated.
 func TestListPods_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListPods(&errorPodLister{err: sentinel}, []string{"default"})
-	if !errors.Is(err, sentinel) {
-		t.Errorf("expected sentinel error; got %v", err)
+	result, err := ListPods(&errorPodLister{err: sentinel}, []string{"default"})
+	if err != nil {
+		t.Errorf("expected per-namespace errors to be tolerated; got %v", err)
+	}
+	// All namespaces errored, so result should be empty (not an error).
+	if len(result) != 0 {
+		t.Errorf("expected empty result when all namespaces error; got %d items", len(result))
 	}
 }
 
@@ -1341,4 +1348,160 @@ func TestSummarizePods_DeletionTimestamp_TerminatingIsNotCounted(t *testing.T) {
 	if summary.Evicted != 0 {
 		t.Errorf("Evicted = %d; want 0", summary.Evicted)
 	}
+}
+
+// TestListPods_MultipleNamespaces_UnionsCorrectly verifies that multiple
+// active namespaces union correctly with no duplicates/omissions.
+func TestListPods_MultipleNamespaces_UnionsCorrectly(t *testing.T) {
+	p1 := makePod("pod-a", "ns-a")
+	p2 := makePod("pod-b", "ns-b")
+	p3 := makePod("pod-c", "ns-c")
+	lister := newPodLister(p1, p2, p3)
+
+	result, err := ListPods(lister, []string{"ns-a", "ns-b", "ns-c"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 3 {
+		t.Fatalf("expected 3 results, got %d", len(result))
+	}
+
+	// Verify no duplicates and all items present
+	names := make(map[string]bool)
+	for _, pod := range result {
+		if names[pod.Name] {
+			t.Errorf("duplicate pod found: %s", pod.Name)
+		}
+		names[pod.Name] = true
+	}
+
+	expected := map[string]bool{"pod-a": true, "pod-b": true, "pod-c": true}
+	if len(names) != len(expected) {
+		t.Errorf("expected %d unique pods, got %d", len(expected), len(names))
+	}
+	for name := range expected {
+		if !names[name] {
+			t.Errorf("missing pod: %s", name)
+		}
+	}
+}
+
+// TestListPods_ZeroNamespaces_ReturnsClusterWideList verifies that zero
+// active namespaces falls back to a cluster-wide list (the "empty/nil means
+// all namespaces" contract), not an empty result.
+func TestListPods_ZeroNamespaces_ReturnsClusterWideList(t *testing.T) {
+	p1 := makePod("pod-a", "ns-a")
+	result, err := ListPods(newPodLister(p1), []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 result (cluster-wide list), got %d", len(result))
+	}
+}
+
+// TestListPods_PartialNamespaceForbidden_ReturnsOthers verifies that when
+// one namespace among several active namespaces is forbidden (403), results
+// from other namespaces are still returned (error is tolerated, not fatal).
+func TestListPods_PartialNamespaceForbidden_ReturnsOthers(t *testing.T) {
+	p1 := makePod("pod-a", "ns-a")
+	p2 := makePod("pod-b", "ns-c")
+
+	// Create a lister that fails for ns-b but succeeds for ns-a and ns-c
+	lister := &selectivePodLister{
+		pods: map[string][]*corev1.Pod{
+			"ns-a": {p1},
+			"ns-c": {p2},
+		},
+		failingNamespaces: map[string]bool{
+			"ns-b": true, // Forbidden
+		},
+	}
+
+	result, err := ListPods(lister, []string{"ns-a", "ns-b", "ns-c"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should return pods from ns-a and ns-c, skipping ns-b
+	if len(result) != 2 {
+		t.Fatalf("expected 2 results (from ns-a and ns-c), got %d", len(result))
+	}
+
+	names := make(map[string]bool)
+	for _, pod := range result {
+		names[pod.Name] = true
+	}
+	if !names["pod-a"] || !names["pod-b"] {
+		t.Errorf("missing expected pods; got: %v", names)
+	}
+}
+
+// TestListPods_EmptyNamespaceInUnion_DoesntBreakUnion verifies that when
+// one namespace has zero matching resources, it doesn't break the union of
+// results from other namespaces.
+func TestListPods_EmptyNamespaceInUnion_DoesntBreakUnion(t *testing.T) {
+	p1 := makePod("pod-a", "ns-a")
+	p2 := makePod("pod-b", "ns-c")
+
+	// ns-b has no pods
+	lister := &selectivePodLister{
+		pods: map[string][]*corev1.Pod{
+			"ns-a": {p1},
+			"ns-b": {}, // Empty namespace
+			"ns-c": {p2},
+		},
+		failingNamespaces: map[string]bool{},
+	}
+
+	result, err := ListPods(lister, []string{"ns-a", "ns-b", "ns-c"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(result))
+	}
+
+	names := make(map[string]bool)
+	for _, pod := range result {
+		names[pod.Name] = true
+	}
+	if !names["pod-a"] || !names["pod-b"] {
+		t.Errorf("missing expected pods from non-empty namespaces; got: %v", names)
+	}
+}
+
+// selectivePodLister is a mock lister that supports returning different pods
+// per namespace, and failing for specific namespaces (for RBAC 403 testing).
+type selectivePodLister struct {
+	pods              map[string][]*corev1.Pod
+	failingNamespaces map[string]bool
+}
+
+func (s *selectivePodLister) List(_ labels.Selector) ([]*corev1.Pod, error) {
+	return nil, errors.New("cluster-wide list not supported")
+}
+
+func (s *selectivePodLister) Pods(namespace string) listerscorev1.PodNamespaceLister {
+	return &selectivePodNamespaceLister{
+		namespace:         namespace,
+		pods:              s.pods,
+		failingNamespaces: s.failingNamespaces,
+	}
+}
+
+type selectivePodNamespaceLister struct {
+	namespace         string
+	pods              map[string][]*corev1.Pod
+	failingNamespaces map[string]bool
+}
+
+func (s *selectivePodNamespaceLister) List(_ labels.Selector) ([]*corev1.Pod, error) {
+	if s.failingNamespaces[s.namespace] {
+		return nil, errors.New("forbidden (403)")
+	}
+	return s.pods[s.namespace], nil
+}
+
+func (s *selectivePodNamespaceLister) Get(_ string) (*corev1.Pod, error) {
+	return nil, errors.New("not found")
 }

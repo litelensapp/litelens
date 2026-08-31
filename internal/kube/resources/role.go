@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -73,11 +74,25 @@ func GetRoleByName(lister listersrbacv1.RoleLister, namespace, name string) (dto
 }
 
 func ListRoles(lister listersrbacv1.RoleLister, namespaces []string) ([]dto.Role, error) {
-	roles, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var roles []*rbacv1.Role
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		roles = all
+	} else {
+		for _, ns := range namespaces {
+			nsRoles, err := lister.Roles(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListRoles: namespace %q: %v", ns, err)
+				continue
+			}
+			roles = append(roles, nsRoles...)
+		}
 	}
-	roles = filterByNamespaces(roles, namespaces)
 	result := make([]dto.Role, len(roles))
 	for i, r := range roles {
 		result[i] = toRole(r)

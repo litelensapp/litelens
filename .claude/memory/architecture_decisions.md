@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-08-27T10:15:03.455Z
+  modified: 2026-09-01T00:00:00.000Z
 ---
 
 ### IPC Pattern
@@ -15,6 +15,14 @@ All Go methods exported on `App` struct are auto-bound to TypeScript by Wails. M
 ### Caching / Watching
 
 Use `SharedInformerFactory` (watch + in-memory cache) instead of polling. List endpoints read from the lister: `lister.Pods(ns).List(labels.Everything())` — no API round trip. Emit Wails events from informer handlers; patch the TanStack Query cache on the frontend.
+
+**Namespace-filtered list pattern** — every `List<Kind>(lister, namespaces []string)` in `internal/kube/resources/*.go` and every `Get<Kind>Summary()` in `internal/app/*.go` branches on `namespaces`:
+- non-empty: loop `namespaces` and call the namespace-scoped sub-lister (`lister.Pods(ns).List(...)`) per namespace, unioning results — reads only the namespaces actually selected instead of the whole cluster-wide cache.
+- empty/nil: falls back to `lister.List(labels.Everything())` (cluster-wide) — this is load-bearing, not optional. `activeNamespaces` (`internal/app/app.go`) is documented as `empty/nil = all namespaces`, and defaults to empty on a fresh connect, so skipping this fallback (e.g. returning an empty result for `len(namespaces) == 0`) breaks the default "all namespaces" view entirely.
+
+Per-namespace list errors (e.g. RBAC 403 on one namespace) are tolerated and logged, not propagated — the union still returns results from the namespaces that succeeded. A cluster-wide list error *is* propagated (no partial-success fallback available at that scope). `pvc.go`'s `ListPersistentVolumeClaims` does this twice (PVCs + cross-referenced pods); `endpoint.go`'s `ListEndpoints` needs a `//lint:ignore SA1019` on the `corev1.Endpoints` var in both branches since the type is deprecated (`go tool staticcheck` requires its own `//lint:ignore CheckName reason` format here, not golangci-lint's `//nolint:`).
+
+All 24 `emit<Kind>()` Wails-event-push functions delegate to the same `List<Kind>()`/`Get<Kind>Summary()` functions above — no separate namespace-filtering logic to maintain on the push path.
 
 `kube.NewFactoryHandle` (`internal/kube/informers.go`) blocks (bounded to 30s) until every informer's initial LIST has synced before returning, so `Connect()` only marks a context active — and the frontend only unblocks its first List*/Get* queries — once listers are warm. See [[gotcha_informer_cache_sync_race]].
 

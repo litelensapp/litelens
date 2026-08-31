@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -534,11 +535,25 @@ func GetPodByName(lister listerscorev1.PodLister, namespace, name string) (dto.P
 }
 
 func ListPods(lister listerscorev1.PodLister, namespaces []string) ([]dto.Pod, error) {
-	pods, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var pods []*corev1.Pod
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		pods = all
+	} else {
+		for _, ns := range namespaces {
+			nsPods, err := lister.Pods(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListPods: namespace %q: %v", ns, err)
+				continue
+			}
+			pods = append(pods, nsPods...)
+		}
 	}
-	pods = filterByNamespaces(pods, namespaces)
 	result := make([]dto.Pod, len(pods))
 	for i, p := range pods {
 		result[i] = toPod(p, false)

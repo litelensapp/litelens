@@ -47,23 +47,25 @@ func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
 		return dto.CronJobSummary{}, nil
 	}
 	lister := h.Factory.Batch().V1().CronJobs().Lister()
-	cjs, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetCronJobsSummary: %v", err)
-		return dto.CronJobSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var cjs []*batchv1.CronJob
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetCronJobsSummary: %v", err)
+			return dto.CronJobSummary{}, nil
+		}
+		cjs = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := cjs[:0:0]
-		for _, cj := range cjs {
-			if _, ok := nsSet[cj.Namespace]; ok {
-				filtered = append(filtered, cj)
+			nsCjs, err := lister.CronJobs(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetCronJobsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			cjs = append(cjs, nsCjs...)
 		}
-		cjs = filtered
 	}
 	return kubeResources.SummarizeCronJobs(cjs), nil
 }

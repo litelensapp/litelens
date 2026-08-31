@@ -9,7 +9,7 @@ import { ClusterSettingsModal } from "./clusters/ClusterSettingsModal";
 import { ConnectingView } from "./clusters/ConnectingView";
 import { MainLayout } from "./clusters/MainLayout";
 import { MarketplaceView } from "./marketplace/MarketplaceView";
-import { PluginStylesheetsLoader } from "./plugins/PluginStylesheetsLoader";
+import { PluginRegistryReconciler } from "./plugins/PluginRegistryReconciler";
 import type { Section } from "./settings/components/types";
 import { useMenuOpenSettingsEvents } from "./settings/hooks/async-events/useMenuOpenSettingsEvents";
 import { SettingsView } from "./settings/SettingsView";
@@ -261,7 +261,7 @@ export const App: FC = () => {
 
   return (
     <TooltipProvider>
-      <PluginStylesheetsLoader />
+      <PluginRegistryReconciler />
       <div className="flex h-screen flex-col overflow-hidden">
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {error ? (

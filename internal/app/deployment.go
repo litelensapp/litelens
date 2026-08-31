@@ -50,23 +50,25 @@ func (a *App) GetDeploymentsSummary() (dto.DeploymentSummary, error) {
 		return dto.DeploymentSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().Deployments().Lister()
-	deps, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetDeploymentsSummary: %v", err)
-		return dto.DeploymentSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var deps []*appsv1.Deployment
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetDeploymentsSummary: %v", err)
+			return dto.DeploymentSummary{}, nil
+		}
+		deps = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := deps[:0:0]
-		for _, d := range deps {
-			if _, ok := nsSet[d.Namespace]; ok {
-				filtered = append(filtered, d)
+			nsDeployments, err := lister.Deployments(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetDeploymentsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			deps = append(deps, nsDeployments...)
 		}
-		deps = filtered
 	}
 	return kubeResources.SummarizeDeployments(deps), nil
 }

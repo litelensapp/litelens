@@ -816,6 +816,11 @@ func Test_FetchRelease_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tt.serverStatus == http.StatusForbidden {
+					// A real GitHub rate-limit 403 always carries this header;
+					// set it here so the handler is recognized as rate-limited.
+					w.Header().Set("X-RateLimit-Remaining", "0")
+				}
 				w.WriteHeader(tt.serverStatus)
 			}))
 			defer server.Close()
@@ -850,6 +855,7 @@ func TestCheck_RateLimit403(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
 		w.WriteHeader(http.StatusForbidden)
 	}))
@@ -888,6 +894,7 @@ func TestCheck_RateLimit403NoHeader(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.WriteHeader(http.StatusForbidden)
 		// No X-RateLimit-Reset header
 	}))
@@ -927,6 +934,7 @@ func TestFetchRelease_RateLimit403(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetUnix))
 		w.WriteHeader(http.StatusForbidden)
 	}))

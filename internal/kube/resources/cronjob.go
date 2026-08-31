@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -104,11 +105,25 @@ func GetCronJobByName(lister listersbatchv1.CronJobLister, namespace, name strin
 }
 
 func ListCronJobs(lister listersbatchv1.CronJobLister, namespaces []string) ([]dto.CronJob, error) {
-	cjs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var cjs []*batchv1.CronJob
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		cjs = all
+	} else {
+		for _, ns := range namespaces {
+			nsCjs, err := lister.CronJobs(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListCronJobs: namespace %q: %v", ns, err)
+				continue
+			}
+			cjs = append(cjs, nsCjs...)
+		}
 	}
-	cjs = filterByNamespaces(cjs, namespaces)
 	result := make([]dto.CronJob, len(cjs))
 	for i, cj := range cjs {
 		result[i] = toCronJob(cj)

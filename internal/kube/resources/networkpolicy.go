@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"strings"
 	"time"
 
@@ -29,11 +30,25 @@ func toNetworkPolicy(np *networkingv1.NetworkPolicy) dto.NetworkPolicy {
 }
 
 func ListNetworkPolicies(lister listersnetworkingv1.NetworkPolicyLister, namespaces []string) ([]dto.NetworkPolicy, error) {
-	nps, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var nps []*networkingv1.NetworkPolicy
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		nps = all
+	} else {
+		for _, ns := range namespaces {
+			nsNps, err := lister.NetworkPolicies(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListNetworkPolicies: namespace %q: %v", ns, err)
+				continue
+			}
+			nps = append(nps, nsNps...)
+		}
 	}
-	nps = filterByNamespaces(nps, namespaces)
 	result := make([]dto.NetworkPolicy, len(nps))
 	for i, np := range nps {
 		result[i] = toNetworkPolicy(np)

@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"strings"
 	"time"
 
@@ -65,11 +66,25 @@ func GetRoleBindingByName(lister listersrbacv1.RoleBindingLister, namespace, nam
 }
 
 func ListRoleBindings(lister listersrbacv1.RoleBindingLister, namespaces []string) ([]dto.RoleBinding, error) {
-	rbs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var rbs []*rbacv1.RoleBinding
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		rbs = all
+	} else {
+		for _, ns := range namespaces {
+			nsRbs, err := lister.RoleBindings(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListRoleBindings: namespace %q: %v", ns, err)
+				continue
+			}
+			rbs = append(rbs, nsRbs...)
+		}
 	}
-	rbs = filterByNamespaces(rbs, namespaces)
 	result := make([]dto.RoleBinding, len(rbs))
 	for i, rb := range rbs {
 		result[i] = toRoleBinding(rb)

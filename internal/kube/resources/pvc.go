@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"maps"
 	"sort"
 	"strings"
@@ -50,23 +51,54 @@ func ListPersistentVolumeClaims(
 	podLister listerscorev1.PodLister,
 	namespaces []string,
 ) ([]dto.PersistentVolumeClaim, error) {
-	pvcs, err := pvcLister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	// List PVCs across all active namespaces (or cluster-wide when
+	// namespaces is empty/nil, per the "empty = all namespaces" contract).
+	var pvcs []*corev1.PersistentVolumeClaim
+	if len(namespaces) == 0 {
+		allPvcs, err := pvcLister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		pvcs = allPvcs
+	} else {
+		for _, ns := range namespaces {
+			nsPvcs, err := pvcLister.PersistentVolumeClaims(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListPersistentVolumeClaims: namespace %q (PVCs): %v", ns, err)
+				continue
+			}
+			pvcs = append(pvcs, nsPvcs...)
+		}
 	}
-	pvcs = filterByNamespaces(pvcs, namespaces)
 
 	// Build a map: namespace/claimName → []podName for fast lookup.
 	claimToPods := map[string][]string{}
-	pods, err := podLister.List(labels.Everything())
-	if err == nil {
-		pods = filterByNamespaces(pods, namespaces)
-		for _, pod := range pods {
-			for _, vol := range pod.Spec.Volumes {
-				if vol.PersistentVolumeClaim != nil {
-					key := pod.Namespace + "/" + vol.PersistentVolumeClaim.ClaimName
-					claimToPods[key] = append(claimToPods[key], pod.Name)
-				}
+	var pods []*corev1.Pod
+	if len(namespaces) == 0 {
+		allPods, err := podLister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		pods = allPods
+	} else {
+		for _, ns := range namespaces {
+			nsPods, err := podLister.Pods(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListPersistentVolumeClaims: namespace %q (Pods): %v", ns, err)
+				continue
+			}
+			pods = append(pods, nsPods...)
+		}
+	}
+	for _, pod := range pods {
+		for _, vol := range pod.Spec.Volumes {
+			if vol.PersistentVolumeClaim != nil {
+				key := pod.Namespace + "/" + vol.PersistentVolumeClaim.ClaimName
+				claimToPods[key] = append(claimToPods[key], pod.Name)
 			}
 		}
 	}

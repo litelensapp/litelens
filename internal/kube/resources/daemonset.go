@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -84,11 +85,25 @@ func GetDaemonSetByName(lister listersappsv1.DaemonSetLister, namespace, name st
 }
 
 func ListDaemonSets(lister listersappsv1.DaemonSetLister, namespaces []string) ([]dto.DaemonSet, error) {
-	dss, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var dss []*appsv1.DaemonSet
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		dss = all
+	} else {
+		for _, ns := range namespaces {
+			nsDaemonSets, err := lister.DaemonSets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListDaemonSets: namespace %q: %v", ns, err)
+				continue
+			}
+			dss = append(dss, nsDaemonSets...)
+		}
 	}
-	dss = filterByNamespaces(dss, namespaces)
 	result := make([]dto.DaemonSet, len(dss))
 	for i, ds := range dss {
 		result[i] = toDaemonSet(ds)

@@ -48,7 +48,7 @@ func TestListStatefulSets_SingleNamespace(t *testing.T) {
 	}
 }
 
-func TestListStatefulSets_EmptyNamespaceReturnsAll(t *testing.T) {
+func TestListStatefulSets_EmptyNamespaceReturnsEmpty(t *testing.T) {
 	ss1 := makeStatefulSet("ss-a", "ns-a")
 	ss2 := makeStatefulSet("ss-b", "ns-b")
 	lister := newStatefulSetLister(ss1, ss2)
@@ -58,7 +58,7 @@ func TestListStatefulSets_EmptyNamespaceReturnsAll(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 results, got %d", len(result))
+		t.Errorf("expected 2 results (cluster-wide list) for nil namespaces, got %d", len(result))
 	}
 }
 

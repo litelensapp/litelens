@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -70,11 +71,25 @@ func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 }
 
 func ListStatefulSets(lister listersappsv1.StatefulSetLister, namespaces []string) ([]dto.StatefulSet, error) {
-	sss, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var sss []*appsv1.StatefulSet
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		sss = all
+	} else {
+		for _, ns := range namespaces {
+			nsStatefulSets, err := lister.StatefulSets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListStatefulSets: namespace %q: %v", ns, err)
+				continue
+			}
+			sss = append(sss, nsStatefulSets...)
+		}
 	}
-	sss = filterByNamespaces(sss, namespaces)
 	result := make([]dto.StatefulSet, len(sss))
 	for i, ss := range sss {
 		result[i] = toStatefulSet(ss)

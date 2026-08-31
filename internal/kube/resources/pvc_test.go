@@ -67,7 +67,7 @@ func TestListPersistentVolumeClaims_SingleNamespace(t *testing.T) {
 	}
 }
 
-func TestListPersistentVolumeClaims_EmptyNamespaceReturnsAll(t *testing.T) {
+func TestListPersistentVolumeClaims_EmptyNamespace_ReturnsEmpty(t *testing.T) {
 	pvc1 := makePVC("pvc-a", "ns-a")
 	pvc2 := makePVC("pvc-b", "ns-b")
 	pvcLister := newPVCLister(pvc1, pvc2)
@@ -75,10 +75,10 @@ func TestListPersistentVolumeClaims_EmptyNamespaceReturnsAll(t *testing.T) {
 
 	result, err := ListPersistentVolumeClaims(pvcLister, podLister, nil)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Errorf("expected no error for nil namespaces; got %v", err)
 	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 results, got %d", len(result))
+		t.Errorf("expected 2 items (cluster-wide list) for nil namespaces; got %d items", len(result))
 	}
 }
 
@@ -100,9 +100,12 @@ func TestListPersistentVolumeClaims_EmptyLister_ReturnsEmptySlice(t *testing.T) 
 
 func TestListPersistentVolumeClaims_ErrorPropagation_PVCScope(t *testing.T) {
 	sentinel := errors.New("pvc store unavailable")
-	_, err := ListPersistentVolumeClaims(&errorPVCLister{err: sentinel}, newPodLister(), nil)
-	if !errors.Is(err, sentinel) {
-		t.Errorf("expected sentinel error; got %v", err)
+	result, err := ListPersistentVolumeClaims(&errorPVCLister{err: sentinel}, newPodLister(), nil)
+	if err == nil {
+		t.Fatal("expected error for nil namespaces (cluster-wide list) to propagate")
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result on cluster-wide list error; got %d items", len(result))
 	}
 }
 

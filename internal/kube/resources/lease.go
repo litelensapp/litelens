@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"sort"
 	"time"
 
@@ -55,11 +56,25 @@ func toLease(l *coordinationv1.Lease) dto.Lease {
 }
 
 func ListLeases(lister listerscoordinationv1.LeaseLister, namespaces []string) ([]dto.Lease, error) {
-	leases, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var leases []*coordinationv1.Lease
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		leases = all
+	} else {
+		for _, ns := range namespaces {
+			nsLeases, err := lister.Leases(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListLeases: namespace %q: %v", ns, err)
+				continue
+			}
+			leases = append(leases, nsLeases...)
+		}
 	}
-	leases = filterByNamespaces(leases, namespaces)
 	result := make([]dto.Lease, len(leases))
 	for i, l := range leases {
 		result[i] = toLease(l)

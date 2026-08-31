@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -73,12 +74,26 @@ func toEndpoint(ep *corev1.Endpoints) dto.Endpoint {
 }
 
 func ListEndpoints(lister listerscorev1.EndpointsLister, namespaces []string) ([]dto.Endpoint, error) {
-	//nolint:SA1019 // legacy Endpoints API still supported alongside EndpointSlice (see ListEndpointSlices for the newer resource)
-	eps, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	//lint:ignore SA1019 legacy Endpoints API still supported alongside EndpointSlice (see ListEndpointSlices for the newer resource)
+	var eps []*corev1.Endpoints
+	if len(namespaces) == 0 {
+		allEps, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		eps = allEps
+	} else {
+		for _, ns := range namespaces {
+			nsEps, err := lister.Endpoints(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListEndpoints: namespace %q: %v", ns, err)
+				continue
+			}
+			eps = append(eps, nsEps...)
+		}
 	}
-	eps = filterByNamespaces(eps, namespaces)
 	result := make([]dto.Endpoint, len(eps))
 	for i, ep := range eps {
 		result[i] = toEndpoint(ep)
@@ -86,7 +101,7 @@ func ListEndpoints(lister listerscorev1.EndpointsLister, namespaces []string) ([
 	return result, nil
 }
 
-func GetEndpointByName(lister listerscorev1.EndpointsLister, namespace, name string) (dto.Endpoint, error) { //nolint:staticcheck
+func GetEndpointByName(lister listerscorev1.EndpointsLister, namespace, name string) (dto.Endpoint, error) {
 	ep, err := lister.Endpoints(namespace).Get(name)
 	if err != nil {
 		return dto.Endpoint{}, err

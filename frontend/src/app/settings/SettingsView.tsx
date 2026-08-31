@@ -21,16 +21,18 @@ export const SettingsView: FC<{
 
   const [section, setSection] = useState<Section>(initialSection);
 
+  const pluginTab = pluginTabs.find((tab) => tab.id === section);
+
   // Derived every render (not just at mount) so a sandbox selection is never
   // shown once private repo access resolves to disabled, without needing an
-  // effect to reset state. Similarly, if marketplace is disabled, redirect to welcome.
+  // effect to reset state. Similarly, if marketplace is disabled, or the
+  // selected section was a plugin tab that got disabled/removed, redirect to welcome.
   const displaySection =
     (section === "sandbox" && !isPrivateRepoAccess) ||
-    (section === "marketplace" && !isMarketplaceEnabled)
+    (section === "marketplace" && !isMarketplaceEnabled) ||
+    (!isBuiltinSection(section) && !pluginTab)
       ? "welcome"
       : section;
-
-  const pluginTab = pluginTabs.find((tab) => tab.id === displaySection);
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">

@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -32,11 +33,25 @@ func GetServiceAccountByName(saLister listerscorev1.ServiceAccountLister, namesp
 }
 
 func ListServiceAccounts(saLister listerscorev1.ServiceAccountLister, namespaces []string) ([]dto.ServiceAccount, error) {
-	sas, err := saLister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var sas []*corev1.ServiceAccount
+	if len(namespaces) == 0 {
+		all, err := saLister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		sas = all
+	} else {
+		for _, ns := range namespaces {
+			nsSas, err := saLister.ServiceAccounts(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListServiceAccounts: namespace %q: %v", ns, err)
+				continue
+			}
+			sas = append(sas, nsSas...)
+		}
 	}
-	sas = filterByNamespaces(sas, namespaces)
 	result := make([]dto.ServiceAccount, len(sas))
 	for i, sa := range sas {
 		result[i] = toServiceAccount(sa)

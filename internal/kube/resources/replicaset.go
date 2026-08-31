@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -110,11 +111,25 @@ func GetReplicaSetByName(lister listersappsv1.ReplicaSetLister, namespace, name 
 }
 
 func ListReplicaSets(lister listersappsv1.ReplicaSetLister, namespaces []string) ([]dto.ReplicaSet, error) {
-	rss, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var rss []*appsv1.ReplicaSet
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		rss = all
+	} else {
+		for _, ns := range namespaces {
+			nsRss, err := lister.ReplicaSets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListReplicaSets: namespace %q: %v", ns, err)
+				continue
+			}
+			rss = append(rss, nsRss...)
+		}
 	}
-	rss = filterByNamespaces(rss, namespaces)
 	result := make([]dto.ReplicaSet, len(rss))
 	for i, rs := range rss {
 		result[i] = toReplicaSet(rs)

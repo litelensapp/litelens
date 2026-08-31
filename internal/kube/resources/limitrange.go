@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -18,11 +19,25 @@ func toLimitRange(lr *corev1.LimitRange) dto.LimitRange {
 }
 
 func ListLimitRanges(lister listerscorev1.LimitRangeLister, namespaces []string) ([]dto.LimitRange, error) {
-	lrs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var lrs []*corev1.LimitRange
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		lrs = all
+	} else {
+		for _, ns := range namespaces {
+			nsLrs, err := lister.LimitRanges(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListLimitRanges: namespace %q: %v", ns, err)
+				continue
+			}
+			lrs = append(lrs, nsLrs...)
+		}
 	}
-	lrs = filterByNamespaces(lrs, namespaces)
 	result := make([]dto.LimitRange, len(lrs))
 	for i, lr := range lrs {
 		result[i] = toLimitRange(lr)

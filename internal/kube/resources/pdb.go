@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"maps"
 	"time"
 
@@ -33,11 +34,25 @@ func toPodDisruptionBudget(pdb *policyv1.PodDisruptionBudget) dto.PodDisruptionB
 }
 
 func ListPodDisruptionBudgets(lister listerspolicyv1.PodDisruptionBudgetLister, namespaces []string) ([]dto.PodDisruptionBudget, error) {
-	pdbs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var pdbs []*policyv1.PodDisruptionBudget
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		pdbs = all
+	} else {
+		for _, ns := range namespaces {
+			nsPdbs, err := lister.PodDisruptionBudgets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListPodDisruptionBudgets: namespace %q: %v", ns, err)
+				continue
+			}
+			pdbs = append(pdbs, nsPdbs...)
+		}
 	}
-	pdbs = filterByNamespaces(pdbs, namespaces)
 	result := make([]dto.PodDisruptionBudget, len(pdbs))
 	for i, pdb := range pdbs {
 		result[i] = toPodDisruptionBudget(pdb)

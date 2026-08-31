@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"context"
+	"log"
 	"sort"
 	"time"
 
@@ -39,11 +40,25 @@ func toConfigMap(cm *corev1.ConfigMap) dto.ConfigMap {
 }
 
 func ListConfigMaps(lister listerscorev1.ConfigMapLister, namespaces []string) ([]dto.ConfigMap, error) {
-	cms, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var cms []*corev1.ConfigMap
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		cms = all
+	} else {
+		for _, ns := range namespaces {
+			nsCms, err := lister.ConfigMaps(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListConfigMaps: namespace %q: %v", ns, err)
+				continue
+			}
+			cms = append(cms, nsCms...)
+		}
 	}
-	cms = filterByNamespaces(cms, namespaces)
 	result := make([]dto.ConfigMap, len(cms))
 	for i, cm := range cms {
 		result[i] = toConfigMap(cm)

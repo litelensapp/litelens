@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/config"
-	"github.com/litelensapp/litelens/internal/lib/ratelimiter"
+	"github.com/litelensapp/litelens/internal/lib/github_release"
 	"golang.org/x/mod/semver"
 )
 
@@ -36,13 +36,9 @@ func fetchManifestAuthenticated(ctx context.Context, assets []Asset, token strin
 		return nil, fmt.Errorf("fetch manifest: manifest.json not found in release assets")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, nil)
+	req, err := githubrelease.NewAssetRequest(ctx, manifestURL, token)
 	if err != nil {
 		return nil, fmt.Errorf("build manifest request: %w", err)
-	}
-	req.Header.Set("Accept", "application/octet-stream")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -76,13 +72,10 @@ func checkAuthenticated(current, token string) (*Release, error) {
 	defer cancel()
 
 	url := getReleasesLatestUrl()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := githubrelease.NewAPIRequest(ctx, url, token)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -90,11 +83,8 @@ func checkAuthenticated(current, token string) (*Release, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusForbidden {
-			return nil, ratelimiter.BuildError(resp)
-		}
-		return nil, fmt.Errorf("fetch latest release: HTTP %d", resp.StatusCode)
+	if err := githubrelease.CheckAPIResponse(resp); err != nil {
+		return nil, fmt.Errorf("fetch latest release: %w", err)
 	}
 
 	var rel Release
@@ -151,24 +141,18 @@ func fetchReleaseAuthenticated(tag, token string) (*Release, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := githubrelease.NewAPIRequest(ctx, url, token)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch release: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusForbidden {
-			return nil, ratelimiter.BuildError(resp)
-		}
-		return nil, fmt.Errorf("github API returned HTTP %d", resp.StatusCode)
+	if err := githubrelease.CheckAPIResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var rel Release
