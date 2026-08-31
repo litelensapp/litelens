@@ -71,9 +71,12 @@ func TestListDeployments_EmptyLister_ReturnsNonNilEmptySlice(t *testing.T) {
 
 func TestListDeployments_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListDeployments(&errorDeploymentLister{err: sentinel}, nil)
-	if !errors.Is(err, sentinel) {
-		t.Errorf("expected sentinel error; got %v", err)
+	result, err := ListDeployments(&errorDeploymentLister{err: sentinel}, nil)
+	if err == nil {
+		t.Fatal("expected error for nil namespaces (cluster-wide list) to propagate")
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result on cluster-wide list error; got %d items", len(result))
 	}
 }
 

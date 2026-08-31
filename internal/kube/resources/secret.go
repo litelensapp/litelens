@@ -3,6 +3,7 @@ package kubeResources
 import (
 	"encoding/base64"
 	"fmt"
+	"log"
 	"maps"
 	"sort"
 	"time"
@@ -40,11 +41,25 @@ func toSecret(s *corev1.Secret) dto.Secret {
 }
 
 func ListSecrets(lister listerscorev1.SecretLister, namespaces []string) ([]dto.Secret, error) {
-	secrets, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var secrets []*corev1.Secret
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		secrets = all
+	} else {
+		for _, ns := range namespaces {
+			nsSecrets, err := lister.Secrets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListSecrets: namespace %q: %v", ns, err)
+				continue
+			}
+			secrets = append(secrets, nsSecrets...)
+		}
 	}
-	secrets = filterByNamespaces(secrets, namespaces)
 	result := make([]dto.Secret, len(secrets))
 	for i, s := range secrets {
 		result[i] = toSecret(s)

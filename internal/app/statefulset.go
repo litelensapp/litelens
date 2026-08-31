@@ -46,23 +46,25 @@ func (a *App) GetStatefulSetsSummary() (dto.StatefulSetSummary, error) {
 		return dto.StatefulSetSummary{}, nil
 	}
 	lister := h.Factory.Apps().V1().StatefulSets().Lister()
-	sss, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetStatefulSetsSummary: %v", err)
-		return dto.StatefulSetSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var sss []*appsv1.StatefulSet
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetStatefulSetsSummary: %v", err)
+			return dto.StatefulSetSummary{}, nil
+		}
+		sss = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := sss[:0:0]
-		for _, ss := range sss {
-			if _, ok := nsSet[ss.Namespace]; ok {
-				filtered = append(filtered, ss)
+			nsStatefulSets, err := lister.StatefulSets(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetStatefulSetsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			sss = append(sss, nsStatefulSets...)
 		}
-		sss = filtered
 	}
 	return kubeResources.SummarizeStatefulSets(sss), nil
 }

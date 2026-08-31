@@ -58,23 +58,25 @@ func (a *App) GetPodsSummary() (dto.PodSummary, error) {
 		return dto.PodSummary{}, nil
 	}
 	lister := h.Factory.Core().V1().Pods().Lister()
-	pods, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetPodsSummary: %v", err)
-		return dto.PodSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var pods []*corev1.Pod
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetPodsSummary: %v", err)
+			return dto.PodSummary{}, nil
+		}
+		pods = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := pods[:0:0]
-		for _, p := range pods {
-			if _, ok := nsSet[p.Namespace]; ok {
-				filtered = append(filtered, p)
+			nsPods, err := lister.Pods(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetPodsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			pods = append(pods, nsPods...)
 		}
-		pods = filtered
 	}
 	return kubeResources.SummarizePods(pods), nil
 }

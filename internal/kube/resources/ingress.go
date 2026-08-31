@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"maps"
 	"strings"
 	"time"
@@ -61,11 +62,25 @@ func toIngress(ing *networkingv1.Ingress) dto.Ingress {
 }
 
 func ListIngresses(lister listersnetworkingv1.IngressLister, namespaces []string) ([]dto.Ingress, error) {
-	ings, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var ings []*networkingv1.Ingress
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		ings = all
+	} else {
+		for _, ns := range namespaces {
+			nsIngs, err := lister.Ingresses(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListIngresses: namespace %q: %v", ns, err)
+				continue
+			}
+			ings = append(ings, nsIngs...)
+		}
 	}
-	ings = filterByNamespaces(ings, namespaces)
 	result := make([]dto.Ingress, len(ings))
 	for i, ing := range ings {
 		result[i] = toIngress(ing)

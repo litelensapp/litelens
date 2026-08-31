@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"maps"
 	"strings"
 	"time"
@@ -121,11 +122,25 @@ func GetServiceByName(lister listerscorev1.ServiceLister, namespace, name string
 }
 
 func ListServices(lister listerscorev1.ServiceLister, namespaces []string) ([]dto.Service, error) {
-	svcs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var svcs []*corev1.Service
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		svcs = all
+	} else {
+		for _, ns := range namespaces {
+			nsSvcs, err := lister.Services(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListServices: namespace %q: %v", ns, err)
+				continue
+			}
+			svcs = append(svcs, nsSvcs...)
+		}
 	}
-	svcs = filterByNamespaces(svcs, namespaces)
 	result := make([]dto.Service, len(svcs))
 	for i, s := range svcs {
 		result[i] = toService(s)

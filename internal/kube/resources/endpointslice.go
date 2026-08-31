@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -82,11 +83,25 @@ func toEndpointSlice(es *discoveryv1.EndpointSlice) dto.EndpointSlice {
 }
 
 func ListEndpointSlices(lister discoveryv1listers.EndpointSliceLister, namespaces []string) ([]dto.EndpointSlice, error) {
-	ess, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var ess []*discoveryv1.EndpointSlice
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		ess = all
+	} else {
+		for _, ns := range namespaces {
+			nsEss, err := lister.EndpointSlices(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListEndpointSlices: namespace %q: %v", ns, err)
+				continue
+			}
+			ess = append(ess, nsEss...)
+		}
 	}
-	ess = filterByNamespaces(ess, namespaces)
 	result := make([]dto.EndpointSlice, len(ess))
 	for i, es := range ess {
 		result[i] = toEndpointSlice(es)

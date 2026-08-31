@@ -47,23 +47,25 @@ func (a *App) GetJobsSummary() (dto.JobSummary, error) {
 		return dto.JobSummary{}, nil
 	}
 	lister := h.Factory.Batch().V1().Jobs().Lister()
-	jobs, err := lister.List(labels.Everything())
-	if err != nil {
-		log.Printf("app: GetJobsSummary: %v", err)
-		return dto.JobSummary{}, nil
-	}
-	if len(namespaces) > 0 {
-		nsSet := make(map[string]struct{}, len(namespaces))
+	var jobs []*batchv1.Job
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			log.Printf("app: GetJobsSummary: %v", err)
+			return dto.JobSummary{}, nil
+		}
+		jobs = all
+	} else {
 		for _, ns := range namespaces {
-			nsSet[ns] = struct{}{}
-		}
-		filtered := jobs[:0:0]
-		for _, j := range jobs {
-			if _, ok := nsSet[j.Namespace]; ok {
-				filtered = append(filtered, j)
+			nsJobs, err := lister.Jobs(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("app: GetJobsSummary: namespace %q: %v", ns, err)
+				continue
 			}
+			jobs = append(jobs, nsJobs...)
 		}
-		jobs = filtered
 	}
 	return kubeResources.SummarizeJobs(jobs), nil
 }

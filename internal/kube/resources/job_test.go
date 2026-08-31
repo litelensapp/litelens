@@ -45,17 +45,17 @@ func TestListJobs_SingleNamespace(t *testing.T) {
 	}
 }
 
-func TestListJobs_EmptyNamespaceReturnsAll(t *testing.T) {
+func TestListJobs_EmptyNamespace_ReturnsEmpty(t *testing.T) {
 	job1 := makeJob("job-a", "ns-a")
 	job2 := makeJob("job-b", "ns-b")
 	lister := newJobLister(job1, job2)
 
 	result, err := ListJobs(lister, nil)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Errorf("expected no error for nil namespaces; got %v", err)
 	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 results, got %d", len(result))
+		t.Errorf("expected 2 items (cluster-wide list) for nil namespaces; got %d items", len(result))
 	}
 }
 

@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"log"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -18,11 +19,25 @@ func toResourceQuota(rq *corev1.ResourceQuota) dto.ResourceQuota {
 }
 
 func ListResourceQuotas(lister listerscorev1.ResourceQuotaLister, namespaces []string) ([]dto.ResourceQuota, error) {
-	rqs, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var rqs []*corev1.ResourceQuota
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		rqs = all
+	} else {
+		for _, ns := range namespaces {
+			nsRqs, err := lister.ResourceQuotas(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListResourceQuotas: namespace %q: %v", ns, err)
+				continue
+			}
+			rqs = append(rqs, nsRqs...)
+		}
 	}
-	rqs = filterByNamespaces(rqs, namespaces)
 	result := make([]dto.ResourceQuota, len(rqs))
 	for i, rq := range rqs {
 		result[i] = toResourceQuota(rq)

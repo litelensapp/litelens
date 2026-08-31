@@ -66,17 +66,17 @@ func TestListConfigMaps_SingleNamespace(t *testing.T) {
 	}
 }
 
-func TestListConfigMaps_EmptyNamespaceReturnsAll(t *testing.T) {
+func TestListConfigMaps_EmptyNamespace_ReturnsEmpty(t *testing.T) {
 	cm1 := makeConfigMap("cm-a", "ns-a")
 	cm2 := makeConfigMap("cm-b", "ns-b")
 	lister := newConfigMapLister(cm1, cm2)
 
 	result, err := ListConfigMaps(lister, nil)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Errorf("expected no error for nil namespaces; got %v", err)
 	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 results, got %d", len(result))
+		t.Errorf("expected 2 items (cluster-wide list) for nil namespaces; got %d items", len(result))
 	}
 }
 
@@ -114,17 +114,23 @@ func TestListConfigMaps_EmptyLister_ReturnsEmptySlice(t *testing.T) {
 
 func TestListConfigMaps_ErrorPropagation_ClusterScope(t *testing.T) {
 	sentinel := errors.New("store unavailable")
-	_, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, nil)
-	if !errors.Is(err, sentinel) {
-		t.Errorf("expected sentinel error; got %v", err)
+	result, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, nil)
+	if err == nil {
+		t.Fatal("expected error for nil namespaces (cluster-wide list) to propagate")
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result on cluster-wide list error; got %d items", len(result))
 	}
 }
 
 func TestListConfigMaps_ErrorPropagation_NamespacedScope(t *testing.T) {
 	sentinel := errors.New("namespace store unavailable")
-	_, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, []string{"default"})
-	if !errors.Is(err, sentinel) {
-		t.Errorf("expected sentinel error; got %v", err)
+	result, err := ListConfigMaps(&errorConfigMapLister{err: sentinel}, []string{"default"})
+	if err != nil {
+		t.Errorf("expected no error (per-namespace errors are tolerated); got %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result (error on only namespace); got %d items", len(result))
 	}
 }
 

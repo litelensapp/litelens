@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -211,11 +212,25 @@ func toHPA(hpa *autoscalingv2.HorizontalPodAutoscaler) dto.HPA {
 }
 
 func ListHPAs(lister listersautoscalingv2.HorizontalPodAutoscalerLister, namespaces []string) ([]dto.HPA, error) {
-	hpas, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var hpas []*autoscalingv2.HorizontalPodAutoscaler
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		hpas = all
+	} else {
+		for _, ns := range namespaces {
+			nsHpas, err := lister.HorizontalPodAutoscalers(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListHPAs: namespace %q: %v", ns, err)
+				continue
+			}
+			hpas = append(hpas, nsHpas...)
+		}
 	}
-	hpas = filterByNamespaces(hpas, namespaces)
 	result := make([]dto.HPA, len(hpas))
 	for i, hpa := range hpas {
 		result[i] = toHPA(hpa)

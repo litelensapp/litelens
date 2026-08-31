@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -146,11 +147,25 @@ func GetDeploymentByName(lister listersappsv1.DeploymentLister, namespace, name 
 }
 
 func ListDeployments(lister listersappsv1.DeploymentLister, namespaces []string) ([]dto.Deployment, error) {
-	deps, err := lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	var deps []*appsv1.Deployment
+	if len(namespaces) == 0 {
+		all, err := lister.List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+		deps = all
+	} else {
+		for _, ns := range namespaces {
+			nsDeployments, err := lister.Deployments(ns).List(labels.Everything())
+			if err != nil {
+				// Tolerate per-namespace errors (e.g., RBAC 403) but log them so
+				// genuine failures (API server errors, etc.) remain visible.
+				log.Printf("kubeResources: ListDeployments: namespace %q: %v", ns, err)
+				continue
+			}
+			deps = append(deps, nsDeployments...)
+		}
 	}
-	deps = filterByNamespaces(deps, namespaces)
 	result := make([]dto.Deployment, len(deps))
 	for i, d := range deps {
 		result[i] = toDeployment(d)
