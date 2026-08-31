@@ -26,14 +26,22 @@ import (
 // slow or wedged plugin process must never hang a cluster switch.
 const pluginAckTimeout = 2 * time.Second
 
-// runningPluginCount returns the number of currently-loaded plugin processes, used
-// as the "how many acks to expect" bound for PublishAndAwaitAck. Best-effort: a
-// plugin can start or exit between this read and the wait completing, so callers
-// must already treat a partial ack count as fail-open, not an error.
+// runningPluginCount returns the number of currently-alive plugin processes, used
+// as the "how many acks to expect" bound for PublishAndAwaitAck. Excludes disabled,
+// crashed, or not-yet-launched loaders — they hold no gRPC subscription and can
+// never ack, so counting them would just stall every wait until pluginAckTimeout.
+// Best-effort: a plugin can start or exit between this read and the wait completing,
+// so callers must already treat a partial ack count as fail-open, not an error.
 func (a *App) runningPluginCount() int {
 	a.pluginsMu.RLock()
 	defer a.pluginsMu.RUnlock()
-	return len(a.pluginLoaders)
+	count := 0
+	for _, loader := range a.pluginLoaders {
+		if loader.IsAlive() {
+			count++
+		}
+	}
+	return count
 }
 
 // clearPluginClusterState tells every running plugin to drop its cached
