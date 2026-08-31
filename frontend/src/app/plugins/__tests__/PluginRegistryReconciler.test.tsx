@@ -1,6 +1,6 @@
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PluginStylesheetsLoader } from "../PluginStylesheetsLoader";
+import { PluginRegistryReconciler } from "../PluginRegistryReconciler";
 
 const useGetInstalledPluginsMock = vi.hoisted(() => vi.fn());
 const loadPluginModuleMock = vi.hoisted(() => vi.fn());
@@ -8,6 +8,10 @@ const getStylesheetsMock = vi.hoisted(() => vi.fn());
 const getRegisteredPluginIdsMock = vi.hoisted(() => vi.fn());
 const unregisterStylesheetsMock = vi.hoisted(() => vi.fn());
 const ensurePluginStylesheetMock = vi.hoisted(() => vi.fn());
+const getRegisteredSettingsPluginIdsMock = vi.hoisted(() => vi.fn());
+const unregisterSettingsTabMock = vi.hoisted(() => vi.fn());
+const restoreAppWidePluginSnapshotMock = vi.hoisted(() => vi.fn());
+const captureAppWidePluginSnapshotMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../marketplace/hooks/data-access/useGetInstalledPlugins", () => ({
   useGetInstalledPlugins: useGetInstalledPluginsMock,
@@ -21,6 +25,18 @@ vi.mock("../hooks/registry/stylesheet/pluginStylesheetRegistry", () => ({
   },
 }));
 
+vi.mock("../hooks/registry/settings/pluginSettingsRegistry", () => ({
+  pluginSettingsRegistry: {
+    getRegisteredPluginIds: getRegisteredSettingsPluginIdsMock,
+    unregisterSettingsTab: unregisterSettingsTabMock,
+  },
+}));
+
+vi.mock("../pluginAppWideAssetSnapshot", () => ({
+  restoreAppWidePluginSnapshot: restoreAppWidePluginSnapshotMock,
+  captureAppWidePluginSnapshot: captureAppWidePluginSnapshotMock,
+}));
+
 vi.mock("../utils/ensurePluginStylesheet", () => ({
   ensurePluginStylesheet: ensurePluginStylesheetMock,
 }));
@@ -29,12 +45,14 @@ vi.mock("../utils/loadPluginModule", () => ({
   loadPluginModule: loadPluginModuleMock,
 }));
 
-describe("PluginStylesheetsLoader", () => {
+describe("PluginRegistryReconciler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     loadPluginModuleMock.mockResolvedValue({});
     ensurePluginStylesheetMock.mockResolvedValue(undefined);
     getRegisteredPluginIdsMock.mockReturnValue([]);
+    getRegisteredSettingsPluginIdsMock.mockReturnValue([]);
+    restoreAppWidePluginSnapshotMock.mockReturnValue(false);
   });
 
   it("loads each ready plugin's bundle and injects its registered stylesheets", async () => {
@@ -49,7 +67,7 @@ describe("PluginStylesheetsLoader", () => {
       pluginId === "helm" ? helmStylesheets : []
     );
 
-    render(<PluginStylesheetsLoader />);
+    render(<PluginRegistryReconciler />);
 
     await waitFor(() => {
       expect(loadPluginModuleMock).toHaveBeenCalledWith("helm", "abc123");
@@ -67,16 +85,47 @@ describe("PluginStylesheetsLoader", () => {
     });
     getRegisteredPluginIdsMock.mockReturnValue(["helm", "kube"]);
 
-    render(<PluginStylesheetsLoader />);
+    render(<PluginRegistryReconciler />);
 
     expect(unregisterStylesheetsMock).toHaveBeenCalledWith("kube");
     expect(unregisterStylesheetsMock).not.toHaveBeenCalledWith("helm");
   });
 
+  it("unregisters the settings tab for a plugin that is disabled/removed", () => {
+    useGetInstalledPluginsMock.mockReturnValue({
+      readyPlugins: [{ pluginId: "helm", bundleChecksum: "abc123" }],
+    });
+    getRegisteredSettingsPluginIdsMock.mockReturnValue(["helm", "kube"]);
+
+    render(<PluginRegistryReconciler />);
+
+    expect(unregisterSettingsTabMock).toHaveBeenCalledWith("kube");
+    expect(unregisterSettingsTabMock).not.toHaveBeenCalledWith("helm");
+  });
+
+  it("captures a snapshot after a fresh import and skips it when a snapshot was restored", async () => {
+    useGetInstalledPluginsMock.mockReturnValue({
+      readyPlugins: [
+        { pluginId: "helm", bundleChecksum: "abc123" },
+        { pluginId: "kube", bundleChecksum: "def456" },
+      ],
+    });
+    restoreAppWidePluginSnapshotMock.mockImplementation((pluginId: string) => pluginId === "kube");
+
+    render(<PluginRegistryReconciler />);
+
+    await waitFor(() => {
+      expect(restoreAppWidePluginSnapshotMock).toHaveBeenCalledWith("helm", "abc123");
+      expect(restoreAppWidePluginSnapshotMock).toHaveBeenCalledWith("kube", "def456");
+    });
+    expect(captureAppWidePluginSnapshotMock).toHaveBeenCalledWith("helm", "abc123");
+    expect(captureAppWidePluginSnapshotMock).not.toHaveBeenCalledWith("kube", "def456");
+  });
+
   it("does nothing when there are no ready plugins", () => {
     useGetInstalledPluginsMock.mockReturnValue({ readyPlugins: [] });
 
-    render(<PluginStylesheetsLoader />);
+    render(<PluginRegistryReconciler />);
 
     expect(loadPluginModuleMock).not.toHaveBeenCalled();
     expect(ensurePluginStylesheetMock).not.toHaveBeenCalled();
@@ -89,7 +138,7 @@ describe("PluginStylesheetsLoader", () => {
     });
     loadPluginModuleMock.mockRejectedValue(new Error("network error"));
 
-    render(<PluginStylesheetsLoader />);
+    render(<PluginRegistryReconciler />);
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(

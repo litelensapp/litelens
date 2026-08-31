@@ -23,6 +23,14 @@ class PluginSettingsRegistry {
     return this.snapshot;
   }
 
+  getRegisteredPluginIds(): string[] {
+    return Array.from(this.registry.keys());
+  }
+
+  getSettingsTab(pluginId: string): PluginSettingsTab | undefined {
+    return this.registry.get(pluginId);
+  }
+
   subscribeSettingsRegistry(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

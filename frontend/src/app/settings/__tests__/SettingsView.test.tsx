@@ -39,6 +39,12 @@ vi.mock("../hooks/data-access/useGetDefaultShell", () => ({
   useGetDefaultShell: useGetDefaultShellMock,
 }));
 
+const usePluginSettingsTabsMock = vi.hoisted(() => vi.fn(() => [] as unknown[]));
+
+vi.mock("../../plugins/hooks/registry/settings/usePluginSettingsTabs", () => ({
+  usePluginSettingsTabs: usePluginSettingsTabsMock,
+}));
+
 // Stub heavy content components so each section test is isolated
 vi.mock("../components/AppContent", () => ({
   AppContent: () => createElement("div", { "data-testid": "app-content" }),
@@ -98,6 +104,7 @@ beforeEach(() => {
   useGetSettingsMock.mockReturnValue({ data: undefined });
   useGetDefaultShellMock.mockReturnValue({ data: "/bin/zsh" });
   useMergeSettingsOnSaveMock.mockReturnValue(vi.fn().mockResolvedValue(undefined));
+  usePluginSettingsTabsMock.mockReturnValue([]);
 });
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -211,6 +218,42 @@ describe("SettingsView", () => {
       // Verify app content is rendered
       const appStub = screen.getByTestId("app-content");
       expect(appStub).toBeInTheDocument();
+    });
+  });
+
+  describe("plugin tabs", () => {
+    it("shows the plugin tab in the sidebar and its content when selected", () => {
+      usePluginSettingsTabsMock.mockReturnValue([
+        {
+          id: "helm",
+          label: "Helm",
+          component: () => createElement("div", { "data-testid": "helm-plugin-content" }),
+        },
+      ]);
+      renderSettings();
+      fireEvent.click(screen.getByText("Helm"));
+      expect(screen.getByTestId("helm-plugin-content")).toBeInTheDocument();
+    });
+
+    it("redirects to welcome and hides the sidebar entry when the active plugin tab disappears", () => {
+      usePluginSettingsTabsMock.mockReturnValue([
+        {
+          id: "helm",
+          label: "Helm",
+          component: () => createElement("div", { "data-testid": "helm-plugin-content" }),
+        },
+      ]);
+      const { rerender } = renderSettings("helm");
+      expect(screen.getByTestId("helm-plugin-content")).toBeInTheDocument();
+      expect(screen.getAllByText("Helm").length).toBeGreaterThan(0);
+
+      // Plugin gets disabled/removed: registry now reports no tabs.
+      usePluginSettingsTabsMock.mockReturnValue([]);
+      rerender(<SettingsView initialSection="helm" />);
+
+      expect(screen.queryByTestId("helm-plugin-content")).not.toBeInTheDocument();
+      expect(screen.queryByText("Helm")).not.toBeInTheDocument();
+      expect(screen.getByTestId("welcome-view")).toBeInTheDocument();
     });
   });
 
