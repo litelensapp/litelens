@@ -385,6 +385,9 @@ func TestDisablePlugin(t *testing.T) {
 // TestEnablePlugin verifies that EnablePlugin successfully enables a plugin,
 // persists the state, and changes status to READY.
 func TestEnablePlugin(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("mock plugin binary is a bash script; not runnable on windows")
+	}
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
 	t.Setenv("MARKETPLACE_ENABLED", "true")
@@ -402,7 +405,12 @@ func TestEnablePlugin(t *testing.T) {
 		binaryName += ".exe"
 	}
 	binaryPath := filepath.Join(pluginDir, binaryName)
-	if err := os.WriteFile(binaryPath, []byte("binary"), 0755); err != nil {
+	// A real (script) executable, not just a placeholder file: EnablePlugin now
+	// launches the plugin app-wide regardless of active context, so the binary
+	// must actually run and print a valid READY handshake for the test to reach
+	// the READY status it asserts.
+	mockScript := "#!/bin/bash\necho '{\"type\":\"READY\",\"version\":\"test\",\"httpPort\":19999}'\nsleep 3600\n"
+	if err := os.WriteFile(binaryPath, []byte(mockScript), 0755); err != nil {
 		t.Fatalf("failed to create binary: %v", err)
 	}
 
@@ -437,7 +445,8 @@ func TestEnablePlugin(t *testing.T) {
 		t.Fatalf("expected plugin to be DISABLED after restore, got %v", loader.Status())
 	}
 
-	// Enable the plugin (ctx is nil in test, so EventsEmit will be skipped; no active context, so launch is skipped)
+	// Enable the plugin (ctx is nil in test, so EventsEmit will be skipped; the
+	// plugin launches app-wide even with no active context)
 	err := app.EnablePlugin(pluginID)
 	if err != nil {
 		t.Fatalf("EnablePlugin failed: %v", err)
@@ -461,9 +470,13 @@ func TestEnablePlugin(t *testing.T) {
 	}
 }
 
-// TestEnablePluginWithoutActiveContextSkipsSilently verifies that EnablePlugin
-// gracefully handles missing active context without failing the enable operation.
-func TestEnablePluginWithoutActiveContextSkipsSilently(t *testing.T) {
+// TestEnablePluginWithoutActiveContextStillLaunches verifies that EnablePlugin
+// launches the plugin app-wide even with no active cluster context, and doesn't
+// fail the enable operation.
+func TestEnablePluginWithoutActiveContextStillLaunches(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("mock plugin binary is a bash script; not runnable on windows")
+	}
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
 	t.Setenv("MARKETPLACE_ENABLED", "true")
@@ -481,7 +494,10 @@ func TestEnablePluginWithoutActiveContextSkipsSilently(t *testing.T) {
 		binaryName += ".exe"
 	}
 	binaryPath := filepath.Join(pluginDir, binaryName)
-	if err := os.WriteFile(binaryPath, []byte("binary"), 0755); err != nil {
+	// A real (script) executable: EnablePlugin now launches the plugin
+	// unconditionally, so it must actually run and print a valid READY handshake.
+	mockScript := "#!/bin/bash\necho '{\"type\":\"READY\",\"version\":\"test\",\"httpPort\":19999}'\nsleep 3600\n"
+	if err := os.WriteFile(binaryPath, []byte(mockScript), 0755); err != nil {
 		t.Fatalf("failed to create binary: %v", err)
 	}
 
@@ -511,13 +527,13 @@ func TestEnablePluginWithoutActiveContextSkipsSilently(t *testing.T) {
 	app.mu.Unlock()
 	app.restoreInstalledPlugins()
 
-	// Enable without active context - should not error (ctx is nil in test, so EventsEmit will be skipped)
+	// Enable without active context - should not error, and should still launch
 	err := app.EnablePlugin(pluginID)
 	if err != nil {
 		t.Errorf("EnablePlugin should not error without active context, but got: %v", err)
 	}
 
-	// Verify status is still READY (launch was skipped, not failed)
+	// Verify status is READY (launch succeeded even with no active context)
 	app.pluginsMu.RLock()
 	statusAfterEnable := app.pluginLoaders[pluginID].Status()
 	app.pluginsMu.RUnlock()

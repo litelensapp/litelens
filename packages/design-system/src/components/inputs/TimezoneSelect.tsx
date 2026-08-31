@@ -1,17 +1,9 @@
-import { FC, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Button } from "../../atoms/button";
-import { CheckIcon, ChevronDownIcon, SearchIcon } from "../../atoms/icon";
+import { FC, useMemo, useState } from "react";
+import { SearchIcon } from "../../atoms/icon";
 import { Input } from "../../atoms/input";
-import { cn } from "../../utils/common";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../atoms/select";
 
 const TIMEZONES: string[] = Intl.supportedValuesOf("timeZone");
-
-interface DropdownRect {
-  top: number;
-  left: number;
-  width: number;
-}
 
 interface TimezoneSelectProps {
   value: string;
@@ -24,12 +16,7 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
   onChange,
   "aria-labelledby": ariaLabelledBy,
 }) => {
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [dropdownRect, setDropdownRect] = useState<DropdownRect | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(
     () =>
@@ -39,110 +26,43 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
     [search]
   );
 
-  function handleOpen() {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setDropdownRect({ top: rect.bottom + 4, left: rect.left, width: rect.width });
-    setSearch("");
-    setOpen(true);
-    // DOM doesn't exist until after re-render, so defer focus one frame
-    requestAnimationFrame(() => searchRef.current?.focus());
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function handlePointerDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target) || dropdownRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
-
   return (
-    <>
-      <Button
-        ref={triggerRef}
-        variant="outline"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-labelledby={ariaLabelledBy}
-        onClick={handleOpen}
-        className="w-full justify-between font-normal"
-      >
-        <span className="truncate">{value}</span>
-        <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
-      </Button>
-
-      {open &&
-        dropdownRect &&
-        createPortal(
-          <div
-            ref={dropdownRef}
-            style={{
-              position: "fixed",
-              top: dropdownRect.top,
-              left: dropdownRect.left,
-              width: dropdownRect.width,
-              zIndex: 50,
-            }}
-            className="flex flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10"
-          >
-            <div className="border-b p-1.5">
-              <div className="relative">
-                <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchRef}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search timezone…"
-                  className="pl-8 text-sm"
-                />
-              </div>
-            </div>
-            {/* Custom searchable combobox (icons, click handlers, filtering) — no native element
-                supports this, so role="listbox"/"option" is the correct WAI-ARIA pattern here,
-                not a candidate for <datalist>/<option>. */}
-            <div role="listbox" aria-label="Timezone" className="max-h-56 overflow-y-auto p-1">
-              {filtered.length === 0 ? (
-                <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-                  No timezone found.
-                </p>
-              ) : (
-                filtered.map((tz) => (
-                  <div
-                    key={tz}
-                    role="option"
-                    aria-selected={tz === value}
-                    tabIndex={-1}
-                    onClick={() => {
-                      onChange(tz);
-                      setOpen(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onChange(tz);
-                        setOpen(false);
-                      }
-                    }}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between rounded-md px-3 py-1.5 text-sm",
-                      tz === value
-                        ? "bg-accent text-accent-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    {tz}
-                    {tz === value && <CheckIcon className="size-3.5 shrink-0" />}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>,
-          document.body
+    <Select
+      value={value}
+      onValueChange={(v) => {
+        if (v) onChange(v);
+      }}
+      onOpenChange={(open) => {
+        if (!open) setSearch("");
+      }}
+    >
+      <SelectTrigger aria-labelledby={ariaLabelledBy} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent alignItemWithTrigger={false} className="max-h-72">
+        <div className="border-b p-1.5">
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              placeholder="Search timezone…"
+              className="pl-8 text-sm"
+            />
+          </div>
+        </div>
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-center text-sm text-muted-foreground">No timezone found.</p>
+        ) : (
+          filtered.map((tz) => (
+            <SelectItem key={tz} value={tz}>
+              {tz}
+            </SelectItem>
+          ))
         )}
-    </>
+      </SelectContent>
+    </Select>
   );
 };

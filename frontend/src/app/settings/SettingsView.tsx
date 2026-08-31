@@ -1,5 +1,6 @@
 import { cn } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { useState, type FC } from "react";
+import { usePluginSettingsTabs } from "../plugins/hooks/registry/settings/usePluginSettingsTabs";
 import { useIsMarketplaceEnabled } from "../shared/hooks/useIsMarketplaceEnabled";
 import { AppContent } from "./components/AppContent";
 import { K8sContent } from "./components/K8sContent";
@@ -7,7 +8,7 @@ import { MarketplaceContent } from "./components/MarketplaceContent";
 import { SandboxContent } from "./components/SandboxContent";
 import { SectionHeader } from "./components/SectionHeader";
 import { SettingsSidebar } from "./components/SettingsSidebar";
-import { Section, SECTION_HEADER } from "./components/types";
+import { Section, SECTION_HEADER, isBuiltinSection } from "./components/types";
 import { WelcomeView } from "./components/WelcomeView";
 import { useIsPrivateRepoAccess } from "./hooks/data-access/useIsPrivateRepoAccess";
 
@@ -16,6 +17,7 @@ export const SettingsView: FC<{
 }> = ({ initialSection = "welcome" }) => {
   const { data: isPrivateRepoAccess = true } = useIsPrivateRepoAccess();
   const isMarketplaceEnabled = useIsMarketplaceEnabled();
+  const pluginTabs = usePluginSettingsTabs();
 
   const [section, setSection] = useState<Section>(initialSection);
 
@@ -28,6 +30,8 @@ export const SettingsView: FC<{
       ? "welcome"
       : section;
 
+  const pluginTab = pluginTabs.find((tab) => tab.id === displaySection);
+
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <SettingsSidebar section={displaySection} onSelect={setSection} />
@@ -38,7 +42,13 @@ export const SettingsView: FC<{
           <WelcomeView />
         ) : (
           <>
-            <SectionHeader title={SECTION_HEADER[displaySection]} />
+            <SectionHeader
+              title={
+                isBuiltinSection(displaySection)
+                  ? SECTION_HEADER[displaySection]
+                  : pluginTab?.label || displaySection
+              }
+            />
             <div
               className={cn(
                 "flex flex-1 flex-col px-6 py-4",
@@ -49,6 +59,7 @@ export const SettingsView: FC<{
               {displaySection === "kubernetes" && <K8sContent />}
               {displaySection === "app" && <AppContent />}
               {displaySection === "marketplace" && <MarketplaceContent />}
+              {pluginTab && <pluginTab.component />}
             </div>
           </>
         )}
