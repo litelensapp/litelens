@@ -13,7 +13,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func newEndpoints(namespace, name string) *corev1.Endpoints { //nolint:staticcheck // SA1019: matches production glue, which targets the deprecated v1 API.
+//lint:ignore SA1019 matches production glue, which targets the deprecated v1 API.
+func newEndpoints(namespace, name string) *corev1.Endpoints {
+	//lint:ignore SA1019 matches production glue, which targets the deprecated v1 API.
 	return &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
 }
 

@@ -155,6 +155,7 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		&admissionregistrationv1.ValidatingWebhookConfiguration{},
 		&corev1.Service{},
 		&discoveryv1.EndpointSlice{},
+		//lint:ignore SA1019 kept alongside EndpointSlice for clusters/consumers still relying on the legacy Endpoints API.
 		&corev1.Endpoints{},
 		&networkingv1.Ingress{},
 		&networkingv1.IngressClass{},

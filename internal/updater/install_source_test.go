@@ -3,9 +3,49 @@ package updater
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/litelensapp/litelens/internal/storage"
 )
+
+// TestDetectInstallSource_PrefersPersistedMarker verifies that a marker
+// written by a post-install hook (e.g. the Homebrew cask's postflight) is
+// returned as-is, without running any runtime detection heuristics.
+func TestDetectInstallSource_PrefersPersistedMarker(t *testing.T) {
+	t.Cleanup(func() {
+		storage.SetRootDirOverride("")
+	})
+
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "install-source"), []byte("homebrew"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	storage.SetRootDirOverride(tmp)
+
+	if got := DetectInstallSource(); got != InstallSourceHomebrew {
+		t.Errorf("DetectInstallSource() = %q, want %q", got, InstallSourceHomebrew)
+	}
+}
+
+// TestDetectInstallSource_FallsBackWithoutMarker verifies that with no
+// persisted marker, detection falls through to the runtime heuristics
+// (which resolve to "manual" on a plain test environment).
+func TestDetectInstallSource_FallsBackWithoutMarker(t *testing.T) {
+	if runtime.GOOS == "darwin" && IsHomebrewCaskroomPath() {
+		t.Skip("this machine has litelens actually installed via Homebrew; runtime detection would legitimately return homebrew here")
+	}
+
+	t.Cleanup(func() {
+		storage.SetRootDirOverride("")
+	})
+	storage.SetRootDirOverride(t.TempDir())
+
+	if got := DetectInstallSource(); got != InstallSourceManual {
+		t.Errorf("DetectInstallSource() = %q, want %q", got, InstallSourceManual)
+	}
+}
 
 func TestIsHomebrewInstalled(t *testing.T) {
 	dirExists := func(path string) (os.FileInfo, error) {

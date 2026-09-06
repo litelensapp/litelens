@@ -10,12 +10,48 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
 	devMode         bool
 	rootDirOverride string
 )
+
+// installSourceFileName is the marker file a platform-specific post-install
+// hook (e.g. the Homebrew cask's postflight) writes to record which channel
+// installed the app. Runtime detection (internal/updater.DetectInstallSource)
+// can be fooled by app translocation, a PATH that excludes `brew`, or other
+// environment quirks at the moment the app happens to start; a marker written
+// directly by the installer at install time is authoritative and takes
+// precedence over that heuristic. The file holds nothing but the trimmed
+// source name (e.g. "homebrew").
+const installSourceFileName = "install-source"
+
+// ReadInstallSource returns the install-source marker persisted by a
+// post-install hook, if one exists. ok is false when no marker file is
+// present (or it's empty), signaling callers to fall back to runtime
+// detection instead.
+func ReadInstallSource() (source string, ok bool) {
+	data, err := os.ReadFile(Dir(installSourceFileName))
+	if err != nil {
+		return "", false
+	}
+	trimmed := strings.TrimSpace(string(data))
+	return trimmed, trimmed != ""
+}
+
+// ResetInstallSource removes the persisted install-source marker, so that
+// after an uninstall, a later install through a different channel isn't
+// stuck reporting the old one. Called from an installer's uninstall hook
+// (see the Homebrew cask's uninstall stanza).
+func ResetInstallSource() error {
+	err := os.Remove(Dir(installSourceFileName))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
 
 // SetDevMode enables or disables development mode. When enabled, Dir() resolves
 // to build/storage relative to the current working directory instead of ~/.litelens.

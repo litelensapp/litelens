@@ -46,7 +46,9 @@ type multiNamespaceEndpointsLister struct {
 	listers map[string]listerscorev1.EndpointsLister
 }
 
+//lint:ignore SA1019 matches production glue, which targets the deprecated v1 API.
 func (m *multiNamespaceEndpointsLister) List(selector labels.Selector) ([]*corev1.Endpoints, error) {
+	//lint:ignore SA1019 matches production glue, which targets the deprecated v1 API.
 	var all []*corev1.Endpoints
 	for _, l := range m.listers {
 		items, err := l.List(selector)
@@ -67,10 +69,12 @@ func (m *multiNamespaceEndpointsLister) Endpoints(namespace string) listerscorev
 
 type emptyEndpointsNamespaceLister struct{}
 
+//lint:ignore SA1019 matches production glue, which targets the deprecated v1 API.
 func (emptyEndpointsNamespaceLister) List(labels.Selector) ([]*corev1.Endpoints, error) {
 	return nil, nil
 }
 
+//lint:ignore SA1019 matches production glue, which targets the deprecated v1 API.
 func (emptyEndpointsNamespaceLister) Get(name string) (*corev1.Endpoints, error) {
 	return nil, apierrors.NewNotFound(corev1.Resource("endpoints"), name)
 }
