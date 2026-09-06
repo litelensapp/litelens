@@ -29,6 +29,12 @@ func NewClientset(contextName, httpProxy, httpsProxy string, kubeconfigPaths []s
 	}
 
 	restConfig.Proxy = ProxyFunc(httpProxy, httpsProxy)
+	// client-go defaults to QPS:5/Burst:10 when unset, which throttles this
+	// app's own requests — Connect() starts ~31 informers (each doing an
+	// initial LIST) off one shared clientset. Raise the ceiling so the host
+	// app doesn't self-throttle, in line with kubectl/Lens/k9s.
+	restConfig.QPS = 50
+	restConfig.Burst = 100
 
 	cs, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {

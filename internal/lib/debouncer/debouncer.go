@@ -6,7 +6,7 @@ import (
 )
 
 // DefaultDebounceInterval is the standard debounce window used for informer event handlers.
-const DefaultDebounceInterval = 300 * time.Millisecond
+const DefaultDebounceInterval = 200 * time.Millisecond
 
 type Debouncer struct {
 	mu         sync.Mutex

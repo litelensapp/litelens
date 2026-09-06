@@ -7,6 +7,19 @@ import (
 	"time"
 
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
+	coordinationv1 "k8s.io/api/coordination/v1"
+	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -18,11 +31,12 @@ type stopEntry struct {
 	once sync.Once
 }
 
-// ResyncStaggerInterval is the delay between successive informer starts in
-// NewFactoryHandle. Exported so tests (in this package and internal/app) can
-// shrink it — at the production value, with ~30 resources, the
-// last-registered resource ("events") wouldn't start syncing for ~9s.
-var ResyncStaggerInterval = 300 * time.Millisecond
+// ResyncJitterStep is the per-resource-type increment added to the base 30s
+// resync period (via informers.WithCustomResyncConfig) so every resource's
+// periodic full re-list doesn't land on the same wall-clock instant forever
+// after Connect(). Exported so tests can shrink it if a test ever needs to
+// assert on resync behavior directly (none currently do).
+var ResyncJitterStep = time.Second
 
 // FactoryHandle wraps a SharedInformerFactory with per-informer stop channels.
 type FactoryHandle struct {
@@ -61,7 +75,58 @@ func (h *FactoryHandle) StopResource(resource string, onForbidden func(string)) 
 // keys match the ViewType strings used by the frontend (e.g. "ingresses").
 // Call Stop() when the context is no longer active.
 func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)) *FactoryHandle {
-	factory := informers.NewSharedInformerFactory(cs, 30*time.Second)
+	// Order mirrors NAV_CORE in frontend/src/app/clusters/navConfig.ts (top-to-bottom,
+	// group-by-group). It no longer gates start time (see resyncConfig below) — it's
+	// kept only because resyncTypes below reuses it to assign each type a distinct
+	// resync period.
+	resyncTypes := []metav1.Object{
+		&corev1.Namespace{},
+		&corev1.Node{},
+		&corev1.Pod{},
+		&appsv1.Deployment{},
+		&appsv1.DaemonSet{},
+		&appsv1.StatefulSet{},
+		&appsv1.ReplicaSet{},
+		&batchv1.Job{},
+		&batchv1.CronJob{},
+		&corev1.ConfigMap{},
+		&corev1.Secret{},
+		&corev1.ResourceQuota{},
+		&corev1.LimitRange{},
+		&autoscalingv2.HorizontalPodAutoscaler{},
+		&policyv1.PodDisruptionBudget{},
+		&schedulingv1.PriorityClass{},
+		&coordinationv1.Lease{},
+		&admissionregistrationv1.ValidatingWebhookConfiguration{},
+		&corev1.Service{},
+		&discoveryv1.EndpointSlice{},
+		&corev1.Endpoints{},
+		&networkingv1.Ingress{},
+		&networkingv1.IngressClass{},
+		&networkingv1.NetworkPolicy{},
+		&corev1.PersistentVolumeClaim{},
+		&corev1.PersistentVolume{},
+		&storagev1.StorageClass{},
+		&corev1.ServiceAccount{},
+		&rbacv1.ClusterRole{},
+		&rbacv1.Role{},
+		&rbacv1.ClusterRoleBinding{},
+		&rbacv1.RoleBinding{},
+		&corev1.Event{},
+	}
+	// Give every resource type a distinct resync period (30s, 31s, 32s, ...)
+	// instead of staggering when each informer starts. This keeps informers'
+	// periodic full re-lists from landing on the same wall-clock instant
+	// forever after (which would otherwise burst every resource's UPDATE
+	// events through the frontend simultaneously every 30s on large
+	// clusters), without delaying any resource's *initial* sync — every
+	// informer now starts immediately, all at once.
+	resyncConfig := make(map[metav1.Object]time.Duration, len(resyncTypes))
+	for i, obj := range resyncTypes {
+		resyncConfig[obj] = 30*time.Second + time.Duration(i)*ResyncJitterStep
+	}
+	factory := informers.NewSharedInformerFactoryWithOptions(cs, 30*time.Second,
+		informers.WithCustomResyncConfig(resyncConfig))
 
 	h := &FactoryHandle{
 		Factory:      factory,
@@ -76,9 +141,6 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		resource string
 	}
 
-	// Order mirrors NAV_CORE in frontend/src/app/clusters/navConfig.ts (top-to-bottom,
-	// group-by-group) so the stagger delay below lines up with how soon each resource
-	// is likely to be viewed/needed after connecting, instead of an arbitrary order.
 	informerList := []entry{
 		{factory.Core().V1().Namespaces().Informer(), "namespaces"},
 		{factory.Core().V1().Nodes().Informer(), "nodes"},
@@ -134,24 +196,14 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		infToResource[e.inf] = resource
 	}
 
-	// Start each informer on its own stop channel, staggering start times so the
-	// informers' 30s resync tickers (which start when Run() is called and persist
-	// for the informer's lifetime) don't all land on the same instant — otherwise
-	// every resource's UPDATE events burst through the frontend's event handlers
-	// simultaneously every 30s, which can stall the UI on large clusters.
-	resyncStagger := ResyncStaggerInterval
-	for i, e := range informerList {
+	// Start every informer on its own stop channel immediately — the per-type
+	// resync jitter configured above (resyncConfig) is what keeps their
+	// periodic re-lists from landing simultaneously, so there's no need to
+	// delay any resource's initial LIST+WATCH.
+	for _, e := range informerList {
 		inf := e.inf
 		ch := h.stopChannels[e.resource].ch
-		delay := time.Duration(i) * resyncStagger
 		go func() {
-			if delay > 0 {
-				select {
-				case <-time.After(delay):
-				case <-ch:
-					return
-				}
-			}
 			inf.Run(ch)
 		}()
 	}
