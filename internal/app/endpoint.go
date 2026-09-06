@@ -19,7 +19,7 @@ func (a *App) ListEndpoints() ([]dto.Endpoint, error) {
 	if !waitForResourceSync(h, "endpoints") {
 		return []dto.Endpoint{}, nil
 	}
-	result, err := kubeResources.ListEndpoints(h.Factory.Core().V1().Endpoints().Lister(), namespaces)
+	result, err := kubeResources.ListEndpoints(h.EndpointsLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListEndpoints: %v", err)
 		return []dto.Endpoint{}, nil
@@ -32,7 +32,7 @@ func (a *App) GetEndpointByName(namespace, name string) (dto.Endpoint, error) {
 	if !waitForResourceSync(h, "endpoints") {
 		return dto.Endpoint{}, nil
 	}
-	result, err := kubeResources.GetEndpointByName(h.Factory.Core().V1().Endpoints().Lister(), namespace, name)
+	result, err := kubeResources.GetEndpointByName(h.EndpointsLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetEndpointByName: %v", err)
 		return dto.Endpoint{}, nil
@@ -86,7 +86,7 @@ func (a *App) emitEndpoints() {
 	if !waitForResourceSync(h, "endpoints") {
 		return
 	}
-	lister := h.Factory.Core().V1().Endpoints().Lister()
+	lister := h.EndpointsLister()
 	data, err := kubeResources.ListEndpoints(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitEndpoints: %v", err)

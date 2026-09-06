@@ -21,7 +21,7 @@ func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
 	if !waitForResourceSync(h, "limitranges") {
 		return []dto.LimitRange{}, nil
 	}
-	result, err := kubeResources.ListLimitRanges(h.Factory.Core().V1().LimitRanges().Lister(), namespaces)
+	result, err := kubeResources.ListLimitRanges(h.LimitRangeLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListLimitRanges: %v", err)
 		return []dto.LimitRange{}, nil
@@ -34,7 +34,7 @@ func (a *App) GetLimitRangeByName(namespace, name string) dto.LimitRangeDetail {
 	if !waitForResourceSync(h, "limitranges") {
 		return dto.LimitRangeDetail{}
 	}
-	result, err := kubeResources.GetLimitRangeByName(h.Factory.Core().V1().LimitRanges().Lister(), namespace, name)
+	result, err := kubeResources.GetLimitRangeByName(h.LimitRangeLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetLimitRangeByName: %v", err)
 		return dto.LimitRangeDetail{}
@@ -176,7 +176,7 @@ func (a *App) emitLimitRanges() {
 	if !waitForResourceSync(h, "limitranges") {
 		return
 	}
-	lister := h.Factory.Core().V1().LimitRanges().Lister()
+	lister := h.LimitRangeLister()
 	data, err := kubeResources.ListLimitRanges(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitLimitRanges: %v", err)

@@ -20,7 +20,7 @@ func (a *App) GetRoleByName(namespace, name string) (dto.Role, error) {
 		return dto.Role{}, nil
 	}
 	result, err := kubeResources.GetRoleByName(
-		h.Factory.Rbac().V1().Roles().Lister(),
+		h.RoleLister(),
 		namespace,
 		name,
 	)
@@ -37,7 +37,7 @@ func (a *App) ListRoles() ([]dto.Role, error) {
 		return []dto.Role{}, nil
 	}
 	result, err := kubeResources.ListRoles(
-		h.Factory.Rbac().V1().Roles().Lister(),
+		h.RoleLister(),
 		namespaces,
 	)
 	if err != nil {
@@ -52,7 +52,7 @@ func (a *App) emitRoles() {
 	if !waitForResourceSync(h, "roles") {
 		return
 	}
-	lister := h.Factory.Rbac().V1().Roles().Lister()
+	lister := h.RoleLister()
 	data, err := kubeResources.ListRoles(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitRoles: %v", err)

@@ -20,7 +20,7 @@ func (a *App) GetJobByName(namespace, name string) (dto.Job, error) {
 	if !waitForResourceSync(h, "jobs") {
 		return dto.Job{}, nil
 	}
-	result, err := kubeResources.GetJobByName(h.Factory.Batch().V1().Jobs().Lister(), namespace, name)
+	result, err := kubeResources.GetJobByName(h.JobLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetJobByName: %v", err)
 		return dto.Job{}, nil
@@ -33,7 +33,7 @@ func (a *App) ListJobs() ([]dto.Job, error) {
 	if !waitForResourceSync(h, "jobs") {
 		return []dto.Job{}, nil
 	}
-	result, err := kubeResources.ListJobs(h.Factory.Batch().V1().Jobs().Lister(), namespaces)
+	result, err := kubeResources.ListJobs(h.JobLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListJobs: %v", err)
 		return []dto.Job{}, nil
@@ -46,7 +46,7 @@ func (a *App) GetJobsSummary() (dto.JobSummary, error) {
 	if !waitForResourceSync(h, "jobs") {
 		return dto.JobSummary{}, nil
 	}
-	lister := h.Factory.Batch().V1().Jobs().Lister()
+	lister := h.JobLister()
 	var jobs []*batchv1.Job
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -75,7 +75,7 @@ func (a *App) emitJobs() {
 	if !waitForResourceSync(h, "jobs") {
 		return
 	}
-	lister := h.Factory.Batch().V1().Jobs().Lister()
+	lister := h.JobLister()
 	data, err := kubeResources.ListJobs(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitJobs: %v", err)

@@ -20,7 +20,7 @@ func (a *App) GetServiceAccountByName(namespace, name string) (dto.ServiceAccoun
 		return dto.ServiceAccount{}, nil
 	}
 	result, err := kubeResources.GetServiceAccountByName(
-		h.Factory.Core().V1().ServiceAccounts().Lister(),
+		h.ServiceAccountLister(),
 		namespace,
 		name,
 	)
@@ -37,7 +37,7 @@ func (a *App) ListServiceAccounts() ([]dto.ServiceAccount, error) {
 		return []dto.ServiceAccount{}, nil
 	}
 	result, err := kubeResources.ListServiceAccounts(
-		h.Factory.Core().V1().ServiceAccounts().Lister(),
+		h.ServiceAccountLister(),
 		namespaces,
 	)
 	if err != nil {
@@ -91,7 +91,7 @@ func (a *App) emitServiceAccounts() {
 	if !waitForResourceSync(h, "serviceaccounts") {
 		return
 	}
-	lister := h.Factory.Core().V1().ServiceAccounts().Lister()
+	lister := h.ServiceAccountLister()
 	data, err := kubeResources.ListServiceAccounts(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitServiceAccounts: %v", err)

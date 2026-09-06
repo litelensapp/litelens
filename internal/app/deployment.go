@@ -23,7 +23,7 @@ func (a *App) ListDeployments() ([]dto.Deployment, error) {
 	if !waitForResourceSync(h, "deployments") {
 		return []dto.Deployment{}, nil
 	}
-	result, err := kubeResources.ListDeployments(h.Factory.Apps().V1().Deployments().Lister(), namespaces)
+	result, err := kubeResources.ListDeployments(h.DeploymentLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListDeployments: %v", err)
 		return []dto.Deployment{}, nil
@@ -36,7 +36,7 @@ func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error
 	if !waitForResourceSync(h, "deployments") {
 		return dto.Deployment{}, nil
 	}
-	result, err := kubeResources.GetDeploymentByName(h.Factory.Apps().V1().Deployments().Lister(), namespace, name)
+	result, err := kubeResources.GetDeploymentByName(h.DeploymentLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetDeploymentByName: %v", err)
 		return dto.Deployment{}, nil
@@ -49,7 +49,7 @@ func (a *App) GetDeploymentsSummary() (dto.DeploymentSummary, error) {
 	if !waitForResourceSync(h, "deployments") {
 		return dto.DeploymentSummary{}, nil
 	}
-	lister := h.Factory.Apps().V1().Deployments().Lister()
+	lister := h.DeploymentLister()
 	var deps []*appsv1.Deployment
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -165,7 +165,7 @@ func (a *App) emitDeployments() {
 	if !waitForResourceSync(h, "deployments") {
 		return
 	}
-	lister := h.Factory.Apps().V1().Deployments().Lister()
+	lister := h.DeploymentLister()
 	data, err := kubeResources.ListDeployments(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitDeployments: %v", err)

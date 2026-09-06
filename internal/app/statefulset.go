@@ -20,7 +20,7 @@ func (a *App) GetStatefulSetByName(namespace, name string) (dto.StatefulSet, err
 	if !waitForResourceSync(h, "statefulsets") {
 		return dto.StatefulSet{}, nil
 	}
-	result, err := kubeResources.GetStatefulSetByName(h.Factory.Apps().V1().StatefulSets().Lister(), namespace, name)
+	result, err := kubeResources.GetStatefulSetByName(h.StatefulSetLister(), namespace, name)
 	if err != nil {
 		return dto.StatefulSet{}, err
 	}
@@ -32,7 +32,7 @@ func (a *App) ListStatefulSets() ([]dto.StatefulSet, error) {
 	if !waitForResourceSync(h, "statefulsets") {
 		return []dto.StatefulSet{}, nil
 	}
-	result, err := kubeResources.ListStatefulSets(h.Factory.Apps().V1().StatefulSets().Lister(), namespaces)
+	result, err := kubeResources.ListStatefulSets(h.StatefulSetLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListStatefulSets: %v", err)
 		return []dto.StatefulSet{}, nil
@@ -45,7 +45,7 @@ func (a *App) GetStatefulSetsSummary() (dto.StatefulSetSummary, error) {
 	if !waitForResourceSync(h, "statefulsets") {
 		return dto.StatefulSetSummary{}, nil
 	}
-	lister := h.Factory.Apps().V1().StatefulSets().Lister()
+	lister := h.StatefulSetLister()
 	var sss []*appsv1.StatefulSet
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -115,7 +115,7 @@ func (a *App) emitStatefulSets() {
 	if !waitForResourceSync(h, "statefulsets") {
 		return
 	}
-	lister := h.Factory.Apps().V1().StatefulSets().Lister()
+	lister := h.StatefulSetLister()
 	data, err := kubeResources.ListStatefulSets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitStatefulSets: %v", err)

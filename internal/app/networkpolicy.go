@@ -19,7 +19,7 @@ func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
 	if !waitForResourceSync(h, "networkpolicies") {
 		return []dto.NetworkPolicy{}, nil
 	}
-	result, err := kubeResources.ListNetworkPolicies(h.Factory.Networking().V1().NetworkPolicies().Lister(), namespaces)
+	result, err := kubeResources.ListNetworkPolicies(h.NetworkPolicyLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListNetworkPolicies: %v", err)
 		return []dto.NetworkPolicy{}, nil
@@ -32,7 +32,7 @@ func (a *App) GetNetworkPolicyByName(namespace, name string) (*dto.NetworkPolicy
 	if !waitForResourceSync(h, "networkpolicies") {
 		return nil, nil
 	}
-	result, err := kubeResources.GetNetworkPolicyByName(h.Factory.Networking().V1().NetworkPolicies().Lister(), namespace, name)
+	result, err := kubeResources.GetNetworkPolicyByName(h.NetworkPolicyLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetNetworkPolicyByName: %v", err)
 		return nil, err
@@ -86,7 +86,7 @@ func (a *App) emitNetworkPolicies() {
 	if !waitForResourceSync(h, "networkpolicies") {
 		return
 	}
-	lister := h.Factory.Networking().V1().NetworkPolicies().Lister()
+	lister := h.NetworkPolicyLister()
 	data, err := kubeResources.ListNetworkPolicies(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitNetworkPolicies: %v", err)

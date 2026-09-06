@@ -23,7 +23,7 @@ func (a *App) ListDaemonSets() ([]dto.DaemonSet, error) {
 	if !waitForResourceSync(h, "daemonsets") {
 		return []dto.DaemonSet{}, nil
 	}
-	result, err := kubeResources.ListDaemonSets(h.Factory.Apps().V1().DaemonSets().Lister(), namespaces)
+	result, err := kubeResources.ListDaemonSets(h.DaemonSetLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListDaemonSets: %v", err)
 		return []dto.DaemonSet{}, nil
@@ -36,7 +36,7 @@ func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) 
 	if !waitForResourceSync(h, "daemonsets") {
 		return dto.DaemonSet{}, nil
 	}
-	result, err := kubeResources.GetDaemonSetByName(h.Factory.Apps().V1().DaemonSets().Lister(), namespace, name)
+	result, err := kubeResources.GetDaemonSetByName(h.DaemonSetLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetDaemonSetByName: %v", err)
 		return dto.DaemonSet{}, nil
@@ -49,7 +49,7 @@ func (a *App) GetDaemonSetsSummary() (dto.DaemonSetSummary, error) {
 	if !waitForResourceSync(h, "daemonsets") {
 		return dto.DaemonSetSummary{}, nil
 	}
-	lister := h.Factory.Apps().V1().DaemonSets().Lister()
+	lister := h.DaemonSetLister()
 	var dss []*appsv1.DaemonSet
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -145,7 +145,7 @@ func (a *App) emitDaemonSets() {
 	if !waitForResourceSync(h, "daemonsets") {
 		return
 	}
-	lister := h.Factory.Apps().V1().DaemonSets().Lister()
+	lister := h.DaemonSetLister()
 	data, err := kubeResources.ListDaemonSets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitDaemonSets: %v", err)

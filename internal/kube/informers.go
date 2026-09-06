@@ -22,8 +22,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	listersappsv1 "k8s.io/client-go/listers/apps/v1"
+	listersautoscalingv2 "k8s.io/client-go/listers/autoscaling/v2"
+	listersbatchv1 "k8s.io/client-go/listers/batch/v1"
+	listerscoordinationv1 "k8s.io/client-go/listers/coordination/v1"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	listersdiscoveryv1 "k8s.io/client-go/listers/discovery/v1"
+	listersnetworkingv1 "k8s.io/client-go/listers/networking/v1"
+	listerspolicyv1 "k8s.io/client-go/listers/policy/v1"
+	listersrbacv1 "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/litelensapp/litelens/internal/kube/nsscope"
 )
+
+// FactoryHandle's per-resource typed methods (RescopeXxx/SetXxxEventHandler/
+// XxxLister) and the initScopedResources bootstrap live in resources.go.
 
 // stopEntry pairs a stop channel with a sync.Once so the channel is closed at most once.
 type stopEntry struct {
@@ -48,13 +62,54 @@ type FactoryHandle struct {
 	debouncers   []*debouncer.Debouncer
 	synced       map[string]chan struct{}
 	syncedOnce   map[string]*sync.Once
+
+	cs          kubernetes.Interface
+	onForbidden func(resource string)
+
+	// The resources below are managed separately from the generic ones above
+	// (not in stopChannels/synced/syncedOnce) because their informer(s) can
+	// be rebuilt at runtime by their RescopeXxx method to trade one
+	// cluster-wide LIST for several namespace-scoped ones, via the generic
+	// nsscope engine. scoped indexes all of them by resource key for the
+	// bookkeeping methods below (StopResource/GetSyncedChan/Stop); the typed
+	// fields exist alongside it so Rescope/Lister methods can return
+	// resource-specific types.
+	scoped map[string]nsscopeResource
+
+	pod         *nsscope.ScopedResource[listerscorev1.PodLister]
+	deployment  *nsscope.ScopedResource[listersappsv1.DeploymentLister]
+	daemonset   *nsscope.ScopedResource[listersappsv1.DaemonSetLister]
+	statefulset *nsscope.ScopedResource[listersappsv1.StatefulSetLister]
+	replicaset  *nsscope.ScopedResource[listersappsv1.ReplicaSetLister]
+	job         *nsscope.ScopedResource[listersbatchv1.JobLister]
+	cronjob     *nsscope.ScopedResource[listersbatchv1.CronJobLister]
+
+	configmap      *nsscope.ScopedResource[listerscorev1.ConfigMapLister]
+	secret         *nsscope.ScopedResource[listerscorev1.SecretLister]
+	resourcequota  *nsscope.ScopedResource[listerscorev1.ResourceQuotaLister]
+	limitrange     *nsscope.ScopedResource[listerscorev1.LimitRangeLister]
+	hpa            *nsscope.ScopedResource[listersautoscalingv2.HorizontalPodAutoscalerLister]
+	pdb            *nsscope.ScopedResource[listerspolicyv1.PodDisruptionBudgetLister]
+	lease          *nsscope.ScopedResource[listerscoordinationv1.LeaseLister]
+	service        *nsscope.ScopedResource[listerscorev1.ServiceLister]
+	endpointslice  *nsscope.ScopedResource[listersdiscoveryv1.EndpointSliceLister]
+	endpoint       *nsscope.ScopedResource[listerscorev1.EndpointsLister]
+	ingress        *nsscope.ScopedResource[listersnetworkingv1.IngressLister]
+	networkpolicy  *nsscope.ScopedResource[listersnetworkingv1.NetworkPolicyLister]
+	pvc            *nsscope.ScopedResource[listerscorev1.PersistentVolumeClaimLister]
+	serviceaccount *nsscope.ScopedResource[listerscorev1.ServiceAccountLister]
+	role           *nsscope.ScopedResource[listersrbacv1.RoleLister]
+	rolebinding    *nsscope.ScopedResource[listersrbacv1.RoleBindingLister]
+	event          *nsscope.ScopedResource[listerscorev1.EventLister]
 }
 
 // StopResource closes the per-resource stop channel (at most once), records the
 // resource as forbidden, and calls onForbidden — unless Stop() has already fired.
 // Exported for testing edge cases.
 func (h *FactoryHandle) StopResource(resource string, onForbidden func(string)) {
-	if e, ok := h.stopChannels[resource]; ok {
+	if sr, ok := h.scoped[resource]; ok {
+		sr.Stop()
+	} else if e, ok := h.stopChannels[resource]; ok {
 		e.once.Do(func() { close(e.ch) })
 	}
 	h.forbidden.Store(resource, struct{}{})
@@ -134,6 +189,8 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		globalStop:   make(chan struct{}),
 		synced:       make(map[string]chan struct{}),
 		syncedOnce:   make(map[string]*sync.Once),
+		cs:           cs,
+		onForbidden:  onForbidden,
 	}
 
 	type entry struct {
@@ -141,40 +198,22 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		resource string
 	}
 
+	// Every namespaced resource type is deliberately absent here — their
+	// informer(s) are managed by their RescopeXxx method instead, so the
+	// namespace filter known at Connect time (or set later via
+	// SetActiveNamespaces) can avoid a cluster-wide LIST. See
+	// nsscope.NewPodsResource and its siblings. Only cluster-scoped
+	// resources (no namespace to scope by) remain generic below.
 	informerList := []entry{
 		{factory.Core().V1().Namespaces().Informer(), "namespaces"},
 		{factory.Core().V1().Nodes().Informer(), "nodes"},
-		{factory.Core().V1().Pods().Informer(), "pods"},
-		{factory.Apps().V1().Deployments().Informer(), "deployments"},
-		{factory.Apps().V1().DaemonSets().Informer(), "daemonsets"},
-		{factory.Apps().V1().StatefulSets().Informer(), "statefulsets"},
-		{factory.Apps().V1().ReplicaSets().Informer(), "replicasets"},
-		{factory.Batch().V1().Jobs().Informer(), "jobs"},
-		{factory.Batch().V1().CronJobs().Informer(), "cronjobs"},
-		{factory.Core().V1().ConfigMaps().Informer(), "configmaps"},
-		{factory.Core().V1().Secrets().Informer(), "secrets"},
-		{factory.Core().V1().ResourceQuotas().Informer(), "resourcequotas"},
-		{factory.Core().V1().LimitRanges().Informer(), "limitranges"},
-		{factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer(), "hpa"},
-		{factory.Policy().V1().PodDisruptionBudgets().Informer(), "pdbs"},
 		{factory.Scheduling().V1().PriorityClasses().Informer(), "priorityclasses"},
-		{factory.Coordination().V1().Leases().Informer(), "leases"},
 		{factory.Admissionregistration().V1().ValidatingWebhookConfigurations().Informer(), "validatingwebhookconfigs"},
-		{factory.Core().V1().Services().Informer(), "services"},
-		{factory.Discovery().V1().EndpointSlices().Informer(), "endpointslices"},
-		{factory.Core().V1().Endpoints().Informer(), "endpoints"},
-		{factory.Networking().V1().Ingresses().Informer(), "ingresses"},
 		{factory.Networking().V1().IngressClasses().Informer(), "ingressclasses"},
-		{factory.Networking().V1().NetworkPolicies().Informer(), "networkpolicies"},
-		{factory.Core().V1().PersistentVolumeClaims().Informer(), "pvcs"},
 		{factory.Core().V1().PersistentVolumes().Informer(), "pvs"},
 		{factory.Storage().V1().StorageClasses().Informer(), "storageclasses"},
-		{factory.Core().V1().ServiceAccounts().Informer(), "serviceaccounts"},
 		{factory.Rbac().V1().ClusterRoles().Informer(), "clusterroles"},
-		{factory.Rbac().V1().Roles().Informer(), "roles"},
 		{factory.Rbac().V1().ClusterRoleBindings().Informer(), "clusterrolebindings"},
-		{factory.Rbac().V1().RoleBindings().Informer(), "rolebindings"},
-		{factory.Core().V1().Events().Informer(), "events"},
 	}
 
 	// Allocate per-resource stop channels, sync channels, sync.Once, wire error handlers.
@@ -235,6 +274,10 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		}()
 	}
 
+	// Bootstrap each nsscope-managed resource (pods + workloads); see
+	// FactoryHandle.initScopedResources in resources.go.
+	h.initScopedResources()
+
 	return h
 }
 
@@ -247,6 +290,9 @@ func (h *FactoryHandle) GetSyncedChan(resource string) <-chan struct{} {
 		ch := make(chan struct{})
 		close(ch)
 		return ch
+	}
+	if sr, ok := h.scoped[resource]; ok {
+		return sr.SyncedChan()
 	}
 	if ch, ok := h.synced[resource]; ok {
 		return ch
@@ -280,5 +326,8 @@ func (h *FactoryHandle) Stop() {
 	h.globalOnce.Do(func() { close(h.globalStop) })
 	for _, se := range h.stopChannels {
 		se.once.Do(func() { close(se.ch) })
+	}
+	for _, sr := range h.scoped {
+		sr.Stop()
 	}
 }

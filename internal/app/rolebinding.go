@@ -20,7 +20,7 @@ func (a *App) GetRoleBindingByName(namespace, name string) (dto.RoleBinding, err
 		return dto.RoleBinding{}, nil
 	}
 	result, err := kubeResources.GetRoleBindingByName(
-		h.Factory.Rbac().V1().RoleBindings().Lister(),
+		h.RoleBindingLister(),
 		namespace,
 		name,
 	)
@@ -37,7 +37,7 @@ func (a *App) ListRoleBindings() ([]dto.RoleBinding, error) {
 		return []dto.RoleBinding{}, nil
 	}
 	result, err := kubeResources.ListRoleBindings(
-		h.Factory.Rbac().V1().RoleBindings().Lister(),
+		h.RoleBindingLister(),
 		namespaces,
 	)
 	if err != nil {
@@ -52,7 +52,7 @@ func (a *App) emitRoleBindings() {
 	if !waitForResourceSync(h, "rolebindings") {
 		return
 	}
-	lister := h.Factory.Rbac().V1().RoleBindings().Lister()
+	lister := h.RoleBindingLister()
 	data, err := kubeResources.ListRoleBindings(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitRoleBindings: %v", err)

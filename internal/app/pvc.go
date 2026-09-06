@@ -20,8 +20,8 @@ func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) 
 		return []dto.PersistentVolumeClaim{}, nil
 	}
 	result, err := kubeResources.ListPersistentVolumeClaims(
-		h.Factory.Core().V1().PersistentVolumeClaims().Lister(),
-		h.Factory.Core().V1().Pods().Lister(),
+		h.PersistentVolumeClaimLister(),
+		h.PodLister(),
 		namespaces,
 	)
 	if err != nil {
@@ -37,8 +37,8 @@ func (a *App) GetPersistentVolumeClaimByName(namespace, name string) (*dto.Persi
 		return &dto.PersistentVolumeClaimDetail{}, nil
 	}
 	result, err := kubeResources.GetPersistentVolumeClaimByName(
-		h.Factory.Core().V1().PersistentVolumeClaims().Lister(),
-		h.Factory.Core().V1().Pods().Lister(),
+		h.PersistentVolumeClaimLister(),
+		h.PodLister(),
 		namespace,
 		name,
 	)
@@ -54,8 +54,8 @@ func (a *App) emitPersistentVolumeClaims() {
 	if !waitForResourceSync(h, "pvcs") {
 		return
 	}
-	pvcLister := h.Factory.Core().V1().PersistentVolumeClaims().Lister()
-	podLister := h.Factory.Core().V1().Pods().Lister()
+	pvcLister := h.PersistentVolumeClaimLister()
+	podLister := h.PodLister()
 	data, err := kubeResources.ListPersistentVolumeClaims(pvcLister, podLister, namespaces)
 	if err != nil {
 		log.Printf("app: emitPersistentVolumeClaims: %v", err)

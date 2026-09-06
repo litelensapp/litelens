@@ -20,7 +20,7 @@ func (a *App) ListSecrets() ([]dto.Secret, error) {
 	if !waitForResourceSync(h, "secrets") {
 		return []dto.Secret{}, nil
 	}
-	result, err := kubeResources.ListSecrets(h.Factory.Core().V1().Secrets().Lister(), namespaces)
+	result, err := kubeResources.ListSecrets(h.SecretLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListSecrets: %v", err)
 		return []dto.Secret{}, nil
@@ -34,7 +34,7 @@ func (a *App) GetSecretByName(namespace, name string) (*dto.SecretDetail, error)
 		return &dto.SecretDetail{}, nil
 	}
 	result, err := kubeResources.GetSecretByName(
-		h.Factory.Core().V1().Secrets().Lister(),
+		h.SecretLister(),
 		namespace,
 		name,
 	)
@@ -113,7 +113,7 @@ func (a *App) emitSecrets() {
 	if !waitForResourceSync(h, "secrets") {
 		return
 	}
-	lister := h.Factory.Core().V1().Secrets().Lister()
+	lister := h.SecretLister()
 	data, err := kubeResources.ListSecrets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitSecrets: %v", err)

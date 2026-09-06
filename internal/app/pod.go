@@ -21,7 +21,7 @@ func (a *App) ListPods() ([]dto.Pod, error) {
 	if !waitForResourceSync(h, "pods") {
 		return []dto.Pod{}, nil
 	}
-	pods, err := kubeResources.ListPods(h.Factory.Core().V1().Pods().Lister(), namespaces)
+	pods, err := kubeResources.ListPods(h.PodLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListPods: %v", err)
 		return []dto.Pod{}, nil
@@ -44,7 +44,7 @@ func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 	if !waitForResourceSync(h, "pods") {
 		return dto.Pod{}, nil
 	}
-	result, err := kubeResources.GetPodByName(h.Factory.Core().V1().Pods().Lister(), namespace, name)
+	result, err := kubeResources.GetPodByName(h.PodLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetPodByName: %v", err)
 		return dto.Pod{}, nil
@@ -57,7 +57,7 @@ func (a *App) GetPodsSummary() (dto.PodSummary, error) {
 	if !waitForResourceSync(h, "pods") {
 		return dto.PodSummary{}, nil
 	}
-	lister := h.Factory.Core().V1().Pods().Lister()
+	lister := h.PodLister()
 	var pods []*corev1.Pod
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -93,7 +93,7 @@ func (a *App) emitPodsWithMetrics(allMetrics map[string]dto.PodUsage) {
 	if h == nil || h.IsForbidden("pods") {
 		return
 	}
-	lister := h.Factory.Core().V1().Pods().Lister()
+	lister := h.PodLister()
 
 	pods, err := kubeResources.ListPods(lister, namespaces)
 	if err != nil {

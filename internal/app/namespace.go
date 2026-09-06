@@ -210,7 +210,39 @@ func (a *App) SetActiveNamespaces(namespaces []string, seq int64) error {
 	}
 	a.activeNamespacesSeq = seq
 	a.activeNamespaces = namespaces
+	h := a.factories[a.activeContext]
 	a.mu.Unlock()
+
+	// Rescope the nsscope-managed informer(s) to the new namespace filter
+	// before emitting, so the emit calls below read from listers already
+	// scoped to match (or from the cache while it's still warming, same as
+	// every other resource's emit path). See FactoryHandle.RescopePods.
+	if h != nil {
+		h.RescopePods(namespaces)
+		h.RescopeDeployments(namespaces)
+		h.RescopeDaemonSets(namespaces)
+		h.RescopeStatefulSets(namespaces)
+		h.RescopeReplicaSets(namespaces)
+		h.RescopeJobs(namespaces)
+		h.RescopeCronJobs(namespaces)
+		h.RescopeConfigMaps(namespaces)
+		h.RescopeSecrets(namespaces)
+		h.RescopeResourceQuotas(namespaces)
+		h.RescopeLimitRanges(namespaces)
+		h.RescopeHorizontalPodAutoscalers(namespaces)
+		h.RescopePodDisruptionBudgets(namespaces)
+		h.RescopeLeases(namespaces)
+		h.RescopeServices(namespaces)
+		h.RescopeEndpointSlices(namespaces)
+		h.RescopeEndpoints(namespaces)
+		h.RescopeIngresses(namespaces)
+		h.RescopeNetworkPolicies(namespaces)
+		h.RescopePersistentVolumeClaims(namespaces)
+		h.RescopeServiceAccounts(namespaces)
+		h.RescopeRoles(namespaces)
+		h.RescopeRoleBindings(namespaces)
+		h.RescopeEvents(namespaces)
+	}
 
 	a.emitActiveNamespacesToPlugins(namespaces)
 
