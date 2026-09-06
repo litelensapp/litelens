@@ -20,7 +20,7 @@ func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
 	if !waitForResourceSync(h, "resourcequotas") {
 		return []dto.ResourceQuota{}, nil
 	}
-	result, err := kubeResources.ListResourceQuotas(h.Factory.Core().V1().ResourceQuotas().Lister(), namespaces)
+	result, err := kubeResources.ListResourceQuotas(h.ResourceQuotaLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListResourceQuotas: %v", err)
 		return []dto.ResourceQuota{}, nil
@@ -33,7 +33,7 @@ func (a *App) GetResourceQuotaByName(namespace, name string) (dto.ResourceQuotaD
 	if !waitForResourceSync(h, "resourcequotas") {
 		return dto.ResourceQuotaDetail{}, nil
 	}
-	result, err := kubeResources.GetResourceQuotaByName(h.Factory.Core().V1().ResourceQuotas().Lister(), namespace, name)
+	result, err := kubeResources.GetResourceQuotaByName(h.ResourceQuotaLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetResourceQuotaByName: %v", err)
 		return dto.ResourceQuotaDetail{}, nil
@@ -118,7 +118,7 @@ func (a *App) emitResourceQuotas() {
 	if !waitForResourceSync(h, "resourcequotas") {
 		return
 	}
-	lister := h.Factory.Core().V1().ResourceQuotas().Lister()
+	lister := h.ResourceQuotaLister()
 	data, err := kubeResources.ListResourceQuotas(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitResourceQuotas: %v", err)

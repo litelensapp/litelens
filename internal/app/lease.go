@@ -19,7 +19,7 @@ func (a *App) ListLeases() ([]dto.Lease, error) {
 	if !waitForResourceSync(h, "leases") {
 		return []dto.Lease{}, nil
 	}
-	result, err := kubeResources.ListLeases(h.Factory.Coordination().V1().Leases().Lister(), namespaces)
+	result, err := kubeResources.ListLeases(h.LeaseLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListLeases: %v", err)
 		return []dto.Lease{}, nil
@@ -32,7 +32,7 @@ func (a *App) GetLeaseByName(namespace, name string) (dto.Lease, error) {
 	if !waitForResourceSync(h, "leases") {
 		return dto.Lease{}, nil
 	}
-	result, err := kubeResources.GetLeaseByName(h.Factory.Coordination().V1().Leases().Lister(), namespace, name)
+	result, err := kubeResources.GetLeaseByName(h.LeaseLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetLeaseByName: %v", err)
 		return dto.Lease{}, nil
@@ -83,7 +83,7 @@ func (a *App) emitLeases() {
 	if !waitForResourceSync(h, "leases") {
 		return
 	}
-	lister := h.Factory.Coordination().V1().Leases().Lister()
+	lister := h.LeaseLister()
 	data, err := kubeResources.ListLeases(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitLeases: %v", err)

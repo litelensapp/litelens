@@ -19,7 +19,7 @@ func (a *App) ListIngresses() ([]dto.Ingress, error) {
 	if !waitForResourceSync(h, "ingresses") {
 		return []dto.Ingress{}, nil
 	}
-	result, err := kubeResources.ListIngresses(h.Factory.Networking().V1().Ingresses().Lister(), namespaces)
+	result, err := kubeResources.ListIngresses(h.IngressLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListIngresses: %v", err)
 		return []dto.Ingress{}, nil
@@ -32,7 +32,7 @@ func (a *App) GetIngressByName(namespace, name string) (dto.IngressDetail, error
 	if !waitForResourceSync(h, "ingresses") {
 		return dto.IngressDetail{}, nil
 	}
-	result, err := kubeResources.GetIngressByName(h.Factory.Networking().V1().Ingresses().Lister(), namespace, name)
+	result, err := kubeResources.GetIngressByName(h.IngressLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetIngressByName: %v", err)
 		return dto.IngressDetail{}, nil
@@ -86,7 +86,7 @@ func (a *App) emitIngresses() {
 	if !waitForResourceSync(h, "ingresses") {
 		return
 	}
-	lister := h.Factory.Networking().V1().Ingresses().Lister()
+	lister := h.IngressLister()
 	data, err := kubeResources.ListIngresses(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitIngresses: %v", err)

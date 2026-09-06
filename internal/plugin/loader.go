@@ -29,7 +29,8 @@ type PluginLoader struct {
 	id           string
 	binaryPath   string
 	lockFilePath string
-	mu           sync.Mutex
+	mu           sync.Mutex // protects the fields below; held only briefly, never across blocking I/O
+	launchMu     sync.Mutex // serializes Launch()/Shutdown() calls for this loader; may be held for the full spawn+handshake duration, but that must never block a mu-only reader like Status()/Progress()
 	status       dto.PluginStatus
 	progress     int // 0-100 download progress
 	pid          int // plugin subprocess PID, used for on-demand liveness checks
@@ -59,9 +60,18 @@ func NewPluginLoader(id string, binaryPath string) *PluginLoader {
 }
 
 // Launch starts or reuses a plugin instance with an optional kubeconfig path.
+//
+// Spawning the subprocess and waiting on its handshake is slow (process
+// start, macOS Gatekeeper's first-execution scan of a freshly-downloaded
+// binary, up to the 5s handshake timeout below) — potentially multiple
+// seconds. Only launchMu is held across that work; pl.mu is taken briefly
+// and released around each individual field read/write, so Status(),
+// Progress(), HTTPPort(), etc. never block behind an in-flight Launch().
+// launchMu itself still serializes concurrent Launch()/Shutdown() calls for
+// this loader, so only one subprocess is ever spawned at a time.
 func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error {
-	pl.mu.Lock()
-	defer pl.mu.Unlock()
+	pl.launchMu.Lock()
+	defer pl.launchMu.Unlock()
 
 	// Check if lock file exists with a live process. Liveness is PID-only —
 	// there is no network health check here; App.GetPluginBackendAddr does an
@@ -81,11 +91,15 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	// gRPC) while every Publish()-driven event silently vanished. Kill the
 	// orphan and fall through to a fresh spawn instead of adopting it.
 	if lockData, err := pl.readLockFile(); err == nil && lockData != nil {
+		pl.mu.Lock()
 		ownedByUs := pl.processCmd != nil && pl.processCmd.Process != nil && pl.processCmd.Process.Pid == lockData.PID
+		pl.mu.Unlock()
 		alive := isProcessAlive(lockData.PID)
 		if ownedByUs && alive {
+			pl.mu.Lock()
 			pl.pid = lockData.PID
 			pl.status = dto.PluginStatusReady
+			pl.mu.Unlock()
 			return nil
 		}
 		if alive && !ownedByUs {
@@ -106,10 +120,9 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	}
 	cmd := exec.CommandContext(ctx, pl.binaryPath, args...)
 
-	// Set environment variable for host gRPC port. pl.mu is already held for
-	// the duration of Launch() (see the defer at the top) — locking again here
-	// would deadlock since sync.Mutex is not reentrant.
+	pl.mu.Lock()
 	hostGRPCPort := pl.hostGRPCPort
+	pl.mu.Unlock()
 	if hostGRPCPort > 0 {
 		cmd.Env = append(os.Environ(), fmt.Sprintf("LITELENS_HOST_GRPC_PORT=%d", hostGRPCPort))
 	}
@@ -119,33 +132,33 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		pl.status = dto.PluginStatusCrashed
-		pl.lastError = fmt.Sprintf("stdout pipe: %v", err)
+		pl.setStatus(dto.PluginStatusCrashed, fmt.Sprintf("stdout pipe: %v", err))
 		return fmt.Errorf("plugin launch failed: %w", err)
 	}
 
 	// Set up stdin pipe for token delivery
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
-		pl.status = dto.PluginStatusCrashed
-		pl.lastError = fmt.Sprintf("stdin pipe: %v", err)
+		pl.setStatus(dto.PluginStatusCrashed, fmt.Sprintf("stdin pipe: %v", err))
 		return fmt.Errorf("plugin launch failed: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		pl.status = dto.PluginStatusCrashed
-		pl.lastError = fmt.Sprintf("start process: %v", err)
+		pl.setStatus(dto.PluginStatusCrashed, fmt.Sprintf("start process: %v", err))
 		return fmt.Errorf("plugin start failed: %w", err)
 	}
 
+	pl.mu.Lock()
 	pl.processCmd = cmd
-
 	// Remove any stale token from a previous run (e.g. crash-relaunch) before
 	// registering a new one — an old token must not remain valid indefinitely
 	// once its process is gone.
-	if pl.tokenManager != nil && pl.authToken != "" {
-		pl.tokenManager.RemoveToken(pl.authToken)
-		pl.authToken = ""
+	tokenManager := pl.tokenManager
+	staleToken := pl.authToken
+	pl.authToken = ""
+	pl.mu.Unlock()
+	if tokenManager != nil && staleToken != "" {
+		tokenManager.RemoveToken(staleToken)
 	}
 
 	// Generate and register authentication token before delivering it to the plugin.
@@ -153,15 +166,16 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	authToken, err := generateAuthToken()
 	if err != nil {
 		_ = cmd.Process.Kill()
-		pl.status = dto.PluginStatusCrashed
-		pl.lastError = fmt.Sprintf("generate auth token: %v", err)
+		pl.setStatus(dto.PluginStatusCrashed, fmt.Sprintf("generate auth token: %v", err))
 		return fmt.Errorf("generate auth token: %w", err)
 	}
+	pl.mu.Lock()
 	pl.authToken = authToken
+	pl.mu.Unlock()
 
 	// Register token before starting the plugin so it can authenticate immediately.
-	if pl.tokenManager != nil {
-		pl.tokenManager.RegisterToken(authToken, pl.id)
+	if tokenManager != nil {
+		tokenManager.RegisterToken(authToken, pl.id)
 	}
 
 	// Write token to plugin's stdin and close stdin.
@@ -200,19 +214,16 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 	select {
 	case <-readCtx.Done():
 		_ = cmd.Process.Kill()
-		pl.status = dto.PluginStatusCrashed
-		pl.lastError = "handshake timeout (5s)"
+		pl.setStatus(dto.PluginStatusCrashed, "handshake timeout (5s)")
 		return fmt.Errorf("plugin handshake timeout")
 	case err := <-errCh:
 		_ = cmd.Process.Kill()
-		pl.status = dto.PluginStatusCrashed
-		pl.lastError = err.Error()
+		pl.setStatus(dto.PluginStatusCrashed, err.Error())
 		return fmt.Errorf("read handshake: %w", err)
 	case handshake := <-handshakeCh:
 		if err := pl.validateHandshake(handshake); err != nil {
 			_ = cmd.Process.Kill()
-			pl.status = dto.PluginStatusCrashed
-			pl.lastError = err.Error()
+			pl.setStatus(dto.PluginStatusCrashed, err.Error())
 			return err
 		}
 
@@ -222,19 +233,25 @@ func (pl *PluginLoader) Launch(ctx context.Context, kubeconfigPath string) error
 		// Write lock file
 		if err := pl.writeLockFile(cmd.Process.Pid, httpPort); err != nil {
 			_ = cmd.Process.Kill()
-			pl.status = dto.PluginStatusCrashed
-			pl.lastError = fmt.Sprintf("write lock file: %v", err)
+			pl.setStatus(dto.PluginStatusCrashed, fmt.Sprintf("write lock file: %v", err))
 			return err
 		}
 
-		// pl.mu is already held for the duration of Launch() (see the defer at
-		// the top) — locking again here would deadlock since sync.Mutex is not
-		// reentrant.
+		pl.mu.Lock()
 		pl.pid = cmd.Process.Pid
-
 		pl.status = dto.PluginStatusReady
+		pl.mu.Unlock()
 		return nil
 	}
+}
+
+// setStatus records a crashed/errored status under pl.mu. Small helper so
+// each Launch() error path doesn't need its own lock/unlock pair.
+func (pl *PluginLoader) setStatus(status dto.PluginStatus, errMsg string) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	pl.status = status
+	pl.lastError = errMsg
 }
 
 // validateHandshake checks the handshake JSON for required fields and valid port.
@@ -400,29 +417,41 @@ func generateAuthToken() (string, error) {
 	return hex.EncodeToString(tokenBytes), nil
 }
 
-// Shutdown cleanly shuts down the plugin
+// Shutdown cleanly shuts down the plugin. Takes launchMu first so it can't
+// race an in-flight Launch() (e.g. killing a process Launch is still
+// handshaking with, then having Launch report it Ready again afterward);
+// pl.mu is only held briefly around field access, never across the blocking
+// Kill()/Wait(), so Status()/Progress() reads aren't held up by shutdown.
 func (pl *PluginLoader) Shutdown() error {
-	pl.mu.Lock()
-	defer pl.mu.Unlock()
+	pl.launchMu.Lock()
+	defer pl.launchMu.Unlock()
 
-	if pl.processCmd != nil && pl.processCmd.Process != nil {
-		_ = pl.processCmd.Process.Kill()
-		_ = pl.processCmd.Wait()
+	pl.mu.Lock()
+	cmd := pl.processCmd
+	tokenManager := pl.tokenManager
+	authToken := pl.authToken
+	pl.mu.Unlock()
+
+	if cmd != nil && cmd.Process != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}
 
 	// Remove the authentication token
-	if pl.tokenManager != nil && pl.authToken != "" {
-		pl.tokenManager.RemoveToken(pl.authToken)
+	if tokenManager != nil && authToken != "" {
+		tokenManager.RemoveToken(authToken)
 	}
 
 	_ = os.Remove(pl.lockFilePath)
 
 	// Reset state to allow relaunch
+	pl.mu.Lock()
 	pl.pid = 0
 	pl.processCmd = nil
 	pl.authToken = ""
 	pl.status = dto.PluginStatusNotInstalled
 	pl.lastError = ""
+	pl.mu.Unlock()
 
 	return nil
 }

@@ -19,7 +19,7 @@ func (a *App) ListEndpointSlices() ([]dto.EndpointSlice, error) {
 	if !waitForResourceSync(h, "endpointslices") {
 		return []dto.EndpointSlice{}, nil
 	}
-	result, err := kubeResources.ListEndpointSlices(h.Factory.Discovery().V1().EndpointSlices().Lister(), namespaces)
+	result, err := kubeResources.ListEndpointSlices(h.EndpointSliceLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListEndpointSlices: %v", err)
 		return []dto.EndpointSlice{}, nil
@@ -32,7 +32,7 @@ func (a *App) GetEndpointSliceByName(namespace, name string) (dto.EndpointSlice,
 	if !waitForResourceSync(h, "endpointslices") {
 		return dto.EndpointSlice{}, nil
 	}
-	result, err := kubeResources.GetEndpointSliceByName(h.Factory.Discovery().V1().EndpointSlices().Lister(), namespace, name)
+	result, err := kubeResources.GetEndpointSliceByName(h.EndpointSliceLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetEndpointSliceByName: %v", err)
 		return dto.EndpointSlice{}, nil
@@ -86,7 +86,7 @@ func (a *App) emitEndpointSlices() {
 	if !waitForResourceSync(h, "endpointslices") {
 		return
 	}
-	lister := h.Factory.Discovery().V1().EndpointSlices().Lister()
+	lister := h.EndpointSliceLister()
 	data, err := kubeResources.ListEndpointSlices(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitEndpointSlices: %v", err)

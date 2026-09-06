@@ -215,6 +215,48 @@ func TestSetRootDirOverride_IgnoredInDevMode(t *testing.T) {
 	}
 }
 
+// TestInstallSourceMarker verifies the read/reset round trip for the
+// install-source marker file written by post-install hooks (e.g. the
+// Homebrew cask's postflight).
+func TestInstallSourceMarker(t *testing.T) {
+	t.Cleanup(func() {
+		devMode = false
+		rootDirOverride = ""
+	})
+
+	tmp := t.TempDir()
+	SetDevMode(false)
+	SetRootDirOverride(tmp)
+
+	if source, ok := ReadInstallSource(); ok {
+		t.Errorf("ReadInstallSource() with no marker file: got (%q, true), want ok=false", source)
+	}
+
+	if err := os.MkdirAll(tmp, 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "install-source"), []byte("homebrew\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	source, ok := ReadInstallSource()
+	if !ok || source != "homebrew" {
+		t.Errorf("ReadInstallSource() = (%q, %v), want (\"homebrew\", true)", source, ok)
+	}
+
+	if err := ResetInstallSource(); err != nil {
+		t.Fatalf("ResetInstallSource: %v", err)
+	}
+	if source, ok := ReadInstallSource(); ok {
+		t.Errorf("ReadInstallSource() after reset: got (%q, true), want ok=false", source)
+	}
+
+	// Resetting an already-absent marker must not error.
+	if err := ResetInstallSource(); err != nil {
+		t.Errorf("ResetInstallSource() on absent marker: %v", err)
+	}
+}
+
 // TestSetRootDirOverride_WithPathElements verifies that SetRootDirOverride works
 // correctly when Dir() is called with additional path elements.
 func TestSetRootDirOverride_WithPathElements(t *testing.T) {

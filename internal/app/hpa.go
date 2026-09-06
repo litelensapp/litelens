@@ -20,7 +20,7 @@ func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
 		return dto.HPADetail{}, nil
 	}
 	result, err := kubeResources.GetHPAByName(
-		h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister(),
+		h.HorizontalPodAutoscalerLister(),
 		namespace,
 		name,
 	)
@@ -36,7 +36,7 @@ func (a *App) ListHPAs() ([]dto.HPA, error) {
 	if !waitForResourceSync(h, "hpa") {
 		return []dto.HPA{}, nil
 	}
-	result, err := kubeResources.ListHPAs(h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister(), namespaces)
+	result, err := kubeResources.ListHPAs(h.HorizontalPodAutoscalerLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListHPAs: %v", err)
 		return []dto.HPA{}, nil
@@ -49,7 +49,7 @@ func (a *App) emitHPAs() {
 	if !waitForResourceSync(h, "hpa") {
 		return
 	}
-	lister := h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Lister()
+	lister := h.HorizontalPodAutoscalerLister()
 	data, err := kubeResources.ListHPAs(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitHPAs: %v", err)

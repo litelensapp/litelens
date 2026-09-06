@@ -19,7 +19,7 @@ func (a *App) GetServiceByName(namespace, name string) (dto.Service, error) {
 	if h == nil {
 		return dto.Service{}, nil
 	}
-	result, err := kubeResources.GetServiceByName(h.Factory.Core().V1().Services().Lister(), namespace, name)
+	result, err := kubeResources.GetServiceByName(h.ServiceLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetServiceByName: %v", err)
 		return dto.Service{}, err
@@ -32,7 +32,7 @@ func (a *App) ListServices() ([]dto.Service, error) {
 	if !waitForResourceSync(h, "services") {
 		return []dto.Service{}, nil
 	}
-	result, err := kubeResources.ListServices(h.Factory.Core().V1().Services().Lister(), namespaces)
+	result, err := kubeResources.ListServices(h.ServiceLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListServices: %v", err)
 		return []dto.Service{}, nil
@@ -86,7 +86,7 @@ func (a *App) emitServices() {
 	if !waitForResourceSync(h, "services") {
 		return
 	}
-	lister := h.Factory.Core().V1().Services().Lister()
+	lister := h.ServiceLister()
 	data, err := kubeResources.ListServices(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitServices: %v", err)

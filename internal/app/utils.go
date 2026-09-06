@@ -7,22 +7,9 @@ import (
 
 	"github.com/litelensapp/litelens/internal/kube"
 	"k8s.io/apimachinery/pkg/api/errors"
-	kmeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
-
-// nsFromObj extracts the namespace from an informer event object or deletion tombstone.
-func nsFromObj(obj any) string {
-	if d, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-		obj = d.Obj
-	}
-	if o, err := kmeta.Accessor(obj); err == nil {
-		return o.GetNamespace()
-	}
-	return ""
-}
 
 func (a *App) isActive(ctx string) bool {
 	a.mu.RLock()

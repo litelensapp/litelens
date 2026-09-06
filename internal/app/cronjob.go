@@ -20,7 +20,7 @@ func (a *App) GetCronJobByName(namespace, name string) (dto.CronJob, error) {
 	if !waitForResourceSync(h, "cronjobs") {
 		return dto.CronJob{}, nil
 	}
-	result, err := kubeResources.GetCronJobByName(h.Factory.Batch().V1().CronJobs().Lister(), namespace, name)
+	result, err := kubeResources.GetCronJobByName(h.CronJobLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetCronJobByName: %v", err)
 		return dto.CronJob{}, nil
@@ -33,7 +33,7 @@ func (a *App) ListCronJobs() ([]dto.CronJob, error) {
 	if !waitForResourceSync(h, "cronjobs") {
 		return []dto.CronJob{}, nil
 	}
-	result, err := kubeResources.ListCronJobs(h.Factory.Batch().V1().CronJobs().Lister(), namespaces)
+	result, err := kubeResources.ListCronJobs(h.CronJobLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListCronJobs: %v", err)
 		return []dto.CronJob{}, nil
@@ -46,7 +46,7 @@ func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
 	if !waitForResourceSync(h, "cronjobs") {
 		return dto.CronJobSummary{}, nil
 	}
-	lister := h.Factory.Batch().V1().CronJobs().Lister()
+	lister := h.CronJobLister()
 	var cjs []*batchv1.CronJob
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -75,7 +75,7 @@ func (a *App) emitCronJobs() {
 	if !waitForResourceSync(h, "cronjobs") {
 		return
 	}
-	lister := h.Factory.Batch().V1().CronJobs().Lister()
+	lister := h.CronJobLister()
 	data, err := kubeResources.ListCronJobs(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitCronJobs: %v", err)

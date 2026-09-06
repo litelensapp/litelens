@@ -19,7 +19,7 @@ func (a *App) ListConfigMaps() ([]dto.ConfigMap, error) {
 	if !waitForResourceSync(h, "configmaps") {
 		return []dto.ConfigMap{}, nil
 	}
-	result, err := kubeResources.ListConfigMaps(h.Factory.Core().V1().ConfigMaps().Lister(), namespaces)
+	result, err := kubeResources.ListConfigMaps(h.ConfigMapLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListConfigMaps: %v", err)
 		return []dto.ConfigMap{}, nil
@@ -32,7 +32,7 @@ func (a *App) GetConfigMapByName(namespace, name string) (dto.ConfigMap, error) 
 	if !waitForResourceSync(h, "configmaps") {
 		return dto.ConfigMap{}, nil
 	}
-	result, err := kubeResources.GetConfigMapByName(h.Factory.Core().V1().ConfigMaps().Lister(), namespace, name)
+	result, err := kubeResources.GetConfigMapByName(h.ConfigMapLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetConfigMapByName: %v", err)
 		return dto.ConfigMap{}, nil
@@ -100,7 +100,7 @@ func (a *App) emitConfigMaps() {
 	if !waitForResourceSync(h, "configmaps") {
 		return
 	}
-	lister := h.Factory.Core().V1().ConfigMaps().Lister()
+	lister := h.ConfigMapLister()
 	data, err := kubeResources.ListConfigMaps(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitConfigMaps: %v", err)

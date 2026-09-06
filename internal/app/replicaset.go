@@ -22,7 +22,7 @@ func (a *App) ListReplicaSets() ([]dto.ReplicaSet, error) {
 	if !waitForResourceSync(h, "replicasets") {
 		return []dto.ReplicaSet{}, nil
 	}
-	result, err := kubeResources.ListReplicaSets(h.Factory.Apps().V1().ReplicaSets().Lister(), namespaces)
+	result, err := kubeResources.ListReplicaSets(h.ReplicaSetLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListReplicaSets: %v", err)
 		return []dto.ReplicaSet{}, nil
@@ -35,7 +35,7 @@ func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error
 	if !waitForResourceSync(h, "replicasets") {
 		return dto.ReplicaSet{}, nil
 	}
-	result, err := kubeResources.GetReplicaSetByName(h.Factory.Apps().V1().ReplicaSets().Lister(), namespace, name)
+	result, err := kubeResources.GetReplicaSetByName(h.ReplicaSetLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetReplicaSetByName: %v", err)
 		return dto.ReplicaSet{}, nil
@@ -48,7 +48,7 @@ func (a *App) GetReplicaSetsSummary() (dto.ReplicaSetSummary, error) {
 	if !waitForResourceSync(h, "replicasets") {
 		return dto.ReplicaSetSummary{}, nil
 	}
-	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
+	lister := h.ReplicaSetLister()
 	var rss []*appsv1.ReplicaSet
 	if len(namespaces) == 0 {
 		all, err := lister.List(labels.Everything())
@@ -136,7 +136,7 @@ func (a *App) emitReplicaSets() {
 	if !waitForResourceSync(h, "replicasets") {
 		return
 	}
-	lister := h.Factory.Apps().V1().ReplicaSets().Lister()
+	lister := h.ReplicaSetLister()
 	data, err := kubeResources.ListReplicaSets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitReplicaSets: %v", err)

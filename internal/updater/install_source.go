@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/litelensapp/litelens/internal/storage"
 )
 
 const (
@@ -27,9 +29,23 @@ var homebrewBrewBinaryPaths = []string{
 
 // DetectInstallSource reports which channel the running binary was installed
 // through, so the self-updater (and the Settings UI) can distinguish it from
-// a manual scripts/install.sh or raw-binary install. Best-effort: falls back
-// to InstallSourceManual whenever detection is inconclusive.
+// a manual scripts/install.sh or raw-binary install. A marker persisted by a
+// post-install hook (storage.ReadInstallSource) takes precedence when
+// present, since it's written directly by the installer at install time
+// rather than inferred from the running process's environment; otherwise
+// falls back to runtime detection below, which itself falls back to
+// InstallSourceManual whenever detection is inconclusive.
 func DetectInstallSource() string {
+	if source, ok := storage.ReadInstallSource(); ok {
+		return source
+	}
+	return detectInstallSourceAtRuntime()
+}
+
+// detectInstallSourceAtRuntime is the environment-based fallback used when no
+// post-install marker was found: it inspects the running binary's path and
+// platform-specific package-manager state.
+func detectInstallSourceAtRuntime() string {
 	exe, err := os.Executable()
 	if err != nil {
 		return InstallSourceManual

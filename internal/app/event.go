@@ -32,7 +32,7 @@ func (a *App) ListEvents() ([]dto.Event, error) {
 		return []dto.Event{}, nil
 	}
 	result, err := kubeResources.ListEvents(
-		h.Factory.Core().V1().Events().Lister(),
+		h.EventLister(),
 		namespaces,
 	)
 	if err != nil {
@@ -48,7 +48,7 @@ func (a *App) ListWarningEvents() ([]dto.Event, error) {
 		return []dto.Event{}, nil
 	}
 	result, err := kubeResources.ListWarningEvents(
-		h.Factory.Core().V1().Events().Lister(),
+		h.EventLister(),
 		namespaces,
 	)
 	if err != nil {
@@ -63,7 +63,7 @@ func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
 	if !waitForResourceSync(h, "events") {
 		return dto.Event{}, nil
 	}
-	result, err := kubeResources.GetEventByName(h.Factory.Core().V1().Events().Lister(), namespace, name)
+	result, err := kubeResources.GetEventByName(h.EventLister(), namespace, name)
 	if err != nil {
 		log.Printf("app: GetEventByName: %v", err)
 		return dto.Event{}, nil
@@ -76,7 +76,7 @@ func (a *App) emitEvents() {
 	if !waitForResourceSync(h, "events") {
 		return
 	}
-	lister := h.Factory.Core().V1().Events().Lister()
+	lister := h.EventLister()
 	data, err := kubeResources.ListEvents(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitEvents: %v", err)

@@ -322,12 +322,63 @@ func (a *App) Connect(contextName string, seq int64) error {
 	debEndpoints := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEndpoints() }, isCtx)
 	debEndpointSlices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEndpointSlices() }, isCtx)
 	debPods := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPods() }, isCtx)
+	// Scope the Pods informer(s) to the namespace filter already known at
+	// connect time (restoredNamespaces), avoiding a cluster-wide Pods LIST
+	// when the caller only cares about a handful of namespaces. See
+	// FactoryHandle.RescopePods.
+	h.SetPodsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debPods.Trigger(ns)
+		}
+	})
+	h.RescopePods(restoredNamespaces)
 	debDeployments := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitDeployments() }, isCtx)
+	// Scope the Deployments/DaemonSets/StatefulSets/ReplicaSets/Jobs/CronJobs
+	// informer(s) to the namespace filter already known at connect time
+	// (restoredNamespaces), avoiding a cluster-wide LIST when the caller
+	// only cares about a handful of namespaces. See FactoryHandle.RescopePods
+	// for the pattern this mirrors.
+	h.SetDeploymentsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debDeployments.Trigger(ns)
+		}
+	})
+	h.RescopeDeployments(restoredNamespaces)
 	debDaemonSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitDaemonSets() }, isCtx)
+	h.SetDaemonSetsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debDaemonSets.Trigger(ns)
+		}
+	})
+	h.RescopeDaemonSets(restoredNamespaces)
 	debReplicaSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitReplicaSets() }, isCtx)
+	h.SetReplicaSetsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debReplicaSets.Trigger(ns)
+		}
+	})
+	h.RescopeReplicaSets(restoredNamespaces)
 	debStatefulSets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitStatefulSets() }, isCtx)
+	h.SetStatefulSetsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debStatefulSets.Trigger(ns)
+		}
+	})
+	h.RescopeStatefulSets(restoredNamespaces)
 	debJobs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitJobs() }, isCtx)
+	h.SetJobsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debJobs.Trigger(ns)
+		}
+	})
+	h.RescopeJobs(restoredNamespaces)
 	debCronJobs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitCronJobs() }, isCtx)
+	h.SetCronJobsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debCronJobs.Trigger(ns)
+		}
+	})
+	h.RescopeCronJobs(restoredNamespaces)
 	debConfigMaps := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitConfigMaps() }, isCtx)
 	debSecrets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitSecrets() }, isCtx)
 	debResourceQuotas := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitResourceQuotas() }, isCtx)
@@ -386,261 +437,62 @@ func (a *App) Connect(contextName string, seq int64) error {
 	h.RegisterDebouncer(debRoleBindings)
 	h.RegisterDebouncer(debPriorityClasses)
 
-	h.Factory.Core().V1().Pods().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debPods.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debPods.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debPods.Trigger(nsFromObj(obj))
-			}
-		},
+	// ConfigMaps/Secrets/ResourceQuotas/LimitRanges/HPAs/PDBs/Leases/Services/
+	// EndpointSlices/Endpoints/Ingresses/NetworkPolicies/PVCs/ServiceAccounts/
+	// Roles/RoleBindings/Events no longer get a raw AddEventHandler block
+	// here: SetXEventHandler below wires their debouncer into the
+	// nsscope-managed informer(s), which survive RescopeXxx rebuilds (a plain
+	// AddEventHandler on h.Factory.Xxx().Informer() would not) — same
+	// pattern as Deployments/DaemonSets/ReplicaSets/StatefulSets/Jobs/CronJobs
+	// above.
+	h.SetConfigMapsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debConfigMaps.Trigger(ns)
+		}
 	})
-	h.Factory.Apps().V1().Deployments().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debDeployments.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debDeployments.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debDeployments.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeConfigMaps(restoredNamespaces)
+	h.SetSecretsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debSecrets.Trigger(ns)
+		}
 	})
-	h.Factory.Apps().V1().DaemonSets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debDaemonSets.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debDaemonSets.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debDaemonSets.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeSecrets(restoredNamespaces)
+	h.SetResourceQuotasEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debResourceQuotas.Trigger(ns)
+		}
 	})
-	h.Factory.Apps().V1().ReplicaSets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debReplicaSets.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debReplicaSets.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debReplicaSets.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeResourceQuotas(restoredNamespaces)
+	h.SetLimitRangesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debLimitRanges.Trigger(ns)
+		}
 	})
-	h.Factory.Apps().V1().StatefulSets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debStatefulSets.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debStatefulSets.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debStatefulSets.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeLimitRanges(restoredNamespaces)
+	h.SetHorizontalPodAutoscalersEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debHPAs.Trigger(ns)
+		}
 	})
-	h.Factory.Batch().V1().Jobs().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debJobs.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debJobs.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debJobs.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeHorizontalPodAutoscalers(restoredNamespaces)
+	h.SetPodDisruptionBudgetsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debPodDisruptionBudgets.Trigger(ns)
+		}
 	})
-	h.Factory.Batch().V1().CronJobs().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debCronJobs.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debCronJobs.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debCronJobs.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopePodDisruptionBudgets(restoredNamespaces)
+	h.SetIngressesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debIngresses.Trigger(ns)
+		}
 	})
-	h.Factory.Core().V1().ConfigMaps().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debConfigMaps.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debConfigMaps.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debConfigMaps.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeIngresses(restoredNamespaces)
+	h.SetNetworkPoliciesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debNetworkPolicies.Trigger(ns)
+		}
 	})
-	h.Factory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debSecrets.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debSecrets.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debSecrets.Trigger(nsFromObj(obj))
-			}
-		},
-	})
-	h.Factory.Core().V1().ResourceQuotas().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debResourceQuotas.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debResourceQuotas.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debResourceQuotas.Trigger(nsFromObj(obj))
-			}
-		},
-	})
-	h.Factory.Core().V1().LimitRanges().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debLimitRanges.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debLimitRanges.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debLimitRanges.Trigger(nsFromObj(obj))
-			}
-		},
-	})
-	h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debHPAs.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debHPAs.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debHPAs.Trigger(nsFromObj(obj))
-			}
-		},
-	})
-	h.Factory.Policy().V1().PodDisruptionBudgets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debPodDisruptionBudgets.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debPodDisruptionBudgets.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debPodDisruptionBudgets.Trigger(nsFromObj(obj))
-			}
-		},
-	})
-	h.Factory.Networking().V1().Ingresses().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debIngresses.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debIngresses.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debIngresses.Trigger(nsFromObj(obj))
-			}
-		},
-	})
-	h.Factory.Networking().V1().NetworkPolicies().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debNetworkPolicies.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debNetworkPolicies.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debNetworkPolicies.Trigger(nsFromObj(obj))
-			}
-		},
-	})
+	h.RescopeNetworkPolicies(restoredNamespaces)
 	h.Factory.Networking().V1().IngressClasses().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
@@ -675,23 +527,12 @@ func (a *App) Connect(contextName string, seq int64) error {
 			}
 		},
 	})
-	h.Factory.Core().V1().PersistentVolumeClaims().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debPersistentVolumeClaims.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debPersistentVolumeClaims.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debPersistentVolumeClaims.Trigger(nsFromObj(obj))
-			}
-		},
+	h.SetPersistentVolumeClaimsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debPersistentVolumeClaims.Trigger(ns)
+		}
 	})
+	h.RescopePersistentVolumeClaims(restoredNamespaces)
 	h.Factory.Core().V1().PersistentVolumes().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
@@ -726,40 +567,18 @@ func (a *App) Connect(contextName string, seq int64) error {
 			}
 		},
 	})
-	h.Factory.Core().V1().Endpoints().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debEndpoints.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debEndpoints.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debEndpoints.Trigger(nsFromObj(obj))
-			}
-		},
+	h.SetEndpointsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debEndpoints.Trigger(ns)
+		}
 	})
-	h.Factory.Core().V1().Services().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debServices.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debServices.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debServices.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeEndpoints(restoredNamespaces)
+	h.SetServicesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debServices.Trigger(ns)
+		}
 	})
+	h.RescopeServices(restoredNamespaces)
 	h.Factory.Core().V1().Nodes().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
@@ -794,23 +613,12 @@ func (a *App) Connect(contextName string, seq int64) error {
 			}
 		},
 	})
-	h.Factory.Core().V1().ServiceAccounts().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debServiceAccounts.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debServiceAccounts.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debServiceAccounts.Trigger(nsFromObj(obj))
-			}
-		},
+	h.SetServiceAccountsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debServiceAccounts.Trigger(ns)
+		}
 	})
+	h.RescopeServiceAccounts(restoredNamespaces)
 	h.Factory.Rbac().V1().ClusterRoles().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
@@ -828,23 +636,12 @@ func (a *App) Connect(contextName string, seq int64) error {
 			}
 		},
 	})
-	h.Factory.Rbac().V1().Roles().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debRoles.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debRoles.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debRoles.Trigger(nsFromObj(obj))
-			}
-		},
+	h.SetRolesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debRoles.Trigger(ns)
+		}
 	})
+	h.RescopeRoles(restoredNamespaces)
 	h.Factory.Rbac().V1().ClusterRoleBindings().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
@@ -862,23 +659,12 @@ func (a *App) Connect(contextName string, seq int64) error {
 			}
 		},
 	})
-	h.Factory.Rbac().V1().RoleBindings().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debRoleBindings.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debRoleBindings.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debRoleBindings.Trigger(nsFromObj(obj))
-			}
-		},
+	h.SetRoleBindingsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debRoleBindings.Trigger(ns)
+		}
 	})
+	h.RescopeRoleBindings(restoredNamespaces)
 	h.Factory.Scheduling().V1().PriorityClasses().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
@@ -896,57 +682,24 @@ func (a *App) Connect(contextName string, seq int64) error {
 			}
 		},
 	})
-	h.Factory.Coordination().V1().Leases().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debLeases.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debLeases.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debLeases.Trigger(nsFromObj(obj))
-			}
-		},
+	h.SetLeasesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debLeases.Trigger(ns)
+		}
 	})
-	h.Factory.Core().V1().Events().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debEvents.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debEvents.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debEvents.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeLeases(restoredNamespaces)
+	h.SetEventsEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debEvents.Trigger(ns)
+		}
 	})
-	h.Factory.Discovery().V1().EndpointSlices().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debEndpointSlices.Trigger(nsFromObj(obj))
-			}
-		},
-		UpdateFunc: func(old, new any) {
-			if a.isActive(contextName) {
-				debEndpointSlices.Trigger(nsFromObj(new))
-			}
-		},
-		DeleteFunc: func(obj any) {
-			if a.isActive(contextName) {
-				debEndpointSlices.Trigger(nsFromObj(obj))
-			}
-		},
+	h.RescopeEvents(restoredNamespaces)
+	h.SetEndpointSlicesEventHandler(func(ns string) {
+		if a.isActive(contextName) {
+			debEndpointSlices.Trigger(ns)
+		}
 	})
+	h.RescopeEndpointSlices(restoredNamespaces)
 
 	// Create (or replace) metrics client for this context.
 	if mc, err := kube.NewMetricsClientForContext(contextName, httpProxy, httpsProxy, a.settings.KubeconfigPaths); err == nil {

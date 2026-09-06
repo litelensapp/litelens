@@ -19,7 +19,7 @@ func (a *App) ListPodDisruptionBudgets() ([]dto.PodDisruptionBudget, error) {
 	if !waitForResourceSync(h, "pdbs") {
 		return []dto.PodDisruptionBudget{}, nil
 	}
-	result, err := kubeResources.ListPodDisruptionBudgets(h.Factory.Policy().V1().PodDisruptionBudgets().Lister(), namespaces)
+	result, err := kubeResources.ListPodDisruptionBudgets(h.PodDisruptionBudgetLister(), namespaces)
 	if err != nil {
 		log.Printf("app: ListPodDisruptionBudgets: %v", err)
 		return []dto.PodDisruptionBudget{}, nil
@@ -33,7 +33,7 @@ func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisr
 		return &dto.PodDisruptionBudgetDetail{}, nil
 	}
 	result, err := kubeResources.GetPodDisruptionBudgetByName(
-		h.Factory.Policy().V1().PodDisruptionBudgets().Lister(),
+		h.PodDisruptionBudgetLister(),
 		namespace,
 		name,
 	)
@@ -49,7 +49,7 @@ func (a *App) emitPodDisruptionBudgets() {
 	if !waitForResourceSync(h, "pdbs") {
 		return
 	}
-	lister := h.Factory.Policy().V1().PodDisruptionBudgets().Lister()
+	lister := h.PodDisruptionBudgetLister()
 	data, err := kubeResources.ListPodDisruptionBudgets(lister, namespaces)
 	if err != nil {
 		log.Printf("app: emitPodDisruptionBudgets: %v", err)
