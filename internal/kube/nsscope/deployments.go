@@ -22,6 +22,7 @@ func NewDeploymentsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersappsv1.DeploymentLister] {
 	return New(Config[listersappsv1.DeploymentLister]{
 		Name:          "deployments",
@@ -39,6 +40,7 @@ func NewDeploymentsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

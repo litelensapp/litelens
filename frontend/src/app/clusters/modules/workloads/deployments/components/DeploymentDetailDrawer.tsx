@@ -52,11 +52,97 @@ import { DeploymentDeleteConfirmationModal } from "./DeploymentDeleteConfirmatio
 import { DeploymentRestartConfirmationModal } from "./DeploymentRestartConfirmationModal";
 import { DeploymentScaleModal } from "./DeploymentScaleModal";
 
-const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
-  const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+const DeploymentTolerationsField: FC<{ deployment: Deployment }> = ({ deployment }) => {
   const [showTolerations, setShowTolerations] = useState(false);
+
+  return (
+    <>
+      <span className="text-h3 text-muted-foreground">Tolerations</span>
+      <div className="flex items-center justify-between">
+        <span className="text-body font-mono">{deployment.Tolerations}</span>
+        {deployment.Tolerations > 0 && (
+          <Button
+            variant="link"
+            size="xs"
+            className="h-auto w-fit gap-1 p-0 text-info"
+            aria-expanded={showTolerations}
+            onClick={() => setShowTolerations((v) => !v)}
+          >
+            {showTolerations ? "Hide" : "Show"}
+            {showTolerations ? (
+              <ChevronUpIcon className="size-3" />
+            ) : (
+              <ChevronDownIcon className="size-3" />
+            )}
+          </Button>
+        )}
+      </div>
+
+      {showTolerations && (
+        <div className="col-span-2">
+          <Table className="border">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Key</TableHead>
+                <TableHead className="text-xs">Operator</TableHead>
+                <TableHead className="text-xs">Value</TableHead>
+                <TableHead className="text-xs">Effect</TableHead>
+                <TableHead className="text-xs">Seconds</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(deployment.TolerationDetails ?? []).map((t) => (
+                <TableRow key={`${t.Key}-${t.Operator}-${t.Value}-${t.Effect}-${t.Seconds}`}>
+                  <TableCell className="font-mono text-xs">{t.Key || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{t.Operator}</TableCell>
+                  <TableCell className="font-mono text-xs">{t.Value || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{t.Effect || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{t.Seconds ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </>
+  );
+};
+
+const DeploymentAffinitiesField: FC<{ deployment: Deployment }> = ({ deployment }) => {
   const [showAffinities, setShowAffinities] = useState(false);
+
+  if (deployment.AffinityCount <= 0) return null;
+
+  return (
+    <>
+      <span className="text-h3 text-muted-foreground">Affinities</span>
+      <div className="flex items-center justify-between">
+        <span className="text-body font-mono">{deployment.AffinityCount}</span>
+        <Button
+          variant="link"
+          size="xs"
+          className="h-auto w-fit gap-1 p-0 text-info"
+          aria-expanded={showAffinities}
+          onClick={() => setShowAffinities((v) => !v)}
+        >
+          {showAffinities ? "Hide" : "Show"}
+          {showAffinities ? (
+            <ChevronUpIcon className="size-3" />
+          ) : (
+            <ChevronDownIcon className="size-3" />
+          )}
+        </Button>
+      </div>
+      {showAffinities && (
+        <Textarea variant="code" disabled value={deployment.Affinities} className="col-span-2" />
+      )}
+    </>
+  );
+};
+
+const DeploymentReplicaSetsSection: FC<{ deployment: Deployment }> = ({ deployment }) => {
+  const { activeContext } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext();
 
   const { data: allRS = [] } = useGetReplicaSets({
     context: activeContext,
@@ -69,6 +155,60 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
       ),
     [allRS, deployment.Name, deployment.Namespace]
   );
+
+  if (replicaSets.length === 0) return null;
+
+  return (
+    <>
+      <Separator />
+      <SectionDivider
+        label="Deploy Revisions"
+        className="border-y-0 bg-muted/50 tracking-wide uppercase"
+      />
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-xs">Name</TableHead>
+            <TableHead className="text-xs">Namespace</TableHead>
+            <TableHead className="text-xs">Pods</TableHead>
+            <TableHead className="text-xs">Age</TableHead>
+            <TableHead className="text-xs">Created At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {replicaSets
+            .toSorted((a, b) => b.CreatedAt.localeCompare(a.CreatedAt))
+            .map((rs) => (
+              <TableRow key={`${rs.Namespace}/${rs.Name}`}>
+                <TableCell className="max-w-40 font-mono text-xs">
+                  <ResourceLink
+                    truncate
+                    truncateTextClassName="max-w-40"
+                    onClick={() => onToggleReplicaSetDetail(rs.Namespace, rs.Name)}
+                  >
+                    {rs.Name}
+                  </ResourceLink>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <ResourceLink onClick={() => onToggleNamespaceDetail(rs.Namespace)}>
+                    {rs.Namespace}
+                  </ResourceLink>
+                </TableCell>
+                <TableCell className="text-xs">
+                  {rs.Ready}/{rs.Desired}
+                </TableCell>
+                <TableCell className="text-xs">{rs.Age}</TableCell>
+                <TableCell className="font-mono text-xs">{rs.CreatedAt}</TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+    </>
+  );
+};
+
+const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
+  const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
   return (
     <ScrollArea className="h-full">
@@ -157,127 +297,11 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
             </>
           )}
 
-          <span className="text-h3 text-muted-foreground">Tolerations</span>
-          <div className="flex items-center justify-between">
-            <span className="text-body font-mono">{deployment.Tolerations}</span>
-            {deployment.Tolerations > 0 && (
-              <Button
-                variant="link"
-                size="xs"
-                className="h-auto w-fit gap-1 p-0 text-info"
-                aria-expanded={showTolerations}
-                onClick={() => setShowTolerations((v) => !v)}
-              >
-                {showTolerations ? "Hide" : "Show"}
-                {showTolerations ? (
-                  <ChevronUpIcon className="size-3" />
-                ) : (
-                  <ChevronDownIcon className="size-3" />
-                )}
-              </Button>
-            )}
-          </div>
-
-          {showTolerations && (
-            <div className="col-span-2">
-              <Table className="border">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Key</TableHead>
-                    <TableHead className="text-xs">Operator</TableHead>
-                    <TableHead className="text-xs">Value</TableHead>
-                    <TableHead className="text-xs">Effect</TableHead>
-                    <TableHead className="text-xs">Seconds</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(deployment.TolerationDetails ?? []).map((t) => (
-                    <TableRow key={`${t.Key}-${t.Operator}-${t.Value}-${t.Effect}-${t.Seconds}`}>
-                      <TableCell className="font-mono text-xs">{t.Key || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{t.Operator}</TableCell>
-                      <TableCell className="font-mono text-xs">{t.Value || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{t.Effect || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{t.Seconds ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {deployment.AffinityCount > 0 && (
-            <>
-              <span className="text-h3 text-muted-foreground">Affinities</span>
-              <div className="flex items-center justify-between">
-                <span className="text-body font-mono">{deployment.AffinityCount}</span>
-                <Button
-                  variant="link"
-                  size="xs"
-                  className="h-auto w-fit gap-1 p-0 text-info"
-                  aria-expanded={showAffinities}
-                  onClick={() => setShowAffinities((v) => !v)}
-                >
-                  {showAffinities ? "Hide" : "Show"}
-                  {showAffinities ? (
-                    <ChevronUpIcon className="size-3" />
-                  ) : (
-                    <ChevronDownIcon className="size-3" />
-                  )}
-                </Button>
-              </div>
-              {showAffinities && (
-                <Textarea
-                  variant="code"
-                  disabled
-                  value={deployment.Affinities}
-                  className="col-span-2"
-                />
-              )}
-            </>
-          )}
+          <DeploymentTolerationsField deployment={deployment} />
+          <DeploymentAffinitiesField deployment={deployment} />
         </div>
 
-        {replicaSets.length > 0 && (
-          <>
-            <Separator />
-            <SectionDivider
-              label="Deploy Revisions"
-              className="border-y-0 bg-muted/50 tracking-wide uppercase"
-            />
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Name</TableHead>
-                  <TableHead className="text-xs">Namespace</TableHead>
-                  <TableHead className="text-xs">Pods</TableHead>
-                  <TableHead className="text-xs">Age</TableHead>
-                  <TableHead className="text-xs">Created At</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {replicaSets
-                  .toSorted((a, b) => b.CreatedAt.localeCompare(a.CreatedAt))
-                  .map((rs) => (
-                    <TableRow key={`${rs.Namespace}/${rs.Name}`}>
-                      <TableCell className="max-w-40 truncate font-mono text-xs">
-                        {rs.Name}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <ResourceLink onClick={() => onToggleNamespaceDetail(rs.Namespace)}>
-                          {rs.Namespace}
-                        </ResourceLink>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {rs.Ready}/{rs.Desired}
-                      </TableCell>
-                      <TableCell className="text-xs">{rs.Age}</TableCell>
-                      <TableCell className="font-mono text-xs">{rs.CreatedAt}</TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </>
-        )}
+        <DeploymentReplicaSetsSection deployment={deployment} />
       </div>
     </ScrollArea>
   );

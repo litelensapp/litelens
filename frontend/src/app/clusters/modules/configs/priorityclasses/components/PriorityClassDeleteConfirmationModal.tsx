@@ -19,7 +19,7 @@ export const PriorityClassDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete PriorityClass:{" "}
+            Delete Priority Class:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -27,7 +27,7 @@ export const PriorityClassDeleteConfirmationModal: FC<
           <>
             This will permanently delete{" "}
             <span className="font-mono font-medium text-foreground">{name}</span>. Pods using this
-            PriorityClass will retain their priority but cannot be created. This action cannot be
+            Priority Class will retain their priority but cannot be created. This action cannot be
             undone.
           </>
         ),
@@ -37,12 +37,12 @@ export const PriorityClassDeleteConfirmationModal: FC<
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} PriorityClass${count === 1 ? "" : "es"}`,
+      title: `Delete ${count} Priority Class${count === 1 ? "" : "es"}`,
       description: (
         <>
-          This will permanently delete {count} priorityclass{count === 1 ? "" : "es"}. Pods using
-          these PriorityClasses will retain their priority but cannot be created. This action cannot
-          be undone.
+          This will permanently delete {count} Priority Class{count === 1 ? "" : "es"}. Pods using
+          these Priority Classes will retain their priority but cannot be created. This action
+          cannot be undone.
         </>
       ),
     };

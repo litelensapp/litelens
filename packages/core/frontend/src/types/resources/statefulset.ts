@@ -14,6 +14,8 @@ export interface StatefulSet {
   Images: string[];
   Affinities: number;
   PodStatus: string;
+  HealthStatus: string;
+  HealthMessage: string;
 }
 
 export interface StatefulSetSummary {

@@ -20,13 +20,13 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
-import { useGetPriorityClasses } from "./hooks/data-access/useGetPriorityClasses";
-import { useDeletePriorityClass } from "./hooks/data-mutation/useDeletePriorityClass";
-import { useDeletePriorityClasses } from "./hooks/data-mutation/useDeletePriorityClasses";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { PriorityClassDeleteConfirmationModal } from "./components/PriorityClassDeleteConfirmationModal";
+import { useGetPriorityClasses } from "./hooks/data-access/useGetPriorityClasses";
+import { useDeletePriorityClass } from "./hooks/data-mutation/useDeletePriorityClass";
+import { useDeletePriorityClasses } from "./hooks/data-mutation/useDeletePriorityClasses";
 
 interface PriorityClassTableCtaButtonsProps {
   name: string;
@@ -178,8 +178,8 @@ export const PriorityClassesView: FC = () => {
               <TableCell colSpan={6} className="px-0 py-0">
                 <EmptyState
                   icon={<ArrowUpCircleIcon className="size-8" />}
-                  title="No PriorityClasses"
-                  description="Create a PriorityClass to control pod scheduling priority"
+                  title="No Priority Classes"
+                  description="Create a Priority Class to control pod scheduling priority"
                 />
               </TableCell>
             </TableRow>

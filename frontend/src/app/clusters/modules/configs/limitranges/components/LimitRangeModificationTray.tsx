@@ -69,7 +69,7 @@ export const LimitRangeModificationTray: FC<ModificationTrayContentProps> = ({
   if (!tab.namespace) {
     return (
       <p className="p-4 text-xs text-destructive">
-        LimitRange namespace is required but not provided.
+        Limit Range namespace is required but not provided.
       </p>
     );
   }
@@ -120,7 +120,7 @@ export const LimitRangeModificationTray: FC<ModificationTrayContentProps> = ({
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this LimitRange.
+            No YAML available for this Limit Range.
           </p>
         ) : (
           <Textarea

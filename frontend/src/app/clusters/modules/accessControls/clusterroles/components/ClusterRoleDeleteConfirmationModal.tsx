@@ -25,7 +25,7 @@ export const ClusterRoleDeleteConfirmationModal: FC<ClusterRoleDeleteConfirmatio
       return {
         title: (
           <>
-            Delete ClusterRole:{" "}
+            Delete Cluster Role:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,10 +42,10 @@ export const ClusterRoleDeleteConfirmationModal: FC<ClusterRoleDeleteConfirmatio
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} ClusterRole${count === 1 ? "" : "s"}`,
+      title: `Delete ${count} Cluster Role${count === 1 ? "" : "s"}`,
       description: (
         <>
-          This will permanently delete {count} clusterrole{count === 1 ? "" : "s"}. This action
+          This will permanently delete {count} Cluster Role{count === 1 ? "" : "s"}. This action
           cannot be undone.
         </>
       ),

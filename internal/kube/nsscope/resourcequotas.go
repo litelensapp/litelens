@@ -22,6 +22,7 @@ func NewResourceQuotasResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.ResourceQuotaLister] {
 	return New(Config[listerscorev1.ResourceQuotaLister]{
 		Name:          "resourcequotas",
@@ -39,6 +40,7 @@ func NewResourceQuotasResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

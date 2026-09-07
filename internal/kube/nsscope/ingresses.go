@@ -22,6 +22,7 @@ func NewIngressesResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersnetworkingv1.IngressLister] {
 	return New(Config[listersnetworkingv1.IngressLister]{
 		Name:          "ingresses",
@@ -39,6 +40,7 @@ func NewIngressesResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

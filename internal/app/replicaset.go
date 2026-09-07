@@ -19,7 +19,7 @@ import (
 
 func (a *App) ListReplicaSets() ([]dto.ReplicaSet, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "replicasets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "replicasets") {
 		return []dto.ReplicaSet{}, nil
 	}
 	result, err := kubeResources.ListReplicaSets(h.ReplicaSetLister(), namespaces)
@@ -32,7 +32,7 @@ func (a *App) ListReplicaSets() ([]dto.ReplicaSet, error) {
 
 func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "replicasets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "replicasets") {
 		return dto.ReplicaSet{}, nil
 	}
 	result, err := kubeResources.GetReplicaSetByName(h.ReplicaSetLister(), namespace, name)
@@ -45,7 +45,7 @@ func (a *App) GetReplicaSetByName(namespace, name string) (dto.ReplicaSet, error
 
 func (a *App) GetReplicaSetsSummary() (dto.ReplicaSetSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "replicasets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "replicasets") {
 		return dto.ReplicaSetSummary{}, nil
 	}
 	lister := h.ReplicaSetLister()
@@ -133,7 +133,7 @@ func (a *App) DeleteReplicaSets(items []dto.ReplicaSetRef) error {
 
 func (a *App) emitReplicaSets() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "replicasets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "replicasets") {
 		return
 	}
 	lister := h.ReplicaSetLister()

@@ -69,7 +69,7 @@ export const ResourceQuotaModificationTray: FC<ModificationTrayContentProps> = (
   if (!tab.namespace) {
     return (
       <p className="p-4 text-xs text-destructive">
-        ResourceQuota namespace is required but not provided.
+        Resource Quota namespace is required but not provided.
       </p>
     );
   }
@@ -120,7 +120,7 @@ export const ResourceQuotaModificationTray: FC<ModificationTrayContentProps> = (
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this ResourceQuota.
+            No YAML available for this Resource Quota.
           </p>
         ) : (
           <Textarea

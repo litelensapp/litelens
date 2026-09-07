@@ -153,6 +153,32 @@ func TestToJob_WithStatus(t *testing.T) {
 	}
 }
 
+func TestToJob_PodsStatuses_OmitsZeroCounts(t *testing.T) {
+	ready := int32(1)
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "test-job",
+			Namespace:         "default",
+			CreationTimestamp: metav1.Time{Time: fixedTime},
+		},
+		Status: batchv1.JobStatus{
+			Active:    2,
+			Ready:     &ready,
+			Succeeded: 3,
+		},
+	}
+	got := toJob(job)
+	want := []string{"2 Active", "1 Ready", "3 Succeeded"}
+	if len(got.PodsStatuses) != len(want) {
+		t.Fatalf("PodsStatuses = %v; want %v", got.PodsStatuses, want)
+	}
+	for i, s := range want {
+		if got.PodsStatuses[i] != s {
+			t.Errorf("PodsStatuses[%d] = %q; want %q", i, got.PodsStatuses[i], s)
+		}
+	}
+}
+
 func TestToJob_NoCompletions(t *testing.T) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

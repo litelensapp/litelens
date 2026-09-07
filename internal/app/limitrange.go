@@ -18,7 +18,7 @@ import (
 
 func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "limitranges") {
+	if !waitForResourceSyncIgnoringForbidden(h, "limitranges") {
 		return []dto.LimitRange{}, nil
 	}
 	result, err := kubeResources.ListLimitRanges(h.LimitRangeLister(), namespaces)
@@ -31,7 +31,7 @@ func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
 
 func (a *App) GetLimitRangeByName(namespace, name string) dto.LimitRangeDetail {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "limitranges") {
+	if !waitForResourceSyncIgnoringForbidden(h, "limitranges") {
 		return dto.LimitRangeDetail{}
 	}
 	result, err := kubeResources.GetLimitRangeByName(h.LimitRangeLister(), namespace, name)
@@ -173,7 +173,7 @@ func (a *App) DeleteLimitRanges(items []dto.LimitRangeRef) error {
 
 func (a *App) emitLimitRanges() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "limitranges") {
+	if !waitForResourceSyncIgnoringForbidden(h, "limitranges") {
 		return
 	}
 	lister := h.LimitRangeLister()

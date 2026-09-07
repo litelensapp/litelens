@@ -22,6 +22,7 @@ func NewLeasesResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscoordinationv1.LeaseLister] {
 	return New(Config[listerscoordinationv1.LeaseLister]{
 		Name:          "leases",
@@ -39,6 +40,7 @@ func NewLeasesResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

@@ -230,7 +230,7 @@ export const ServiceAccountDetailDrawer: FC<ServiceAccountDetailDrawerProps> = (
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">ServiceAccount: {sa?.Name ?? saName}</SheetTitle>
+        <SheetTitle className="text-h1">Service Account: {sa?.Name ?? saName}</SheetTitle>
         {sa && (
           <ServiceAccountDrawerCtaButtons
             saName={sa.Name}
@@ -250,7 +250,7 @@ export const ServiceAccountDetailDrawer: FC<ServiceAccountDetailDrawerProps> = (
           onDataChange={setSa}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="ServiceAccount" />
+        <ResourceDetailEmptyBody resourceKind="Service Account" />
       )}
     </ResourceDetailDrawer>
   );

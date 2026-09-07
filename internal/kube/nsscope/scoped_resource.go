@@ -18,6 +18,7 @@ package nsscope
 
 import (
 	"log"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -91,6 +92,25 @@ type Config[L any] struct {
 	// timeout). Never called on behalf of a group that's already been
 	// superseded by a later Rescope call. Optional.
 	OnForbidden func(name string)
+
+	// GlobalStop bounds the lifetime of the cluster-wide informer
+	// (NewClusterWideInformer) independently of any single group's stop
+	// channel. NewClusterWideInformer is typically backed by a shared
+	// SharedInformerFactory singleton — the same *SharedIndexInformer
+	// instance is returned on every call — and client-go's
+	// SharedIndexInformer.Run can only be started once per instance, so
+	// ScopedResource builds it and calls Run exactly once, on the first
+	// Rescope(nil) that needs it, and reuses it across every later
+	// Rescope(nil) rather than rebuilding. Binding that one Run call to
+	// GlobalStop (rather than the first group's own, transient stop
+	// channel) lets the resource keep flipping between namespaced and
+	// cluster-wide scope for its whole life instead of the cluster-wide
+	// informer dying the first time the caller rescopes away from it.
+	// Optional: nil falls back to the first cluster-wide group's own stop
+	// channel, which is fine for tests and other short-lived resources
+	// but will permanently stop a production resource's cluster-wide view
+	// the first time it's superseded by a namespaced Rescope.
+	GlobalStop <-chan struct{}
 }
 
 // ScopedResource manages a swappable set of namespace-scoped (or single
@@ -103,6 +123,14 @@ type ScopedResource[L any] struct {
 	group        *group
 	lister       L
 	eventHandler func(namespace string)
+
+	// clusterInformer, once built, is reused across every Rescope(nil)
+	// call instead of rebuilt — see Config.GlobalStop. Guarded by
+	// clusterMu, separate from mu (which guards the swappable group),
+	// since acquireClusterInformer must not block concurrent Lister()/
+	// SyncedChan reads of the current group.
+	clusterMu       sync.Mutex
+	clusterInformer cache.SharedIndexInformer
 }
 
 // New constructs a ScopedResource and bootstraps it with a cluster-wide
@@ -205,32 +233,50 @@ func (r *ScopedResource[L]) buildGroup(namespaces []string) *group {
 		synced:     make(chan struct{}),
 	}
 
-	if len(namespaces) == 0 {
-		g.informers = []cache.SharedIndexInformer{r.cfg.NewClusterWideInformer()}
-	} else {
-		g.informers = make([]cache.SharedIndexInformer, len(namespaces))
-		for i, ns := range namespaces {
-			g.informers[i] = r.cfg.NewNamespacedInformer(ns)
-		}
-	}
-
 	handler := cache.ResourceEventHandlerFuncs{
 		AddFunc:    func(obj any) { r.fireEvent(objNamespace(obj)) },
 		UpdateFunc: func(_, newObj any) { r.fireEvent(objNamespace(newObj)) },
 		DeleteFunc: func(obj any) { r.fireEvent(objNamespace(obj)) },
 	}
+
+	if len(namespaces) == 0 {
+		inf, isNew := r.acquireClusterInformer()
+		g.informers = []cache.SharedIndexInformer{inf}
+		if isNew {
+			//nolint:errcheck — only fails if already started, which it isn't yet
+			inf.AddEventHandler(handler)
+			//nolint:errcheck — only fails if already started, which it isn't yet
+			inf.SetWatchErrorHandler(func(_ *cache.Reflector, err error) {
+				if strings.Contains(err.Error(), "is forbidden") {
+					r.markForbiddenShared(inf)
+				}
+			})
+			runStop := r.cfg.GlobalStop
+			if runStop == nil {
+				runStop = g.stop
+			}
+			go inf.Run(runStop)
+		}
+	} else {
+		g.informers = make([]cache.SharedIndexInformer, len(namespaces))
+		for i, ns := range namespaces {
+			inf := r.cfg.NewNamespacedInformer(ns)
+			g.informers[i] = inf
+			//nolint:errcheck — only fails if already started, which it isn't yet
+			inf.AddEventHandler(handler)
+			//nolint:errcheck — only fails if already started, which it isn't yet
+			inf.SetWatchErrorHandler(func(_ *cache.Reflector, err error) {
+				if strings.Contains(err.Error(), "is forbidden") {
+					r.markForbidden(g)
+				}
+			})
+			go inf.Run(g.stop)
+		}
+	}
+
 	syncFuncs := make([]cache.InformerSynced, len(g.informers))
 	for i, inf := range g.informers {
-		//nolint:errcheck — only fails if already started, which it isn't yet
-		inf.AddEventHandler(handler)
-		//nolint:errcheck — only fails if already started, which it isn't yet
-		inf.SetWatchErrorHandler(func(_ *cache.Reflector, err error) {
-			if strings.Contains(err.Error(), "is forbidden") {
-				r.markForbidden(g)
-			}
-		})
 		syncFuncs[i] = inf.HasSynced
-		go inf.Run(g.stop)
 	}
 
 	go func() {
@@ -247,8 +293,18 @@ func (r *ScopedResource[L]) buildGroup(namespaces []string) *group {
 		cache.WaitForCacheSync(stopOrTimeout, syncFuncs...)
 		for _, inf := range g.informers {
 			if !inf.HasSynced() {
-				log.Printf("kube/nsscope: cache sync timed out for %q — marking forbidden", r.cfg.Name)
-				r.markForbidden(g)
+				// A timeout here is not proof of a permission problem — it's
+				// also what a burst of many concurrent per-namespace
+				// informers (e.g. several namespaces selected across ~24
+				// resource kinds at once) looks like under load. A genuine
+				// RBAC denial is already caught above by the watch error
+				// handler's "is forbidden" match, which calls markForbidden
+				// (and stops these informers) directly. So a bare timeout
+				// just logs and lets the informer(s) keep running in the
+				// background to finish syncing — callers waiting on
+				// SyncedChan proceed now (possibly against a still-filling
+				// cache) rather than being told the resource is forbidden.
+				log.Printf("kube/nsscope: cache sync timed out for %q — continuing in background", r.cfg.Name)
 				break
 			}
 		}
@@ -269,9 +325,29 @@ func (r *ScopedResource[L]) buildLister(g *group) L {
 	return r.cfg.BuildMultiLister(m)
 }
 
+// acquireClusterInformer returns the cluster-wide informer, building it on
+// the first call and reusing that same instance on every later one — see
+// Config.GlobalStop for why. The returned bool reports whether this call
+// built it (i.e. its Run/event-handler wiring in buildGroup still needs to
+// happen) or returned an already-wired, already-running instance.
+func (r *ScopedResource[L]) acquireClusterInformer() (cache.SharedIndexInformer, bool) {
+	r.clusterMu.Lock()
+	defer r.clusterMu.Unlock()
+	if r.clusterInformer != nil {
+		return r.clusterInformer, false
+	}
+	r.clusterInformer = r.cfg.NewClusterWideInformer()
+	return r.clusterInformer, true
+}
+
 // markForbidden records this resource as forbidden and notifies OnForbidden
 // — but only if g is still the current group (an older, already-superseded
-// group's failure shouldn't override a newer, healthy one).
+// group's failure shouldn't override a newer, healthy one). Used by
+// namespace-scoped informers, which are freshly built per group so a
+// captured *group pointer always correctly identifies "is this failure
+// about the current group". See markForbiddenShared for the cluster-wide
+// informer's counterpart, which can't rely on a captured pointer since it's
+// reused (and its handler registered only once) across groups.
 func (r *ScopedResource[L]) markForbidden(g *group) {
 	g.stopOnce.Do(func() { close(g.stop) })
 
@@ -288,6 +364,36 @@ func (r *ScopedResource[L]) markForbidden(g *group) {
 	if r.cfg.OnForbidden != nil {
 		r.cfg.OnForbidden(r.cfg.Name)
 	}
+}
+
+// markForbiddenShared is markForbidden's counterpart for the cluster-wide
+// informer. That informer is built once and reused across every
+// Rescope(nil) call, so its watch-error handler is registered exactly once
+// (in buildGroup, only when acquireClusterInformer reports isNew) and can't
+// capture "the current group" the way a namespace-scoped informer's handler
+// does — a later Rescope(nil) call builds a new *group around the same
+// reused informer without re-registering a handler. So instead of comparing
+// a captured *group pointer, this checks whether inf (the specific informer
+// the firing handler is watching) is still part of the current group by
+// identity.
+func (r *ScopedResource[L]) markForbiddenShared(inf cache.SharedIndexInformer) {
+	r.mu.RLock()
+	g := r.group
+	current := g != nil && containsInformer(g.informers, inf)
+	r.mu.RUnlock()
+	if !current {
+		return
+	}
+
+	g.stopOnce.Do(func() { close(g.stop) })
+
+	if r.cfg.OnForbidden != nil {
+		r.cfg.OnForbidden(r.cfg.Name)
+	}
+}
+
+func containsInformer(informers []cache.SharedIndexInformer, target cache.SharedIndexInformer) bool {
+	return slices.Contains(informers, target)
 }
 
 func (r *ScopedResource[L]) fireEvent(namespace string) {

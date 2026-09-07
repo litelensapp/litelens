@@ -127,7 +127,7 @@ describe("ClusterRoleBindingDetailDrawer — edge cases", () => {
   // 1. crb changes from null to a valid object → body renders
   it("crb transitions from null to a valid object → drawer body becomes visible", () => {
     const { rerender } = renderDrawer({ crb: null, open: true });
-    // EmptyStateBody always renders "ClusterRoleBinding: —" — verify tabs are absent (no drawer body)
+    // EmptyStateBody always renders "Cluster Role Binding: —" — verify tabs are absent (no drawer body)
     expect(screen.queryByRole("tablist")).toBeNull();
 
     const crb = makeCrb({ Name: "appeared-crb" });
@@ -144,14 +144,14 @@ describe("ClusterRoleBindingDetailDrawer — edge cases", () => {
       </QueryClientProvider>
     );
 
-    expect(screen.getByText("ClusterRoleBinding: appeared-crb")).toBeInTheDocument();
+    expect(screen.getByText("Cluster Role Binding: appeared-crb")).toBeInTheDocument();
   });
 
   // 2. crb identity changes → body re-mounts (key={crb.Name} effect)
   it("crb identity changes (different Name) → title updates to new name", () => {
     const crb1 = makeCrb({ Name: "first-crb" });
     const { rerender } = renderDrawer({ crb: crb1, open: true });
-    expect(screen.getByText("ClusterRoleBinding: first-crb")).toBeInTheDocument();
+    expect(screen.getByText("Cluster Role Binding: first-crb")).toBeInTheDocument();
 
     const crb2 = makeCrb({ Name: "second-crb" });
     useGetClusterRoleBindingDetailMock.mockReturnValue({ data: crb2 });
@@ -167,8 +167,8 @@ describe("ClusterRoleBindingDetailDrawer — edge cases", () => {
       </QueryClientProvider>
     );
 
-    expect(screen.queryByText("ClusterRoleBinding: first-crb")).not.toBeInTheDocument();
-    expect(screen.getByText("ClusterRoleBinding: second-crb")).toBeInTheDocument();
+    expect(screen.queryByText("Cluster Role Binding: first-crb")).not.toBeInTheDocument();
+    expect(screen.getByText("Cluster Role Binding: second-crb")).toBeInTheDocument();
   });
 
   // 3. Labels empty object → shows "—"
@@ -329,7 +329,7 @@ describe("ClusterRoleBindingDetailDrawer — edge cases", () => {
   it("open=false → Sheet is closed, drawer content is not in the document", () => {
     const crb = makeCrb({ Name: "hidden-crb" });
     renderDrawer({ crb, open: false });
-    expect(screen.queryByText("ClusterRoleBinding: hidden-crb")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cluster Role Binding: hidden-crb")).not.toBeInTheDocument();
   });
 
   it("open=false with crb=null → renders without crash", () => {

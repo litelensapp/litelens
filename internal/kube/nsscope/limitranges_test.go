@@ -25,7 +25,7 @@ func TestNewLimitRangesResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewLimitRangesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().LimitRanges().Informer() }, nil, nil)
+	r := NewLimitRangesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().LimitRanges().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -57,7 +57,7 @@ func TestNewLimitRangesResourceFallsBackToClusterWideBeyondThreshold(t *testing.
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewLimitRangesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().LimitRanges().Informer() }, nil, nil)
+	r := NewLimitRangesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().LimitRanges().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

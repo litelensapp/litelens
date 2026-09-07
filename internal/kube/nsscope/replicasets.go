@@ -24,6 +24,7 @@ func NewReplicaSetsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersappsv1.ReplicaSetLister] {
 	return New(Config[listersappsv1.ReplicaSetLister]{
 		Name:          "replicasets",
@@ -41,6 +42,7 @@ func NewReplicaSetsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

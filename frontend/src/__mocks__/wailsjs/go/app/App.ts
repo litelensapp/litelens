@@ -12,6 +12,12 @@ export const GetAppDir = (): Promise<string> => Promise.resolve("");
 export const GetInstallSource = (): Promise<string> => Promise.resolve("manual");
 export const OpenAppDir = (): Promise<void> => Promise.resolve();
 export const IsResourceForbidden = (_resource: string): Promise<boolean> => Promise.resolve(false);
+export const DownloadPodLogs = (
+  _contextName: string,
+  _ns: string,
+  _pod: string,
+  _container: string
+): Promise<void> => Promise.resolve();
 export const CheckForUpdate = (): Promise<void> => Promise.resolve(undefined);
 export const GetLastUpdateCheckResult = (): Promise<unknown> => Promise.resolve(null);
 export const PerformUpdate = (): Promise<void> => Promise.resolve();

@@ -26,7 +26,7 @@ export const ServiceAccountDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete ServiceAccount:{" "}
+            Delete Service Account:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,14 +42,14 @@ export const ServiceAccountDeleteConfirmationModal: FC<
     }
 
     const count = items?.length ?? 0;
-    const titleText = `Delete ${count} ServiceAccount${count === 1 ? "" : "s"}`;
+    const titleText = `Delete ${count} Service Account${count === 1 ? "" : "s"}`;
 
     const descriptionElement = (() => {
       if (namespaces.length === 1) {
         const nsName = namespaces[0];
         return (
           <>
-            This will permanently delete {count} serviceaccount{count === 1 ? "" : "s"} from
+            This will permanently delete {count} Service Account{count === 1 ? "" : "s"} from
             namespace <span className="font-mono font-medium text-foreground">{nsName}</span>. This
             action cannot be undone.
           </>
@@ -57,7 +57,7 @@ export const ServiceAccountDeleteConfirmationModal: FC<
       }
       return (
         <>
-          This will permanently delete {count} serviceaccounts from {namespaces.length} namespaces.
+          This will permanently delete {count} Service Accounts from {namespaces.length} namespaces.
           This action cannot be undone.
         </>
       );

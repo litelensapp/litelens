@@ -22,6 +22,7 @@ func NewEndpointsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.EndpointsLister] {
 	return New(Config[listerscorev1.EndpointsLister]{
 		Name:          "endpoints",
@@ -39,6 +40,7 @@ func NewEndpointsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

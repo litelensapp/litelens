@@ -27,7 +27,7 @@ func TestNewHorizontalPodAutoscalersResourceNamespaceScoped(t *testing.T) {
 	factory := informers.NewSharedInformerFactory(cs, 0)
 	r := NewHorizontalPodAutoscalersResource(cs, func() cache.SharedIndexInformer {
 		return factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer()
-	}, nil, nil)
+	}, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -61,7 +61,7 @@ func TestNewHorizontalPodAutoscalersResourceFallsBackToClusterWideBeyondThreshol
 	factory := informers.NewSharedInformerFactory(cs, 0)
 	r := NewHorizontalPodAutoscalersResource(cs, func() cache.SharedIndexInformer {
 		return factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer()
-	}, nil, nil)
+	}, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

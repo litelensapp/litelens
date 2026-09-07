@@ -20,13 +20,13 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetPodDisruptionBudgets } from "./hooks/data-access/useGetPodDisruptionBudgets";
-import { useDeletePodDisruptionBudget } from "./hooks/data-mutation/useDeletePodDisruptionBudget";
-import { useDeletePodDisruptionBudgets } from "./hooks/data-mutation/useDeletePodDisruptionBudgets";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { PodDisruptionBudgetDeleteConfirmationModal } from "./components/PodDisruptionBudgetDeleteConfirmationModal";
+import { useGetPodDisruptionBudgets } from "./hooks/data-access/useGetPodDisruptionBudgets";
+import { useDeletePodDisruptionBudget } from "./hooks/data-mutation/useDeletePodDisruptionBudget";
+import { useDeletePodDisruptionBudgets } from "./hooks/data-mutation/useDeletePodDisruptionBudgets";
 
 interface PodDisruptionBudgetTableCtaButtonsProps {
   name: string;
@@ -175,8 +175,8 @@ export const PodDisruptionBudgetsView: FC = () => {
               <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
                   icon={<ShieldAlertIcon className="size-8" />}
-                  title="No PodDisruptionBudgets"
-                  description="Create a PodDisruptionBudget to limit voluntary disruptions"
+                  title="No Pod Disruption Budgets"
+                  description="Create a Pod Disruption Budget to limit voluntary disruptions"
                 />
               </TableCell>
             </TableRow>

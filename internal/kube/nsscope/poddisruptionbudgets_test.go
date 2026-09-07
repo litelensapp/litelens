@@ -35,7 +35,7 @@ func TestNewPodDisruptionBudgetsResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewPodDisruptionBudgetsResource(cs, func() cache.SharedIndexInformer { return factory.Policy().V1().PodDisruptionBudgets().Informer() }, nil, nil)
+	r := NewPodDisruptionBudgetsResource(cs, func() cache.SharedIndexInformer { return factory.Policy().V1().PodDisruptionBudgets().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -81,7 +81,7 @@ func TestNewPodDisruptionBudgetsResourceFallsBackToClusterWideBeyondThreshold(t 
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewPodDisruptionBudgetsResource(cs, func() cache.SharedIndexInformer { return factory.Policy().V1().PodDisruptionBudgets().Informer() }, nil, nil)
+	r := NewPodDisruptionBudgetsResource(cs, func() cache.SharedIndexInformer { return factory.Policy().V1().PodDisruptionBudgets().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

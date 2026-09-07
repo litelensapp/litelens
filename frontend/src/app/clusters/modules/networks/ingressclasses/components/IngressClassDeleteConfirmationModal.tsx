@@ -25,7 +25,7 @@ export const IngressClassDeleteConfirmationModal: FC<IngressClassDeleteConfirmat
       return {
         title: (
           <>
-            Delete IngressClass:{" "}
+            Delete Ingress Class:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,10 +42,10 @@ export const IngressClassDeleteConfirmationModal: FC<IngressClassDeleteConfirmat
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} IngressClass${count === 1 ? "" : "es"}`,
+      title: `Delete ${count} Ingress Class${count === 1 ? "" : "es"}`,
       description: (
         <>
-          This will permanently delete {count} ingressclass{count === 1 ? "" : "es"}. Ingresses may
+          This will permanently delete {count} Ingress Class{count === 1 ? "" : "es"}. Ingresses may
           become unroutable if they reference these classes. This action cannot be undone.
         </>
       ),

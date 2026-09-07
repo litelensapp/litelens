@@ -1,4 +1,5 @@
 export {
+  DownloadPodLogs,
   ExecInPod,
   GetPodByName,
   GetPodsSummary,

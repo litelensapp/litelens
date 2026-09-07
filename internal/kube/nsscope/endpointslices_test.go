@@ -25,7 +25,7 @@ func TestNewEndpointSlicesResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewEndpointSlicesResource(cs, func() cache.SharedIndexInformer { return factory.Discovery().V1().EndpointSlices().Informer() }, nil, nil)
+	r := NewEndpointSlicesResource(cs, func() cache.SharedIndexInformer { return factory.Discovery().V1().EndpointSlices().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -57,7 +57,7 @@ func TestNewEndpointSlicesResourceFallsBackToClusterWideBeyondThreshold(t *testi
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewEndpointSlicesResource(cs, func() cache.SharedIndexInformer { return factory.Discovery().V1().EndpointSlices().Informer() }, nil, nil)
+	r := NewEndpointSlicesResource(cs, func() cache.SharedIndexInformer { return factory.Discovery().V1().EndpointSlices().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListEndpointSlices() ([]dto.EndpointSlice, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "endpointslices") {
+	if !waitForResourceSyncIgnoringForbidden(h, "endpointslices") {
 		return []dto.EndpointSlice{}, nil
 	}
 	result, err := kubeResources.ListEndpointSlices(h.EndpointSliceLister(), namespaces)
@@ -29,7 +29,7 @@ func (a *App) ListEndpointSlices() ([]dto.EndpointSlice, error) {
 
 func (a *App) GetEndpointSliceByName(namespace, name string) (dto.EndpointSlice, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "endpointslices") {
+	if !waitForResourceSyncIgnoringForbidden(h, "endpointslices") {
 		return dto.EndpointSlice{}, nil
 	}
 	result, err := kubeResources.GetEndpointSliceByName(h.EndpointSliceLister(), namespace, name)
@@ -83,7 +83,7 @@ func (a *App) DeleteEndpointSlices(items []dto.EndpointSliceRef) error {
 
 func (a *App) emitEndpointSlices() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "endpointslices") {
+	if !waitForResourceSyncIgnoringForbidden(h, "endpointslices") {
 		return
 	}
 	lister := h.EndpointSliceLister()

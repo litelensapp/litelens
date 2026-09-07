@@ -16,7 +16,7 @@ import (
 
 func (a *App) GetServiceAccountByName(namespace, name string) (dto.ServiceAccount, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "serviceaccounts") {
+	if !waitForResourceSyncIgnoringForbidden(h, "serviceaccounts") {
 		return dto.ServiceAccount{}, nil
 	}
 	result, err := kubeResources.GetServiceAccountByName(
@@ -33,7 +33,7 @@ func (a *App) GetServiceAccountByName(namespace, name string) (dto.ServiceAccoun
 
 func (a *App) ListServiceAccounts() ([]dto.ServiceAccount, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "serviceaccounts") {
+	if !waitForResourceSyncIgnoringForbidden(h, "serviceaccounts") {
 		return []dto.ServiceAccount{}, nil
 	}
 	result, err := kubeResources.ListServiceAccounts(
@@ -88,7 +88,7 @@ func (a *App) DeleteServiceAccounts(items []dto.ServiceAccountRef) error {
 
 func (a *App) emitServiceAccounts() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "serviceaccounts") {
+	if !waitForResourceSyncIgnoringForbidden(h, "serviceaccounts") {
 		return
 	}
 	lister := h.ServiceAccountLister()

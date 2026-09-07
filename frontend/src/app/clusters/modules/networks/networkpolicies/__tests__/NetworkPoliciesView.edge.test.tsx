@@ -86,7 +86,7 @@ describe("NetworkPoliciesView — edge cases and boundary conditions", () => {
     useGetNetworkPoliciesMock.mockReturnValue({ data: undefined });
     expect(() => renderView()).not.toThrow();
     expect(screen.getByText("0 items")).toBeInTheDocument();
-    expect(screen.getByText("No NetworkPolicies")).toBeInTheDocument();
+    expect(screen.getByText("No Network Policies")).toBeInTheDocument();
   });
 
   // 2. 50+ items filtered to 0 by search → "Item list is empty" + "0 items"
@@ -100,7 +100,7 @@ describe("NetworkPoliciesView — edge cases and boundary conditions", () => {
     const input = screen.getByPlaceholderText("Search Network Policies...");
     fireEvent.change(input, { target: { value: "zzz-no-match-ever" } });
 
-    expect(screen.getByText("No NetworkPolicies")).toBeInTheDocument();
+    expect(screen.getByText("No Network Policies")).toBeInTheDocument();
     expect(screen.getByText("0 items")).toBeInTheDocument();
   });
 

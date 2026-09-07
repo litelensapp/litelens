@@ -151,23 +151,21 @@ func toJob(j *batchv1.Job) dto.Job {
 			}
 			return humanAge(j.Status.CompletionTime.Time)
 		}(),
-		PodsStatuses: fmt.Sprintf("%d Active (%d Ready) / %d Succeeded / %d Failed",
-			j.Status.Active, j.Status.Ready, j.Status.Succeeded, j.Status.Failed),
-		PodStatus: func() string {
-			var parts []string
+		PodsStatuses: func() []string {
+			var statuses []string
 			if j.Status.Active > 0 {
-				parts = append(parts, fmt.Sprintf("Active: %d", j.Status.Active))
+				statuses = append(statuses, fmt.Sprintf("%d Active", j.Status.Active))
+			}
+			if j.Status.Ready != nil && *j.Status.Ready > 0 {
+				statuses = append(statuses, fmt.Sprintf("%d Ready", *j.Status.Ready))
 			}
 			if j.Status.Succeeded > 0 {
-				parts = append(parts, fmt.Sprintf("Succeeded: %d", j.Status.Succeeded))
+				statuses = append(statuses, fmt.Sprintf("%d Succeeded", j.Status.Succeeded))
 			}
 			if j.Status.Failed > 0 {
-				parts = append(parts, fmt.Sprintf("Failed: %d", j.Status.Failed))
+				statuses = append(statuses, fmt.Sprintf("%d Failed", j.Status.Failed))
 			}
-			if len(parts) == 0 {
-				return ""
-			}
-			return strings.Join(parts, ", ")
+			return statuses
 		}(),
 	}
 }

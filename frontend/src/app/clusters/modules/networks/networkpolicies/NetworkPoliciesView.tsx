@@ -21,13 +21,13 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetNetworkPolicies } from "./hooks/data-access/useGetNetworkPolicies";
-import { useDeleteNetworkPolicies } from "./hooks/data-mutation/useDeleteNetworkPolicies";
-import { useDeleteNetworkPolicy } from "./hooks/data-mutation/useDeleteNetworkPolicy";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { NetworkPolicyDeleteConfirmationModal } from "./components/NetworkPolicyDeleteConfirmationModal";
+import { useGetNetworkPolicies } from "./hooks/data-access/useGetNetworkPolicies";
+import { useDeleteNetworkPolicies } from "./hooks/data-mutation/useDeleteNetworkPolicies";
+import { useDeleteNetworkPolicy } from "./hooks/data-mutation/useDeleteNetworkPolicy";
 
 interface NetworkPolicyTableCtaButtonsProps {
   name: string;
@@ -171,8 +171,8 @@ export const NetworkPoliciesView: FC = () => {
               <TableCell colSpan={namespaces.length !== 1 ? 6 : 5} className="px-0 py-0">
                 <EmptyState
                   icon={<ShieldCheckIcon className="size-8" />}
-                  title="No NetworkPolicies"
-                  description="Create a NetworkPolicy to control pod traffic"
+                  title="No Network Policies"
+                  description="Create a Network Policy to control pod traffic"
                 />
               </TableCell>
             </TableRow>

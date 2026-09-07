@@ -20,13 +20,13 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetStorageClasses } from "./hooks/data-access/useGetStorageClasses";
-import { useDeleteStorageClass } from "./hooks/data-mutation/useDeleteStorageClass";
-import { useDeleteStorageClasses } from "./hooks/data-mutation/useDeleteStorageClasses";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { StorageClassDeleteConfirmationModal } from "./components/StorageClassDeleteConfirmationModal";
+import { useGetStorageClasses } from "./hooks/data-access/useGetStorageClasses";
+import { useDeleteStorageClass } from "./hooks/data-mutation/useDeleteStorageClass";
+import { useDeleteStorageClasses } from "./hooks/data-mutation/useDeleteStorageClasses";
 
 const StorageClassTableCtaButtons: FC<{ name: string }> = ({ name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -154,8 +154,8 @@ export const StorageClassesView: FC = () => {
               <TableCell colSpan={7} className="px-0 py-0">
                 <EmptyState
                   icon={<SaveIcon className="size-8" />}
-                  title="No StorageClasses"
-                  description="StorageClasses define how PersistentVolumes are provisioned"
+                  title="No Storage Classes"
+                  description="Storage Classes define how Persistent Volumes are provisioned"
                 />
               </TableCell>
             </TableRow>

@@ -19,7 +19,7 @@ export const PersistentVolumeDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete PersistentVolume:{" "}
+            Delete Persistent Volume:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -36,11 +36,11 @@ export const PersistentVolumeDeleteConfirmationModal: FC<
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} PersistentVolume${count === 1 ? "" : "s"}`,
+      title: `Delete ${count} Persistent Volume${count === 1 ? "" : "s"}`,
       description: (
         <>
-          This will permanently delete {count} persistentvolume{count === 1 ? "" : "s"}. This action
-          cannot be undone.
+          This will permanently delete {count} Persistent Volume{count === 1 ? "" : "s"}. This
+          action cannot be undone.
         </>
       ),
     };

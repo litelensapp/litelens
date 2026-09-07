@@ -33,7 +33,7 @@ export const RoleBindingDeleteConfirmationModal: FC<RoleBindingDeleteConfirmatio
       return {
         title: (
           <>
-            Delete RoleBinding:{" "}
+            Delete Role Binding:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -49,14 +49,14 @@ export const RoleBindingDeleteConfirmationModal: FC<RoleBindingDeleteConfirmatio
     }
 
     const count = items?.length ?? 0;
-    const titleText = `Delete ${count} RoleBinding${count === 1 ? "" : "s"}`;
+    const titleText = `Delete ${count} Role Binding${count === 1 ? "" : "s"}`;
 
     const descriptionElement = (() => {
       if (namespaces.length === 1) {
         const nsName = namespaces[0];
         return (
           <>
-            This will permanently delete {count} rolebinding{count === 1 ? "" : "s"} from namespace{" "}
+            This will permanently delete {count} Role Binding{count === 1 ? "" : "s"} from namespace{" "}
             <span className="font-mono font-medium text-foreground">{nsName}</span>. This action
             cannot be undone.
           </>
@@ -64,7 +64,7 @@ export const RoleBindingDeleteConfirmationModal: FC<RoleBindingDeleteConfirmatio
       }
       return (
         <>
-          This will permanently delete {count} rolebindings from {namespaces.length} namespaces.
+          This will permanently delete {count} Role Bindings from {namespaces.length} namespaces.
           This action cannot be undone.
         </>
       );

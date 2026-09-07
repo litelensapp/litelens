@@ -22,6 +22,7 @@ func NewLimitRangesResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.LimitRangeLister] {
 	return New(Config[listerscorev1.LimitRangeLister]{
 		Name:          "limitranges",
@@ -39,6 +40,7 @@ func NewLimitRangesResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

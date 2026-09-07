@@ -140,14 +140,11 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
         )}
 
         <span className="text-h3 text-muted-foreground">Pods Statuses</span>
-        <span className="text-body font-mono">{j.PodsStatuses}</span>
-
-        {j.PodStatus && (
-          <>
-            <span className="text-h3 text-muted-foreground">Pod Status</span>
-            <PodStatusBadge status={j.PodStatus} />
-          </>
-        )}
+        <div className="flex flex-wrap gap-1">
+          {j.PodsStatuses.map((status) => (
+            <PodStatusBadge key={status} status={status} />
+          ))}
+        </div>
 
         {(j.Conditions ?? []).length > 0 && (
           <>

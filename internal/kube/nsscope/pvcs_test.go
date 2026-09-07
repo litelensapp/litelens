@@ -25,7 +25,7 @@ func TestNewPersistentVolumeClaimsResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewPersistentVolumeClaimsResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().PersistentVolumeClaims().Informer() }, nil, nil)
+	r := NewPersistentVolumeClaimsResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().PersistentVolumeClaims().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -57,7 +57,7 @@ func TestNewPersistentVolumeClaimsResourceFallsBackToClusterWideBeyondThreshold(
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewPersistentVolumeClaimsResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().PersistentVolumeClaims().Informer() }, nil, nil)
+	r := NewPersistentVolumeClaimsResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().PersistentVolumeClaims().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

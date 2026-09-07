@@ -1,11 +1,10 @@
-import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
-import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
+import { FC, Fragment, useReducer } from "react";
+import { useMainLayoutContext } from "../../../../MainLayoutContext";
+import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
+import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
 import { useGetNetworkPolicyYAML } from "../hooks/data-access/useGetNetworkPolicyYAML";
 import { useUpdateNetworkPolicyYAML } from "../hooks/data-mutation/useUpdateNetworkPolicyYAML";
-import { useMainLayoutContext } from "../../../../MainLayoutContext";
-
-import { FC, Fragment, useReducer } from "react";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -70,7 +69,7 @@ export const NetworkPolicyModificationTray: FC<ModificationTrayContentProps> = (
   if (!tab.namespace) {
     return (
       <p className="p-4 text-xs text-destructive">
-        NetworkPolicy namespace is required but not provided.
+        Network Policy namespace is required but not provided.
       </p>
     );
   }
@@ -121,7 +120,7 @@ export const NetworkPolicyModificationTray: FC<ModificationTrayContentProps> = (
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this NetworkPolicy.
+            No YAML available for this Network Policy.
           </p>
         ) : (
           <Textarea

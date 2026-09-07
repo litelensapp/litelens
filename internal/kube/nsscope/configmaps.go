@@ -22,6 +22,7 @@ func NewConfigMapsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.ConfigMapLister] {
 	return New(Config[listerscorev1.ConfigMapLister]{
 		Name:          "configmaps",
@@ -39,6 +40,7 @@ func NewConfigMapsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

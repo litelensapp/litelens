@@ -26,7 +26,7 @@ export const ResourceQuotaDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete ResourceQuota:{" "}
+            Delete Resource Quota:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,14 +42,14 @@ export const ResourceQuotaDeleteConfirmationModal: FC<
     }
 
     const count = items?.length ?? 0;
-    const titleText = `Delete ${count} ResourceQuota${count === 1 ? "" : "s"}`;
+    const titleText = `Delete ${count} Resource Quota${count === 1 ? "" : "s"}`;
 
     const descriptionElement = (() => {
       if (namespaces.length === 1) {
         const nsName = namespaces[0];
         return (
           <>
-            This will permanently delete {count} resourcequota{count === 1 ? "" : "s"} from
+            This will permanently delete {count} Resource Quota{count === 1 ? "" : "s"} from
             namespace <span className="font-mono font-medium text-foreground">{nsName}</span>. All
             associated resources will be removed.
           </>
@@ -57,8 +57,8 @@ export const ResourceQuotaDeleteConfirmationModal: FC<
       }
       return (
         <>
-          This will permanently delete {count} resourcequotas from {namespaces.length} namespaces.
-          All associated resources will be removed.
+          This will permanently delete {count} Resource Quota{count === 1 ? "" : "s"} from{" "}
+          {namespaces.length} namespaces. All associated resources will be removed.
         </>
       );
     })();

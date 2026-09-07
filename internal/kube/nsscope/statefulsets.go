@@ -24,6 +24,7 @@ func NewStatefulSetsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersappsv1.StatefulSetLister] {
 	return New(Config[listersappsv1.StatefulSetLister]{
 		Name:          "statefulsets",
@@ -41,6 +42,7 @@ func NewStatefulSetsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

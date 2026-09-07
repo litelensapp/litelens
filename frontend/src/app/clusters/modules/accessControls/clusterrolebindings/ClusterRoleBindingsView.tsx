@@ -22,14 +22,14 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import type { ClusterRoleBinding } from "./api/resources";
-import { useGetClusterRoleBindings } from "./hooks/data-access/useGetClusterRoleBindings";
-import { useDeleteClusterRoleBinding } from "./hooks/data-mutation/useDeleteClusterRoleBinding";
-import { useDeleteClusterRoleBindings } from "./hooks/data-mutation/useDeleteClusterRoleBindings";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import type { ClusterRoleBinding } from "./api/resources";
 import { ClusterRoleBindingDeleteConfirmationModal } from "./components/ClusterRoleBindingDeleteConfirmationModal";
+import { useGetClusterRoleBindings } from "./hooks/data-access/useGetClusterRoleBindings";
+import { useDeleteClusterRoleBinding } from "./hooks/data-mutation/useDeleteClusterRoleBinding";
+import { useDeleteClusterRoleBindings } from "./hooks/data-mutation/useDeleteClusterRoleBindings";
 
 interface ClusterRoleBindingTableCtaButtonsProps {
   name: string;
@@ -177,8 +177,8 @@ export const ClusterRoleBindingsView: FC = () => {
               <TableCell colSpan={7} className="px-0 py-0">
                 <EmptyState
                   icon={<Link2Icon className="size-8" />}
-                  title="No ClusterRoleBindings"
-                  description="Create a ClusterRoleBinding to grant cluster-wide permissions"
+                  title="No Cluster Role Bindings"
+                  description="Create a Cluster Role Binding to grant cluster-wide permissions"
                 />
               </TableCell>
             </TableRow>

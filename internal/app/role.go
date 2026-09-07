@@ -16,7 +16,7 @@ import (
 
 func (a *App) GetRoleByName(namespace, name string) (dto.Role, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "roles") {
+	if !waitForResourceSyncIgnoringForbidden(h, "roles") {
 		return dto.Role{}, nil
 	}
 	result, err := kubeResources.GetRoleByName(
@@ -33,7 +33,7 @@ func (a *App) GetRoleByName(namespace, name string) (dto.Role, error) {
 
 func (a *App) ListRoles() ([]dto.Role, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "roles") {
+	if !waitForResourceSyncIgnoringForbidden(h, "roles") {
 		return []dto.Role{}, nil
 	}
 	result, err := kubeResources.ListRoles(
@@ -49,7 +49,7 @@ func (a *App) ListRoles() ([]dto.Role, error) {
 
 func (a *App) emitRoles() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "roles") {
+	if !waitForResourceSyncIgnoringForbidden(h, "roles") {
 		return
 	}
 	lister := h.RoleLister()

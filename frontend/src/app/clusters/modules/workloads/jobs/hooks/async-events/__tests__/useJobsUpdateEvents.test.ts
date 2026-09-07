@@ -57,8 +57,7 @@ describe("useJobsUpdateEvents", () => {
         StartTimeAge: "1h",
         CompletedAt: "2025-01-01T00:00:10Z",
         CompletedAtAge: "1h",
-        PodsStatuses: "1 Succeeded",
-        PodStatus: "Succeeded",
+        PodsStatuses: ["1 Succeeded"],
       },
     ];
     triggerEvent("jobs:update", payload);
@@ -91,8 +90,7 @@ describe("useJobsUpdateEvents", () => {
         StartTimeAge: "1h",
         CompletedAt: "2025-01-01T00:00:10Z",
         CompletedAtAge: "1h",
-        PodsStatuses: "1 Succeeded",
-        PodStatus: "Succeeded",
+        PodsStatuses: ["1 Succeeded"],
       },
     ];
     triggerEvent("jobs:update", payload1);
@@ -122,8 +120,7 @@ describe("useJobsUpdateEvents", () => {
         StartTimeAge: "5m",
         CompletedAt: "",
         CompletedAtAge: "",
-        PodsStatuses: "1 Running",
-        PodStatus: "Running",
+        PodsStatuses: ["1 Running"],
       },
     ];
     triggerEvent("jobs:update", payload2);

@@ -55,7 +55,7 @@ export const HPADeleteConfirmationModal: FC<HPADeleteConfirmationModalProps> = (
         const nsName = namespaces[0];
         return (
           <>
-            This will permanently delete {count} hpa{count === 1 ? "" : "s"} from namespace{" "}
+            This will permanently delete {count} HPA{count === 1 ? "" : "s"} from namespace{" "}
             <span className="font-mono font-medium text-foreground">{nsName}</span>. This action
             cannot be undone.
           </>
@@ -63,7 +63,7 @@ export const HPADeleteConfirmationModal: FC<HPADeleteConfirmationModalProps> = (
       }
       return (
         <>
-          This will permanently delete {count} hpas from {namespaces.length} namespaces. This action
+          This will permanently delete {count} HPAs from {namespaces.length} namespaces. This action
           cannot be undone.
         </>
       );

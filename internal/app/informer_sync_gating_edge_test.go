@@ -112,7 +112,10 @@ func TestGetSyncedChanAfterForbidden(t *testing.T) {
 }
 
 // TestListConfigMapsGatingPattern verifies that ListConfigMaps correctly gates
-// on GetSyncedChan("configmaps") and short-circuits on IsForbidden.
+// on GetSyncedChan("configmaps") and does NOT short-circuit on IsForbidden.
+// For namespace-filterable resources, the resource-layer function already
+// tolerates per-namespace errors; gating on a whole-resource forbidden flag
+// would wipe out data from accessible namespaces when one namespace is inaccessible.
 func TestListConfigMapsGatingPattern(t *testing.T) {
 	const cmCount = 5
 
@@ -151,21 +154,28 @@ func TestListConfigMapsGatingPattern(t *testing.T) {
 		t.Fatalf("expected %d ConfigMaps, got %d", cmCount, len(cms))
 	}
 
-	// Now mark configmaps as forbidden
+	// Now mark configmaps as forbidden (simulating a 403 in one namespace)
 	h.StopResource("configmaps", func(string) {})
 
-	// ListConfigMaps should return an empty slice (zero-value)
+	// ListConfigMaps should still return the ConfigMaps from accessible namespaces.
+	// With a fake clientset, the data is still available; the forbidden flag is
+	// not checked by the app-layer gate. The resource-layer function handles
+	// per-namespace errors individually.
 	cms2, err := a.ListConfigMaps()
 	if err != nil {
-		t.Fatalf("ListConfigMaps with forbidden resource should return nil error, got %v", err)
+		t.Fatalf("ListConfigMaps with forbidden resource should still attempt to read, got error %v", err)
 	}
-	if len(cms2) != 0 {
-		t.Fatalf("expected empty ConfigMaps slice after forbidden, got %d", len(cms2))
+	// With a fake clientset (no real 403s), we still get the data
+	if len(cms2) != cmCount {
+		t.Fatalf("expected %d ConfigMaps despite forbidden flag (fake clientset returns data), got %d", cmCount, len(cms2))
 	}
 }
 
 // TestGetConfigMapByNameGatingPattern verifies that GetConfigMapByName correctly
-// gates on GetSyncedChan("configmaps") and short-circuits on IsForbidden.
+// gates on GetSyncedChan("configmaps") and does NOT short-circuit on IsForbidden.
+// For namespace-filterable resources, the resource-layer function already
+// tolerates per-namespace errors; gating on a whole-resource forbidden flag
+// would wipe out data from accessible namespaces when one namespace is inaccessible.
 func TestGetConfigMapByNameGatingPattern(t *testing.T) {
 	objs := []runtime.Object{
 		&corev1.ConfigMap{
@@ -200,16 +210,20 @@ func TestGetConfigMapByNameGatingPattern(t *testing.T) {
 		t.Fatalf("expected ConfigMap name 'test-cm', got %q", cm.Name)
 	}
 
-	// Mark configmaps as forbidden
+	// Mark configmaps as forbidden (simulating a 403 in one namespace)
 	h.StopResource("configmaps", func(string) {})
 
-	// GetConfigMapByName should return zero-value with nil error
+	// GetConfigMapByName should still return the ConfigMap from the accessible namespace.
+	// With a fake clientset, the data is still available; the forbidden flag is
+	// not checked by the app-layer gate. The resource-layer function handles
+	// per-namespace errors individually.
 	cm2, err := a.GetConfigMapByName("default", "test-cm")
 	if err != nil {
-		t.Fatalf("GetConfigMapByName with forbidden resource should return nil error, got %v", err)
+		t.Fatalf("GetConfigMapByName with forbidden resource should still attempt to read, got error %v", err)
 	}
-	if cm2.Name != "" {
-		t.Fatalf("expected zero-value ConfigMap after forbidden, got %q", cm2.Name)
+	// With a fake clientset (no real 403s), we still get the data
+	if cm2.Name != "test-cm" {
+		t.Fatalf("expected ConfigMap 'test-cm' despite forbidden flag (fake clientset returns data), got %q", cm2.Name)
 	}
 }
 
@@ -373,9 +387,12 @@ func TestMultipleStopResourceCallsIdempotent(t *testing.T) {
 	}
 }
 
-// TestForbiddenResourceReturnsZeroValueAndNilError verifies that App methods
-// return zero-value and nil error when the resource is forbidden.
-func TestForbiddenResourceReturnsZeroValueAndNilError(t *testing.T) {
+// TestForbiddenResourceReturnsZeroValueAndNilError_ClusterScoped verifies that
+// App methods for CLUSTER-SCOPED resources (like nodes) return zero-value and
+// nil error when the resource is forbidden. This is correct for cluster-scoped
+// resources because a 403 really does mean the entire resource is inaccessible.
+// For namespace-filterable resources, see TestListConfigMapsGatingPattern.
+func TestForbiddenResourceReturnsZeroValueAndNilError_ClusterScoped(t *testing.T) {
 	cs := fake.NewSimpleClientset()
 	h := kube.NewFactoryHandle(cs, func(string) {})
 	defer h.Stop()
@@ -387,26 +404,26 @@ func TestForbiddenResourceReturnsZeroValueAndNilError(t *testing.T) {
 		},
 	}
 
-	// Mark pods as forbidden
-	h.StopResource("pods", func(string) {})
+	// Mark nodes as forbidden
+	h.StopResource("nodes", func(string) {})
 
-	// ListPods should return empty slice and nil error
-	a.activeNamespaces = []string{"default"}
-	pods, err := a.ListPods()
+	// ListNodes should return empty slice and nil error
+	// (nodes are cluster-scoped, so forbidden = truly inaccessible)
+	nodes, err := a.ListNodes()
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if len(pods) != 0 {
-		t.Fatalf("expected empty slice for forbidden resource, got %d pods", len(pods))
+	if len(nodes) != 0 {
+		t.Fatalf("expected empty slice for forbidden cluster-scoped resource, got %d nodes", len(nodes))
 	}
 
-	// GetPodByName should return zero-value and nil error
-	pod, err := a.GetPodByName("default", "nonexistent")
+	// GetNodeByName should return zero-value and nil error
+	node, err := a.GetNodeByName("nonexistent")
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if pod.Name != "" {
-		t.Fatalf("expected zero-value pod, got %q", pod.Name)
+	if node.Name != "" {
+		t.Fatalf("expected zero-value node, got %q", node.Name)
 	}
 }
 
@@ -548,6 +565,65 @@ func BenchmarkGetSyncedChan(b *testing.B) {
 	b.ResetTimer()
 	for range b.N {
 		h.GetSyncedChan("pods")
+	}
+}
+
+// TestWaitForSyncIgnoringForbiddenDoesNotSkipSyncWait verifies the critical
+// regression: namespace-filterable resources must still wait for sync even when
+// the whole-resource IsForbidden flag is set. This prevents the app-layer gate
+// from short-circuiting and wiping out data from accessible namespaces.
+// The original buggy behavior checked IsForbidden as a short-circuit before
+// waiting for sync; the fix uses waitForResourceSyncIgnoringForbidden which
+// always waits, ignoring the forbidden flag.
+func TestWaitForSyncIgnoringForbiddenDoesNotSkipSyncWait(t *testing.T) {
+	objs := []runtime.Object{
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-pod",
+				Namespace: "default",
+			},
+		},
+	}
+
+	cs := fake.NewSimpleClientset(objs...)
+	h := kube.NewFactoryHandle(cs, func(string) {})
+	defer h.Stop()
+
+	a := &App{
+		activeContext: "test",
+		factories: map[string]*kube.FactoryHandle{
+			"test": h,
+		},
+	}
+
+	// Mark pods as forbidden BEFORE querying (simulating a 403 state)
+	h.StopResource("pods", func(string) {})
+
+	// Verify IsForbidden returns true
+	if !h.IsForbidden("pods") {
+		t.Fatal("expected pods to be forbidden after StopResource")
+	}
+
+	// Set active namespaces for the query
+	a.activeNamespaces = []string{"default"}
+
+	// ListPods MUST still return data from accessible namespaces, not return empty
+	// or nil just because the forbidden flag is set. The waitForResourceSyncIgnoringForbidden
+	// gate ensures we wait for sync regardless of forbidden state, allowing the
+	// resource-layer function (kubeResources.ListPods) to tolerate per-namespace
+	// errors and return partial data.
+	// With a fake clientset, there are no real 403s, so the data is available.
+	pods, err := a.ListPods()
+	if err != nil {
+		t.Fatalf("ListPods with forbidden flag should not error, got %v", err)
+	}
+
+	// With a fake clientset (no real per-namespace 403s), we should get the pod
+	// even though the resource is marked forbidden. This proves the gate does not
+	// short-circuit on IsForbidden — it waits for sync and lets the resource-layer
+	// function handle per-namespace errors individually.
+	if len(pods) != 1 || pods[0].Name != "test-pod" {
+		t.Fatalf("expected 1 pod named 'test-pod' despite forbidden flag (gate should not short-circuit), got %v", pods)
 	}
 }
 

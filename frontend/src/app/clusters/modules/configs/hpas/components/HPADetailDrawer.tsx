@@ -313,7 +313,7 @@ export const HPADetailDrawer: FC<HPADetailDrawerProps> = ({
           onDataChange={setHpa}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="HorizontalPodAutoscaler" />
+        <ResourceDetailEmptyBody resourceKind="Horizontal Pod Autoscaler" />
       )}
     </ResourceDetailDrawer>
   );

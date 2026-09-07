@@ -20,7 +20,7 @@ import (
 
 func (a *App) ListDeployments() ([]dto.Deployment, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "deployments") {
+	if !waitForResourceSyncIgnoringForbidden(h, "deployments") {
 		return []dto.Deployment{}, nil
 	}
 	result, err := kubeResources.ListDeployments(h.DeploymentLister(), namespaces)
@@ -33,7 +33,7 @@ func (a *App) ListDeployments() ([]dto.Deployment, error) {
 
 func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "deployments") {
+	if !waitForResourceSyncIgnoringForbidden(h, "deployments") {
 		return dto.Deployment{}, nil
 	}
 	result, err := kubeResources.GetDeploymentByName(h.DeploymentLister(), namespace, name)
@@ -46,7 +46,7 @@ func (a *App) GetDeploymentByName(namespace, name string) (dto.Deployment, error
 
 func (a *App) GetDeploymentsSummary() (dto.DeploymentSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "deployments") {
+	if !waitForResourceSyncIgnoringForbidden(h, "deployments") {
 		return dto.DeploymentSummary{}, nil
 	}
 	lister := h.DeploymentLister()
@@ -162,7 +162,7 @@ func (a *App) DeleteDeployments(items []dto.DeploymentRef) error {
 
 func (a *App) emitDeployments() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "deployments") {
+	if !waitForResourceSyncIgnoringForbidden(h, "deployments") {
 		return
 	}
 	lister := h.DeploymentLister()

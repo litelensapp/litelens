@@ -22,6 +22,7 @@ func NewRolesResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersrbacv1.RoleLister] {
 	return New(Config[listersrbacv1.RoleLister]{
 		Name:          "roles",
@@ -39,6 +40,7 @@ func NewRolesResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

@@ -26,7 +26,7 @@ export const PodDisruptionBudgetDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete PodDisruptionBudget:{" "}
+            Delete Pod Disruption Budget:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,14 +42,14 @@ export const PodDisruptionBudgetDeleteConfirmationModal: FC<
     }
 
     const count = items?.length ?? 0;
-    const titleText = `Delete ${count} PodDisruptionBudget${count === 1 ? "" : "s"}`;
+    const titleText = `Delete ${count} Pod Disruption Budget${count === 1 ? "" : "s"}`;
 
     const descriptionElement = (() => {
       if (namespaces.length === 1) {
         const nsName = namespaces[0];
         return (
           <>
-            This will permanently delete {count} poddisruptionbudget{count === 1 ? "" : "s"} from
+            This will permanently delete {count} Pod Disruption Budget{count === 1 ? "" : "s"} from
             namespace <span className="font-mono font-medium text-foreground">{nsName}</span>. This
             action cannot be undone.
           </>
@@ -57,8 +57,8 @@ export const PodDisruptionBudgetDeleteConfirmationModal: FC<
       }
       return (
         <>
-          This will permanently delete {count} poddisruptionbudgets from {namespaces.length}{" "}
-          namespaces. This action cannot be undone.
+          This will permanently delete {count} Pod Disruption Budget{count === 1 ? "" : "s"} from{" "}
+          {namespaces.length} namespaces. This action cannot be undone.
         </>
       );
     })();

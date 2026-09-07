@@ -26,7 +26,7 @@ export const NetworkPolicyDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete NetworkPolicy:{" "}
+            Delete Network Policy:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,14 +42,14 @@ export const NetworkPolicyDeleteConfirmationModal: FC<
     }
 
     const count = items?.length ?? 0;
-    const titleText = `Delete ${count} NetworkPolicy${count === 1 ? "" : "ies"}`;
+    const titleText = `Delete ${count} Network Policy${count === 1 ? "" : "ies"}`;
 
     const descriptionElement = (() => {
       if (namespaces.length === 1) {
         const nsName = namespaces[0];
         return (
           <>
-            This will permanently delete {count} networkpolicy{count === 1 ? "" : "ies"} from
+            This will permanently delete {count} Network Policy{count === 1 ? "" : "ies"} from
             namespace <span className="font-mono font-medium text-foreground">{nsName}</span>. This
             action cannot be undone.
           </>
@@ -57,7 +57,7 @@ export const NetworkPolicyDeleteConfirmationModal: FC<
       }
       return (
         <>
-          This will permanently delete {count} networkpolicies from {namespaces.length} namespaces.
+          This will permanently delete {count} Network Policies from {namespaces.length} namespaces.
           This action cannot be undone.
         </>
       );

@@ -24,6 +24,7 @@ func NewJobsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersbatchv1.JobLister] {
 	return New(Config[listersbatchv1.JobLister]{
 		Name:          "jobs",
@@ -41,6 +42,7 @@ func NewJobsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

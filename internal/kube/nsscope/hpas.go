@@ -23,6 +23,7 @@ func NewHorizontalPodAutoscalersResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersautoscalingv2.HorizontalPodAutoscalerLister] {
 	return New(Config[listersautoscalingv2.HorizontalPodAutoscalerLister]{
 		Name:          "hpa",
@@ -40,6 +41,7 @@ func NewHorizontalPodAutoscalersResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

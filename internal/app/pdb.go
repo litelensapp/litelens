@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListPodDisruptionBudgets() ([]dto.PodDisruptionBudget, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "pdbs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pdbs") {
 		return []dto.PodDisruptionBudget{}, nil
 	}
 	result, err := kubeResources.ListPodDisruptionBudgets(h.PodDisruptionBudgetLister(), namespaces)
@@ -29,7 +29,7 @@ func (a *App) ListPodDisruptionBudgets() ([]dto.PodDisruptionBudget, error) {
 
 func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisruptionBudgetDetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "pdbs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pdbs") {
 		return &dto.PodDisruptionBudgetDetail{}, nil
 	}
 	result, err := kubeResources.GetPodDisruptionBudgetByName(
@@ -46,7 +46,7 @@ func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisr
 
 func (a *App) emitPodDisruptionBudgets() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "pdbs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pdbs") {
 		return
 	}
 	lister := h.PodDisruptionBudgetLister()

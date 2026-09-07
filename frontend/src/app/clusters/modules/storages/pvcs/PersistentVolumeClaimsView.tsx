@@ -21,14 +21,14 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetPersistentVolumeClaims } from "./hooks/data-access/useGetPersistentVolumeClaims";
-import { useDeletePersistentVolumeClaim } from "./hooks/data-mutation/useDeletePersistentVolumeClaim";
-import { useDeletePersistentVolumeClaims } from "./hooks/data-mutation/useDeletePersistentVolumeClaims";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { PersistentVolumeClaimDeleteConfirmationModal } from "./components/PersistentVolumeClaimDeleteConfirmationModal";
 import { PersistentVolumeClaimStatusBadge } from "./components/PersistentVolumeClaimStatusBadge";
+import { useGetPersistentVolumeClaims } from "./hooks/data-access/useGetPersistentVolumeClaims";
+import { useDeletePersistentVolumeClaim } from "./hooks/data-mutation/useDeletePersistentVolumeClaim";
+import { useDeletePersistentVolumeClaims } from "./hooks/data-mutation/useDeletePersistentVolumeClaims";
 
 interface PersistentVolumeClaimTableCtaButtonsProps {
   name: string;
@@ -180,8 +180,8 @@ export const PersistentVolumeClaimsView: FC = () => {
               <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
                   icon={<HardDriveIcon className="size-8" />}
-                  title="No PersistentVolumeClaims"
-                  description="Create a PersistentVolumeClaim to request storage"
+                  title="No Persistent Volume Claims"
+                  description="Create a Persistent Volume Claim to request storage"
                 />
               </TableCell>
             </TableRow>

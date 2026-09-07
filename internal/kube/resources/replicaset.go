@@ -13,11 +13,35 @@ import (
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
 )
 
+// replicaSetHealth mirrors Argo CD's health assessment for ReplicaSets
+// (gitops-engine's getAppsv1ReplicaSetHealth), verified against upstream source
+// at github.com/argoproj/gitops-engine/pkg/health/health_replicaset.go: a
+// ReplicaFailure condition takes priority over a still-progressing rollout,
+// and readiness is judged by AvailableReplicas (respects minReadySeconds), not
+// ReadyReplicas.
+func replicaSetHealth(rs *appsv1.ReplicaSet, desired int32) (status, message string) {
+	if rs.Generation > rs.Status.ObservedGeneration {
+		return "Progressing", "Waiting for rollout to finish: observed replica set generation less than desired generation"
+	}
+	for _, c := range rs.Status.Conditions {
+		if c.Type == appsv1.ReplicaSetReplicaFailure && c.Status == "True" {
+			return "Degraded", c.Message
+		}
+	}
+	if rs.Status.AvailableReplicas < desired {
+		return "Progressing", fmt.Sprintf(
+			"Waiting for rollout to finish: %d out of %d new replicas are available...",
+			rs.Status.AvailableReplicas, desired)
+	}
+	return "Healthy", ""
+}
+
 func toReplicaSet(rs *appsv1.ReplicaSet) dto.ReplicaSet {
 	var desired int32
 	if rs.Spec.Replicas != nil {
 		desired = *rs.Spec.Replicas
 	}
+	healthStatus, healthMessage := replicaSetHealth(rs, desired)
 	return dto.ReplicaSet{
 		Name:      rs.Name,
 		Namespace: rs.Namespace,
@@ -99,6 +123,8 @@ func toReplicaSet(rs *appsv1.ReplicaSet) dto.ReplicaSet {
 		}(),
 		PodStatus: fmt.Sprintf("%d desired, %d ready, %d available",
 			desired, rs.Status.ReadyReplicas, rs.Status.AvailableReplicas),
+		HealthStatus:  healthStatus,
+		HealthMessage: healthMessage,
 	}
 }
 

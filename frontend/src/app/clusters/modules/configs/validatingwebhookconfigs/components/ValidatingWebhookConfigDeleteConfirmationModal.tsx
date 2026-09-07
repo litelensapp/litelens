@@ -19,7 +19,7 @@ export const ValidatingWebhookConfigDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete ValidatingWebhookConfig:{" "}
+            Delete Validating Webhook Configuration:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -36,11 +36,11 @@ export const ValidatingWebhookConfigDeleteConfirmationModal: FC<
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} ValidatingWebhookConfig${count === 1 ? "" : "s"}`,
+      title: `Delete ${count} Validating Webhook Configuration${count === 1 ? "" : "s"}`,
       description: (
         <>
-          This will permanently delete {count} validatingwebhookconfig{count === 1 ? "" : "s"}. This
-          action cannot be undone.
+          This will permanently delete {count} Validating Webhook Configuration
+          {count === 1 ? "" : "s"}. This action cannot be undone.
         </>
       ),
     };

@@ -21,16 +21,16 @@ import {
   TooltipTrigger,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { IngressClass } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetIngressClassDetail } from "../hooks/data-access/useGetIngressClassDetail";
-import { useDeleteIngressClass } from "../hooks/data-mutation/useDeleteIngressClass";
-import { useSetIngressClassAsDefault } from "../hooks/data-mutation/useSetIngressClassAsDefault";
-import { useUnsetIngressClassAsDefault } from "../hooks/data-mutation/useUnsetIngressClassAsDefault";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { IngressClass } from "../api/resources";
+import { useGetIngressClassDetail } from "../hooks/data-access/useGetIngressClassDetail";
+import { useDeleteIngressClass } from "../hooks/data-mutation/useDeleteIngressClass";
+import { useSetIngressClassAsDefault } from "../hooks/data-mutation/useSetIngressClassAsDefault";
+import { useUnsetIngressClassAsDefault } from "../hooks/data-mutation/useUnsetIngressClassAsDefault";
 import { IngressClassDeleteConfirmationModal } from "./IngressClassDeleteConfirmationModal";
 
 const IngressClassOverviewTab: FC<{ ic: IngressClass }> = ({ ic }) => {
@@ -242,7 +242,7 @@ export const IngressClassDetailDrawer: FC<IngressClassDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">IngressClass: {ic?.Name ?? ingressClassName}</SheetTitle>
+        <SheetTitle className="text-h1">Ingress Class: {ic?.Name ?? ingressClassName}</SheetTitle>
         {ic && <IngressClassDrawerCtaButtons ic={ic} onClose={onClose} />}
       </ResourceDetailDrawerHeader>
 
@@ -255,7 +255,7 @@ export const IngressClassDetailDrawer: FC<IngressClassDetailDrawerProps> = ({
           onDataChange={setIc}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="IngressClass" />
+        <ResourceDetailEmptyBody resourceKind="Ingress Class" />
       )}
     </ResourceDetailDrawer>
   );

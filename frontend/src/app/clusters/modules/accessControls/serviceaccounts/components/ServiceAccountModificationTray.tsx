@@ -1,11 +1,10 @@
-import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
-import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
+import { FC, Fragment, useReducer } from "react";
+import { useMainLayoutContext } from "../../../../MainLayoutContext";
+import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
+import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
 import { useGetServiceAccountYAML } from "../hooks/data-access/useGetServiceAccountYAML";
 import { useUpdateServiceAccountYAML } from "../hooks/data-mutation/useUpdateServiceAccountYAML";
-import { useMainLayoutContext } from "../../../../MainLayoutContext";
-
-import { FC, Fragment, useReducer } from "react";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -70,7 +69,7 @@ export const ServiceAccountModificationTray: FC<ModificationTrayContentProps> = 
   if (!tab.namespace) {
     return (
       <p className="p-4 text-xs text-destructive">
-        ServiceAccount namespace is required but not provided.
+        Service Account namespace is required but not provided.
       </p>
     );
   }
@@ -121,7 +120,7 @@ export const ServiceAccountModificationTray: FC<ModificationTrayContentProps> = 
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this ServiceAccount.
+            No YAML available for this Service Account.
           </p>
         ) : (
           <Textarea

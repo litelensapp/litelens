@@ -25,7 +25,7 @@ export const StorageClassDeleteConfirmationModal: FC<StorageClassDeleteConfirmat
       return {
         title: (
           <>
-            Delete StorageClass:{" "}
+            Delete Storage Class:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -42,10 +42,10 @@ export const StorageClassDeleteConfirmationModal: FC<StorageClassDeleteConfirmat
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} StorageClass${count === 1 ? "" : "es"}`,
+      title: `Delete ${count} Storage Class${count === 1 ? "" : "es"}`,
       description: (
         <>
-          This will permanently delete {count} storageclass{count === 1 ? "" : "es"}. This action
+          This will permanently delete {count} Storage Class{count === 1 ? "" : "es"}. This action
           cannot be undone.
         </>
       ),

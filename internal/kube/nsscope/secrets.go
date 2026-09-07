@@ -22,6 +22,7 @@ func NewSecretsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.SecretLister] {
 	return New(Config[listerscorev1.SecretLister]{
 		Name:          "secrets",
@@ -39,6 +40,7 @@ func NewSecretsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

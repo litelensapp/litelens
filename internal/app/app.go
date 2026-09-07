@@ -304,6 +304,18 @@ func (a *App) Connect(contextName string, seq int64) error {
 	// slower async re-push to win the race.
 	restoredNamespaces := a.restoredNamespacesForContextLocked(contextName)
 	a.activeNamespaces = restoredNamespaces
+	// Reset the SetActiveNamespaces staleness counter too. It's compared
+	// against the frontend's own in-memory call counter (see
+	// useSetActiveNamespaces.tsx), which restarts from zero on every page
+	// load/reload — including the "page reload while the host process keeps
+	// running" case this whole block exists for. Without this reset, the
+	// frontend's post-mount re-push of restoredNamespaces above (and every
+	// namespace-filter change after it) would carry a seq the long-lived
+	// backend process already considers stale, and get silently dropped by
+	// SetActiveNamespaces's seq <= a.activeNamespacesSeq guard — leaving the
+	// namespace selector UI and the actual resource lists permanently out of
+	// sync until the app restarts.
+	a.activeNamespacesSeq = 0
 
 	// Push cluster context to all running plugins with HTTP backends.
 	// Phase 2 design decision: "The host pushes POST on every cluster switch."

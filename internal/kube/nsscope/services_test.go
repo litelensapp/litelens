@@ -25,7 +25,7 @@ func TestNewServicesResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewServicesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().Services().Informer() }, nil, nil)
+	r := NewServicesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().Services().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -57,7 +57,7 @@ func TestNewServicesResourceFallsBackToClusterWideBeyondThreshold(t *testing.T) 
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewServicesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().Services().Informer() }, nil, nil)
+	r := NewServicesResource(cs, func() cache.SharedIndexInformer { return factory.Core().V1().Services().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

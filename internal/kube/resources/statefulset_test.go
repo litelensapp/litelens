@@ -182,6 +182,145 @@ func TestGetStatefulSetByName_NotFound(t *testing.T) {
 	}
 }
 
+func TestToStatefulSet_Health_ProgressingOnZeroObservedGeneration(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	// Status.ObservedGeneration left at its zero value.
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+	if got.HealthMessage != "Waiting for statefulset spec update to be observed..." {
+		t.Errorf("HealthMessage = %q", got.HealthMessage)
+	}
+}
+
+func TestToStatefulSet_Health_ProgressingOnStaleGeneration(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 2
+	ss.Status.ObservedGeneration = 1
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+}
+
+func TestToStatefulSet_Health_ProgressingOnUnreadyReplicas(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 1
+	ss.Status.ObservedGeneration = 1
+	replicas := int32(3)
+	ss.Spec.Replicas = &replicas
+	ss.Status.ReadyReplicas = 1
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+	want := "Waiting for 2 pods to be ready..."
+	if got.HealthMessage != want {
+		t.Errorf("HealthMessage = %q; want %q", got.HealthMessage, want)
+	}
+}
+
+func TestToStatefulSet_Health_RollingUpdatePartitionProgressing(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 1
+	ss.Status.ObservedGeneration = 1
+	replicas := int32(5)
+	ss.Spec.Replicas = &replicas
+	ss.Status.ReadyReplicas = 5
+	partition := int32(2)
+	ss.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+		Type: appsv1.RollingUpdateStatefulSetStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+			Partition: &partition,
+		},
+	}
+	ss.Status.UpdatedReplicas = 1 // target is 5-2=3, so still progressing
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+	want := "Waiting for partitioned roll out to finish: 1 out of 3 new pods have been updated..."
+	if got.HealthMessage != want {
+		t.Errorf("HealthMessage = %q; want %q", got.HealthMessage, want)
+	}
+}
+
+func TestToStatefulSet_Health_RollingUpdatePartitionComplete(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 1
+	ss.Status.ObservedGeneration = 1
+	replicas := int32(5)
+	ss.Spec.Replicas = &replicas
+	ss.Status.ReadyReplicas = 5
+	partition := int32(2)
+	ss.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+		Type: appsv1.RollingUpdateStatefulSetStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+			Partition: &partition,
+		},
+	}
+	ss.Status.UpdatedReplicas = 3 // target is 5-2=3, so met
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Healthy" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Healthy")
+	}
+}
+
+func TestToStatefulSet_Health_OnDelete_Healthy(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 1
+	ss.Status.ObservedGeneration = 1
+	replicas := int32(1)
+	ss.Spec.Replicas = &replicas
+	ss.Status.ReadyReplicas = 1
+	ss.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+		Type: appsv1.OnDeleteStatefulSetStrategyType,
+	}
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Healthy" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Healthy")
+	}
+}
+
+func TestToStatefulSet_Health_ProgressingOnRevisionMismatch(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 1
+	ss.Status.ObservedGeneration = 1
+	replicas := int32(1)
+	ss.Spec.Replicas = &replicas
+	ss.Status.ReadyReplicas = 1
+	ss.Status.UpdateRevision = "rev-2"
+	ss.Status.CurrentRevision = "rev-1"
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+}
+
+func TestToStatefulSet_Health_HealthyWhenRevisionsMatch(t *testing.T) {
+	ss := makeStatefulSet("ss", "default")
+	ss.Generation = 1
+	ss.Status.ObservedGeneration = 1
+	replicas := int32(1)
+	ss.Spec.Replicas = &replicas
+	ss.Status.ReadyReplicas = 1
+	ss.Status.UpdateRevision = "rev-1"
+	ss.Status.CurrentRevision = "rev-1"
+
+	got := toStatefulSet(ss)
+	if got.HealthStatus != "Healthy" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Healthy")
+	}
+}
+
 func contains(s, substr string) bool {
 	for i := 0; i+len(substr) <= len(s); i++ {
 		if s[i:i+len(substr)] == substr {

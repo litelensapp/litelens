@@ -20,6 +20,8 @@ export interface ReplicaSet {
   Tolerations: number;
   Affinities: number;
   PodStatus: string;
+  HealthStatus: string;
+  HealthMessage: string;
 }
 
 export interface ReplicaSetSummary {

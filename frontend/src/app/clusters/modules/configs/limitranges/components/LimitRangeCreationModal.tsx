@@ -130,7 +130,7 @@ export const LimitRangeCreationModal: FC<LimitRangeCreationModalProps> = ({
     <FormModal
       open={open}
       onClose={handleClose}
-      title="Create LimitRange"
+      title="Create Limit Range"
       isLoading={isPending}
       submitDisabled={name.trim() === "" || !limitRows.some(isValidRow)}
       submitLabel={isPending ? "Creating..." : "Create"}
@@ -143,7 +143,7 @@ export const LimitRangeCreationModal: FC<LimitRangeCreationModalProps> = ({
           Name
         </span>
         <Input
-          placeholder="LimitRange name"
+          placeholder="Limit Range name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={isPending}

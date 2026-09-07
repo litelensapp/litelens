@@ -50,6 +50,8 @@ describe("useStatefulSetsUpdateEvents", () => {
         Images: ["postgres:latest"],
         Affinities: 0,
         PodStatus: "Running",
+        HealthStatus: "Healthy",
+        HealthMessage: "",
       },
     ];
     triggerEvent("statefulsets:update", payload);
@@ -75,6 +77,8 @@ describe("useStatefulSetsUpdateEvents", () => {
         Images: ["postgres:latest"],
         Affinities: 0,
         PodStatus: "Running",
+        HealthStatus: "Healthy",
+        HealthMessage: "",
       },
     ];
     triggerEvent("statefulsets:update", payload1);
@@ -97,6 +101,8 @@ describe("useStatefulSetsUpdateEvents", () => {
         Images: ["redis:latest"],
         Affinities: 0,
         PodStatus: "Pending",
+        HealthStatus: "Progressing",
+        HealthMessage: "Waiting for 1 pods to be ready...",
       },
     ];
     triggerEvent("statefulsets:update", payload2);

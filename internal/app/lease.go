@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListLeases() ([]dto.Lease, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "leases") {
+	if !waitForResourceSyncIgnoringForbidden(h, "leases") {
 		return []dto.Lease{}, nil
 	}
 	result, err := kubeResources.ListLeases(h.LeaseLister(), namespaces)
@@ -29,7 +29,7 @@ func (a *App) ListLeases() ([]dto.Lease, error) {
 
 func (a *App) GetLeaseByName(namespace, name string) (dto.Lease, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "leases") {
+	if !waitForResourceSyncIgnoringForbidden(h, "leases") {
 		return dto.Lease{}, nil
 	}
 	result, err := kubeResources.GetLeaseByName(h.LeaseLister(), namespace, name)
@@ -80,7 +80,7 @@ func (a *App) DeleteLeases(items []dto.LeaseRef) error {
 
 func (a *App) emitLeases() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "leases") {
+	if !waitForResourceSyncIgnoringForbidden(h, "leases") {
 		return
 	}
 	lister := h.LeaseLister()

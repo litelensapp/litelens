@@ -21,14 +21,14 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetPersistentVolumes } from "./hooks/data-access/useGetPersistentVolumes";
-import { useDeletePersistentVolume } from "./hooks/data-mutation/useDeletePersistentVolume";
-import { useDeletePersistentVolumes } from "./hooks/data-mutation/useDeletePersistentVolumes";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { PersistentVolumeDeleteConfirmationModal } from "./components/PersistentVolumeDeleteConfirmationModal";
 import { PersistentVolumeStatusBadge } from "./components/PersistentVolumeStatusBadge";
+import { useGetPersistentVolumes } from "./hooks/data-access/useGetPersistentVolumes";
+import { useDeletePersistentVolume } from "./hooks/data-mutation/useDeletePersistentVolume";
+import { useDeletePersistentVolumes } from "./hooks/data-mutation/useDeletePersistentVolumes";
 
 interface PersistentVolumeTableCtaButtonsProps {
   name: string;
@@ -163,8 +163,8 @@ export const PersistentVolumesView: FC = () => {
               <TableCell colSpan={8} className="px-0 py-0">
                 <EmptyState
                   icon={<HardDriveIcon className="size-8" />}
-                  title="No PersistentVolumes"
-                  description="PersistentVolumes represent storage provisioned in the cluster"
+                  title="No Persistent Volumes"
+                  description="Persistent Volumes represent storage provisioned in the cluster"
                 />
               </TableCell>
             </TableRow>

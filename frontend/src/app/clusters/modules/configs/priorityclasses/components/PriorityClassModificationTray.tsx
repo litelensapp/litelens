@@ -1,10 +1,10 @@
-import { useGetPriorityClassYAML } from "../hooks/data-access/useGetPriorityClassYAML";
-import { useUpdatePriorityClassYAML } from "../hooks/data-mutation/useUpdatePriorityClassYAML";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
 import { FC, Fragment, useReducer } from "react";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
+import { useGetPriorityClassYAML } from "../hooks/data-access/useGetPriorityClassYAML";
+import { useUpdatePriorityClassYAML } from "../hooks/data-mutation/useUpdatePriorityClassYAML";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -107,7 +107,7 @@ export const PriorityClassModificationTray: FC<ModificationTrayContentProps> = (
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this PriorityClass.
+            No YAML available for this Priority Class.
           </p>
         ) : (
           <Textarea

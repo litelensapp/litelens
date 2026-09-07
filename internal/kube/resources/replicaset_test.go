@@ -206,3 +206,115 @@ func TestToReplicaSet_WithAffinity(t *testing.T) {
 		t.Errorf("Affinities = %d; want 1", got.Affinities)
 	}
 }
+
+func TestToReplicaSet_Health_Healthy(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	replicas := int32(1)
+	rs.Spec.Replicas = &replicas
+	rs.Generation = 1
+	rs.Status.ObservedGeneration = 1
+	rs.Status.ReadyReplicas = 1
+	rs.Status.AvailableReplicas = 1
+
+	got := toReplicaSet(rs)
+	if got.HealthStatus != "Healthy" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Healthy")
+	}
+	if got.HealthMessage != "" {
+		t.Errorf("HealthMessage = %q; want empty", got.HealthMessage)
+	}
+}
+
+func TestToReplicaSet_Health_ReadyButNotYetAvailable_StillProgressing(t *testing.T) {
+	// Regresses a bug where the health check used ReadyReplicas instead of
+	// AvailableReplicas: a pod can be Ready before minReadySeconds elapses,
+	// during which it is Ready but not yet Available.
+	rs := makeReplicaSet("rs", "default")
+	replicas := int32(1)
+	rs.Spec.Replicas = &replicas
+	rs.Generation = 1
+	rs.Status.ObservedGeneration = 1
+	rs.Status.ReadyReplicas = 1
+	rs.Status.AvailableReplicas = 0
+
+	got := toReplicaSet(rs)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+}
+
+func TestToReplicaSet_Health_ProgressingOnStaleGeneration(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	rs.Generation = 2
+	rs.Status.ObservedGeneration = 1
+
+	got := toReplicaSet(rs)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+}
+
+func TestToReplicaSet_Health_ProgressingOnUnavailableReplicas(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	replicas := int32(3)
+	rs.Spec.Replicas = &replicas
+	rs.Generation = 1
+	rs.Status.ObservedGeneration = 1
+	rs.Status.ReadyReplicas = 1
+	rs.Status.AvailableReplicas = 1
+
+	got := toReplicaSet(rs)
+	if got.HealthStatus != "Progressing" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Progressing")
+	}
+	want := "Waiting for rollout to finish: 1 out of 3 new replicas are available..."
+	if got.HealthMessage != want {
+		t.Errorf("HealthMessage = %q; want %q", got.HealthMessage, want)
+	}
+}
+
+func TestToReplicaSet_Health_DegradedOnReplicaFailure(t *testing.T) {
+	rs := makeReplicaSet("rs", "default")
+	replicas := int32(1)
+	rs.Spec.Replicas = &replicas
+	rs.Generation = 1
+	rs.Status.ObservedGeneration = 1
+	rs.Status.ReadyReplicas = 1
+	rs.Status.AvailableReplicas = 1
+	rs.Status.Conditions = []appsv1.ReplicaSetCondition{
+		{Type: appsv1.ReplicaSetReplicaFailure, Status: corev1.ConditionTrue, Message: "quota exceeded"},
+	}
+
+	got := toReplicaSet(rs)
+	if got.HealthStatus != "Degraded" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Degraded")
+	}
+	if got.HealthMessage != "quota exceeded" {
+		t.Errorf("HealthMessage = %q; want %q", got.HealthMessage, "quota exceeded")
+	}
+}
+
+func TestToReplicaSet_Health_DegradedTakesPriorityOverProgressing(t *testing.T) {
+	// Regresses a bug where the Progressing (unavailable-replicas) check ran
+	// before the ReplicaFailure condition check, so a genuinely degraded
+	// ReplicaSet (e.g. blocked by quota, which also keeps replicas below
+	// desired) incorrectly reported "Progressing" instead of "Degraded".
+	rs := makeReplicaSet("rs", "default")
+	replicas := int32(3)
+	rs.Spec.Replicas = &replicas
+	rs.Generation = 1
+	rs.Status.ObservedGeneration = 1
+	rs.Status.ReadyReplicas = 0
+	rs.Status.AvailableReplicas = 0
+	rs.Status.Conditions = []appsv1.ReplicaSetCondition{
+		{Type: appsv1.ReplicaSetReplicaFailure, Status: corev1.ConditionTrue, Message: "quota exceeded"},
+	}
+
+	got := toReplicaSet(rs)
+	if got.HealthStatus != "Degraded" {
+		t.Errorf("HealthStatus = %q; want %q", got.HealthStatus, "Degraded")
+	}
+	if got.HealthMessage != "quota exceeded" {
+		t.Errorf("HealthMessage = %q; want %q", got.HealthMessage, "quota exceeded")
+	}
+}

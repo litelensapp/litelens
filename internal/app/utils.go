@@ -100,6 +100,22 @@ func waitForResourceSync(h *kube.FactoryHandle, resource string) bool {
 	return !h.IsForbidden(resource)
 }
 
+// waitForResourceSyncIgnoringForbidden blocks until resource's informer
+// completes its initial sync, like waitForResourceSync, but does NOT treat
+// a whole-resource forbidden flag as a reason to skip the wait or the read.
+// A single namespace's 403 within a multi-namespace selection sets this
+// flag for the whole resource (see nsscope.markForbidden), but the
+// resource-layer List<Kind> functions already tolerate per-namespace
+// errors individually — gating here would wipe out data from namespaces
+// the caller DOES have access to. Reports false only if h is nil.
+func waitForResourceSyncIgnoringForbidden(h *kube.FactoryHandle, resource string) bool {
+	if h == nil {
+		return false
+	}
+	<-h.GetSyncedChan(resource)
+	return true
+}
+
 // deleteRefsBestEffort deletes each item in items via deleteFn, continuing
 // past not-found and other per-item errors instead of aborting on the first
 // one. kind names the resource (plural, lowercase) for the aggregated error

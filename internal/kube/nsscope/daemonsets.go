@@ -24,6 +24,7 @@ func NewDaemonSetsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersappsv1.DaemonSetLister] {
 	return New(Config[listersappsv1.DaemonSetLister]{
 		Name:          "daemonsets",
@@ -41,6 +42,7 @@ func NewDaemonSetsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

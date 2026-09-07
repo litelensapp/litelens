@@ -136,7 +136,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
     <FormModal
       open={open}
       onClose={handleClose}
-      title="Create ResourceQuota"
+      title="Create Resource Quota"
       isLoading={isPending}
       submitDisabled={name.trim() === "" || !quotaRows.some((r) => r.quotaType && r.value)}
       submitLabel={isPending ? "Creating..." : "Create"}
@@ -149,7 +149,7 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
           Name
         </span>
         <Input
-          placeholder="ResourceQuota name"
+          placeholder="Resource Quota name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={isPending}

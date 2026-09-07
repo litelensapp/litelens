@@ -305,7 +305,7 @@ export const ClusterRoleDetailDrawer: FC<ClusterRoleDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">ClusterRole: {cr?.Name ?? clusterRoleName}</SheetTitle>
+        <SheetTitle className="text-h1">Cluster Role: {cr?.Name ?? clusterRoleName}</SheetTitle>
         {cr && <ClusterRoleDrawerCtaButtons clusterRoleName={cr.Name} onClose={onClose} />}
       </ResourceDetailDrawerHeader>
 
@@ -318,7 +318,7 @@ export const ClusterRoleDetailDrawer: FC<ClusterRoleDetailDrawerProps> = ({
           onDataChange={setCr}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="ClusterRole" />
+        <ResourceDetailEmptyBody resourceKind="Cluster Role" />
       )}
     </ResourceDetailDrawer>
   );

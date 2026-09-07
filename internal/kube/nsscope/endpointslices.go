@@ -23,6 +23,7 @@ func NewEndpointSlicesResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersdiscoveryv1.EndpointSliceLister] {
 	return New(Config[listersdiscoveryv1.EndpointSliceLister]{
 		Name:          "endpointslices",
@@ -40,6 +41,7 @@ func NewEndpointSlicesResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

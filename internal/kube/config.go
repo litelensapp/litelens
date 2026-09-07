@@ -3,6 +3,7 @@ package kube
 import (
 	"sort"
 
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -37,4 +38,21 @@ func CurrentContext(paths []string) (string, error) {
 		return "", err
 	}
 	return rawConfig.CurrentContext, nil
+}
+
+// RestConfigForContext builds a *rest.Config for the given kubeconfig context,
+// with Proxy wired via ProxyFunc (httpProxy/httpsProxy route API-server traffic
+// through a proxy when set; pass empty strings for a direct connection).
+// kubeconfigPaths lists the kubeconfig files to load; pass nil to use the
+// default rules.
+func RestConfigForContext(contextName, httpProxy, httpsProxy string, kubeconfigPaths []string) (*rest.Config, error) {
+	rules := LoadingRules(kubeconfigPaths)
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: contextName}
+	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
+	restConfig, err := cfg.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	restConfig.Proxy = ProxyFunc(httpProxy, httpsProxy)
+	return restConfig, nil
 }

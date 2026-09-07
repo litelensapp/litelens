@@ -17,7 +17,7 @@ import (
 
 func (a *App) GetJobByName(namespace, name string) (dto.Job, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "jobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "jobs") {
 		return dto.Job{}, nil
 	}
 	result, err := kubeResources.GetJobByName(h.JobLister(), namespace, name)
@@ -30,7 +30,7 @@ func (a *App) GetJobByName(namespace, name string) (dto.Job, error) {
 
 func (a *App) ListJobs() ([]dto.Job, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "jobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "jobs") {
 		return []dto.Job{}, nil
 	}
 	result, err := kubeResources.ListJobs(h.JobLister(), namespaces)
@@ -43,7 +43,7 @@ func (a *App) ListJobs() ([]dto.Job, error) {
 
 func (a *App) GetJobsSummary() (dto.JobSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "jobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "jobs") {
 		return dto.JobSummary{}, nil
 	}
 	lister := h.JobLister()
@@ -72,7 +72,7 @@ func (a *App) GetJobsSummary() (dto.JobSummary, error) {
 
 func (a *App) emitJobs() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "jobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "jobs") {
 		return
 	}
 	lister := h.JobLister()

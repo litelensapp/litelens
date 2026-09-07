@@ -1,10 +1,10 @@
-import { useGetStorageClassYAML } from "../hooks/data-access/useGetStorageClassYAML";
-import { useUpdateStorageClassYAML } from "../hooks/data-mutation/useUpdateStorageClassYAML";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
 import { FC, Fragment, useReducer } from "react";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
+import { useGetStorageClassYAML } from "../hooks/data-access/useGetStorageClassYAML";
+import { useUpdateStorageClassYAML } from "../hooks/data-mutation/useUpdateStorageClassYAML";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -106,7 +106,7 @@ export const StorageClassModificationTray: FC<ModificationTrayContentProps> = ({
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this StorageClass.
+            No YAML available for this Storage Class.
           </p>
         ) : (
           <Textarea

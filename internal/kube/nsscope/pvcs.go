@@ -23,6 +23,7 @@ func NewPersistentVolumeClaimsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.PersistentVolumeClaimLister] {
 	return New(Config[listerscorev1.PersistentVolumeClaimLister]{
 		Name:          "pvcs",
@@ -40,6 +41,7 @@ func NewPersistentVolumeClaimsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

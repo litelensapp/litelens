@@ -28,7 +28,7 @@ func warningEvents(events []dto.Event) []dto.Event {
 
 func (a *App) ListEvents() ([]dto.Event, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "events") {
+	if !waitForResourceSyncIgnoringForbidden(h, "events") {
 		return []dto.Event{}, nil
 	}
 	result, err := kubeResources.ListEvents(
@@ -44,7 +44,7 @@ func (a *App) ListEvents() ([]dto.Event, error) {
 
 func (a *App) ListWarningEvents() ([]dto.Event, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "events") {
+	if !waitForResourceSyncIgnoringForbidden(h, "events") {
 		return []dto.Event{}, nil
 	}
 	result, err := kubeResources.ListWarningEvents(
@@ -60,7 +60,7 @@ func (a *App) ListWarningEvents() ([]dto.Event, error) {
 
 func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "events") {
+	if !waitForResourceSyncIgnoringForbidden(h, "events") {
 		return dto.Event{}, nil
 	}
 	result, err := kubeResources.GetEventByName(h.EventLister(), namespace, name)
@@ -73,7 +73,7 @@ func (a *App) GetEventByName(namespace, name string) (dto.Event, error) {
 
 func (a *App) emitEvents() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "events") {
+	if !waitForResourceSyncIgnoringForbidden(h, "events") {
 		return
 	}
 	lister := h.EventLister()

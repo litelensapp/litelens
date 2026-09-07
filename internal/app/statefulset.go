@@ -17,7 +17,7 @@ import (
 
 func (a *App) GetStatefulSetByName(namespace, name string) (dto.StatefulSet, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "statefulsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "statefulsets") {
 		return dto.StatefulSet{}, nil
 	}
 	result, err := kubeResources.GetStatefulSetByName(h.StatefulSetLister(), namespace, name)
@@ -29,7 +29,7 @@ func (a *App) GetStatefulSetByName(namespace, name string) (dto.StatefulSet, err
 
 func (a *App) ListStatefulSets() ([]dto.StatefulSet, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "statefulsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "statefulsets") {
 		return []dto.StatefulSet{}, nil
 	}
 	result, err := kubeResources.ListStatefulSets(h.StatefulSetLister(), namespaces)
@@ -42,7 +42,7 @@ func (a *App) ListStatefulSets() ([]dto.StatefulSet, error) {
 
 func (a *App) GetStatefulSetsSummary() (dto.StatefulSetSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "statefulsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "statefulsets") {
 		return dto.StatefulSetSummary{}, nil
 	}
 	lister := h.StatefulSetLister()
@@ -112,7 +112,7 @@ func (a *App) DeleteStatefulSets(items []dto.StatefulSetRef) error {
 
 func (a *App) emitStatefulSets() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "statefulsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "statefulsets") {
 		return
 	}
 	lister := h.StatefulSetLister()

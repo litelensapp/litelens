@@ -266,7 +266,7 @@ export const LimitRangeDetailDrawer: FC<LimitRangeDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">LimitRange: {lr?.Name ?? lrName}</SheetTitle>
+        <SheetTitle className="text-h1">Limit Range: {lr?.Name ?? lrName}</SheetTitle>
         {lr && (
           <LimitRangeDrawerCtaButtons
             lrName={lr.Name}
@@ -286,7 +286,7 @@ export const LimitRangeDetailDrawer: FC<LimitRangeDetailDrawerProps> = ({
           onDataChange={setLr}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="LimitRange" />
+        <ResourceDetailEmptyBody resourceKind="Limit Range" />
       )}
     </ResourceDetailDrawer>
   );

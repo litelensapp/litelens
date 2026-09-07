@@ -1,5 +1,6 @@
 import { cn } from "@litelens/design-system";
 import "@xterm/xterm/css/xterm.css";
+import { FC } from "react";
 import { type StreamStatus } from "../hooks/usePodLogs";
 
 export interface LogsPanelProps {
@@ -9,7 +10,7 @@ export interface LogsPanelProps {
   wrap: boolean;
 }
 
-export const LogsPanel = ({ containerRef, status, error, wrap }: LogsPanelProps) => {
+export const LogsPanel: FC<LogsPanelProps> = ({ containerRef, status, error, wrap }) => {
   return (
     <div className="flex h-full flex-col">
       <div

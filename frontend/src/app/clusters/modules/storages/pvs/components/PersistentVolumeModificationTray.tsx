@@ -1,11 +1,10 @@
-import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
-import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
+import { FC, Fragment, useReducer } from "react";
+import { useMainLayoutContext } from "../../../../MainLayoutContext";
+import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
+import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
 import { useGetPersistentVolumeYAML } from "../hooks/data-access/useGetPersistentVolumeYAML";
 import { useUpdatePersistentVolumeYAML } from "../hooks/data-mutation/useUpdatePersistentVolumeYAML";
-import { useMainLayoutContext } from "../../../../MainLayoutContext";
-
-import { FC, Fragment, useReducer } from "react";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -107,7 +106,7 @@ export const PersistentVolumeModificationTray: FC<ModificationTrayContentProps> 
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this PersistentVolume.
+            No YAML available for this Persistent Volume.
           </p>
         ) : (
           <Textarea

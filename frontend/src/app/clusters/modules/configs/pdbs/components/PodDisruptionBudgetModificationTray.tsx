@@ -1,10 +1,10 @@
-import { useGetPDBYAML } from "../hooks/data-access/useGetPDBYAML";
-import { useUpdatePDBYAML } from "../hooks/data-mutation/useUpdatePDBYAML";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
 import { FC, Fragment, useReducer } from "react";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
+import { useGetPDBYAML } from "../hooks/data-access/useGetPDBYAML";
+import { useUpdatePDBYAML } from "../hooks/data-mutation/useUpdatePDBYAML";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -108,7 +108,7 @@ export const PodDisruptionBudgetModificationTray: FC<ModificationTrayContentProp
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this PodDisruptionBudget.
+            No YAML available for this Pod Disruption Budget.
           </p>
         ) : (
           <Textarea
