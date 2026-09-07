@@ -20,7 +20,7 @@ export const PersistentVolumeClaimDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete PersistentVolumeClaim:{" "}
+            Delete Persistent Volume Claim:{" "}
             <span className="font-mono font-normal text-muted-foreground">
               {namespace}/{name}
             </span>
@@ -41,11 +41,11 @@ export const PersistentVolumeClaimDeleteConfirmationModal: FC<
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} PersistentVolumeClaim${count === 1 ? "" : "s"}`,
+      title: `Delete ${count} Persistent Volume Claim${count === 1 ? "" : "s"}`,
       description: (
         <>
-          This will permanently delete {count} persistentvolumeclaim{count === 1 ? "" : "s"} across{" "}
-          {new Set(items?.map((i) => i.namespace) ?? []).size} namespace
+          This will permanently delete {count} Persistent Volume Claim{count === 1 ? "" : "s"}{" "}
+          across {new Set(items?.map((i) => i.namespace) ?? []).size} namespace
           {new Set(items?.map((i) => i.namespace) ?? []).size === 1 ? "" : "s"}. This action cannot
           be undone.
         </>

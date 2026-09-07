@@ -22,13 +22,13 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetRoleBindings } from "./hooks/data-access/useGetRoleBindings";
-import { useDeleteRoleBinding } from "./hooks/data-mutation/useDeleteRoleBinding";
-import { useDeleteRoleBindings } from "./hooks/data-mutation/useDeleteRoleBindings";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { RoleBindingDeleteConfirmationModal } from "./components/RoleBindingDeleteConfirmationModal";
+import { useGetRoleBindings } from "./hooks/data-access/useGetRoleBindings";
+import { useDeleteRoleBinding } from "./hooks/data-mutation/useDeleteRoleBinding";
+import { useDeleteRoleBindings } from "./hooks/data-mutation/useDeleteRoleBindings";
 
 const RoleBindingTableCtaButtons: FC<{ namespace: string; name: string }> = ({
   namespace,
@@ -173,8 +173,8 @@ export const RoleBindingsView: FC = () => {
               <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
                   icon={<Link2Icon className="size-8" />}
-                  title="No RoleBindings"
-                  description="Create a RoleBinding to grant namespace permissions"
+                  title="No Role Bindings"
+                  description="Create a Role Binding to grant namespace permissions"
                 />
               </TableCell>
             </TableRow>

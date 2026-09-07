@@ -20,13 +20,13 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetClusterRoles } from "./hooks/data-access/useGetClusterRoles";
-import { useDeleteClusterRole } from "./hooks/data-mutation/useDeleteClusterRole";
-import { useDeleteClusterRoles } from "./hooks/data-mutation/useDeleteClusterRoles";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { ClusterRoleDeleteConfirmationModal } from "./components/ClusterRoleDeleteConfirmationModal";
+import { useGetClusterRoles } from "./hooks/data-access/useGetClusterRoles";
+import { useDeleteClusterRole } from "./hooks/data-mutation/useDeleteClusterRole";
+import { useDeleteClusterRoles } from "./hooks/data-mutation/useDeleteClusterRoles";
 
 interface ClusterRoleTableCtaButtonsProps {
   name: string;
@@ -158,8 +158,8 @@ export const ClusterRolesView: FC = () => {
               <TableCell colSpan={4} className="px-0 py-0">
                 <EmptyState
                   icon={<ShieldIcon className="size-8" />}
-                  title="No ClusterRoles"
-                  description="Create a ClusterRole to define cluster-wide permissions"
+                  title="No Cluster Roles"
+                  description="Create a Cluster Role to define cluster-wide permissions"
                 />
               </TableCell>
             </TableRow>

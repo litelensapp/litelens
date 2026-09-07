@@ -19,7 +19,7 @@ export const ClusterRoleBindingDeleteConfirmationModal: FC<
       return {
         title: (
           <>
-            Delete ClusterRoleBinding:{" "}
+            Delete Cluster Role Binding:{" "}
             <span className="font-mono font-normal text-muted-foreground">{name}</span>
           </>
         ),
@@ -36,10 +36,10 @@ export const ClusterRoleBindingDeleteConfirmationModal: FC<
     const count = items?.length ?? 0;
 
     return {
-      title: `Delete ${count} ClusterRoleBinding${count === 1 ? "" : "s"}`,
+      title: `Delete ${count} Cluster Role Binding${count === 1 ? "" : "s"}`,
       description: (
         <>
-          This will permanently delete {count} clusterrolebinding{count === 1 ? "" : "s"}. This
+          This will permanently delete {count} Cluster Role Binding{count === 1 ? "" : "s"}. This
           action cannot be undone.
         </>
       ),

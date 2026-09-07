@@ -16,16 +16,16 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { NetworkPolicyDetail, NetworkPolicyPeer } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetNetworkPolicyDetail } from "../hooks/data-access/useGetNetworkPolicyDetail";
-import { useDeleteNetworkPolicy } from "../hooks/data-mutation/useDeleteNetworkPolicy";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { NetworkPolicyDetail, NetworkPolicyPeer } from "../api/resources";
+import { useGetNetworkPolicyDetail } from "../hooks/data-access/useGetNetworkPolicyDetail";
+import { useDeleteNetworkPolicy } from "../hooks/data-mutation/useDeleteNetworkPolicy";
 import { NetworkPolicyDeleteConfirmationModal } from "./NetworkPolicyDeleteConfirmationModal";
 
 function peerKey(peer: NetworkPolicyPeer): string {

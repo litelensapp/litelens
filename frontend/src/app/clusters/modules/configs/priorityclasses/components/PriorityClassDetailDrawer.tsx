@@ -225,7 +225,7 @@ export const PriorityClassDetailDrawer: FC<PriorityClassDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">PriorityClass: {pc?.Name ?? priorityClassName}</SheetTitle>
+        <SheetTitle className="text-h1">Priority Class: {pc?.Name ?? priorityClassName}</SheetTitle>
         {pc && <PriorityClassDrawerCtaButtons name={pc.Name} onClose={onClose} />}
       </ResourceDetailDrawerHeader>
 
@@ -238,7 +238,7 @@ export const PriorityClassDetailDrawer: FC<PriorityClassDetailDrawerProps> = ({
           onDataChange={setPc}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="PriorityClass" />
+        <ResourceDetailEmptyBody resourceKind="Priority Class" />
       )}
     </ResourceDetailDrawer>
   );

@@ -33,7 +33,7 @@ export const LimitRangeDeleteConfirmationModal: FC<LimitRangeDeleteConfirmationM
       return {
         title: (
           <>
-            Delete LimitRange:{" "}
+            Delete Limit Range:{" "}
             <span className="font-mono font-normal text-muted-foreground">{lrName}</span>
           </>
         ),
@@ -49,7 +49,7 @@ export const LimitRangeDeleteConfirmationModal: FC<LimitRangeDeleteConfirmationM
     }
 
     const count = items?.length ?? 0;
-    const titleText = `Delete ${count} LimitRange${count === 1 ? "" : "s"}`;
+    const titleText = `Delete ${count} Limit Range${count === 1 ? "" : "s"}`;
 
     const descriptionElement = (() => {
       if (namespaces.length === 1) {

@@ -1,10 +1,10 @@
-import { useGetPersistentVolumeClaimYAML } from "../hooks/data-access/useGetPersistentVolumeClaimYAML";
-import { useUpdatePersistentVolumeClaimYAML } from "../hooks/data-mutation/useUpdatePersistentVolumeClaimYAML";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
 import { FC, Fragment, useReducer } from "react";
+import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
-import { useMainLayoutContext } from "../../../../MainLayoutContext";
+import { useGetPersistentVolumeClaimYAML } from "../hooks/data-access/useGetPersistentVolumeClaimYAML";
+import { useUpdatePersistentVolumeClaimYAML } from "../hooks/data-mutation/useUpdatePersistentVolumeClaimYAML";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -68,7 +68,7 @@ export const PersistentVolumeClaimModificationTray: FC<ModificationTrayContentPr
   if (!tab.namespace) {
     return (
       <p className="p-4 text-xs text-destructive">
-        PersistentVolumeClaim namespace is required but not provided.
+        Persistent Volume Claim namespace is required but not provided.
       </p>
     );
   }
@@ -119,7 +119,7 @@ export const PersistentVolumeClaimModificationTray: FC<ModificationTrayContentPr
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this PersistentVolumeClaim.
+            No YAML available for this Persistent Volume Claim.
           </p>
         ) : (
           <Textarea

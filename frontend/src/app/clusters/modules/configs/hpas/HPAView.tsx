@@ -20,14 +20,14 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetHPAs } from "./hooks/data-access/useGetHPAs";
-import { useDeleteHPA } from "./hooks/data-mutation/useDeleteHPA";
-import { useDeleteHPAs } from "./hooks/data-mutation/useDeleteHPAs";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { HPADeleteConfirmationModal } from "./components/HPADeleteConfirmationModal";
 import { HPAStatusBadge } from "./components/HPAStatusBadge";
+import { useGetHPAs } from "./hooks/data-access/useGetHPAs";
+import { useDeleteHPA } from "./hooks/data-mutation/useDeleteHPA";
+import { useDeleteHPAs } from "./hooks/data-mutation/useDeleteHPAs";
 
 interface HPATableCtaButtonsProps {
   name: string;
@@ -175,7 +175,7 @@ export const HPAView: FC = () => {
               <TableCell colSpan={namespaces.length !== 1 ? 10 : 9} className="px-0 py-0">
                 <EmptyState
                   icon={<ScalingIcon className="size-8" />}
-                  title="No HorizontalPodAutoscalers"
+                  title="No Horizontal Pod Autoscalers"
                   description="Create an HPA to automatically scale workloads"
                 />
               </TableCell>

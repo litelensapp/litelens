@@ -16,15 +16,15 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { ValidatingWebhookConfigDetail, WebhookDetail } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetValidatingWebhookConfigDetail } from "../hooks/data-access/useGetValidatingWebhookConfigDetail";
-import { useDeleteValidatingWebhookConfig } from "../hooks/data-mutation/useDeleteValidatingWebhookConfig";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { ValidatingWebhookConfigDetail, WebhookDetail } from "../api/resources";
+import { useGetValidatingWebhookConfigDetail } from "../hooks/data-access/useGetValidatingWebhookConfigDetail";
+import { useDeleteValidatingWebhookConfig } from "../hooks/data-mutation/useDeleteValidatingWebhookConfig";
 import { ValidatingWebhookConfigDeleteConfirmationModal } from "./ValidatingWebhookConfigDeleteConfirmationModal";
 
 const WebhookBlock: FC<{ webhook: WebhookDetail }> = ({ webhook }) => (
@@ -316,7 +316,7 @@ export const ValidatingWebhookConfigDetailDrawer: FC<ValidatingWebhookConfigDeta
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
         <SheetTitle className="text-h1">
-          ValidatingWebhookConfiguration: {vwc?.Name ?? vwcName}
+          Validating Webhook Configuration: {vwc?.Name ?? vwcName}
         </SheetTitle>
         {vwc && <ValidatingWebhookConfigDrawerCtaButtons vwcName={vwc.Name} onClose={onClose} />}
       </ResourceDetailDrawerHeader>
@@ -330,7 +330,7 @@ export const ValidatingWebhookConfigDetailDrawer: FC<ValidatingWebhookConfigDeta
           onDataChange={setVwc}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="ValidatingWebhookConfiguration" />
+        <ResourceDetailEmptyBody resourceKind="Validating Webhook Configuration" />
       )}
     </ResourceDetailDrawer>
   );

@@ -20,13 +20,13 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetValidatingWebhookConfigs } from "./hooks/data-access/useGetValidatingWebhookConfigs";
-import { useDeleteValidatingWebhookConfig } from "./hooks/data-mutation/useDeleteValidatingWebhookConfig";
-import { useDeleteValidatingWebhookConfigs } from "./hooks/data-mutation/useDeleteValidatingWebhookConfigs";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { ValidatingWebhookConfigDeleteConfirmationModal } from "./components/ValidatingWebhookConfigDeleteConfirmationModal";
+import { useGetValidatingWebhookConfigs } from "./hooks/data-access/useGetValidatingWebhookConfigs";
+import { useDeleteValidatingWebhookConfig } from "./hooks/data-mutation/useDeleteValidatingWebhookConfig";
+import { useDeleteValidatingWebhookConfigs } from "./hooks/data-mutation/useDeleteValidatingWebhookConfigs";
 
 interface ValidatingWebhookConfigTableCtaButtonsProps {
   name: string;
@@ -164,7 +164,7 @@ export const ValidatingWebhookConfigsView: FC = () => {
               <TableCell colSpan={5} className="px-0 py-0">
                 <EmptyState
                   icon={<WebhookIcon className="size-8" />}
-                  title="No ValidatingWebhookConfigurations"
+                  title="No Validating Webhook Configurations"
                   description="Validating webhook configurations control admission review for the cluster"
                 />
               </TableCell>

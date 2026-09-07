@@ -318,7 +318,7 @@ export const ClusterRoleBindingDetailDrawer: FC<ClusterRoleBindingDetailDrawerPr
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
         <SheetTitle className="text-h1">
-          ClusterRoleBinding: {crb?.Name ?? clusterRoleBindingName}
+          Cluster Role Binding: {crb?.Name ?? clusterRoleBindingName}
         </SheetTitle>
         {crb && (
           <ClusterRoleBindingDrawerCtaButtons clusterRoleBindingName={crb.Name} onClose={onClose} />
@@ -334,7 +334,7 @@ export const ClusterRoleBindingDetailDrawer: FC<ClusterRoleBindingDetailDrawerPr
           onDataChange={setCrb}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="ClusterRoleBinding" />
+        <ResourceDetailEmptyBody resourceKind="Cluster Role Binding" />
       )}
     </ResourceDetailDrawer>
   );

@@ -23,14 +23,14 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetLimitRanges } from "./hooks/data-access/useGetLimitRanges";
-import { useDeleteLimitRange } from "./hooks/data-mutation/useDeleteLimitRange";
-import { useDeleteLimitRanges } from "./hooks/data-mutation/useDeleteLimitRanges";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { LimitRangeCreationModal } from "./components/LimitRangeCreationModal";
 import { LimitRangeDeleteConfirmationModal } from "./components/LimitRangeDeleteConfirmationModal";
+import { useGetLimitRanges } from "./hooks/data-access/useGetLimitRanges";
+import { useDeleteLimitRange } from "./hooks/data-mutation/useDeleteLimitRange";
+import { useDeleteLimitRanges } from "./hooks/data-mutation/useDeleteLimitRanges";
 
 interface LimitRangeTableCtaButtonsProps {
   name: string;
@@ -177,7 +177,7 @@ export const LimitRangesView: FC = () => {
                 <EmptyState
                   icon={<SlidersHorizontalIcon className="size-8" />}
                   title="No Limit Ranges"
-                  description="Create a LimitRange to constrain resource usage"
+                  description="Create a Limit Range to constrain resource usage"
                   action={
                     <Button variant="default" size="default" onClick={() => setIsCreateOpen(true)}>
                       Create Limit Range

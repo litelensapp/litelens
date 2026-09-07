@@ -266,7 +266,7 @@ export const ResourceQuotaDetailDrawer: FC<ResourceQuotaDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">ResourceQuota: {rq?.Name ?? rqName}</SheetTitle>
+        <SheetTitle className="text-h1">Resource Quota: {rq?.Name ?? rqName}</SheetTitle>
         {rq && (
           <ResourceQuotaDrawerCtaButtons
             rqName={rq.Name}
@@ -286,7 +286,7 @@ export const ResourceQuotaDetailDrawer: FC<ResourceQuotaDetailDrawerProps> = ({
           onDataChange={setRq}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="ResourceQuota" />
+        <ResourceDetailEmptyBody resourceKind="Resource Quota" />
       )}
     </ResourceDetailDrawer>
   );

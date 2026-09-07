@@ -23,14 +23,14 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetResourceQuotas } from "./hooks/data-access/useGetResourceQuotas";
-import { useDeleteResourceQuota } from "./hooks/data-mutation/useDeleteResourceQuota";
-import { useDeleteResourceQuotas } from "./hooks/data-mutation/useDeleteResourceQuotas";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { ResourceQuotaCreationModal } from "./components/ResourceQuotaCreationModal";
 import { ResourceQuotaDeleteConfirmationModal } from "./components/ResourceQuotaDeleteConfirmationModal";
+import { useGetResourceQuotas } from "./hooks/data-access/useGetResourceQuotas";
+import { useDeleteResourceQuota } from "./hooks/data-mutation/useDeleteResourceQuota";
+import { useDeleteResourceQuotas } from "./hooks/data-mutation/useDeleteResourceQuotas";
 
 interface ResourceQuotaTableCtaButtonsProps {
   name: string;
@@ -180,7 +180,7 @@ export const ResourceQuotasView: FC = () => {
                 <EmptyState
                   icon={<GaugeIcon className="size-8" />}
                   title="No Resource Quotas"
-                  description="Create a ResourceQuota to constrain namespace resource usage"
+                  description="Create a Resource Quota to constrain namespace resource usage"
                   action={
                     <Button variant="default" size="default" onClick={() => setIsCreateOpen(true)}>
                       Create Resource Quota

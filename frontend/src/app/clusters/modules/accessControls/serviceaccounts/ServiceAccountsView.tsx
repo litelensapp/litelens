@@ -20,17 +20,15 @@ import {
   UserRoundIcon,
   cn,
 } from "@litelens/design-system";
-
 import { FC, useReducer, useState } from "react";
-
-import { useGetServiceAccounts } from "./hooks/data-access/useGetServiceAccounts";
-import { useDeleteServiceAccount } from "./hooks/data-mutation/useDeleteServiceAccount";
-import { useDeleteServiceAccounts } from "./hooks/data-mutation/useDeleteServiceAccounts";
-import { ServiceAccountDetailDrawer } from "./components/ServiceAccountDetailDrawer";
-import { ServiceAccountDeleteConfirmationModal } from "./components/ServiceAccountDeleteConfirmationModal";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { ServiceAccountDeleteConfirmationModal } from "./components/ServiceAccountDeleteConfirmationModal";
+import { ServiceAccountDetailDrawer } from "./components/ServiceAccountDetailDrawer";
+import { useGetServiceAccounts } from "./hooks/data-access/useGetServiceAccounts";
+import { useDeleteServiceAccount } from "./hooks/data-mutation/useDeleteServiceAccount";
+import { useDeleteServiceAccounts } from "./hooks/data-mutation/useDeleteServiceAccounts";
 
 type DrawerState = { name: string | null; namespace: string | null; open: boolean };
 
@@ -189,8 +187,8 @@ export const ServiceAccountsView: FC = () => {
               <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
                   icon={<UserRoundIcon className="size-8" />}
-                  title="No ServiceAccounts"
-                  description="Create a ServiceAccount for pod identity"
+                  title="No Service Accounts"
+                  description="Create a Service Account for pod identity"
                 />
               </TableCell>
             </TableRow>

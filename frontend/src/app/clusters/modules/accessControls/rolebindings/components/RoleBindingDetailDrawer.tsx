@@ -340,7 +340,7 @@ export const RoleBindingDetailDrawer: FC<RoleBindingDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">RoleBinding: {rb?.Name ?? roleBindingName}</SheetTitle>
+        <SheetTitle className="text-h1">Role Binding: {rb?.Name ?? roleBindingName}</SheetTitle>
         {rb && (
           <RoleBindingDrawerCtaButtons
             roleBindingName={rb.Name}
@@ -360,7 +360,7 @@ export const RoleBindingDetailDrawer: FC<RoleBindingDetailDrawerProps> = ({
           onDataChange={setRb}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="RoleBinding" />
+        <ResourceDetailEmptyBody resourceKind="Role Binding" />
       )}
     </ResourceDetailDrawer>
   );

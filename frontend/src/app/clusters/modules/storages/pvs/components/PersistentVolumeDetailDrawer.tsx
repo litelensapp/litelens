@@ -17,14 +17,14 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { PersistentVolumeDetail } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetPersistentVolumeByName } from "../hooks/data-access/useGetPersistentVolumeByName";
-import { useDeletePersistentVolume } from "../hooks/data-mutation/useDeletePersistentVolume";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { PersistentVolumeDetail } from "../api/resources";
+import { useGetPersistentVolumeByName } from "../hooks/data-access/useGetPersistentVolumeByName";
+import { useDeletePersistentVolume } from "../hooks/data-mutation/useDeletePersistentVolume";
 import { PersistentVolumeDeleteConfirmationModal } from "./PersistentVolumeDeleteConfirmationModal";
 import { PersistentVolumeStatusBadge } from "./PersistentVolumeStatusBadge";
 
@@ -258,7 +258,7 @@ export const PersistentVolumeDetailDrawer: FC<PersistentVolumeDetailDrawerProps>
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">PersistentVolume: {pv?.Name ?? name}</SheetTitle>
+        <SheetTitle className="text-h1">Persistent Volume: {pv?.Name ?? name}</SheetTitle>
         {pv && <PersistentVolumeDrawerCtaButtons name={pv.Name} onDeleted={onClose} />}
       </ResourceDetailDrawerHeader>
 
@@ -271,7 +271,7 @@ export const PersistentVolumeDetailDrawer: FC<PersistentVolumeDetailDrawerProps>
           onDataChange={setPv}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="PersistentVolume" />
+        <ResourceDetailEmptyBody resourceKind="Persistent Volume" />
       )}
     </ResourceDetailDrawer>
   );

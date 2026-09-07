@@ -108,7 +108,7 @@ export const ValidatingWebhookConfigModificationTray: FC<ModificationTrayContent
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this ValidatingWebhookConfig.
+            No YAML available for this Validating Webhook Configuration.
           </p>
         ) : (
           <Textarea

@@ -17,15 +17,15 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, Fragment, useEffect, useState } from "react";
-import type { StorageClass } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetStorageClassByName } from "../hooks/data-access/useGetStorageClassByName";
-import { useDeleteStorageClass } from "../hooks/data-mutation/useDeleteStorageClass";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { StorageClass } from "../api/resources";
+import { useGetStorageClassByName } from "../hooks/data-access/useGetStorageClassByName";
+import { useDeleteStorageClass } from "../hooks/data-mutation/useDeleteStorageClass";
 import { StorageClassDeleteConfirmationModal } from "./StorageClassDeleteConfirmationModal";
 
 const StorageClassOverviewTab: FC<{ sc: StorageClass }> = ({ sc }) => {
@@ -264,7 +264,7 @@ export const StorageClassDetailDrawer: FC<StorageClassDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">StorageClass: {sc?.Name ?? name}</SheetTitle>
+        <SheetTitle className="text-h1">Storage Class: {sc?.Name ?? name}</SheetTitle>
         {sc && <StorageClassDrawerCtaButtons name={sc.Name} onDeleted={onClose} />}
       </ResourceDetailDrawerHeader>
 
@@ -277,7 +277,7 @@ export const StorageClassDetailDrawer: FC<StorageClassDetailDrawerProps> = ({
           onDataChange={setSc}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="StorageClass" />
+        <ResourceDetailEmptyBody resourceKind="Storage Class" />
       )}
     </ResourceDetailDrawer>
   );

@@ -21,15 +21,15 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
+import { useMainLayoutContext } from "../../../MainLayoutContext";
+import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
+import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { IngressClassDeleteConfirmationModal } from "./components/IngressClassDeleteConfirmationModal";
 import { useGetIngressClasses } from "./hooks/data-access/useGetIngressClasses";
 import { useDeleteIngressClass } from "./hooks/data-mutation/useDeleteIngressClass";
 import { useDeleteIngressClasses } from "./hooks/data-mutation/useDeleteIngressClasses";
 import { useSetIngressClassAsDefault } from "./hooks/data-mutation/useSetIngressClassAsDefault";
 import { useUnsetIngressClassAsDefault } from "./hooks/data-mutation/useUnsetIngressClassAsDefault";
-import { useMainLayoutContext } from "../../../MainLayoutContext";
-import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
-import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
-import { IngressClassDeleteConfirmationModal } from "./components/IngressClassDeleteConfirmationModal";
 
 interface IngressClassTableCtaButtonsProps {
   name: string;
@@ -196,8 +196,8 @@ export const IngressClassesView: FC = () => {
               <TableCell colSpan={6} className="px-0 py-0">
                 <EmptyState
                   icon={<RouteIcon className="size-8" />}
-                  title="No IngressClasses"
-                  description="IngressClasses define which controller implements an Ingress"
+                  title="No Ingress Classes"
+                  description="Ingress Classes define which controller implements an Ingress"
                 />
               </TableCell>
             </TableRow>

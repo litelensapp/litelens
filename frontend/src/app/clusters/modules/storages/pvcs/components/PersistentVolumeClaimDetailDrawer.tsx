@@ -18,16 +18,16 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { PersistentVolumeClaimDetail } from "../api/resources";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useGetPersistentVolumeClaimDetail } from "../hooks/data-access/useGetPersistentVolumeClaimDetail";
-import { useDeletePersistentVolumeClaim } from "../hooks/data-mutation/useDeletePersistentVolumeClaim";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { PersistentVolumeClaimDetail } from "../api/resources";
+import { useGetPersistentVolumeClaimDetail } from "../hooks/data-access/useGetPersistentVolumeClaimDetail";
+import { useDeletePersistentVolumeClaim } from "../hooks/data-mutation/useDeletePersistentVolumeClaim";
 import { PersistentVolumeClaimDeleteConfirmationModal } from "./PersistentVolumeClaimDeleteConfirmationModal";
 import { PersistentVolumeClaimStatusBadge } from "./PersistentVolumeClaimStatusBadge";
 
@@ -307,7 +307,7 @@ export const PersistentVolumeClaimDetailDrawer: FC<PVCDetailDrawerProps> = ({
   return (
     <ResourceDetailDrawer open={open} onClose={onClose}>
       <ResourceDetailDrawerHeader>
-        <SheetTitle className="text-h1">PersistentVolumeClaim: {pvc?.Name ?? pvcName}</SheetTitle>
+        <SheetTitle className="text-h1">Persistent Volume Claim: {pvc?.Name ?? pvcName}</SheetTitle>
         {pvc && (
           <PVCDrawerCtaButtons name={pvc.Name} namespace={pvc.Namespace} onDeleted={onClose} />
         )}
@@ -323,7 +323,7 @@ export const PersistentVolumeClaimDetailDrawer: FC<PVCDetailDrawerProps> = ({
           onDataChange={setPvc}
         />
       ) : (
-        <ResourceDetailEmptyBody resourceKind="PersistentVolumeClaim" />
+        <ResourceDetailEmptyBody resourceKind="Persistent Volume Claim" />
       )}
     </ResourceDetailDrawer>
   );

@@ -110,7 +110,7 @@ export const ClusterRoleModificationTray: FC<ModificationTrayContentProps> = ({
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this ClusterRole.
+            No YAML available for this Cluster Role.
           </p>
         ) : (
           <Textarea

@@ -1,10 +1,10 @@
-import { useGetRoleBindingYAML } from "../hooks/data-access/useGetRoleBindingYAML";
-import { useUpdateRoleBindingYAML } from "../hooks/data-mutation/useUpdateRoleBindingYAML";
 import { Textarea, cn, useFullTextSearch } from "@litelens/design-system";
 import { FC, Fragment, useReducer } from "react";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { ModificationTrayToolbar } from "../../../../shared/components/trays/modification/ModificationTrayToolbar";
 import { ModificationTrayContentProps } from "../../../../shared/components/trays/modification/ModificationTrayTypes";
+import { useGetRoleBindingYAML } from "../hooks/data-access/useGetRoleBindingYAML";
+import { useUpdateRoleBindingYAML } from "../hooks/data-mutation/useUpdateRoleBindingYAML";
 
 interface YamlEditorState {
   editedYAML: string;
@@ -69,7 +69,7 @@ export const RoleBindingModificationTray: FC<ModificationTrayContentProps> = ({
   if (!tab.namespace) {
     return (
       <p className="p-4 text-xs text-destructive">
-        RoleBinding namespace is required but not provided.
+        Role Binding namespace is required but not provided.
       </p>
     );
   }
@@ -120,7 +120,7 @@ export const RoleBindingModificationTray: FC<ModificationTrayContentProps> = ({
           <p className="p-4 text-xs text-destructive">Failed to load YAML: {String(error)}</p>
         ) : !yaml ? (
           <p className="p-4 text-xs text-muted-foreground">
-            No YAML available for this RoleBinding.
+            No YAML available for this Role Binding.
           </p>
         ) : (
           <Textarea
