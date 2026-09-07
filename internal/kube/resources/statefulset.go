@@ -13,11 +13,45 @@ import (
 	listersappsv1 "k8s.io/client-go/listers/apps/v1"
 )
 
+// statefulSetHealth mirrors Argo CD's health assessment for StatefulSets
+// (gitops-engine's getAppsv1StatefulSetHealth, itself borrowed from
+// kubectl's rollout_status.go), verified against upstream source at
+// github.com/argoproj/gitops-engine/pkg/health/health_statefulset.go.
+func statefulSetHealth(ss *appsv1.StatefulSet) (status, message string) {
+	if ss.Status.ObservedGeneration == 0 || ss.Generation > ss.Status.ObservedGeneration {
+		return "Progressing", "Waiting for statefulset spec update to be observed..."
+	}
+	if ss.Spec.Replicas != nil && ss.Status.ReadyReplicas < *ss.Spec.Replicas {
+		return "Progressing", fmt.Sprintf("Waiting for %d pods to be ready...", *ss.Spec.Replicas-ss.Status.ReadyReplicas)
+	}
+	if ss.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType && ss.Spec.UpdateStrategy.RollingUpdate != nil {
+		if ss.Spec.Replicas != nil && ss.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+			target := *ss.Spec.Replicas - *ss.Spec.UpdateStrategy.RollingUpdate.Partition
+			if ss.Status.UpdatedReplicas < target {
+				return "Progressing", fmt.Sprintf(
+					"Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...",
+					ss.Status.UpdatedReplicas, target)
+			}
+		}
+		return "Healthy", fmt.Sprintf("partitioned roll out complete: %d new pods have been updated...", ss.Status.UpdatedReplicas)
+	}
+	if ss.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+		return "Healthy", fmt.Sprintf("statefulset has %d ready pods", ss.Status.ReadyReplicas)
+	}
+	if ss.Status.UpdateRevision != ss.Status.CurrentRevision {
+		return "Progressing", fmt.Sprintf(
+			"waiting for statefulset rolling update to complete %d pods at revision %s...",
+			ss.Status.UpdatedReplicas, ss.Status.UpdateRevision)
+	}
+	return "Healthy", fmt.Sprintf("statefulset rolling update complete %d pods at revision %s...", ss.Status.CurrentReplicas, ss.Status.CurrentRevision)
+}
+
 func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 	var replicas int32 = 1
 	if ss.Spec.Replicas != nil {
 		replicas = *ss.Spec.Replicas
 	}
+	healthStatus, healthMessage := statefulSetHealth(ss)
 	return dto.StatefulSet{
 		Name:      ss.Name,
 		Namespace: ss.Namespace,
@@ -66,7 +100,9 @@ func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 			}
 			return 0
 		}(),
-		PodStatus: fmt.Sprintf("%d desired, %d ready, %d available", replicas, ss.Status.ReadyReplicas, ss.Status.AvailableReplicas),
+		PodStatus:     fmt.Sprintf("%d desired, %d ready, %d available", replicas, ss.Status.ReadyReplicas, ss.Status.AvailableReplicas),
+		HealthStatus:  healthStatus,
+		HealthMessage: healthMessage,
 	}
 }
 

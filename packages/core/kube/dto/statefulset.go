@@ -19,6 +19,8 @@ type StatefulSet struct {
 	Images        []string
 	Affinities    int
 	PodStatus     string
+	HealthStatus  string
+	HealthMessage string
 }
 
 type StatefulSetSummary struct {

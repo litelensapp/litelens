@@ -37,6 +37,7 @@ import type { StatefulSet } from "../api/resources";
 import { useGetStatefulSetDetail } from "../hooks/data-access/useGetStatefulSetDetail";
 import { useDeleteStatefulSet } from "../hooks/data-mutation/useDeleteStatefulSet";
 import { StatefulSetDeleteConfirmationModal } from "./StatefulSetDeleteConfirmationModal";
+import { StatefulSetHealthBadge } from "./StatefulSetHealthBadge";
 
 const StatefulSetOverviewTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
@@ -117,6 +118,15 @@ const StatefulSetOverviewTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
           <>
             <span className="text-h3 text-muted-foreground">Pod Status</span>
             <span className="text-body font-mono">{ss.PodStatus}</span>
+          </>
+        )}
+
+        {ss.HealthStatus && (
+          <>
+            <span className="text-h3 text-muted-foreground">Health</span>
+            <span>
+              <StatefulSetHealthBadge status={ss.HealthStatus} message={ss.HealthMessage} />
+            </span>
           </>
         )}
       </div>
