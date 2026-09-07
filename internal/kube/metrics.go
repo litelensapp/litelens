@@ -6,7 +6,6 @@ import (
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
@@ -19,14 +18,10 @@ func NewMetricsClient(cfg *rest.Config) (*metricsclient.Clientset, error) {
 // httpProxy / httpsProxy are forwarded to the transport (same proxy as the main clientset).
 // kubeconfigPaths lists the kubeconfig files to load; pass nil to use the default rules.
 func NewMetricsClientForContext(contextName, httpProxy, httpsProxy string, kubeconfigPaths []string) (*metricsclient.Clientset, error) {
-	rules := LoadingRules(kubeconfigPaths)
-	overrides := &clientcmd.ConfigOverrides{CurrentContext: contextName}
-	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
-	restConfig, err := cfg.ClientConfig()
+	restConfig, err := RestConfigForContext(contextName, httpProxy, httpsProxy, kubeconfigPaths)
 	if err != nil {
 		return nil, err
 	}
-	restConfig.Proxy = ProxyFunc(httpProxy, httpsProxy)
 	return metricsclient.NewForConfig(restConfig)
 }
 
