@@ -5,9 +5,9 @@ packages:
 catalog:
   "@testing-library/jest-dom": ^6.10.0
   "@testing-library/react": ^16.3.3
-  "@types/node": ^26.4.0
+  "@types/node": ^26.5.0
   "@types/react": ^19.2.18
-  "@types/react-dom": ^19.2.5
+  "@types/react-dom": ^19.2.7
   "@vitejs/plugin-react": ^6.1.1
   "@vitest/coverage-v8": ^4.1.11
   cross-env: ^10.1.0
@@ -27,7 +27,7 @@ minimumReleaseAgeExclude:
   - shadcn@4.19.0
   - '@tanstack/query-core@5.102.3 || 5.102.7 || 5.102.8'
   - '@tanstack/react-query@5.102.3 || 5.102.7 || 5.102.8'
-  - '@types/node@26.3.0 || 26.4.0'
+  - '@types/node@26.3.0 || 26.4.0 || 26.5.0'
   - '@typescript-eslint/eslint-plugin@8.68.0'
   - '@typescript-eslint/parser@8.68.0'
   - '@typescript-eslint/project-service@8.68.0'
@@ -41,4 +41,4 @@ minimumReleaseAgeExclude:
   - typescript-eslint@8.68.0
   - '@testing-library/react@16.3.3'
   - '@vitejs/plugin-react@6.1.1'
-  - lucide-react@1.35.0
+  - lucide-react@1.35.0 || 1.42.0
