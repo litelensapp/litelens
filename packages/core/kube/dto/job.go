@@ -36,8 +36,7 @@ type Job struct {
 	StartTimeAge   string
 	CompletedAt    string
 	CompletedAtAge string
-	PodsStatuses   string
-	PodStatus      string
+	PodsStatuses   []string
 }
 
 type JobSummary struct {

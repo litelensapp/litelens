@@ -30,8 +30,7 @@ export interface Job {
   StartTimeAge: string;
   CompletedAt: string;
   CompletedAtAge: string;
-  PodsStatuses: string;
-  PodStatus: string;
+  PodsStatuses: string[];
 }
 
 export interface JobSummary {
