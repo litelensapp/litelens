@@ -1,5 +1,6 @@
-import "@xterm/xterm/css/xterm.css";
 import { Button, RotateCcwIcon } from "@litelens/design-system";
+import "@xterm/xterm/css/xterm.css";
+import { FC } from "react";
 import type { ExecStatus } from "../hooks/usePodExec";
 
 export interface ExecPanelProps {
@@ -9,7 +10,7 @@ export interface ExecPanelProps {
   reconnect: () => void;
 }
 
-export const ExecPanel = ({ containerRef, status, error, reconnect }: ExecPanelProps) => (
+export const ExecPanel: FC<ExecPanelProps> = ({ containerRef, status, error, reconnect }) => (
   <div className="flex h-full flex-col">
     <div className="relative min-h-0 flex-1 overflow-hidden">
       <div ref={containerRef} className="absolute inset-0" />

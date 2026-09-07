@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"os"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +73,47 @@ func (a *App) StreamLogs(contextName, ns, pod, container string) error {
 		}
 	}()
 
+	return nil
+}
+
+// DownloadPodLogs prompts the user for a save location, then writes the
+// current full log content for the given pod/container to disk. Returns nil
+// (without writing anything) if the user cancels the dialog.
+func (a *App) DownloadPodLogs(contextName, ns, pod, container string) error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Save Logs",
+		DefaultFilename: fmt.Sprintf("%s_%s.log", pod, container),
+	})
+	if err != nil {
+		return fmt.Errorf("save file dialog: %w", err)
+	}
+	if path == "" {
+		return nil
+	}
+
+	a.mu.RLock()
+	cs := a.clients[contextName]
+	a.mu.RUnlock()
+	if cs == nil {
+		return fmt.Errorf("no client for context %q", contextName)
+	}
+
+	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container})
+	stream, err := req.Stream(a.ctx)
+	if err != nil {
+		return fmt.Errorf("fetch logs: %w", err)
+	}
+	defer stream.Close()
+
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, stream); err != nil {
+		return fmt.Errorf("write logs: %w", err)
+	}
 	return nil
 }
 

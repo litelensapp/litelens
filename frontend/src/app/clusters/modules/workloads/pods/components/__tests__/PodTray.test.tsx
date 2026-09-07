@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { vi, describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
 
 // ─── hoisted mocks ───────────────────────────────────────────────────────────
@@ -73,6 +74,11 @@ function makeTab(overrides: Partial<TrayTab> = {}): TrayTab {
   };
 }
 
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(createElement(QueryClientProvider, { client }, ui));
+}
+
 // ─── setup ────────────────────────────────────────────────────────────────────
 
 afterEach(() => {
@@ -84,7 +90,7 @@ afterEach(() => {
 
 describe("PodTray — content panels", () => {
   it("renders LogsPanel for a logs tab", async () => {
-    render(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
+    renderWithClient(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
     await waitFor(() => {
       expect(screen.getByTestId("logs-panel")).toBeInTheDocument();
     });
@@ -101,7 +107,7 @@ describe("PodTray — content panels", () => {
 
   it("forwards correct props to LogsPanel", async () => {
     const containers = makeContainers(2);
-    render(
+    renderWithClient(
       <PodLogTrayContent
         tab={makeTab({ contextName: "ctx", ns: "ns1", pod: "pod1", containers, mode: "logs" })}
         collapsed={false}
@@ -139,7 +145,7 @@ describe("PodTray — content panels", () => {
   });
 
   it("hides content area when collapsed", async () => {
-    render(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={true} />);
+    renderWithClient(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={true} />);
     const panel = await waitFor(() => screen.getByTestId("logs-panel"));
     expect(panel.parentElement).toHaveClass("hidden");
   });
@@ -147,7 +153,7 @@ describe("PodTray — content panels", () => {
 
 describe("PodTray — bottom bar (logs mode)", () => {
   it("renders bottom bar for logs tab", () => {
-    render(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
+    renderWithClient(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
     expect(screen.getByText("Word wrap")).toBeInTheDocument();
     expect(screen.getByText("Show timestamps")).toBeInTheDocument();
     expect(screen.getByText("Show prev. terminated")).toBeInTheDocument();
@@ -155,7 +161,7 @@ describe("PodTray — bottom bar (logs mode)", () => {
   });
 
   it("toggles word wrap checkbox", () => {
-    render(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
+    renderWithClient(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
     const wordWrapCheckbox = screen.getByRole("checkbox", { name: /word wrap/i });
     expect(wordWrapCheckbox).not.toBeChecked();
     fireEvent.click(wordWrapCheckbox);
@@ -163,7 +169,7 @@ describe("PodTray — bottom bar (logs mode)", () => {
   });
 
   it("forwards wrap state to LogsPanel, toggled by the checkbox", async () => {
-    render(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
+    renderWithClient(<PodLogTrayContent tab={makeTab({ mode: "logs" })} collapsed={false} />);
 
     await waitFor(() => expect(screen.getByTestId("logs-panel")).toBeInTheDocument());
 

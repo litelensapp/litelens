@@ -1,5 +1,6 @@
 import { cn, LoadingSpinner } from "@litelens/design-system";
 import { FC, lazy, Suspense, useCallback, useReducer } from "react";
+import { useDownloadPodLogs } from "../hooks/useDownloadPodLogs";
 import { usePodLogs } from "../hooks/usePodLogs";
 import { PodLogTrayBottomBar } from "./PodLogTrayBottomBar";
 import { PodLogTrayToolbar } from "./PodLogTrayToolbar";
@@ -71,6 +72,18 @@ export const PodLogTrayContent: FC<PodLogTrayContentProps> = ({ tab, collapsed }
     [state.opts]
   );
 
+  const { mutate: downloadLogs, isPending: downloading } = useDownloadPodLogs();
+  const handleDownload = useCallback(
+    () =>
+      downloadLogs({
+        contextName: tab.contextName,
+        ns: tab.ns,
+        pod: tab.pod,
+        container: state.opts.container,
+      }),
+    [downloadLogs, tab.contextName, tab.ns, tab.pod, state.opts.container]
+  );
+
   return (
     <>
       {/* [B] Toolbar row */}
@@ -101,7 +114,13 @@ export const PodLogTrayContent: FC<PodLogTrayContentProps> = ({ tab, collapsed }
       </div>
 
       {/* [D] Bottom bar: logs options */}
-      <PodLogTrayBottomBar collapsed={collapsed} opts={state.opts} updateOpts={updateOpts} />
+      <PodLogTrayBottomBar
+        collapsed={collapsed}
+        opts={state.opts}
+        updateOpts={updateOpts}
+        onDownload={handleDownload}
+        downloading={downloading}
+      />
     </>
   );
 };

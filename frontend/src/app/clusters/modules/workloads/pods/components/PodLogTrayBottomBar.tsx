@@ -1,5 +1,4 @@
 import { Button, Checkbox, DownloadIcon, cn } from "@litelens/design-system";
-
 import { FC } from "react";
 import type { LogTabOptions } from "./PodLogTrayContent";
 
@@ -7,12 +6,16 @@ interface PodLogTrayBottomBarProps {
   collapsed: boolean;
   opts: LogTabOptions;
   updateOpts: <K extends keyof LogTabOptions>(key: K, value: LogTabOptions[K]) => void;
+  onDownload: () => void;
+  downloading: boolean;
 }
 
 export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
   collapsed,
   opts,
   updateOpts,
+  onDownload,
+  downloading,
 }) => (
   <div
     className={cn(
@@ -48,12 +51,14 @@ export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
         <span className="select-none">Show prev. terminated</span>
       </div>
     </div>
+
     <Button
       variant="ghost"
       size="xs"
-      className="gap-1.5 opacity-50"
-      aria-label="DownloadIcon logs"
-      disabled
+      className="gap-1.5"
+      aria-label="Download logs"
+      onClick={onDownload}
+      disabled={downloading}
     >
       <DownloadIcon className="size-3.5" />
       Download
