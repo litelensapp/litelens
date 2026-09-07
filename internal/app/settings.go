@@ -35,6 +35,7 @@ func (a *App) OpenAbout() {
 		"version":       a.version,
 		"go":            goruntime.Version(),
 		"wails":         config.WailsModuleVersion(),
+		"k8sClient":     config.ClientGoModuleVersion(),
 		"appSizeBytes":  strconv.FormatInt(a.appSizeBytes, 10),
 		"installSource": installSource,
 	})

@@ -26,6 +26,7 @@ type AboutPayload = {
   version: string;
   go: string;
   wails: string;
+  k8sClient: string;
   appSizeBytes: string;
   installSource: string;
 };

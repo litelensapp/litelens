@@ -22,6 +22,7 @@ interface Payload {
   version: string;
   go: string;
   wails: string;
+  k8sClient: string;
   appSizeBytes: string;
   installSource: string;
 }
@@ -39,6 +40,7 @@ export const AboutModal: FC<Props> = ({ payload, onClose, onUpdateAvailable }) =
   const runtimeTech = [
     { label: "Go", version: clean(payload.go) },
     { label: "Wails", version: clean(payload.wails) },
+    { label: "K8s Client", version: clean(payload.k8sClient) },
     { label: "Node", version: clean(__NODE_VERSION__) },
     ...TECH,
   ];

@@ -5,6 +5,7 @@ export interface MenuOpenAboutPayload {
   version: string;
   go: string;
   wails: string;
+  k8sClient: string;
   appSizeBytes: string;
   installSource: string;
 }
@@ -19,7 +20,14 @@ export function useMenuOpenAboutEvents(onOpenAbout: (payload: MenuOpenAboutPaylo
   useEffect(() => {
     return EventsOn("menu:open-about", (payload?: MenuOpenAboutPayload) => {
       callbackRef.current(
-        payload ?? { version: "", go: "", wails: "", appSizeBytes: "", installSource: "" }
+        payload ?? {
+          version: "",
+          go: "",
+          wails: "",
+          k8sClient: "",
+          appSizeBytes: "",
+          installSource: "",
+        }
       );
     });
   }, []);
