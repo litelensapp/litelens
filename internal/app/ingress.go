@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListIngresses() ([]dto.Ingress, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "ingresses") {
+	if !waitForResourceSyncIgnoringForbidden(h, "ingresses") {
 		return []dto.Ingress{}, nil
 	}
 	result, err := kubeResources.ListIngresses(h.IngressLister(), namespaces)
@@ -29,7 +29,7 @@ func (a *App) ListIngresses() ([]dto.Ingress, error) {
 
 func (a *App) GetIngressByName(namespace, name string) (dto.IngressDetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "ingresses") {
+	if !waitForResourceSyncIgnoringForbidden(h, "ingresses") {
 		return dto.IngressDetail{}, nil
 	}
 	result, err := kubeResources.GetIngressByName(h.IngressLister(), namespace, name)
@@ -83,7 +83,7 @@ func (a *App) DeleteIngresses(items []dto.IngressRef) error {
 
 func (a *App) emitIngresses() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "ingresses") {
+	if !waitForResourceSyncIgnoringForbidden(h, "ingresses") {
 		return
 	}
 	lister := h.IngressLister()

@@ -23,6 +23,7 @@ func NewNetworkPoliciesResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersnetworkingv1.NetworkPolicyLister] {
 	return New(Config[listersnetworkingv1.NetworkPolicyLister]{
 		Name:          "networkpolicies",
@@ -40,6 +41,7 @@ func NewNetworkPoliciesResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

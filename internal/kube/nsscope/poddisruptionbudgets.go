@@ -25,6 +25,7 @@ func NewPodDisruptionBudgetsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerspolicyv1.PodDisruptionBudgetLister] {
 	return New(Config[listerspolicyv1.PodDisruptionBudgetLister]{
 		Name:          "pdbs",
@@ -42,6 +43,7 @@ func NewPodDisruptionBudgetsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

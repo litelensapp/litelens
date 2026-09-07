@@ -25,7 +25,7 @@ func TestNewRolesResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewRolesResource(cs, func() cache.SharedIndexInformer { return factory.Rbac().V1().Roles().Informer() }, nil, nil)
+	r := NewRolesResource(cs, func() cache.SharedIndexInformer { return factory.Rbac().V1().Roles().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -57,7 +57,7 @@ func TestNewRolesResourceFallsBackToClusterWideBeyondThreshold(t *testing.T) {
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewRolesResource(cs, func() cache.SharedIndexInformer { return factory.Rbac().V1().Roles().Informer() }, nil, nil)
+	r := NewRolesResource(cs, func() cache.SharedIndexInformer { return factory.Rbac().V1().Roles().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

@@ -299,56 +299,67 @@ func (h *FactoryHandle) initScopedResources() {
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().Pods().Informer() },
 		clearForbidden("pods"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.deployment = nsscope.NewDeploymentsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Apps().V1().Deployments().Informer() },
 		clearForbidden("deployments"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.daemonset = nsscope.NewDaemonSetsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Apps().V1().DaemonSets().Informer() },
 		clearForbidden("daemonsets"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.statefulset = nsscope.NewStatefulSetsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Apps().V1().StatefulSets().Informer() },
 		clearForbidden("statefulsets"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.replicaset = nsscope.NewReplicaSetsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Apps().V1().ReplicaSets().Informer() },
 		clearForbidden("replicasets"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.job = nsscope.NewJobsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Batch().V1().Jobs().Informer() },
 		clearForbidden("jobs"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.cronjob = nsscope.NewCronJobsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Batch().V1().CronJobs().Informer() },
 		clearForbidden("cronjobs"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.configmap = nsscope.NewConfigMapsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().ConfigMaps().Informer() },
 		clearForbidden("configmaps"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.secret = nsscope.NewSecretsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().Secrets().Informer() },
 		clearForbidden("secrets"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.resourcequota = nsscope.NewResourceQuotasResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().ResourceQuotas().Informer() },
 		clearForbidden("resourcequotas"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.limitrange = nsscope.NewLimitRangesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().LimitRanges().Informer() },
 		clearForbidden("limitranges"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.hpa = nsscope.NewHorizontalPodAutoscalersResource(
 		h.cs,
@@ -356,66 +367,79 @@ func (h *FactoryHandle) initScopedResources() {
 			return h.Factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer()
 		},
 		clearForbidden("hpa"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.pdb = nsscope.NewPodDisruptionBudgetsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Policy().V1().PodDisruptionBudgets().Informer() },
 		clearForbidden("pdbs"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.lease = nsscope.NewLeasesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Coordination().V1().Leases().Informer() },
 		clearForbidden("leases"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.service = nsscope.NewServicesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().Services().Informer() },
 		clearForbidden("services"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.endpointslice = nsscope.NewEndpointSlicesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Discovery().V1().EndpointSlices().Informer() },
 		clearForbidden("endpointslices"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.endpoint = nsscope.NewEndpointsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().Endpoints().Informer() },
 		clearForbidden("endpoints"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.ingress = nsscope.NewIngressesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Networking().V1().Ingresses().Informer() },
 		clearForbidden("ingresses"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.networkpolicy = nsscope.NewNetworkPoliciesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Networking().V1().NetworkPolicies().Informer() },
 		clearForbidden("networkpolicies"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.pvc = nsscope.NewPersistentVolumeClaimsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().PersistentVolumeClaims().Informer() },
 		clearForbidden("pvcs"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.serviceaccount = nsscope.NewServiceAccountsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().ServiceAccounts().Informer() },
 		clearForbidden("serviceaccounts"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.role = nsscope.NewRolesResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Rbac().V1().Roles().Informer() },
 		clearForbidden("roles"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.rolebinding = nsscope.NewRoleBindingsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Rbac().V1().RoleBindings().Informer() },
 		clearForbidden("rolebindings"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.event = nsscope.NewEventsResource(
 		h.cs,
 		func() cache.SharedIndexInformer { return h.Factory.Core().V1().Events().Informer() },
 		clearForbidden("events"), onScopedForbidden,
+		h.globalStop,
 	)
 	h.scoped = map[string]nsscopeResource{
 		"pods":            h.pod,

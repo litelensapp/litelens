@@ -22,6 +22,7 @@ func NewEventsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.EventLister] {
 	return New(Config[listerscorev1.EventLister]{
 		Name:          "events",
@@ -39,6 +40,7 @@ func NewEventsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

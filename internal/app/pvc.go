@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "pvcs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pvcs") {
 		return []dto.PersistentVolumeClaim{}, nil
 	}
 	result, err := kubeResources.ListPersistentVolumeClaims(
@@ -33,7 +33,7 @@ func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) 
 
 func (a *App) GetPersistentVolumeClaimByName(namespace, name string) (*dto.PersistentVolumeClaimDetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "pvcs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pvcs") {
 		return &dto.PersistentVolumeClaimDetail{}, nil
 	}
 	result, err := kubeResources.GetPersistentVolumeClaimByName(
@@ -51,7 +51,7 @@ func (a *App) GetPersistentVolumeClaimByName(namespace, name string) (*dto.Persi
 
 func (a *App) emitPersistentVolumeClaims() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "pvcs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pvcs") {
 		return
 	}
 	pvcLister := h.PersistentVolumeClaimLister()

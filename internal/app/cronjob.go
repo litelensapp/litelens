@@ -17,7 +17,7 @@ import (
 
 func (a *App) GetCronJobByName(namespace, name string) (dto.CronJob, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "cronjobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "cronjobs") {
 		return dto.CronJob{}, nil
 	}
 	result, err := kubeResources.GetCronJobByName(h.CronJobLister(), namespace, name)
@@ -30,7 +30,7 @@ func (a *App) GetCronJobByName(namespace, name string) (dto.CronJob, error) {
 
 func (a *App) ListCronJobs() ([]dto.CronJob, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "cronjobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "cronjobs") {
 		return []dto.CronJob{}, nil
 	}
 	result, err := kubeResources.ListCronJobs(h.CronJobLister(), namespaces)
@@ -43,7 +43,7 @@ func (a *App) ListCronJobs() ([]dto.CronJob, error) {
 
 func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "cronjobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "cronjobs") {
 		return dto.CronJobSummary{}, nil
 	}
 	lister := h.CronJobLister()
@@ -72,7 +72,7 @@ func (a *App) GetCronJobsSummary() (dto.CronJobSummary, error) {
 
 func (a *App) emitCronJobs() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "cronjobs") {
+	if !waitForResourceSyncIgnoringForbidden(h, "cronjobs") {
 		return
 	}
 	lister := h.CronJobLister()

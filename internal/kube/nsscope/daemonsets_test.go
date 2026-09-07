@@ -31,7 +31,7 @@ func TestNewDaemonSetsResourceNamespaceScoped(t *testing.T) {
 	}
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewDaemonSetsResource(cs, func() cache.SharedIndexInformer { return factory.Apps().V1().DaemonSets().Informer() }, nil, nil)
+	r := NewDaemonSetsResource(cs, func() cache.SharedIndexInformer { return factory.Apps().V1().DaemonSets().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope([]string{"ns-a", "ns-b"})
@@ -72,7 +72,7 @@ func TestNewDaemonSetsResourceFallsBackToClusterWideBeyondThreshold(t *testing.T
 
 	cs := fake.NewSimpleClientset(objs...)
 	factory := informers.NewSharedInformerFactory(cs, 0)
-	r := NewDaemonSetsResource(cs, func() cache.SharedIndexInformer { return factory.Apps().V1().DaemonSets().Informer() }, nil, nil)
+	r := NewDaemonSetsResource(cs, func() cache.SharedIndexInformer { return factory.Apps().V1().DaemonSets().Informer() }, nil, nil, nil)
 	defer r.Stop()
 
 	r.Rescope(namespaces)

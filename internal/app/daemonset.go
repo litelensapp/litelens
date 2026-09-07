@@ -20,7 +20,7 @@ import (
 
 func (a *App) ListDaemonSets() ([]dto.DaemonSet, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "daemonsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "daemonsets") {
 		return []dto.DaemonSet{}, nil
 	}
 	result, err := kubeResources.ListDaemonSets(h.DaemonSetLister(), namespaces)
@@ -33,7 +33,7 @@ func (a *App) ListDaemonSets() ([]dto.DaemonSet, error) {
 
 func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "daemonsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "daemonsets") {
 		return dto.DaemonSet{}, nil
 	}
 	result, err := kubeResources.GetDaemonSetByName(h.DaemonSetLister(), namespace, name)
@@ -46,7 +46,7 @@ func (a *App) GetDaemonSetByName(namespace, name string) (dto.DaemonSet, error) 
 
 func (a *App) GetDaemonSetsSummary() (dto.DaemonSetSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "daemonsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "daemonsets") {
 		return dto.DaemonSetSummary{}, nil
 	}
 	lister := h.DaemonSetLister()
@@ -142,7 +142,7 @@ func (a *App) DeleteDaemonSets(items []dto.DaemonSetRef) error {
 
 func (a *App) emitDaemonSets() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "daemonsets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "daemonsets") {
 		return
 	}
 	lister := h.DaemonSetLister()

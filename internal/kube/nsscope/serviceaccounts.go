@@ -23,6 +23,7 @@ func NewServiceAccountsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.ServiceAccountLister] {
 	return New(Config[listerscorev1.ServiceAccountLister]{
 		Name:          "serviceaccounts",
@@ -40,6 +41,7 @@ func NewServiceAccountsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

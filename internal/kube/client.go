@@ -30,11 +30,14 @@ func NewClientset(contextName, httpProxy, httpsProxy string, kubeconfigPaths []s
 
 	restConfig.Proxy = ProxyFunc(httpProxy, httpsProxy)
 	// client-go defaults to QPS:5/Burst:10 when unset, which throttles this
-	// app's own requests — Connect() starts ~31 informers (each doing an
-	// initial LIST) off one shared clientset. Raise the ceiling so the host
-	// app doesn't self-throttle, in line with kubectl/Lens/k9s.
-	restConfig.QPS = 50
-	restConfig.Burst = 100
+	// app's own requests. Connect() starts ~9 cluster-wide informers plus,
+	// per selected namespace, one informer for each of the ~24
+	// namespace-scoped (nsscope) resource kinds — e.g. 7 namespaces selected
+	// means ~168 informers all doing their initial LIST at once. Raise the
+	// ceiling well above kubectl/Lens/k9s-style single-digit-namespace usage
+	// so that burst doesn't self-throttle into spurious sync timeouts.
+	restConfig.QPS = 100
+	restConfig.Burst = 300
 
 	cs, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {

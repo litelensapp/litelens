@@ -17,7 +17,7 @@ import (
 
 func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "resourcequotas") {
+	if !waitForResourceSyncIgnoringForbidden(h, "resourcequotas") {
 		return []dto.ResourceQuota{}, nil
 	}
 	result, err := kubeResources.ListResourceQuotas(h.ResourceQuotaLister(), namespaces)
@@ -30,7 +30,7 @@ func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
 
 func (a *App) GetResourceQuotaByName(namespace, name string) (dto.ResourceQuotaDetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "resourcequotas") {
+	if !waitForResourceSyncIgnoringForbidden(h, "resourcequotas") {
 		return dto.ResourceQuotaDetail{}, nil
 	}
 	result, err := kubeResources.GetResourceQuotaByName(h.ResourceQuotaLister(), namespace, name)
@@ -115,7 +115,7 @@ func (a *App) DeleteResourceQuotas(items []dto.ResourceQuotaRef) error {
 
 func (a *App) emitResourceQuotas() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "resourcequotas") {
+	if !waitForResourceSyncIgnoringForbidden(h, "resourcequotas") {
 		return
 	}
 	lister := h.ResourceQuotaLister()

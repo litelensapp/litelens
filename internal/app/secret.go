@@ -17,7 +17,7 @@ import (
 
 func (a *App) ListSecrets() ([]dto.Secret, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "secrets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "secrets") {
 		return []dto.Secret{}, nil
 	}
 	result, err := kubeResources.ListSecrets(h.SecretLister(), namespaces)
@@ -30,7 +30,7 @@ func (a *App) ListSecrets() ([]dto.Secret, error) {
 
 func (a *App) GetSecretByName(namespace, name string) (*dto.SecretDetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "secrets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "secrets") {
 		return &dto.SecretDetail{}, nil
 	}
 	result, err := kubeResources.GetSecretByName(
@@ -110,7 +110,7 @@ func (a *App) DeleteSecrets(items []dto.SecretRef) error {
 
 func (a *App) emitSecrets() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "secrets") {
+	if !waitForResourceSyncIgnoringForbidden(h, "secrets") {
 		return
 	}
 	lister := h.SecretLister()

@@ -29,7 +29,7 @@ func (a *App) GetServiceByName(namespace, name string) (dto.Service, error) {
 
 func (a *App) ListServices() ([]dto.Service, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "services") {
+	if !waitForResourceSyncIgnoringForbidden(h, "services") {
 		return []dto.Service{}, nil
 	}
 	result, err := kubeResources.ListServices(h.ServiceLister(), namespaces)
@@ -83,7 +83,7 @@ func (a *App) DeleteServices(items []dto.ServiceRef) error {
 
 func (a *App) emitServices() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "services") {
+	if !waitForResourceSyncIgnoringForbidden(h, "services") {
 		return
 	}
 	lister := h.ServiceLister()

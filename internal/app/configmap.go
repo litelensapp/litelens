@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListConfigMaps() ([]dto.ConfigMap, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "configmaps") {
+	if !waitForResourceSyncIgnoringForbidden(h, "configmaps") {
 		return []dto.ConfigMap{}, nil
 	}
 	result, err := kubeResources.ListConfigMaps(h.ConfigMapLister(), namespaces)
@@ -29,7 +29,7 @@ func (a *App) ListConfigMaps() ([]dto.ConfigMap, error) {
 
 func (a *App) GetConfigMapByName(namespace, name string) (dto.ConfigMap, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "configmaps") {
+	if !waitForResourceSyncIgnoringForbidden(h, "configmaps") {
 		return dto.ConfigMap{}, nil
 	}
 	result, err := kubeResources.GetConfigMapByName(h.ConfigMapLister(), namespace, name)
@@ -97,7 +97,7 @@ func (a *App) DeleteConfigMaps(items []dto.ConfigMapRef) error {
 
 func (a *App) emitConfigMaps() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "configmaps") {
+	if !waitForResourceSyncIgnoringForbidden(h, "configmaps") {
 		return
 	}
 	lister := h.ConfigMapLister()

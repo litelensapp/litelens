@@ -23,6 +23,7 @@ func NewRoleBindingsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersrbacv1.RoleBindingLister] {
 	return New(Config[listersrbacv1.RoleBindingLister]{
 		Name:          "rolebindings",
@@ -40,6 +41,7 @@ func NewRoleBindingsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

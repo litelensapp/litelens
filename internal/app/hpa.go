@@ -16,7 +16,7 @@ import (
 
 func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "hpa") {
+	if !waitForResourceSyncIgnoringForbidden(h, "hpa") {
 		return dto.HPADetail{}, nil
 	}
 	result, err := kubeResources.GetHPAByName(
@@ -33,7 +33,7 @@ func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
 
 func (a *App) ListHPAs() ([]dto.HPA, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "hpa") {
+	if !waitForResourceSyncIgnoringForbidden(h, "hpa") {
 		return []dto.HPA{}, nil
 	}
 	result, err := kubeResources.ListHPAs(h.HorizontalPodAutoscalerLister(), namespaces)
@@ -46,7 +46,7 @@ func (a *App) ListHPAs() ([]dto.HPA, error) {
 
 func (a *App) emitHPAs() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "hpa") {
+	if !waitForResourceSyncIgnoringForbidden(h, "hpa") {
 		return
 	}
 	lister := h.HorizontalPodAutoscalerLister()

@@ -18,7 +18,7 @@ import (
 
 func (a *App) ListPods() ([]dto.Pod, error) {
 	h, namespaces, mc := a.activeFactoryNamespacesAndMetrics()
-	if !waitForResourceSync(h, "pods") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pods") {
 		return []dto.Pod{}, nil
 	}
 	pods, err := kubeResources.ListPods(h.PodLister(), namespaces)
@@ -41,7 +41,7 @@ func (a *App) ListPods() ([]dto.Pod, error) {
 
 func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "pods") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pods") {
 		return dto.Pod{}, nil
 	}
 	result, err := kubeResources.GetPodByName(h.PodLister(), namespace, name)
@@ -54,7 +54,7 @@ func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 
 func (a *App) GetPodsSummary() (dto.PodSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "pods") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pods") {
 		return dto.PodSummary{}, nil
 	}
 	lister := h.PodLister()
@@ -90,7 +90,7 @@ func (a *App) emitPods() {
 // asynchronously to avoid blocking the initial emit.
 func (a *App) emitPodsWithMetrics(allMetrics map[string]dto.PodUsage) {
 	h, namespaces, mc := a.activeFactoryNamespacesAndMetrics()
-	if h == nil || h.IsForbidden("pods") {
+	if !waitForResourceSyncIgnoringForbidden(h, "pods") {
 		return
 	}
 	lister := h.PodLister()

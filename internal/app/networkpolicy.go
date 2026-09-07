@@ -16,7 +16,7 @@ import (
 
 func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "networkpolicies") {
+	if !waitForResourceSyncIgnoringForbidden(h, "networkpolicies") {
 		return []dto.NetworkPolicy{}, nil
 	}
 	result, err := kubeResources.ListNetworkPolicies(h.NetworkPolicyLister(), namespaces)
@@ -29,7 +29,7 @@ func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
 
 func (a *App) GetNetworkPolicyByName(namespace, name string) (*dto.NetworkPolicyDetail, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "networkpolicies") {
+	if !waitForResourceSyncIgnoringForbidden(h, "networkpolicies") {
 		return nil, nil
 	}
 	result, err := kubeResources.GetNetworkPolicyByName(h.NetworkPolicyLister(), namespace, name)
@@ -83,7 +83,7 @@ func (a *App) DeleteNetworkPolicies(items []dto.NetworkPolicyRef) error {
 
 func (a *App) emitNetworkPolicies() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "networkpolicies") {
+	if !waitForResourceSyncIgnoringForbidden(h, "networkpolicies") {
 		return
 	}
 	lister := h.NetworkPolicyLister()

@@ -41,6 +41,7 @@ func NewPodsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.PodLister] {
 	return New(Config[listerscorev1.PodLister]{
 		Name:          "pods",
@@ -58,6 +59,7 @@ func NewPodsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

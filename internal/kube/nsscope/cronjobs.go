@@ -22,6 +22,7 @@ func NewCronJobsResource(
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
 	onForbidden func(name string),
+	globalStop <-chan struct{},
 ) *ScopedResource[listersbatchv1.CronJobLister] {
 	return New(Config[listersbatchv1.CronJobLister]{
 		Name:          "cronjobs",
@@ -39,6 +40,7 @@ func NewCronJobsResource(
 		},
 		ClearForbidden: clearForbidden,
 		OnForbidden:    onForbidden,
+		GlobalStop:     globalStop,
 	})
 }
 

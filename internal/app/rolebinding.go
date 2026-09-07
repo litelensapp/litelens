@@ -16,7 +16,7 @@ import (
 
 func (a *App) GetRoleBindingByName(namespace, name string) (dto.RoleBinding, error) {
 	h := a.activeFactory()
-	if !waitForResourceSync(h, "rolebindings") {
+	if !waitForResourceSyncIgnoringForbidden(h, "rolebindings") {
 		return dto.RoleBinding{}, nil
 	}
 	result, err := kubeResources.GetRoleBindingByName(
@@ -33,7 +33,7 @@ func (a *App) GetRoleBindingByName(namespace, name string) (dto.RoleBinding, err
 
 func (a *App) ListRoleBindings() ([]dto.RoleBinding, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "rolebindings") {
+	if !waitForResourceSyncIgnoringForbidden(h, "rolebindings") {
 		return []dto.RoleBinding{}, nil
 	}
 	result, err := kubeResources.ListRoleBindings(
@@ -49,7 +49,7 @@ func (a *App) ListRoleBindings() ([]dto.RoleBinding, error) {
 
 func (a *App) emitRoleBindings() {
 	h, namespaces := a.activeFactoryAndNamespaces()
-	if !waitForResourceSync(h, "rolebindings") {
+	if !waitForResourceSyncIgnoringForbidden(h, "rolebindings") {
 		return
 	}
 	lister := h.RoleBindingLister()
