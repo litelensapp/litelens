@@ -25,6 +25,8 @@ type ReplicaSet struct {
 	Tolerations    int
 	Affinities     int
 	PodStatus      string
+	HealthStatus   string
+	HealthMessage  string
 }
 
 type ReplicaSetSummary struct {

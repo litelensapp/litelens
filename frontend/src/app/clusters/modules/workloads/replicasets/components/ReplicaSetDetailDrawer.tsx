@@ -39,6 +39,7 @@ import { useGetReplicaSetDetail } from "../hooks/data-access/useGetReplicaSetDet
 import { useDeleteReplicaSet } from "../hooks/data-mutation/useDeleteReplicaSet";
 import { useScaleReplicaSet } from "../hooks/data-mutation/useScaleReplicaSet";
 import { ReplicaSetDeleteConfirmationModal } from "./ReplicaSetDeleteConfirmationModal";
+import { ReplicaSetHealthBadge } from "./ReplicaSetHealthBadge";
 import { ReplicaSetScaleModal } from "./ReplicaSetScaleModal";
 
 const ReplicaSetDrawerCtaButtons: FC<{
@@ -217,6 +218,15 @@ const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
           <>
             <span className="text-h3 text-muted-foreground">Pod Status</span>
             <span className="text-body font-mono">{rs.PodStatus}</span>
+          </>
+        )}
+
+        {rs.HealthStatus && (
+          <>
+            <span className="text-h3 text-muted-foreground">Health</span>
+            <span>
+              <ReplicaSetHealthBadge status={rs.HealthStatus} message={rs.HealthMessage} />
+            </span>
           </>
         )}
       </div>

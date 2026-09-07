@@ -56,6 +56,8 @@ describe("useReplicaSetsUpdateEvents", () => {
         Tolerations: 0,
         Affinities: 0,
         PodStatus: "Running",
+        HealthStatus: "Healthy",
+        HealthMessage: "",
       },
     ];
     triggerEvent("replicasets:update", payload);
@@ -87,6 +89,8 @@ describe("useReplicaSetsUpdateEvents", () => {
         Tolerations: 0,
         Affinities: 0,
         PodStatus: "Running",
+        HealthStatus: "Healthy",
+        HealthMessage: "",
       },
     ];
     triggerEvent("replicasets:update", payload1);
@@ -115,6 +119,8 @@ describe("useReplicaSetsUpdateEvents", () => {
         Tolerations: 0,
         Affinities: 0,
         PodStatus: "Pending",
+        HealthStatus: "Progressing",
+        HealthMessage: "Waiting for rollout to finish: 0 out of 1 new replicas are available",
       },
     ];
     triggerEvent("replicasets:update", payload2);
