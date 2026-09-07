@@ -54,7 +54,8 @@ import { DeploymentScaleModal } from "./DeploymentScaleModal";
 
 const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext();
+
   const [showTolerations, setShowTolerations] = useState(false);
   const [showAffinities, setShowAffinities] = useState(false);
 
@@ -259,8 +260,14 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
                   .toSorted((a, b) => b.CreatedAt.localeCompare(a.CreatedAt))
                   .map((rs) => (
                     <TableRow key={`${rs.Namespace}/${rs.Name}`}>
-                      <TableCell className="max-w-40 truncate font-mono text-xs">
-                        {rs.Name}
+                      <TableCell className="max-w-40 font-mono text-xs">
+                        <ResourceLink
+                          truncate
+                          truncateTextClassName="max-w-40"
+                          onClick={() => onToggleReplicaSetDetail(rs.Namespace, rs.Name)}
+                        >
+                          {rs.Name}
+                        </ResourceLink>
                       </TableCell>
                       <TableCell className="text-xs">
                         <ResourceLink onClick={() => onToggleNamespaceDetail(rs.Namespace)}>
