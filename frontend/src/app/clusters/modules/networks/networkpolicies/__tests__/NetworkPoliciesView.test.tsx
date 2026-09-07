@@ -91,7 +91,7 @@ describe("NetworkPoliciesView", () => {
   it('renders "Item list is empty" empty state row when no items', () => {
     renderView();
 
-    expect(screen.getByText("No NetworkPolicies")).toBeInTheDocument();
+    expect(screen.getByText("No Network Policies")).toBeInTheDocument();
   });
 
   it("renders a single policy with all 4 columns: Name, Namespace, PolicyTypes, Age", () => {
@@ -179,7 +179,7 @@ describe("NetworkPoliciesView", () => {
     fireEvent.change(input, { target: { value: "nonexistent" } });
 
     expect(screen.getByText("0 items")).toBeInTheDocument();
-    expect(screen.getByText("No NetworkPolicies")).toBeInTheDocument();
+    expect(screen.getByText("No Network Policies")).toBeInTheDocument();
   });
 
   it("clicking Namespace ResourceLink calls onToggleNamespaceDetail with the correct namespace", () => {

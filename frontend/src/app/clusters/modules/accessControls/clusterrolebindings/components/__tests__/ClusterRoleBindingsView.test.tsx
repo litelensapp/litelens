@@ -126,7 +126,7 @@ describe("ClusterRoleBindingsView", () => {
   it('shows "Item list is empty" when data is empty', () => {
     render(<ClusterRoleBindingsView />, { wrapper: makeWrapper() });
 
-    expect(screen.getAllByText("No ClusterRoleBindings").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("No Cluster Role Bindings").length).toBeGreaterThan(0);
   });
 
   it("filters CRBs by search (case-insensitive)", () => {
@@ -190,7 +190,7 @@ describe("ClusterRoleBindingsView", () => {
 
     expect(onToggleClusterRoleDetailMock).toHaveBeenCalledWith("my-role");
     // Row click must NOT have also fired — drawer title should NOT be in the DOM
-    expect(screen.queryAllByText("ClusterRoleBinding: my-crb")).toHaveLength(0);
+    expect(screen.queryAllByText("Cluster Role Binding: my-crb")).toHaveLength(0);
   });
 
   it("deduplicates subject types in the Types column", () => {

@@ -120,16 +120,16 @@ describe("ClusterRoleBindingDetailDrawer", () => {
   it("does not render drawer body when crb is null", () => {
     renderDrawer({ crb: null, open: true });
 
-    // EmptyStateBody always shows "ClusterRoleBinding: —"; verify the tabs (drawer body) are absent
+    // EmptyStateBody always shows "Cluster Role Binding: —"; verify the tabs (drawer body) are absent
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
-  it('renders SheetTitle with "ClusterRoleBinding: {name}" format', () => {
+  it('renders SheetTitle with "Cluster Role Binding: {name}" format', () => {
     const crb = makeCrb({ Name: "my-crb" });
     renderDrawer({ crb, open: true });
 
     // Portal may render the element twice; we just need at least one match
-    expect(screen.getAllByText("ClusterRoleBinding: my-crb").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Cluster Role Binding: my-crb").length).toBeGreaterThan(0);
   });
 
   it("Overview tab shows Created, Name, Labels, Annotations fields", () => {

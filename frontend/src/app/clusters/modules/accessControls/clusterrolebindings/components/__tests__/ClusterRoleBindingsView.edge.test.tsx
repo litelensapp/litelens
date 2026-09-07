@@ -35,7 +35,8 @@ vi.mock("../ClusterRoleBindingDetailDrawer", () => ({
   }: {
     crb: { Name: string } | null;
     open: boolean;
-  }) => (open && crb ? <div data-testid="drawer-stub">ClusterRoleBinding: {crb.Name}</div> : null),
+  }) =>
+    open && crb ? <div data-testid="drawer-stub">Cluster Role Binding: {crb.Name}</div> : null,
 }));
 
 // ─── imports after mocks ──────────────────────────────────────────────────────
@@ -171,7 +172,7 @@ describe("ClusterRoleBindingsView — edge cases", () => {
     fireEvent.change(input, { target: { value: "zzz-no-match-ever" } });
 
     await waitFor(() => {
-      expect(screen.getByText("No ClusterRoleBindings")).toBeInTheDocument();
+      expect(screen.getByText("No Cluster Role Bindings")).toBeInTheDocument();
     });
     expect(screen.getByText("0 items")).toBeInTheDocument();
   });
@@ -269,7 +270,7 @@ describe("ClusterRoleBindingsView — edge cases", () => {
     useGetClusterRoleBindingsMock.mockReturnValue({ data: [] });
     renderView();
     expect(screen.getByText("0 items")).toBeInTheDocument();
-    expect(screen.getByText("No ClusterRoleBindings")).toBeInTheDocument();
+    expect(screen.getByText("No Cluster Role Bindings")).toBeInTheDocument();
   });
 
   // Boundary: undefined data (hook hasn't resolved yet — default fallback)
