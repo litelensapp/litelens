@@ -14,6 +14,43 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// WatchPersistentVolumeClaimDetail registers the frontend's interest in live
+// "pvc:update" detail pushes for one specific PersistentVolumeClaim
+// (namespace/name) — the one currently shown in the (single) open PVC
+// detail drawer. Call UnwatchPersistentVolumeClaimDetail on drawer
+// close/unmount to stop.
+func (a *App) WatchPersistentVolumeClaimDetail(namespace, name string) {
+	a.watchedPersistentVolumeClaim.watch(namespace, name)
+}
+
+// UnwatchPersistentVolumeClaimDetail reverses WatchPersistentVolumeClaimDetail.
+func (a *App) UnwatchPersistentVolumeClaimDetail(namespace, name string) {
+	a.watchedPersistentVolumeClaim.unwatch(namespace, name)
+}
+
+// emitPersistentVolumeClaimDetail pushes a fresh dto.PersistentVolumeClaimDetail
+// on "pvc:update" (singular — distinct from the "pvcs:update" list topic) for
+// the currently-watched PersistentVolumeClaim, if any. Mirrors
+// emitPersistentVolumeClaims but is intentionally not called from within it:
+// it's wired to run off the same informer-change signal independently, so
+// detail-route consumers aren't coupled to the list emit path.
+func (a *App) emitPersistentVolumeClaimDetail() {
+	namespace, name, ok := a.watchedPersistentVolumeClaim.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "pvcs") {
+		return
+	}
+	detail, err := kubeResources.GetPersistentVolumeClaimByName(h.PersistentVolumeClaimLister(), h.PodLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "pvc:update", detail)
+}
+
 func (a *App) ListPersistentVolumeClaims() ([]dto.PersistentVolumeClaim, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
 	if !waitForResourceSyncIgnoringForbidden(h, "pvcs") {

@@ -13,6 +13,7 @@ export function useGetPersistentVolumeClaimYAML(
 ) {
   const queryClient = useQueryClient();
   const latestPVCs = usePersistentVolumeClaimsUpdateEvents();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_PERSISTENTVOLUMECLAIM_YAML, { context, namespace, name }],
     queryFn: () => GetPersistentVolumeClaimYAML(namespace, name),
@@ -20,19 +21,19 @@ export function useGetPersistentVolumeClaimYAML(
     enabled: !!context && !!namespace && !!name && enabled,
   });
 
-  const matchedPVC = useMemo(
-    () => latestPVCs.find((pvc) => pvc.Namespace === namespace && pvc.Name === name),
-    [latestPVCs, namespace, name]
-  );
-  const matchedPVCKey = JSON.stringify(matchedPVC);
+  const pvcKeyDependency = useMemo(() => {
+    const matchedPVC = latestPVCs.find((pvc) => pvc.Namespace === namespace && pvc.Name === name);
+    if (matchedPVC) return JSON.stringify(matchedPVC);
+    return null;
+  }, [latestPVCs, namespace, name]);
 
   useEffect(() => {
-    if (matchedPVC) {
+    if (pvcKeyDependency) {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_PERSISTENTVOLUMECLAIM_YAML, { context, namespace, name }],
       });
     }
-  }, [matchedPVC, matchedPVCKey, context, namespace, name, queryClient]);
+  }, [pvcKeyDependency, context, namespace, name, queryClient]);
 
   return query;
 }

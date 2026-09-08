@@ -27,6 +27,30 @@ func (a *App) ListPodDisruptionBudgets() ([]dto.PodDisruptionBudget, error) {
 	return result, nil
 }
 
+func (a *App) WatchPodDisruptionBudgetDetail(namespace, name string) {
+	a.watchedPodDisruptionBudget.watch(namespace, name)
+}
+
+func (a *App) UnwatchPodDisruptionBudgetDetail(namespace, name string) {
+	a.watchedPodDisruptionBudget.unwatch(namespace, name)
+}
+
+func (a *App) emitPodDisruptionBudgetDetail() {
+	namespace, name, ok := a.watchedPodDisruptionBudget.get()
+	if !ok {
+		return
+	}
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "pdbs") {
+		return
+	}
+	detail, err := kubeResources.GetPodDisruptionBudgetByName(h.PodDisruptionBudgetLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "pdb:update", detail)
+}
+
 func (a *App) GetPodDisruptionBudgetByName(namespace, name string) (*dto.PodDisruptionBudgetDetail, error) {
 	h := a.activeFactory()
 	if !waitForResourceSyncIgnoringForbidden(h, "pdbs") {

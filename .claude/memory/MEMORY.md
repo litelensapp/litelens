@@ -2,7 +2,7 @@
 
 ## Architecture
 
-- [Architecture decisions](architecture_decisions.md) — IPC, SharedInformerFactory caching, DTO design, package deps, Wails bindings, macOS build
+- [Architecture decisions](architecture_decisions.md) — IPC, SharedInformerFactory caching, DTO design, package deps, Wails bindings, macOS build, scoped detail-push pattern (`detailWatch`, singular vs plural topics)
 - [File structure](file_structure.md) — full annotated project tree (Go backend + React frontend)
 - [Unified tray architecture](unified_tray_architecture.md) — built-in tray families (modification/pod) share one shell via discriminated union + registry; plugin-owned families merge in at runtime
 - [Modification tray architecture](modification_tray_architecture.md) — generic cross-resource bottom tray; how to add a new resource kind

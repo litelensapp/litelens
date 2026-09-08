@@ -27,6 +27,33 @@ func (a *App) ListValidatingWebhookConfigs() ([]dto.ValidatingWebhookConfig, err
 	return result, nil
 }
 
+func (a *App) WatchValidatingWebhookConfigDetail(name string) {
+	a.watchedValidatingWebhookConfig.watch("", name)
+}
+
+func (a *App) UnwatchValidatingWebhookConfigDetail(name string) {
+	a.watchedValidatingWebhookConfig.unwatch("", name)
+}
+
+func (a *App) emitValidatingWebhookConfigDetail() {
+	_, name, ok := a.watchedValidatingWebhookConfig.get()
+	if !ok {
+		return
+	}
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "validatingwebhookconfigs") {
+		return
+	}
+	detail, err := kubeResources.GetValidatingWebhookConfigByName(
+		h.Factory.Admissionregistration().V1().ValidatingWebhookConfigurations().Lister(),
+		name,
+	)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "validatingwebhookconfig:update", detail)
+}
+
 func (a *App) GetValidatingWebhookConfigByName(name string) (*dto.ValidatingWebhookConfigDetail, error) {
 	h := a.activeFactory()
 	if !waitForResourceSync(h, "validatingwebhookconfigs") {

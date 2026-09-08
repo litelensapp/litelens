@@ -29,6 +29,30 @@ func (a *App) ListLimitRanges() ([]dto.LimitRange, error) {
 	return result, nil
 }
 
+func (a *App) WatchLimitRangeDetail(namespace, name string) {
+	a.watchedLimitRange.watch(namespace, name)
+}
+
+func (a *App) UnwatchLimitRangeDetail(namespace, name string) {
+	a.watchedLimitRange.unwatch(namespace, name)
+}
+
+func (a *App) emitLimitRangeDetail() {
+	namespace, name, ok := a.watchedLimitRange.get()
+	if !ok {
+		return
+	}
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "limitranges") {
+		return
+	}
+	detail, err := kubeResources.GetLimitRangeByName(h.LimitRangeLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "limitrange:update", detail)
+}
+
 func (a *App) GetLimitRangeByName(namespace, name string) dto.LimitRangeDetail {
 	h := a.activeFactory()
 	if !waitForResourceSyncIgnoringForbidden(h, "limitranges") {

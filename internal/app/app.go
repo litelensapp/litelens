@@ -71,6 +71,23 @@ type App struct {
 	// risk lock-order inversion and must be avoided.
 	pluginsMu     sync.RWMutex
 	grpcServerCfg *hostgrpc.GRPCServerConfig
+
+	// watchedSecret/watchedResourceQuota/watchedPersistentVolumeClaim/... track
+	// the resource currently shown in that kind's (single) open detail drawer,
+	// if any — see detailWatch and the WatchXxxDetail/UnwatchXxxDetail/
+	// emitXxxDetail trio in secret.go/resourcequota.go/pvc.go/etc. For
+	// cluster-scoped kinds (PersistentVolume, ValidatingWebhookConfig) the
+	// namespace half of the key is always "".
+	watchedSecret                  detailWatch
+	watchedResourceQuota           detailWatch
+	watchedPersistentVolumeClaim   detailWatch
+	watchedHPA                     detailWatch
+	watchedLimitRange              detailWatch
+	watchedNetworkPolicy           detailWatch
+	watchedPodDisruptionBudget     detailWatch
+	watchedIngress                 detailWatch
+	watchedPersistentVolume        detailWatch
+	watchedValidatingWebhookConfig detailWatch
 }
 
 // NewApp creates a new App application struct
@@ -393,16 +410,26 @@ func (a *App) Connect(contextName string, seq int64) error {
 	h.RescopeCronJobs(restoredNamespaces)
 	debConfigMaps := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitConfigMaps() }, isCtx)
 	debSecrets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitSecrets() }, isCtx)
+	debSecretDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitSecretDetail() }, isCtx)
 	debResourceQuotas := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitResourceQuotas() }, isCtx)
+	debResourceQuotaDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitResourceQuotaDetail() }, isCtx)
 	debLimitRanges := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitLimitRanges() }, isCtx)
+	debLimitRangeDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitLimitRangeDetail() }, isCtx)
 	debHPAs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitHPAs() }, isCtx)
+	debHPADetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitHPADetail() }, isCtx)
 	debPodDisruptionBudgets := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPodDisruptionBudgets() }, isCtx)
+	debPodDisruptionBudgetDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPodDisruptionBudgetDetail() }, isCtx)
 	debIngresses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitIngresses() }, isCtx)
+	debIngressDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitIngressDetail() }, isCtx)
 	debNetworkPolicies := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitNetworkPolicies() }, isCtx)
+	debNetworkPolicyDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitNetworkPolicyDetail() }, isCtx)
 	debIngressClasses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitIngressClasses() }, isCtx)
 	debValidatingWebhookConfigs := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitValidatingWebhookConfigs() }, isCtx)
+	debValidatingWebhookConfigDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitValidatingWebhookConfigDetail() }, isCtx)
 	debPersistentVolumeClaims := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPersistentVolumeClaims() }, isCtx)
+	debPersistentVolumeClaimDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPersistentVolumeClaimDetail() }, isCtx)
 	debPersistentVolumes := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPersistentVolumes() }, isCtx)
+	debPersistentVolumeDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPersistentVolumeDetail() }, isCtx)
 	debStorageClasses := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitStorageClasses() }, isCtx)
 	debServices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitServices() }, isCtx)
 	debNodes := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitNodes() }, isCtx)
@@ -428,16 +455,26 @@ func (a *App) Connect(contextName string, seq int64) error {
 	h.RegisterDebouncer(debCronJobs)
 	h.RegisterDebouncer(debConfigMaps)
 	h.RegisterDebouncer(debSecrets)
+	h.RegisterDebouncer(debSecretDetail)
 	h.RegisterDebouncer(debResourceQuotas)
+	h.RegisterDebouncer(debResourceQuotaDetail)
 	h.RegisterDebouncer(debLimitRanges)
+	h.RegisterDebouncer(debLimitRangeDetail)
 	h.RegisterDebouncer(debHPAs)
+	h.RegisterDebouncer(debHPADetail)
 	h.RegisterDebouncer(debPodDisruptionBudgets)
+	h.RegisterDebouncer(debPodDisruptionBudgetDetail)
 	h.RegisterDebouncer(debIngresses)
+	h.RegisterDebouncer(debIngressDetail)
 	h.RegisterDebouncer(debNetworkPolicies)
+	h.RegisterDebouncer(debNetworkPolicyDetail)
 	h.RegisterDebouncer(debIngressClasses)
 	h.RegisterDebouncer(debValidatingWebhookConfigs)
+	h.RegisterDebouncer(debValidatingWebhookConfigDetail)
 	h.RegisterDebouncer(debPersistentVolumeClaims)
+	h.RegisterDebouncer(debPersistentVolumeClaimDetail)
 	h.RegisterDebouncer(debPersistentVolumes)
+	h.RegisterDebouncer(debPersistentVolumeDetail)
 	h.RegisterDebouncer(debStorageClasses)
 	h.RegisterDebouncer(debServices)
 	h.RegisterDebouncer(debNodes)
@@ -466,42 +503,49 @@ func (a *App) Connect(contextName string, seq int64) error {
 	h.SetSecretsEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debSecrets.Trigger(ns)
+			debSecretDetail.Trigger(ns)
 		}
 	})
 	h.RescopeSecrets(restoredNamespaces)
 	h.SetResourceQuotasEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debResourceQuotas.Trigger(ns)
+			debResourceQuotaDetail.Trigger(ns)
 		}
 	})
 	h.RescopeResourceQuotas(restoredNamespaces)
 	h.SetLimitRangesEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debLimitRanges.Trigger(ns)
+			debLimitRangeDetail.Trigger(ns)
 		}
 	})
 	h.RescopeLimitRanges(restoredNamespaces)
 	h.SetHorizontalPodAutoscalersEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debHPAs.Trigger(ns)
+			debHPADetail.Trigger(ns)
 		}
 	})
 	h.RescopeHorizontalPodAutoscalers(restoredNamespaces)
 	h.SetPodDisruptionBudgetsEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debPodDisruptionBudgets.Trigger(ns)
+			debPodDisruptionBudgetDetail.Trigger(ns)
 		}
 	})
 	h.RescopePodDisruptionBudgets(restoredNamespaces)
 	h.SetIngressesEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debIngresses.Trigger(ns)
+			debIngressDetail.Trigger(ns)
 		}
 	})
 	h.RescopeIngresses(restoredNamespaces)
 	h.SetNetworkPoliciesEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debNetworkPolicies.Trigger(ns)
+			debNetworkPolicyDetail.Trigger(ns)
 		}
 	})
 	h.RescopeNetworkPolicies(restoredNamespaces)
@@ -526,22 +570,26 @@ func (a *App) Connect(contextName string, seq int64) error {
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
 				debValidatingWebhookConfigs.Trigger("")
+				debValidatingWebhookConfigDetail.Trigger("")
 			}
 		},
 		UpdateFunc: func(old, new any) {
 			if a.isActive(contextName) {
 				debValidatingWebhookConfigs.Trigger("")
+				debValidatingWebhookConfigDetail.Trigger("")
 			}
 		},
 		DeleteFunc: func(obj any) {
 			if a.isActive(contextName) {
 				debValidatingWebhookConfigs.Trigger("")
+				debValidatingWebhookConfigDetail.Trigger("")
 			}
 		},
 	})
 	h.SetPersistentVolumeClaimsEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debPersistentVolumeClaims.Trigger(ns)
+			debPersistentVolumeClaimDetail.Trigger(ns)
 		}
 	})
 	h.RescopePersistentVolumeClaims(restoredNamespaces)
@@ -549,16 +597,19 @@ func (a *App) Connect(contextName string, seq int64) error {
 		AddFunc: func(obj any) {
 			if a.isActive(contextName) {
 				debPersistentVolumes.Trigger("")
+				debPersistentVolumeDetail.Trigger("")
 			}
 		},
 		UpdateFunc: func(old, new any) {
 			if a.isActive(contextName) {
 				debPersistentVolumes.Trigger("")
+				debPersistentVolumeDetail.Trigger("")
 			}
 		},
 		DeleteFunc: func(obj any) {
 			if a.isActive(contextName) {
 				debPersistentVolumes.Trigger("")
+				debPersistentVolumeDetail.Trigger("")
 			}
 		},
 	})

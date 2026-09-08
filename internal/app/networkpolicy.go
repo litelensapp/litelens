@@ -27,6 +27,30 @@ func (a *App) ListNetworkPolicies() ([]dto.NetworkPolicy, error) {
 	return result, nil
 }
 
+func (a *App) WatchNetworkPolicyDetail(namespace, name string) {
+	a.watchedNetworkPolicy.watch(namespace, name)
+}
+
+func (a *App) UnwatchNetworkPolicyDetail(namespace, name string) {
+	a.watchedNetworkPolicy.unwatch(namespace, name)
+}
+
+func (a *App) emitNetworkPolicyDetail() {
+	namespace, name, ok := a.watchedNetworkPolicy.get()
+	if !ok {
+		return
+	}
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "networkpolicies") {
+		return
+	}
+	detail, err := kubeResources.GetNetworkPolicyByName(h.NetworkPolicyLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "networkpolicy:update", detail)
+}
+
 func (a *App) GetNetworkPolicyByName(namespace, name string) (*dto.NetworkPolicyDetail, error) {
 	h := a.activeFactory()
 	if !waitForResourceSyncIgnoringForbidden(h, "networkpolicies") {

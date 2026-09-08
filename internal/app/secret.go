@@ -15,6 +15,45 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// WatchSecretDetail registers the frontend's interest in live "secret:update"
+// detail pushes for one specific Secret (namespace/name) — the one currently
+// shown in the (single) open Secret detail drawer. Call UnwatchSecretDetail
+// on drawer close/unmount to stop. Until watched, this Secret's full detail
+// (including decoded Data) is never pushed — only fetched on-demand via
+// GetSecretByName — so watching is opt-in per resource rather than broadcast
+// to every Secrets list subscriber.
+func (a *App) WatchSecretDetail(namespace, name string) {
+	a.watchedSecret.watch(namespace, name)
+}
+
+// UnwatchSecretDetail reverses WatchSecretDetail.
+func (a *App) UnwatchSecretDetail(namespace, name string) {
+	a.watchedSecret.unwatch(namespace, name)
+}
+
+// emitSecretDetail pushes a fresh dto.SecretDetail on "secret:update"
+// (singular — distinct from the "secrets:update" list topic) for the
+// currently-watched Secret, if any. Mirrors emitSecrets but is intentionally
+// not called from within it: it's wired to run off the same informer-change
+// signal independently, so detail-route consumers aren't coupled to the list
+// emit path.
+func (a *App) emitSecretDetail() {
+	namespace, name, ok := a.watchedSecret.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "secrets") {
+		return
+	}
+	detail, err := kubeResources.GetSecretByName(h.SecretLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "secret:update", detail)
+}
+
 func (a *App) ListSecrets() ([]dto.Secret, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
 	if !waitForResourceSyncIgnoringForbidden(h, "secrets") {

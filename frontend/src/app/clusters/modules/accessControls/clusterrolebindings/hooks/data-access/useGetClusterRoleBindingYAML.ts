@@ -8,6 +8,7 @@ import { useClusterRoleBindingsUpdateEvents } from "../async-events/useClusterRo
 export function useGetClusterRoleBindingYAML(context: string, name: string, enabled = true) {
   const latestClusterRoleBindings = useClusterRoleBindingsUpdateEvents();
   const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_CLUSTER_ROLE_BINDING_YAML, { context, name }],
     queryFn: () => GetClusterRoleBindingYAML(name),
@@ -15,19 +16,19 @@ export function useGetClusterRoleBindingYAML(context: string, name: string, enab
     enabled: !!context && !!name && enabled,
   });
 
-  const matchedClusterRoleBinding = useMemo(
-    () => latestClusterRoleBindings.find((crb) => crb.Name === name),
-    [latestClusterRoleBindings, name]
-  );
-  const matchedClusterRoleBindingKey = JSON.stringify(matchedClusterRoleBinding);
+  const clusterRoleBindingKeyDependency = useMemo(() => {
+    const matchedClusterRoleBinding = latestClusterRoleBindings.find((crb) => crb.Name === name);
+    if (matchedClusterRoleBinding) return JSON.stringify(matchedClusterRoleBinding);
+    return null;
+  }, [latestClusterRoleBindings, name]);
 
   useEffect(() => {
-    if (matchedClusterRoleBinding) {
+    if (clusterRoleBindingKeyDependency) {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_CLUSTER_ROLE_BINDING_YAML, { context, name }],
       });
     }
-  }, [matchedClusterRoleBinding, matchedClusterRoleBindingKey, context, name, queryClient]);
+  }, [clusterRoleBindingKeyDependency, context, name, queryClient]);
 
   return query;
 }
