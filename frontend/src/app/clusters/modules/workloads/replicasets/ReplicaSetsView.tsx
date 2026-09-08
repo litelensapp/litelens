@@ -201,9 +201,9 @@ export const ReplicaSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespaces.length !== 1 ? 5 : 4}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
-              columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[30%]", "w-[30%]"]}
+              columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[30%]", "w-[30%]", "w-[30%]"]}
             />
           ) : replicasets.length === 0 ? (
             <TableRow>
