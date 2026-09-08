@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -24,6 +25,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { NetworkPolicyDeleteConfirmationModal } from "./components/NetworkPolicyDeleteConfirmationModal";
 import { useGetNetworkPolicies } from "./hooks/data-access/useGetNetworkPolicies";
 import { useDeleteNetworkPolicies } from "./hooks/data-mutation/useDeleteNetworkPolicies";
@@ -101,6 +103,17 @@ export const NetworkPoliciesView: FC = () => {
     .filter((n) => !search || n.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visiblePolicies,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(policies, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -130,21 +143,21 @@ export const NetworkPoliciesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  policies.length > 0 &&
-                  policies.every((p) => selectedPolicyIds.has(`${p.Namespace}/${p.Name}`))
+                  visiblePolicies.length > 0 &&
+                  visiblePolicies.every((p) => selectedPolicyIds.has(`${p.Namespace}/${p.Name}`))
                 }
                 indeterminate={
-                  policies.some((p) => selectedPolicyIds.has(`${p.Namespace}/${p.Name}`)) &&
-                  !policies.every((p) => selectedPolicyIds.has(`${p.Namespace}/${p.Name}`))
+                  visiblePolicies.some((p) => selectedPolicyIds.has(`${p.Namespace}/${p.Name}`)) &&
+                  !visiblePolicies.every((p) => selectedPolicyIds.has(`${p.Namespace}/${p.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedPolicyIds);
-                    policies.forEach((p) => newSelection.add(`${p.Namespace}/${p.Name}`));
+                    visiblePolicies.forEach((p) => newSelection.add(`${p.Namespace}/${p.Name}`));
                     setSelectedPolicyIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedPolicyIds);
-                    policies.forEach((p) => newSelection.delete(`${p.Namespace}/${p.Name}`));
+                    visiblePolicies.forEach((p) => newSelection.delete(`${p.Namespace}/${p.Name}`));
                     setSelectedPolicyIds(newSelection);
                   }
                 }}
@@ -166,7 +179,7 @@ export const NetworkPoliciesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[40%]"]}
             />
-          ) : policies.length === 0 ? (
+          ) : visiblePolicies.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 6 : 5} className="px-0 py-0">
                 <EmptyState
@@ -177,7 +190,7 @@ export const NetworkPoliciesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            policies.map((n) => {
+            visiblePolicies.map((n) => {
               const npId = `${n.Namespace}/${n.Name}`;
               const isSelected = selectedPolicyIds.has(npId);
               return (
@@ -222,6 +235,18 @@ export const NetworkPoliciesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={policies.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedPolicyIds.size > 0 && (
         <NetworkPolicyDeleteConfirmationModal

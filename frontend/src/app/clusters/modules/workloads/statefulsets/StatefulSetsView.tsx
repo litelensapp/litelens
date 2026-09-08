@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -27,6 +28,7 @@ import { useDeleteStatefulSets } from "./hooks/data-mutation/useDeleteStatefulSe
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { StatefulSetDeleteConfirmationModal } from "./components/StatefulSetDeleteConfirmationModal";
 
 interface StatefulSetTableCtaButtonsProps {
@@ -98,6 +100,17 @@ export const StatefulSetsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visibleStatefulSets,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(statefulsets, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -127,27 +140,31 @@ export const StatefulSetsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  statefulsets.length > 0 &&
-                  statefulsets.every((ss) =>
+                  visibleStatefulSets.length > 0 &&
+                  visibleStatefulSets.every((ss) =>
                     selectedStatefulSetIds.has(`${ss.Namespace}/${ss.Name}`)
                   )
                 }
                 indeterminate={
-                  statefulsets.some((ss) =>
+                  visibleStatefulSets.some((ss) =>
                     selectedStatefulSetIds.has(`${ss.Namespace}/${ss.Name}`)
                   ) &&
-                  !statefulsets.every((ss) =>
+                  !visibleStatefulSets.every((ss) =>
                     selectedStatefulSetIds.has(`${ss.Namespace}/${ss.Name}`)
                   )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedStatefulSetIds);
-                    statefulsets.forEach((ss) => newSelection.add(`${ss.Namespace}/${ss.Name}`));
+                    visibleStatefulSets.forEach((ss) =>
+                      newSelection.add(`${ss.Namespace}/${ss.Name}`)
+                    );
                     setSelectedStatefulSetIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedStatefulSetIds);
-                    statefulsets.forEach((ss) => newSelection.delete(`${ss.Namespace}/${ss.Name}`));
+                    visibleStatefulSets.forEach((ss) =>
+                      newSelection.delete(`${ss.Namespace}/${ss.Name}`)
+                    );
                     setSelectedStatefulSetIds(newSelection);
                   }
                 }}
@@ -170,7 +187,7 @@ export const StatefulSetsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]"]}
             />
-          ) : statefulsets.length === 0 ? (
+          ) : visibleStatefulSets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
                 <EmptyState
@@ -181,7 +198,7 @@ export const StatefulSetsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            statefulsets.map((ss) => {
+            visibleStatefulSets.map((ss) => {
               const ssId = `${ss.Namespace}/${ss.Name}`;
               const isSelected = selectedStatefulSetIds.has(ssId);
               return (
@@ -227,6 +244,18 @@ export const StatefulSetsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={statefulsets.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedStatefulSetIds.size > 0 && (
         <StatefulSetDeleteConfirmationModal

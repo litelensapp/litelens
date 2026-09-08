@@ -18,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -31,6 +32,7 @@ import { useScaleDeployment } from "./hooks/data-mutation/useScaleDeployment";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { DeploymentConditionBadge } from "./components/DeploymentConditionBadge";
 import { DeploymentDeleteConfirmationModal } from "./components/DeploymentDeleteConfirmationModal";
 import { DeploymentRestartConfirmationModal } from "./components/DeploymentRestartConfirmationModal";
@@ -147,6 +149,17 @@ export const DeploymentsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visibleDeployments,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(deployments, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -176,21 +189,29 @@ export const DeploymentsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  deployments.length > 0 &&
-                  deployments.every((d) => selectedDeploymentIds.has(`${d.Namespace}/${d.Name}`))
+                  visibleDeployments.length > 0 &&
+                  visibleDeployments.every((d) =>
+                    selectedDeploymentIds.has(`${d.Namespace}/${d.Name}`)
+                  )
                 }
                 indeterminate={
-                  deployments.some((d) => selectedDeploymentIds.has(`${d.Namespace}/${d.Name}`)) &&
-                  !deployments.every((d) => selectedDeploymentIds.has(`${d.Namespace}/${d.Name}`))
+                  visibleDeployments.some((d) =>
+                    selectedDeploymentIds.has(`${d.Namespace}/${d.Name}`)
+                  ) &&
+                  !visibleDeployments.every((d) =>
+                    selectedDeploymentIds.has(`${d.Namespace}/${d.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedDeploymentIds);
-                    deployments.forEach((d) => newSelection.add(`${d.Namespace}/${d.Name}`));
+                    visibleDeployments.forEach((d) => newSelection.add(`${d.Namespace}/${d.Name}`));
                     setSelectedDeploymentIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedDeploymentIds);
-                    deployments.forEach((d) => newSelection.delete(`${d.Namespace}/${d.Name}`));
+                    visibleDeployments.forEach((d) =>
+                      newSelection.delete(`${d.Namespace}/${d.Name}`)
+                    );
                     setSelectedDeploymentIds(newSelection);
                   }
                 }}
@@ -214,7 +235,7 @@ export const DeploymentsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]", "w-[45%]"]}
             />
-          ) : deployments.length === 0 ? (
+          ) : visibleDeployments.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
@@ -225,7 +246,7 @@ export const DeploymentsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            deployments.map((dep) => {
+            visibleDeployments.map((dep) => {
               const depId = `${dep.Namespace}/${dep.Name}`;
               const isSelected = selectedDeploymentIds.has(depId);
               return (
@@ -282,6 +303,18 @@ export const DeploymentsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={deployments.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedDeploymentIds.size > 0 && (
         <DeploymentDeleteConfirmationModal

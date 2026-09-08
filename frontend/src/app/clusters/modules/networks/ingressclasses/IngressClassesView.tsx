@@ -17,11 +17,13 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
 } from "@litelens/design-system";
-import { FC, useMemo, useState } from "react";
+import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { IngressClassDeleteConfirmationModal } from "./components/IngressClassDeleteConfirmationModal";
@@ -105,15 +107,16 @@ export const IngressClassesView: FC = () => {
     .filter((ic) => !search || ic.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
-  const allNames = useMemo(() => new Set(ingressClasses.map((ic) => ic.Name)), [ingressClasses]);
-
-  const handleSelectAll = () => {
-    if (selection.size === allNames.size) {
-      setSelection(new Set());
-    } else {
-      setSelection(new Set(allNames));
-    }
-  };
+  const {
+    visibleItems: visibleIngressClasses,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(ingressClasses, { resetKey: search });
 
   const handleToggleRow = (name: string) => {
     const newSelection = new Set(selection);
@@ -171,9 +174,28 @@ export const IngressClassesView: FC = () => {
           <TableRow>
             <TableHead className="w-8">
               <Checkbox
-                checked={selection.size === allNames.size && allNames.size > 0}
-                indeterminate={selection.size > 0 && selection.size < allNames.size}
-                onCheckedChange={() => handleSelectAll()}
+                checked={
+                  visibleIngressClasses.length > 0 &&
+                  visibleIngressClasses.every((ic) => selection.has(ic.Name))
+                }
+                indeterminate={
+                  visibleIngressClasses.some((ic) => selection.has(ic.Name)) &&
+                  !visibleIngressClasses.every((ic) => selection.has(ic.Name))
+                }
+                onCheckedChange={() => {
+                  if (
+                    visibleIngressClasses.length > 0 &&
+                    visibleIngressClasses.every((ic) => selection.has(ic.Name))
+                  ) {
+                    const newSelection = new Set(selection);
+                    visibleIngressClasses.forEach((ic) => newSelection.delete(ic.Name));
+                    setSelection(newSelection);
+                  } else {
+                    const newSelection = new Set(selection);
+                    visibleIngressClasses.forEach((ic) => newSelection.add(ic.Name));
+                    setSelection(newSelection);
+                  }
+                }}
               />
             </TableHead>
             <TableHead>Name</TableHead>
@@ -191,7 +213,7 @@ export const IngressClassesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[45%]", "w-[30%]"]}
             />
-          ) : ingressClasses.length === 0 ? (
+          ) : visibleIngressClasses.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="px-0 py-0">
                 <EmptyState
@@ -202,7 +224,7 @@ export const IngressClassesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            ingressClasses.map((ic) => (
+            visibleIngressClasses.map((ic) => (
               <TableRow key={ic.Name} onClick={() => onToggleIngressClassDetail(ic.Name)}>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
@@ -233,6 +255,18 @@ export const IngressClassesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={ingressClasses.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       <IngressClassDeleteConfirmationModal
         open={showBulkDeleteModal}

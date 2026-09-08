@@ -162,8 +162,8 @@ const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
           <>
             <span className="text-h3 self-start pt-0.5 text-muted-foreground">Managed Fields</span>
             <div className="flex min-w-0 flex-col gap-2">
-              {rs.ManagedFields.map((mf) => (
-                <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
+              {rs.ManagedFields.map((mf, i) => (
+                <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}/${i}`} mf={mf} />
               ))}
             </div>
           </>

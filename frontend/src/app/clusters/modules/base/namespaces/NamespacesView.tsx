@@ -18,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -26,6 +27,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { NamespaceCreationModal } from "./components/NamespaceCreationModal";
 import { NamespaceDeleteConfirmationModal } from "./components/NamespaceDeleteConfirmationModal";
 import { NamespaceStatusBadge } from "./components/NamespaceStatusBadge";
@@ -92,6 +94,17 @@ export const NamespacesView: FC = () => {
     .filter((ns) => !search || ns.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleNamespaces,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(namespaces, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -126,21 +139,21 @@ export const NamespacesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  namespaces.length > 0 &&
-                  namespaces.every((ns) => selectedNamespaceNames.has(ns.Name))
+                  visibleNamespaces.length > 0 &&
+                  visibleNamespaces.every((ns) => selectedNamespaceNames.has(ns.Name))
                 }
                 indeterminate={
-                  namespaces.some((ns) => selectedNamespaceNames.has(ns.Name)) &&
-                  !namespaces.every((ns) => selectedNamespaceNames.has(ns.Name))
+                  visibleNamespaces.some((ns) => selectedNamespaceNames.has(ns.Name)) &&
+                  !visibleNamespaces.every((ns) => selectedNamespaceNames.has(ns.Name))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedNamespaceNames);
-                    namespaces.forEach((ns) => newSelection.add(ns.Name));
+                    visibleNamespaces.forEach((ns) => newSelection.add(ns.Name));
                     setSelectedNamespaceNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedNamespaceNames);
-                    namespaces.forEach((ns) => newSelection.delete(ns.Name));
+                    visibleNamespaces.forEach((ns) => newSelection.delete(ns.Name));
                     setSelectedNamespaceNames(newSelection);
                   }
                 }}
@@ -162,7 +175,7 @@ export const NamespacesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[40%]", "w-[30%]", "w-[40%]"]}
             />
-          ) : namespaces.length === 0 ? (
+          ) : visibleNamespaces.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="px-0 py-0">
                 <EmptyState
@@ -178,7 +191,7 @@ export const NamespacesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            namespaces.map((ns) => {
+            visibleNamespaces.map((ns) => {
               const isSelected = selectedNamespaceNames.has(ns.Name);
               return (
                 <TableRow
@@ -223,6 +236,18 @@ export const NamespacesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={namespaces.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedNamespaceNames.size > 0 && (
         <NamespaceDeleteConfirmationModal

@@ -14,6 +14,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   WebhookIcon,
@@ -23,6 +24,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ValidatingWebhookConfigDeleteConfirmationModal } from "./components/ValidatingWebhookConfigDeleteConfirmationModal";
 import { useGetValidatingWebhookConfigs } from "./hooks/data-access/useGetValidatingWebhookConfigs";
 import { useDeleteValidatingWebhookConfig } from "./hooks/data-mutation/useDeleteValidatingWebhookConfig";
@@ -95,6 +97,17 @@ export const ValidatingWebhookConfigsView: FC = () => {
     .filter((vwc) => !search || vwc.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleVWCs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(validatingWebhookConfigs, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -124,21 +137,21 @@ export const ValidatingWebhookConfigsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  validatingWebhookConfigs.length > 0 &&
-                  validatingWebhookConfigs.every((vwc) => selectedVWCNames.has(vwc.Name))
+                  visibleVWCs.length > 0 &&
+                  visibleVWCs.every((vwc) => selectedVWCNames.has(vwc.Name))
                 }
                 indeterminate={
-                  validatingWebhookConfigs.some((vwc) => selectedVWCNames.has(vwc.Name)) &&
-                  !validatingWebhookConfigs.every((vwc) => selectedVWCNames.has(vwc.Name))
+                  visibleVWCs.some((vwc) => selectedVWCNames.has(vwc.Name)) &&
+                  !visibleVWCs.every((vwc) => selectedVWCNames.has(vwc.Name))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedVWCNames);
-                    validatingWebhookConfigs.forEach((vwc) => newSelection.add(vwc.Name));
+                    visibleVWCs.forEach((vwc) => newSelection.add(vwc.Name));
                     setSelectedVWCNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedVWCNames);
-                    validatingWebhookConfigs.forEach((vwc) => newSelection.delete(vwc.Name));
+                    visibleVWCs.forEach((vwc) => newSelection.delete(vwc.Name));
                     setSelectedVWCNames(newSelection);
                   }
                 }}
@@ -159,7 +172,7 @@ export const ValidatingWebhookConfigsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[45%]", "w-[30%]"]}
             />
-          ) : validatingWebhookConfigs.length === 0 ? (
+          ) : visibleVWCs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="px-0 py-0">
                 <EmptyState
@@ -170,7 +183,7 @@ export const ValidatingWebhookConfigsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            validatingWebhookConfigs.map((vwc) => {
+            visibleVWCs.map((vwc) => {
               const isSelected = selectedVWCNames.has(vwc.Name);
               return (
                 <TableRow
@@ -202,6 +215,18 @@ export const ValidatingWebhookConfigsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={validatingWebhookConfigs.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedVWCNames.size > 0 && (
         <ValidatingWebhookConfigDeleteConfirmationModal

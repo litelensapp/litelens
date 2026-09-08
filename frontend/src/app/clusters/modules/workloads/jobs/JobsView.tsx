@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
 } from "@litelens/design-system";
@@ -23,6 +24,7 @@ import { FC, useMemo, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { JobConditionBadge } from "./components/JobConditionBadge";
 import { JobDeleteConfirmationModal } from "./components/JobDeleteConfirmationModal";
 import { JobResumedBadge } from "./components/JobResumedBadge";
@@ -99,6 +101,17 @@ export const JobsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visibleJobs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(jobs, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -128,21 +141,21 @@ export const JobsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  jobs.length > 0 &&
-                  jobs.every((j) => selectedJobIds.has(`${j.Namespace}/${j.Name}`))
+                  visibleJobs.length > 0 &&
+                  visibleJobs.every((j) => selectedJobIds.has(`${j.Namespace}/${j.Name}`))
                 }
                 indeterminate={
-                  jobs.some((j) => selectedJobIds.has(`${j.Namespace}/${j.Name}`)) &&
-                  !jobs.every((j) => selectedJobIds.has(`${j.Namespace}/${j.Name}`))
+                  visibleJobs.some((j) => selectedJobIds.has(`${j.Namespace}/${j.Name}`)) &&
+                  !visibleJobs.every((j) => selectedJobIds.has(`${j.Namespace}/${j.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedJobIds);
-                    jobs.forEach((j) => newSelection.add(`${j.Namespace}/${j.Name}`));
+                    visibleJobs.forEach((j) => newSelection.add(`${j.Namespace}/${j.Name}`));
                     setSelectedJobIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedJobIds);
-                    jobs.forEach((j) => newSelection.delete(`${j.Namespace}/${j.Name}`));
+                    visibleJobs.forEach((j) => newSelection.delete(`${j.Namespace}/${j.Name}`));
                     setSelectedJobIds(newSelection);
                   }
                 }}
@@ -177,7 +190,7 @@ export const JobsView: FC = () => {
                 "w-[30%]",
               ]}
             />
-          ) : jobs.length === 0 ? (
+          ) : visibleJobs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 11 : 10} className="px-0 py-0">
                 <EmptyState
@@ -188,7 +201,7 @@ export const JobsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            jobs.map((j) => (
+            visibleJobs.map((j) => (
               <TableRow
                 key={`${j.Namespace}/${j.Name}`}
                 className="cursor-pointer"
@@ -240,6 +253,18 @@ export const JobsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={jobs.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedJobIds.size > 0 && (
         <JobDeleteConfirmationModal

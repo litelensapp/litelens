@@ -20,6 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TablePagination,
   TableSkeletonLoader,
   TerminalIcon,
   TruncatedText,
@@ -29,6 +30,7 @@ import { FC, useMemo, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { useResourceLinks } from "../../../shared/hooks/useResourceLinks";
 import type { Pod } from "./api/resources";
 import { PodContainerDots } from "./components/PodContainerDots";
@@ -133,6 +135,17 @@ export const PodsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visiblePods,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(pods, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -162,21 +175,21 @@ export const PodsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  pods.length > 0 &&
-                  pods.every((p) => selectedPodIds.has(`${p.Namespace}/${p.Name}`))
+                  visiblePods.length > 0 &&
+                  visiblePods.every((p) => selectedPodIds.has(`${p.Namespace}/${p.Name}`))
                 }
                 indeterminate={
-                  pods.some((p) => selectedPodIds.has(`${p.Namespace}/${p.Name}`)) &&
-                  !pods.every((p) => selectedPodIds.has(`${p.Namespace}/${p.Name}`))
+                  visiblePods.some((p) => selectedPodIds.has(`${p.Namespace}/${p.Name}`)) &&
+                  !visiblePods.every((p) => selectedPodIds.has(`${p.Namespace}/${p.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedPodIds);
-                    pods.forEach((p) => newSelection.add(`${p.Namespace}/${p.Name}`));
+                    visiblePods.forEach((p) => newSelection.add(`${p.Namespace}/${p.Name}`));
                     setSelectedPodIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedPodIds);
-                    pods.forEach((p) => newSelection.delete(`${p.Namespace}/${p.Name}`));
+                    visiblePods.forEach((p) => newSelection.delete(`${p.Namespace}/${p.Name}`));
                     setSelectedPodIds(newSelection);
                   }
                 }}
@@ -217,7 +230,7 @@ export const PodsView: FC = () => {
                 "w-[30%]",
               ]}
             />
-          ) : pods.length === 0 ? (
+          ) : visiblePods.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 13 : 12} className="px-0 py-0">
                 <EmptyState
@@ -228,7 +241,7 @@ export const PodsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            pods.map((pod) => {
+            visiblePods.map((pod) => {
               const podId = `${pod.Namespace}/${pod.Name}`;
               const isSelected = selectedPodIds.has(podId);
               return (
@@ -320,6 +333,18 @@ export const PodsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={pods.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedPodIds.size > 0 && (
         <PodDeleteConfirmationModal

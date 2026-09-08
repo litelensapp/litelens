@@ -17,6 +17,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -29,6 +30,7 @@ import { useScaleReplicaSet } from "./hooks/data-mutation/useScaleReplicaSet";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ReplicaSetDeleteConfirmationModal } from "./components/ReplicaSetDeleteConfirmationModal";
 import { ReplicaSetScaleModal } from "./components/ReplicaSetScaleModal";
 
@@ -134,6 +136,17 @@ export const ReplicaSetsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visibleReplicaSets,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(replicasets, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -163,25 +176,31 @@ export const ReplicaSetsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  replicasets.length > 0 &&
-                  replicasets.every((rs) => selectedReplicaSetIds.has(`${rs.Namespace}/${rs.Name}`))
+                  visibleReplicaSets.length > 0 &&
+                  visibleReplicaSets.every((rs) =>
+                    selectedReplicaSetIds.has(`${rs.Namespace}/${rs.Name}`)
+                  )
                 }
                 indeterminate={
-                  replicasets.some((rs) =>
+                  visibleReplicaSets.some((rs) =>
                     selectedReplicaSetIds.has(`${rs.Namespace}/${rs.Name}`)
                   ) &&
-                  !replicasets.every((rs) =>
+                  !visibleReplicaSets.every((rs) =>
                     selectedReplicaSetIds.has(`${rs.Namespace}/${rs.Name}`)
                   )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedReplicaSetIds);
-                    replicasets.forEach((rs) => newSelection.add(`${rs.Namespace}/${rs.Name}`));
+                    visibleReplicaSets.forEach((rs) =>
+                      newSelection.add(`${rs.Namespace}/${rs.Name}`)
+                    );
                     setSelectedReplicaSetIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedReplicaSetIds);
-                    replicasets.forEach((rs) => newSelection.delete(`${rs.Namespace}/${rs.Name}`));
+                    visibleReplicaSets.forEach((rs) =>
+                      newSelection.delete(`${rs.Namespace}/${rs.Name}`)
+                    );
                     setSelectedReplicaSetIds(newSelection);
                   }
                 }}
@@ -201,11 +220,11 @@ export const ReplicaSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespaces.length !== 1 ? 5 : 4}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
-              columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[30%]", "w-[30%]"]}
+              columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[30%]", "w-[30%]", "w-[30%]"]}
             />
-          ) : replicasets.length === 0 ? (
+          ) : visibleReplicaSets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
@@ -216,7 +235,7 @@ export const ReplicaSetsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            replicasets.map((rs) => {
+            visibleReplicaSets.map((rs) => {
               const rsId = `${rs.Namespace}/${rs.Name}`;
               const isSelected = selectedReplicaSetIds.has(rsId);
               return (
@@ -269,6 +288,18 @@ export const ReplicaSetsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={replicasets.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedReplicaSetIds.size > 0 && (
         <ReplicaSetDeleteConfirmationModal
