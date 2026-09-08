@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   TruncatedText,
@@ -25,6 +26,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { RoleBindingDeleteConfirmationModal } from "./components/RoleBindingDeleteConfirmationModal";
 import { useGetRoleBindings } from "./hooks/data-access/useGetRoleBindings";
 import { useDeleteRoleBinding } from "./hooks/data-mutation/useDeleteRoleBinding";
@@ -95,6 +97,17 @@ export const RoleBindingsView: FC = () => {
     .filter((rb) => !search || rb.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleRoleBindings,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(roleBindings, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -124,27 +137,31 @@ export const RoleBindingsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  roleBindings.length > 0 &&
-                  roleBindings.every((rb) =>
+                  visibleRoleBindings.length > 0 &&
+                  visibleRoleBindings.every((rb) =>
                     selectedRoleBindingIds.has(`${rb.Namespace}/${rb.Name}`)
                   )
                 }
                 indeterminate={
-                  roleBindings.some((rb) =>
+                  visibleRoleBindings.some((rb) =>
                     selectedRoleBindingIds.has(`${rb.Namespace}/${rb.Name}`)
                   ) &&
-                  !roleBindings.every((rb) =>
+                  !visibleRoleBindings.every((rb) =>
                     selectedRoleBindingIds.has(`${rb.Namespace}/${rb.Name}`)
                   )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedRoleBindingIds);
-                    roleBindings.forEach((rb) => newSelection.add(`${rb.Namespace}/${rb.Name}`));
+                    visibleRoleBindings.forEach((rb) =>
+                      newSelection.add(`${rb.Namespace}/${rb.Name}`)
+                    );
                     setSelectedRoleBindingIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedRoleBindingIds);
-                    roleBindings.forEach((rb) => newSelection.delete(`${rb.Namespace}/${rb.Name}`));
+                    visibleRoleBindings.forEach((rb) =>
+                      newSelection.delete(`${rb.Namespace}/${rb.Name}`)
+                    );
                     setSelectedRoleBindingIds(newSelection);
                   }
                 }}
@@ -168,7 +185,7 @@ export const RoleBindingsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[45%]", "w-[35%]", "w-[45%]", "w-[30%]"]}
             />
-          ) : roleBindings.length === 0 ? (
+          ) : visibleRoleBindings.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
@@ -179,7 +196,7 @@ export const RoleBindingsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            roleBindings.map((rb) => {
+            visibleRoleBindings.map((rb) => {
               const rbId = `${rb.Namespace}/${rb.Name}`;
               const isSelected = selectedRoleBindingIds.has(rbId);
               return (
@@ -238,6 +255,18 @@ export const RoleBindingsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={roleBindings.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedRoleBindingIds.size > 0 && (
         <RoleBindingDeleteConfirmationModal

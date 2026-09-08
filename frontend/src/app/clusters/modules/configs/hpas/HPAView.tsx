@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
 } from "@litelens/design-system";
@@ -23,6 +24,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { HPADeleteConfirmationModal } from "./components/HPADeleteConfirmationModal";
 import { HPAStatusBadge } from "./components/HPAStatusBadge";
 import { useGetHPAs } from "./hooks/data-access/useGetHPAs";
@@ -94,6 +96,17 @@ export const HPAView: FC = () => {
     .filter((h) => !search || h.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleHPAs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(hpas, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -123,21 +136,21 @@ export const HPAView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  hpas.length > 0 &&
-                  hpas.every((h) => selectedHPAIds.has(`${h.Namespace}/${h.Name}`))
+                  visibleHPAs.length > 0 &&
+                  visibleHPAs.every((h) => selectedHPAIds.has(`${h.Namespace}/${h.Name}`))
                 }
                 indeterminate={
-                  hpas.some((h) => selectedHPAIds.has(`${h.Namespace}/${h.Name}`)) &&
-                  !hpas.every((h) => selectedHPAIds.has(`${h.Namespace}/${h.Name}`))
+                  visibleHPAs.some((h) => selectedHPAIds.has(`${h.Namespace}/${h.Name}`)) &&
+                  !visibleHPAs.every((h) => selectedHPAIds.has(`${h.Namespace}/${h.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedHPAIds);
-                    hpas.forEach((h) => newSelection.add(`${h.Namespace}/${h.Name}`));
+                    visibleHPAs.forEach((h) => newSelection.add(`${h.Namespace}/${h.Name}`));
                     setSelectedHPAIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedHPAIds);
-                    hpas.forEach((h) => newSelection.delete(`${h.Namespace}/${h.Name}`));
+                    visibleHPAs.forEach((h) => newSelection.delete(`${h.Namespace}/${h.Name}`));
                     setSelectedHPAIds(newSelection);
                   }
                 }}
@@ -170,7 +183,7 @@ export const HPAView: FC = () => {
                 "w-[30%]",
               ]}
             />
-          ) : hpas.length === 0 ? (
+          ) : visibleHPAs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 10 : 9} className="px-0 py-0">
                 <EmptyState
@@ -181,7 +194,7 @@ export const HPAView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            hpas.map((h) => (
+            visibleHPAs.map((h) => (
               <TableRow
                 key={`${h.Namespace}/${h.Name}`}
                 onClick={() => onToggleHPADetail(h.Namespace, h.Name)}
@@ -229,6 +242,18 @@ export const HPAView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={hpas.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedHPAIds.size > 0 && (
         <HPADeleteConfirmationModal

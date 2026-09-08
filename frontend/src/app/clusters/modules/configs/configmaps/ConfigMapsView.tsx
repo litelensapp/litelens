@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   TruncatedText,
@@ -25,6 +26,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ConfigMapDeleteConfirmationModal } from "./components/ConfigMapDeleteConfirmationModal";
 import { useGetConfigMaps } from "./hooks/data-access/useGetConfigMaps";
 import { useDeleteConfigMap } from "./hooks/data-mutation/useDeleteConfigMap";
@@ -95,6 +97,17 @@ export const ConfigMapsView: FC = () => {
     .filter((cm) => !search || cm.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleConfigMaps,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(configmaps, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -124,21 +137,31 @@ export const ConfigMapsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  configmaps.length > 0 &&
-                  configmaps.every((cm) => selectedConfigMapIds.has(`${cm.Namespace}/${cm.Name}`))
+                  visibleConfigMaps.length > 0 &&
+                  visibleConfigMaps.every((cm) =>
+                    selectedConfigMapIds.has(`${cm.Namespace}/${cm.Name}`)
+                  )
                 }
                 indeterminate={
-                  configmaps.some((cm) => selectedConfigMapIds.has(`${cm.Namespace}/${cm.Name}`)) &&
-                  !configmaps.every((cm) => selectedConfigMapIds.has(`${cm.Namespace}/${cm.Name}`))
+                  visibleConfigMaps.some((cm) =>
+                    selectedConfigMapIds.has(`${cm.Namespace}/${cm.Name}`)
+                  ) &&
+                  !visibleConfigMaps.every((cm) =>
+                    selectedConfigMapIds.has(`${cm.Namespace}/${cm.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedConfigMapIds);
-                    configmaps.forEach((cm) => newSelection.add(`${cm.Namespace}/${cm.Name}`));
+                    visibleConfigMaps.forEach((cm) =>
+                      newSelection.add(`${cm.Namespace}/${cm.Name}`)
+                    );
                     setSelectedConfigMapIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedConfigMapIds);
-                    configmaps.forEach((cm) => newSelection.delete(`${cm.Namespace}/${cm.Name}`));
+                    visibleConfigMaps.forEach((cm) =>
+                      newSelection.delete(`${cm.Namespace}/${cm.Name}`)
+                    );
                     setSelectedConfigMapIds(newSelection);
                   }
                 }}
@@ -160,7 +183,7 @@ export const ConfigMapsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[30%]"]}
             />
-          ) : configmaps.length === 0 ? (
+          ) : visibleConfigMaps.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length === 1 ? 5 : 6} className="px-0 py-0">
                 <EmptyState
@@ -171,7 +194,7 @@ export const ConfigMapsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            configmaps.map((cm) => {
+            visibleConfigMaps.map((cm) => {
               const cmId = `${cm.Namespace}/${cm.Name}`;
               const isSelected = selectedConfigMapIds.has(cmId);
               return (
@@ -218,6 +241,18 @@ export const ConfigMapsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={configmaps.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedConfigMapIds.size > 0 && (
         <ConfigMapDeleteConfirmationModal

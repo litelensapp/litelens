@@ -16,13 +16,15 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
 } from "@litelens/design-system";
-import { FC, useMemo, useState } from "react";
+import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { PriorityClassDeleteConfirmationModal } from "./components/PriorityClassDeleteConfirmationModal";
 import { useGetPriorityClasses } from "./hooks/data-access/useGetPriorityClasses";
 import { useDeletePriorityClass } from "./hooks/data-mutation/useDeletePriorityClass";
@@ -87,25 +89,16 @@ export const PriorityClassesView: FC = () => {
     ? raw.filter((pc) => pc.Name.toLowerCase().includes(search.toLowerCase()))
     : raw;
 
-  const allNames = useMemo(() => new Set(priorityClasses.map((pc) => pc.Name)), [priorityClasses]);
-
-  const handleSelectAll = () => {
-    if (selection.size === allNames.size) {
-      setSelection(new Set());
-    } else {
-      setSelection(new Set(allNames));
-    }
-  };
-
-  const handleToggleRow = (name: string) => {
-    const newSelection = new Set(selection);
-    if (newSelection.has(name)) {
-      newSelection.delete(name);
-    } else {
-      newSelection.add(name);
-    }
-    setSelection(newSelection);
-  };
+  const {
+    visibleItems: visiblePriorityClasses,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(priorityClasses, { resetKey: search });
 
   const handleBulkDeleteClick = () => {
     if (selection.size === 0) return;
@@ -153,9 +146,25 @@ export const PriorityClassesView: FC = () => {
           <TableRow>
             <TableHead className="w-8">
               <Checkbox
-                checked={selection.size === allNames.size && allNames.size > 0}
-                indeterminate={selection.size > 0 && selection.size < allNames.size}
-                onCheckedChange={() => handleSelectAll()}
+                checked={
+                  visiblePriorityClasses.length > 0 &&
+                  visiblePriorityClasses.every((pc) => selection.has(pc.Name))
+                }
+                indeterminate={
+                  visiblePriorityClasses.some((pc) => selection.has(pc.Name)) &&
+                  !visiblePriorityClasses.every((pc) => selection.has(pc.Name))
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    const newSelection = new Set(selection);
+                    visiblePriorityClasses.forEach((pc) => newSelection.add(pc.Name));
+                    setSelection(newSelection);
+                  } else {
+                    const newSelection = new Set(selection);
+                    visiblePriorityClasses.forEach((pc) => newSelection.delete(pc.Name));
+                    setSelection(newSelection);
+                  }
+                }}
               />
             </TableHead>
             <TableHead>Name</TableHead>
@@ -173,7 +182,7 @@ export const PriorityClassesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[30%]", "w-[30%]"]}
             />
-          ) : priorityClasses.length === 0 ? (
+          ) : visiblePriorityClasses.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="px-0 py-0">
                 <EmptyState
@@ -184,13 +193,19 @@ export const PriorityClassesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            priorityClasses.map((pc) => (
+            visiblePriorityClasses.map((pc) => (
               <TableRow key={pc.Name} onClick={() => onTogglePriorityClass(pc.Name)}>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selection.has(pc.Name)}
                     onCheckedChange={() => {
-                      handleToggleRow(pc.Name);
+                      const newSelection = new Set(selection);
+                      if (newSelection.has(pc.Name)) {
+                        newSelection.delete(pc.Name);
+                      } else {
+                        newSelection.add(pc.Name);
+                      }
+                      setSelection(newSelection);
                     }}
                   />
                 </TableCell>
@@ -212,6 +227,18 @@ export const PriorityClassesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={priorityClasses.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       <PriorityClassDeleteConfirmationModal
         open={showBulkDeleteModal}

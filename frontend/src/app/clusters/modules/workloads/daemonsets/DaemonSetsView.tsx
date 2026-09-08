@@ -18,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -30,6 +31,7 @@ import { useRestartDaemonSet } from "./hooks/data-mutation/useRestartDaemonSet";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { DaemonSetDeleteConfirmationModal } from "./components/DaemonSetDeleteConfirmationModal";
 import { DaemonSetRestartConfirmationModal } from "./components/DaemonSetRestartConfirmationModal";
 
@@ -115,6 +117,17 @@ export const DaemonSetsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visibleDaemonSets,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(daemonsets, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -144,21 +157,31 @@ export const DaemonSetsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  daemonsets.length > 0 &&
-                  daemonsets.every((ds) => selectedDaemonSetIds.has(`${ds.Namespace}/${ds.Name}`))
+                  visibleDaemonSets.length > 0 &&
+                  visibleDaemonSets.every((ds) =>
+                    selectedDaemonSetIds.has(`${ds.Namespace}/${ds.Name}`)
+                  )
                 }
                 indeterminate={
-                  daemonsets.some((ds) => selectedDaemonSetIds.has(`${ds.Namespace}/${ds.Name}`)) &&
-                  !daemonsets.every((ds) => selectedDaemonSetIds.has(`${ds.Namespace}/${ds.Name}`))
+                  visibleDaemonSets.some((ds) =>
+                    selectedDaemonSetIds.has(`${ds.Namespace}/${ds.Name}`)
+                  ) &&
+                  !visibleDaemonSets.every((ds) =>
+                    selectedDaemonSetIds.has(`${ds.Namespace}/${ds.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedDaemonSetIds);
-                    daemonsets.forEach((ds) => newSelection.add(`${ds.Namespace}/${ds.Name}`));
+                    visibleDaemonSets.forEach((ds) =>
+                      newSelection.add(`${ds.Namespace}/${ds.Name}`)
+                    );
                     setSelectedDaemonSetIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedDaemonSetIds);
-                    daemonsets.forEach((ds) => newSelection.delete(`${ds.Namespace}/${ds.Name}`));
+                    visibleDaemonSets.forEach((ds) =>
+                      newSelection.delete(`${ds.Namespace}/${ds.Name}`)
+                    );
                     setSelectedDaemonSetIds(newSelection);
                   }
                 }}
@@ -181,7 +204,7 @@ export const DaemonSetsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[40%]", "w-[45%]", "w-[30%]"]}
             />
-          ) : daemonsets.length === 0 ? (
+          ) : visibleDaemonSets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
                 <EmptyState
@@ -192,7 +215,7 @@ export const DaemonSetsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            daemonsets.map((ds) => {
+            visibleDaemonSets.map((ds) => {
               const dsId = `${ds.Namespace}/${ds.Name}`;
               const isSelected = selectedDaemonSetIds.has(dsId);
               return (
@@ -248,6 +271,18 @@ export const DaemonSetsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={daemonsets.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedDaemonSetIds.size > 0 && (
         <DaemonSetDeleteConfirmationModal

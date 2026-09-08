@@ -15,6 +15,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   TimerIcon,
@@ -26,6 +27,7 @@ import { useDeleteCronJobs } from "./hooks/data-mutation/useDeleteCronJobs";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { CronJobDeleteConfirmationModal } from "./components/CronJobDeleteConfirmationModal";
 import { CronJobResumedBadge } from "./components/CronJobResumedBadge";
 
@@ -98,6 +100,17 @@ export const CronJobsView: FC = () => {
     [raw, search]
   );
 
+  const {
+    visibleItems: visibleCronJobs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(cronjobs, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -127,21 +140,29 @@ export const CronJobsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  cronjobs.length > 0 &&
-                  cronjobs.every((cj) => selectedCronJobIds.has(`${cj.Namespace}/${cj.Name}`))
+                  visibleCronJobs.length > 0 &&
+                  visibleCronJobs.every((cj) =>
+                    selectedCronJobIds.has(`${cj.Namespace}/${cj.Name}`)
+                  )
                 }
                 indeterminate={
-                  cronjobs.some((cj) => selectedCronJobIds.has(`${cj.Namespace}/${cj.Name}`)) &&
-                  !cronjobs.every((cj) => selectedCronJobIds.has(`${cj.Namespace}/${cj.Name}`))
+                  visibleCronJobs.some((cj) =>
+                    selectedCronJobIds.has(`${cj.Namespace}/${cj.Name}`)
+                  ) &&
+                  !visibleCronJobs.every((cj) =>
+                    selectedCronJobIds.has(`${cj.Namespace}/${cj.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedCronJobIds);
-                    cronjobs.forEach((cj) => newSelection.add(`${cj.Namespace}/${cj.Name}`));
+                    visibleCronJobs.forEach((cj) => newSelection.add(`${cj.Namespace}/${cj.Name}`));
                     setSelectedCronJobIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedCronJobIds);
-                    cronjobs.forEach((cj) => newSelection.delete(`${cj.Namespace}/${cj.Name}`));
+                    visibleCronJobs.forEach((cj) =>
+                      newSelection.delete(`${cj.Namespace}/${cj.Name}`)
+                    );
                     setSelectedCronJobIds(newSelection);
                   }
                 }}
@@ -175,7 +196,7 @@ export const CronJobsView: FC = () => {
                 "w-[30%]",
               ]}
             />
-          ) : cronjobs.length === 0 ? (
+          ) : visibleCronJobs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 10 : 9} className="px-0 py-0">
                 <EmptyState
@@ -186,7 +207,7 @@ export const CronJobsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            cronjobs.map((cj) => (
+            visibleCronJobs.map((cj) => (
               <TableRow
                 key={`${cj.Namespace}/${cj.Name}`}
                 onClick={() => onToggleCronJobDetail(cj.Namespace, cj.Name)}
@@ -238,6 +259,18 @@ export const CronJobsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={cronjobs.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedCronJobIds.size > 0 && (
         <CronJobDeleteConfirmationModal

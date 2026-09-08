@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   TruncatedText,
@@ -25,6 +26,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import type { ClusterRoleBinding } from "./api/resources";
 import { ClusterRoleBindingDeleteConfirmationModal } from "./components/ClusterRoleBindingDeleteConfirmationModal";
 import { useGetClusterRoleBindings } from "./hooks/data-access/useGetClusterRoleBindings";
@@ -100,6 +102,17 @@ export const ClusterRoleBindingsView: FC = () => {
     .filter((crb) => !search || crb.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleClusterRoleBindings,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(clusterRoleBindings, { resetKey: search });
+
   const handleRowClick = (crb: ClusterRoleBinding) => {
     onToggleClusterRoleBindingDetail(crb.Name);
   };
@@ -133,23 +146,27 @@ export const ClusterRoleBindingsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  clusterRoleBindings.length > 0 &&
-                  clusterRoleBindings.every((crb) => selectedClusterRoleBindingNames.has(crb.Name))
+                  visibleClusterRoleBindings.length > 0 &&
+                  visibleClusterRoleBindings.every((crb) =>
+                    selectedClusterRoleBindingNames.has(crb.Name)
+                  )
                 }
                 indeterminate={
-                  clusterRoleBindings.some((crb) =>
+                  visibleClusterRoleBindings.some((crb) =>
                     selectedClusterRoleBindingNames.has(crb.Name)
                   ) &&
-                  !clusterRoleBindings.every((crb) => selectedClusterRoleBindingNames.has(crb.Name))
+                  !visibleClusterRoleBindings.every((crb) =>
+                    selectedClusterRoleBindingNames.has(crb.Name)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedClusterRoleBindingNames);
-                    clusterRoleBindings.forEach((crb) => newSelection.add(crb.Name));
+                    visibleClusterRoleBindings.forEach((crb) => newSelection.add(crb.Name));
                     setSelectedClusterRoleBindingNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedClusterRoleBindingNames);
-                    clusterRoleBindings.forEach((crb) => newSelection.delete(crb.Name));
+                    visibleClusterRoleBindings.forEach((crb) => newSelection.delete(crb.Name));
                     setSelectedClusterRoleBindingNames(newSelection);
                   }
                 }}
@@ -172,7 +189,7 @@ export const ClusterRoleBindingsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]"]}
             />
-          ) : clusterRoleBindings.length === 0 ? (
+          ) : visibleClusterRoleBindings.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="px-0 py-0">
                 <EmptyState
@@ -183,7 +200,7 @@ export const ClusterRoleBindingsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            clusterRoleBindings.map((crb) => {
+            visibleClusterRoleBindings.map((crb) => {
               const isSelected = selectedClusterRoleBindingNames.has(crb.Name);
               const types = [...new Set((crb.Subjects ?? []).map((s) => s.Kind))].join(", ");
               return (
@@ -230,6 +247,18 @@ export const ClusterRoleBindingsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={clusterRoleBindings.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedClusterRoleBindingNames.size > 0 && (
         <ClusterRoleBindingDeleteConfirmationModal

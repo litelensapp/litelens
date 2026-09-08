@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   TruncatedText,
@@ -25,6 +26,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { SecretDeleteConfirmationModal } from "./components/SecretDeleteConfirmationModal";
 import { useGetSecrets } from "./hooks/data-access/useGetSecrets";
 import { useDeleteSecret } from "./hooks/data-mutation/useDeleteSecret";
@@ -95,6 +97,17 @@ export const SecretsView: FC = () => {
     .filter((s) => !search || s.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleSecrets,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(secrets, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -124,21 +137,21 @@ export const SecretsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  secrets.length > 0 &&
-                  secrets.every((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`))
+                  visibleSecrets.length > 0 &&
+                  visibleSecrets.every((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`))
                 }
                 indeterminate={
-                  secrets.some((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`)) &&
-                  !secrets.every((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`))
+                  visibleSecrets.some((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`)) &&
+                  !visibleSecrets.every((s) => selectedSecretIds.has(`${s.Namespace}/${s.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedSecretIds);
-                    secrets.forEach((s) => newSelection.add(`${s.Namespace}/${s.Name}`));
+                    visibleSecrets.forEach((s) => newSelection.add(`${s.Namespace}/${s.Name}`));
                     setSelectedSecretIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedSecretIds);
-                    secrets.forEach((s) => newSelection.delete(`${s.Namespace}/${s.Name}`));
+                    visibleSecrets.forEach((s) => newSelection.delete(`${s.Namespace}/${s.Name}`));
                     setSelectedSecretIds(newSelection);
                   }
                 }}
@@ -162,7 +175,7 @@ export const SecretsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[35%]", "w-[30%]", "w-[30%]"]}
             />
-          ) : secrets.length === 0 ? (
+          ) : visibleSecrets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
@@ -173,7 +186,7 @@ export const SecretsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            secrets.map((s) => {
+            visibleSecrets.map((s) => {
               const sId = `${s.Namespace}/${s.Name}`;
               const isSelected = selectedSecretIds.has(sId);
               return (
@@ -224,6 +237,18 @@ export const SecretsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={secrets.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedSecretIds.size > 0 && (
         <SecretDeleteConfirmationModal

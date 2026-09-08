@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -30,6 +31,7 @@ import { useUncordonNode } from "./hooks/data-mutation/useUncordonNode";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { NodeConditionBadge } from "./components/NodeConditionBadge";
 import { NodeCordonButton } from "./components/NodeCordonButton";
 import { NodeCordonConfirmationModal } from "./components/NodeCordonConfirmationModal";
@@ -152,6 +154,17 @@ export const NodesView: FC = () => {
     .filter((node) => !search || node.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleNodes,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(nodes, { resetKey: search });
+
   const { mutate: deleteNodes, isPending: isBulkDeletePending } = useDeleteNodes();
 
   const handleBulkDeleteConfirm = () => {
@@ -196,20 +209,21 @@ export const NodesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  nodes.length > 0 && nodes.every((node) => selectedNodeNames.has(node.Name))
+                  visibleNodes.length > 0 &&
+                  visibleNodes.every((node) => selectedNodeNames.has(node.Name))
                 }
                 indeterminate={
-                  nodes.some((node) => selectedNodeNames.has(node.Name)) &&
-                  !nodes.every((node) => selectedNodeNames.has(node.Name))
+                  visibleNodes.some((node) => selectedNodeNames.has(node.Name)) &&
+                  !visibleNodes.every((node) => selectedNodeNames.has(node.Name))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedNodeNames);
-                    nodes.forEach((node) => newSelection.add(node.Name));
+                    visibleNodes.forEach((node) => newSelection.add(node.Name));
                     setSelectedNodeNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedNodeNames);
-                    nodes.forEach((node) => newSelection.delete(node.Name));
+                    visibleNodes.forEach((node) => newSelection.delete(node.Name));
                     setSelectedNodeNames(newSelection);
                   }
                 }}
@@ -248,7 +262,7 @@ export const NodesView: FC = () => {
                 "w-[30%]",
               ]}
             />
-          ) : nodes.length === 0 ? (
+          ) : visibleNodes.length === 0 ? (
             <TableRow>
               <TableCell colSpan={11} className="px-0 py-0">
                 <EmptyState
@@ -259,7 +273,7 @@ export const NodesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            nodes.map((node) => {
+            visibleNodes.map((node) => {
               const readyCondition = node.Conditions.find((c) => c.Type === "Ready");
               return (
                 <TableRow
@@ -314,6 +328,18 @@ export const NodesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={nodes.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       <NodeDeleteConfirmationModal
         open={showBulkDeleteModal}

@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -24,6 +25,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { PersistentVolumeClaimDeleteConfirmationModal } from "./components/PersistentVolumeClaimDeleteConfirmationModal";
 import { PersistentVolumeClaimStatusBadge } from "./components/PersistentVolumeClaimStatusBadge";
 import { useGetPersistentVolumeClaims } from "./hooks/data-access/useGetPersistentVolumeClaims";
@@ -107,6 +109,17 @@ export const PersistentVolumeClaimsView: FC = () => {
     .filter((p) => !search || p.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visiblePVCs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(pvcs, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -136,21 +149,23 @@ export const PersistentVolumeClaimsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  pvcs.length > 0 &&
-                  pvcs.every((pvc) => selectedPVCKeys.has(`${pvc.Namespace}/${pvc.Name}`))
+                  visiblePVCs.length > 0 &&
+                  visiblePVCs.every((pvc) => selectedPVCKeys.has(`${pvc.Namespace}/${pvc.Name}`))
                 }
                 indeterminate={
-                  pvcs.some((pvc) => selectedPVCKeys.has(`${pvc.Namespace}/${pvc.Name}`)) &&
-                  !pvcs.every((pvc) => selectedPVCKeys.has(`${pvc.Namespace}/${pvc.Name}`))
+                  visiblePVCs.some((pvc) => selectedPVCKeys.has(`${pvc.Namespace}/${pvc.Name}`)) &&
+                  !visiblePVCs.every((pvc) => selectedPVCKeys.has(`${pvc.Namespace}/${pvc.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedPVCKeys);
-                    pvcs.forEach((pvc) => newSelection.add(`${pvc.Namespace}/${pvc.Name}`));
+                    visiblePVCs.forEach((pvc) => newSelection.add(`${pvc.Namespace}/${pvc.Name}`));
                     setSelectedPVCKeys(newSelection);
                   } else {
                     const newSelection = new Set(selectedPVCKeys);
-                    pvcs.forEach((pvc) => newSelection.delete(`${pvc.Namespace}/${pvc.Name}`));
+                    visiblePVCs.forEach((pvc) =>
+                      newSelection.delete(`${pvc.Namespace}/${pvc.Name}`)
+                    );
                     setSelectedPVCKeys(newSelection);
                   }
                 }}
@@ -175,7 +190,7 @@ export const PersistentVolumeClaimsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[30%]", "w-[45%]", "w-[30%]"]}
             />
-          ) : pvcs.length === 0 ? (
+          ) : visiblePVCs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
@@ -186,7 +201,7 @@ export const PersistentVolumeClaimsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            pvcs.map((p) => {
+            visiblePVCs.map((p) => {
               const key = `${p.Namespace}/${p.Name}`;
               const isSelected = selectedPVCKeys.has(key);
               return (
@@ -236,6 +251,18 @@ export const PersistentVolumeClaimsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={pvcs.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedPVCKeys.size > 0 && (
         <PersistentVolumeClaimDeleteConfirmationModal

@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -24,6 +25,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { PersistentVolumeDeleteConfirmationModal } from "./components/PersistentVolumeDeleteConfirmationModal";
 import { PersistentVolumeStatusBadge } from "./components/PersistentVolumeStatusBadge";
 import { useGetPersistentVolumes } from "./hooks/data-access/useGetPersistentVolumes";
@@ -94,6 +96,17 @@ export const PersistentVolumesView: FC = () => {
     .filter((p) => !search || p.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visiblePVs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(pvs, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -122,19 +135,21 @@ export const PersistentVolumesView: FC = () => {
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
-                checked={pvs.length > 0 && pvs.every((pv) => selectedPVNames.has(pv.Name))}
+                checked={
+                  visiblePVs.length > 0 && visiblePVs.every((pv) => selectedPVNames.has(pv.Name))
+                }
                 indeterminate={
-                  pvs.some((pv) => selectedPVNames.has(pv.Name)) &&
-                  !pvs.every((pv) => selectedPVNames.has(pv.Name))
+                  visiblePVs.some((pv) => selectedPVNames.has(pv.Name)) &&
+                  !visiblePVs.every((pv) => selectedPVNames.has(pv.Name))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedPVNames);
-                    pvs.forEach((pv) => newSelection.add(pv.Name));
+                    visiblePVs.forEach((pv) => newSelection.add(pv.Name));
                     setSelectedPVNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedPVNames);
-                    pvs.forEach((pv) => newSelection.delete(pv.Name));
+                    visiblePVs.forEach((pv) => newSelection.delete(pv.Name));
                     setSelectedPVNames(newSelection);
                   }
                 }}
@@ -158,7 +173,7 @@ export const PersistentVolumesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[35%]", "w-[30%]", "w-[45%]", "w-[30%]"]}
             />
-          ) : pvs.length === 0 ? (
+          ) : visiblePVs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={8} className="px-0 py-0">
                 <EmptyState
@@ -169,7 +184,7 @@ export const PersistentVolumesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            pvs.map((p) => {
+            visiblePVs.map((p) => {
               const isSelected = selectedPVNames.has(p.Name);
               return (
                 <TableRow
@@ -208,6 +223,18 @@ export const PersistentVolumesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={pvs.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedPVNames.size > 0 && (
         <PersistentVolumeDeleteConfirmationModal

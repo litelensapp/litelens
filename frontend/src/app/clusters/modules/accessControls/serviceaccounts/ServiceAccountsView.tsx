@@ -15,6 +15,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   UserRoundIcon,
@@ -24,6 +25,7 @@ import { FC, useReducer, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ServiceAccountDeleteConfirmationModal } from "./components/ServiceAccountDeleteConfirmationModal";
 import { ServiceAccountDetailDrawer } from "./components/ServiceAccountDetailDrawer";
 import { useGetServiceAccounts } from "./hooks/data-access/useGetServiceAccounts";
@@ -116,6 +118,17 @@ export const ServiceAccountsView: FC = () => {
     .filter((sa) => !search || sa.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleServiceAccounts,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(serviceAccounts, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -145,21 +158,29 @@ export const ServiceAccountsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  serviceAccounts.length > 0 &&
-                  serviceAccounts.every((sa) => selectedSAIds.has(`${sa.Namespace}/${sa.Name}`))
+                  visibleServiceAccounts.length > 0 &&
+                  visibleServiceAccounts.every((sa) =>
+                    selectedSAIds.has(`${sa.Namespace}/${sa.Name}`)
+                  )
                 }
                 indeterminate={
-                  serviceAccounts.some((sa) => selectedSAIds.has(`${sa.Namespace}/${sa.Name}`)) &&
-                  !serviceAccounts.every((sa) => selectedSAIds.has(`${sa.Namespace}/${sa.Name}`))
+                  visibleServiceAccounts.some((sa) =>
+                    selectedSAIds.has(`${sa.Namespace}/${sa.Name}`)
+                  ) &&
+                  !visibleServiceAccounts.every((sa) =>
+                    selectedSAIds.has(`${sa.Namespace}/${sa.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedSAIds);
-                    serviceAccounts.forEach((sa) => newSelection.add(`${sa.Namespace}/${sa.Name}`));
+                    visibleServiceAccounts.forEach((sa) =>
+                      newSelection.add(`${sa.Namespace}/${sa.Name}`)
+                    );
                     setSelectedSAIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedSAIds);
-                    serviceAccounts.forEach((sa) =>
+                    visibleServiceAccounts.forEach((sa) =>
                       newSelection.delete(`${sa.Namespace}/${sa.Name}`)
                     );
                     setSelectedSAIds(newSelection);
@@ -182,7 +203,7 @@ export const ServiceAccountsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
-          ) : serviceAccounts.length === 0 ? (
+          ) : visibleServiceAccounts.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
@@ -193,7 +214,7 @@ export const ServiceAccountsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            serviceAccounts.map((sa) => {
+            visibleServiceAccounts.map((sa) => {
               const saId = `${sa.Namespace}/${sa.Name}`;
               const isSelected = selectedSAIds.has(saId);
               return (
@@ -239,6 +260,18 @@ export const ServiceAccountsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={serviceAccounts.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedSAIds.size > 0 && (
         <ServiceAccountDeleteConfirmationModal

@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -28,6 +29,7 @@ import { useDeleteIngresses } from "./hooks/data-mutation/useDeleteIngresses";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { IngressDeleteConfirmationModal } from "./components/IngressDeleteConfirmationModal";
 
 const IngressRulesCell: FC<{ rules: IngressRule[] }> = ({ rules }) => {
@@ -129,6 +131,17 @@ export const IngressesView: FC = () => {
     .filter((i) => !search || i.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleIngresses,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(ingresses, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -158,21 +171,25 @@ export const IngressesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  ingresses.length > 0 &&
-                  ingresses.every((i) => selectedIngressIds.has(`${i.Namespace}/${i.Name}`))
+                  visibleIngresses.length > 0 &&
+                  visibleIngresses.every((i) => selectedIngressIds.has(`${i.Namespace}/${i.Name}`))
                 }
                 indeterminate={
-                  ingresses.some((i) => selectedIngressIds.has(`${i.Namespace}/${i.Name}`)) &&
-                  !ingresses.every((i) => selectedIngressIds.has(`${i.Namespace}/${i.Name}`))
+                  visibleIngresses.some((i) =>
+                    selectedIngressIds.has(`${i.Namespace}/${i.Name}`)
+                  ) &&
+                  !visibleIngresses.every((i) => selectedIngressIds.has(`${i.Namespace}/${i.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedIngressIds);
-                    ingresses.forEach((i) => newSelection.add(`${i.Namespace}/${i.Name}`));
+                    visibleIngresses.forEach((i) => newSelection.add(`${i.Namespace}/${i.Name}`));
                     setSelectedIngressIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedIngressIds);
-                    ingresses.forEach((i) => newSelection.delete(`${i.Namespace}/${i.Name}`));
+                    visibleIngresses.forEach((i) =>
+                      newSelection.delete(`${i.Namespace}/${i.Name}`)
+                    );
                     setSelectedIngressIds(newSelection);
                   }
                 }}
@@ -195,7 +212,7 @@ export const IngressesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[45%]", "w-[55%]", "w-[30%]"]}
             />
-          ) : ingresses.length === 0 ? (
+          ) : visibleIngresses.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
                 <EmptyState
@@ -206,7 +223,7 @@ export const IngressesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            ingresses.map((i) => {
+            visibleIngresses.map((i) => {
               const ingId = `${i.Namespace}/${i.Name}`;
               const isSelected = selectedIngressIds.has(ingId);
               return (
@@ -254,6 +271,18 @@ export const IngressesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={ingresses.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedIngressIds.size > 0 && (
         <IngressDeleteConfirmationModal

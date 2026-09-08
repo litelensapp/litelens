@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -27,6 +28,7 @@ import { useDeleteRoles } from "./hooks/data-mutation/useDeleteRoles";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { RoleDeleteConfirmationModal } from "./components/RoleDeleteConfirmationModal";
 
 const RoleTableCtaButtons: FC<{ namespace: string; name: string }> = ({ namespace, name }) => {
@@ -90,6 +92,17 @@ export const RolesView: FC = () => {
     .filter((r) => !search || r.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleRoles,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(roles, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -119,21 +132,21 @@ export const RolesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  roles.length > 0 &&
-                  roles.every((r) => selectedRoleIds.has(`${r.Namespace}/${r.Name}`))
+                  visibleRoles.length > 0 &&
+                  visibleRoles.every((r) => selectedRoleIds.has(`${r.Namespace}/${r.Name}`))
                 }
                 indeterminate={
-                  roles.some((r) => selectedRoleIds.has(`${r.Namespace}/${r.Name}`)) &&
-                  !roles.every((r) => selectedRoleIds.has(`${r.Namespace}/${r.Name}`))
+                  visibleRoles.some((r) => selectedRoleIds.has(`${r.Namespace}/${r.Name}`)) &&
+                  !visibleRoles.every((r) => selectedRoleIds.has(`${r.Namespace}/${r.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedRoleIds);
-                    roles.forEach((r) => newSelection.add(`${r.Namespace}/${r.Name}`));
+                    visibleRoles.forEach((r) => newSelection.add(`${r.Namespace}/${r.Name}`));
                     setSelectedRoleIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedRoleIds);
-                    roles.forEach((r) => newSelection.delete(`${r.Namespace}/${r.Name}`));
+                    visibleRoles.forEach((r) => newSelection.delete(`${r.Namespace}/${r.Name}`));
                     setSelectedRoleIds(newSelection);
                   }
                 }}
@@ -154,7 +167,7 @@ export const RolesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
-          ) : roles.length === 0 ? (
+          ) : visibleRoles.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
@@ -165,7 +178,7 @@ export const RolesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            roles.map((r) => {
+            visibleRoles.map((r) => {
               const rId = `${r.Namespace}/${r.Name}`;
               const isSelected = selectedRoleIds.has(rId);
               return (
@@ -209,6 +222,18 @@ export const RolesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={roles.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedRoleIds.size > 0 && (
         <RoleDeleteConfirmationModal

@@ -15,6 +15,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -23,6 +24,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { StorageClassDeleteConfirmationModal } from "./components/StorageClassDeleteConfirmationModal";
 import { useGetStorageClasses } from "./hooks/data-access/useGetStorageClasses";
 import { useDeleteStorageClass } from "./hooks/data-mutation/useDeleteStorageClass";
@@ -86,6 +88,17 @@ export const StorageClassesView: FC = () => {
     .filter((sc) => !search || sc.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleClasses,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(classes, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -114,19 +127,22 @@ export const StorageClassesView: FC = () => {
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
-                checked={classes.length > 0 && classes.every((sc) => selectedSCNames.has(sc.Name))}
+                checked={
+                  visibleClasses.length > 0 &&
+                  visibleClasses.every((sc) => selectedSCNames.has(sc.Name))
+                }
                 indeterminate={
-                  classes.some((sc) => selectedSCNames.has(sc.Name)) &&
-                  !classes.every((sc) => selectedSCNames.has(sc.Name))
+                  visibleClasses.some((sc) => selectedSCNames.has(sc.Name)) &&
+                  !visibleClasses.every((sc) => selectedSCNames.has(sc.Name))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedSCNames);
-                    classes.forEach((sc) => newSelection.add(sc.Name));
+                    visibleClasses.forEach((sc) => newSelection.add(sc.Name));
                     setSelectedSCNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedSCNames);
-                    classes.forEach((sc) => newSelection.delete(sc.Name));
+                    visibleClasses.forEach((sc) => newSelection.delete(sc.Name));
                     setSelectedSCNames(newSelection);
                   }
                 }}
@@ -149,7 +165,7 @@ export const StorageClassesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[45%]", "w-[40%]", "w-[35%]", "w-[30%]"]}
             />
-          ) : classes.length === 0 ? (
+          ) : visibleClasses.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="px-0 py-0">
                 <EmptyState
@@ -160,7 +176,7 @@ export const StorageClassesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            classes.map((sc) => {
+            visibleClasses.map((sc) => {
               const isSelected = selectedSCNames.has(sc.Name);
               return (
                 <TableRow
@@ -194,6 +210,18 @@ export const StorageClassesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={classes.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedSCNames.size > 0 && (
         <StorageClassDeleteConfirmationModal

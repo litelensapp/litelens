@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
 } from "@litelens/design-system";
@@ -23,6 +24,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { PodDisruptionBudgetDeleteConfirmationModal } from "./components/PodDisruptionBudgetDeleteConfirmationModal";
 import { useGetPodDisruptionBudgets } from "./hooks/data-access/useGetPodDisruptionBudgets";
 import { useDeletePodDisruptionBudget } from "./hooks/data-mutation/useDeletePodDisruptionBudget";
@@ -103,6 +105,17 @@ export const PodDisruptionBudgetsView: FC = () => {
     .filter((p) => !search || p.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visiblePDBs,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(pdbs, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -132,21 +145,21 @@ export const PodDisruptionBudgetsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  pdbs.length > 0 &&
-                  pdbs.every((p) => selectedPDBIds.has(`${p.Namespace}/${p.Name}`))
+                  visiblePDBs.length > 0 &&
+                  visiblePDBs.every((p) => selectedPDBIds.has(`${p.Namespace}/${p.Name}`))
                 }
                 indeterminate={
-                  pdbs.some((p) => selectedPDBIds.has(`${p.Namespace}/${p.Name}`)) &&
-                  !pdbs.every((p) => selectedPDBIds.has(`${p.Namespace}/${p.Name}`))
+                  visiblePDBs.some((p) => selectedPDBIds.has(`${p.Namespace}/${p.Name}`)) &&
+                  !visiblePDBs.every((p) => selectedPDBIds.has(`${p.Namespace}/${p.Name}`))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedPDBIds);
-                    pdbs.forEach((p) => newSelection.add(`${p.Namespace}/${p.Name}`));
+                    visiblePDBs.forEach((p) => newSelection.add(`${p.Namespace}/${p.Name}`));
                     setSelectedPDBIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedPDBIds);
-                    pdbs.forEach((p) => newSelection.delete(`${p.Namespace}/${p.Name}`));
+                    visiblePDBs.forEach((p) => newSelection.delete(`${p.Namespace}/${p.Name}`));
                     setSelectedPDBIds(newSelection);
                   }
                 }}
@@ -170,7 +183,7 @@ export const PodDisruptionBudgetsView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[35%]", "w-[35%]", "w-[35%]"]}
             />
-          ) : pdbs.length === 0 ? (
+          ) : visiblePDBs.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
@@ -181,7 +194,7 @@ export const PodDisruptionBudgetsView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            pdbs.map((p) => (
+            visiblePDBs.map((p) => (
               <TableRow
                 key={`${p.Namespace}/${p.Name}`}
                 onClick={() => onTogglePodDisruptionBudgetDetail(p.Namespace, p.Name)}
@@ -226,6 +239,18 @@ export const PodDisruptionBudgetsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={pdbs.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedPDBIds.size > 0 && (
         <PodDisruptionBudgetDeleteConfirmationModal

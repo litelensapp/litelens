@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   TruncatedText,
@@ -28,6 +29,7 @@ import { useDeleteEndpointSlices } from "./hooks/data-mutation/useDeleteEndpoint
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { EndpointSliceDeleteConfirmationModal } from "./components/EndpointSliceDeleteConfirmationModal";
 
 interface EndpointSliceTableCtaButtonsProps {
@@ -102,6 +104,17 @@ export const EndpointSlicesView: FC = () => {
     .filter((s) => !search || s.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleSlices,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(slices, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -132,23 +145,29 @@ export const EndpointSlicesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  slices.length > 0 &&
-                  slices.every((slice) => selectedSliceIds.has(`${slice.Namespace}/${slice.Name}`))
+                  visibleSlices.length > 0 &&
+                  visibleSlices.every((slice) =>
+                    selectedSliceIds.has(`${slice.Namespace}/${slice.Name}`)
+                  )
                 }
                 indeterminate={
-                  slices.some((slice) =>
+                  visibleSlices.some((slice) =>
                     selectedSliceIds.has(`${slice.Namespace}/${slice.Name}`)
                   ) &&
-                  !slices.every((slice) => selectedSliceIds.has(`${slice.Namespace}/${slice.Name}`))
+                  !visibleSlices.every((slice) =>
+                    selectedSliceIds.has(`${slice.Namespace}/${slice.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedSliceIds);
-                    slices.forEach((slice) => newSelection.add(`${slice.Namespace}/${slice.Name}`));
+                    visibleSlices.forEach((slice) =>
+                      newSelection.add(`${slice.Namespace}/${slice.Name}`)
+                    );
                     setSelectedSliceIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedSliceIds);
-                    slices.forEach((slice) =>
+                    visibleSlices.forEach((slice) =>
                       newSelection.delete(`${slice.Namespace}/${slice.Name}`)
                     );
                     setSelectedSliceIds(newSelection);
@@ -176,7 +195,18 @@ export const EndpointSlicesView: FC = () => {
             />
           ) : (
             <>
-              {slices.map((slice) => {
+              {visibleSlices.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
+                    <EmptyState
+                      icon={<NetworkIcon className="size-8" />}
+                      title="No Endpoint Slices"
+                      description="Endpoint slices are created automatically by Services"
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+              {visibleSlices.map((slice) => {
                 const sliceId = `${slice.Namespace}/${slice.Name}`;
                 const isSelected = selectedSliceIds.has(sliceId);
                 const ports = (slice.Ports ?? []).map((p) => `${p.Port}/${p.Protocol}`).join(", ");
@@ -242,6 +272,18 @@ export const EndpointSlicesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={slices.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedSliceIds.size > 0 && (
         <EndpointSliceDeleteConfirmationModal

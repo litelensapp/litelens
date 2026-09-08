@@ -18,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -26,6 +27,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { LimitRangeCreationModal } from "./components/LimitRangeCreationModal";
 import { LimitRangeDeleteConfirmationModal } from "./components/LimitRangeDeleteConfirmationModal";
 import { useGetLimitRanges } from "./hooks/data-access/useGetLimitRanges";
@@ -98,6 +100,17 @@ export const LimitRangesView: FC = () => {
     .filter((lr) => !search || lr.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleLimitRanges,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(limitranges, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -132,25 +145,31 @@ export const LimitRangesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  limitranges.length > 0 &&
-                  limitranges.every((lr) => selectedLimitRangeIds.has(`${lr.Namespace}/${lr.Name}`))
+                  visibleLimitRanges.length > 0 &&
+                  visibleLimitRanges.every((lr) =>
+                    selectedLimitRangeIds.has(`${lr.Namespace}/${lr.Name}`)
+                  )
                 }
                 indeterminate={
-                  limitranges.some((lr) =>
+                  visibleLimitRanges.some((lr) =>
                     selectedLimitRangeIds.has(`${lr.Namespace}/${lr.Name}`)
                   ) &&
-                  !limitranges.every((lr) =>
+                  !visibleLimitRanges.every((lr) =>
                     selectedLimitRangeIds.has(`${lr.Namespace}/${lr.Name}`)
                   )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedLimitRangeIds);
-                    limitranges.forEach((lr) => newSelection.add(`${lr.Namespace}/${lr.Name}`));
+                    visibleLimitRanges.forEach((lr) =>
+                      newSelection.add(`${lr.Namespace}/${lr.Name}`)
+                    );
                     setSelectedLimitRangeIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedLimitRangeIds);
-                    limitranges.forEach((lr) => newSelection.delete(`${lr.Namespace}/${lr.Name}`));
+                    visibleLimitRanges.forEach((lr) =>
+                      newSelection.delete(`${lr.Namespace}/${lr.Name}`)
+                    );
                     setSelectedLimitRangeIds(newSelection);
                   }
                 }}
@@ -171,7 +190,7 @@ export const LimitRangesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
-          ) : limitranges.length === 0 ? (
+          ) : visibleLimitRanges.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
@@ -187,7 +206,7 @@ export const LimitRangesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            limitranges.map((lr) => {
+            visibleLimitRanges.map((lr) => {
               const lrId = `${lr.Namespace}/${lr.Name}`;
               const isSelected = selectedLimitRangeIds.has(lrId);
               return (
@@ -231,6 +250,18 @@ export const LimitRangesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={limitranges.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedLimitRangeIds.size > 0 && (
         <LimitRangeDeleteConfirmationModal

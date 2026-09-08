@@ -16,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -27,6 +28,7 @@ import { useDeleteEndpoints } from "./hooks/data-mutation/useDeleteEndpoints";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { EndpointDeleteConfirmationModal } from "./components/EndpointDeleteConfirmationModal";
 
 interface EndpointTableCtaButtonsProps {
@@ -94,6 +96,17 @@ export const EndpointsView: FC = () => {
     .filter((ep) => !search || ep.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleEndpoints,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(endpoints, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -123,21 +136,31 @@ export const EndpointsView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  endpoints.length > 0 &&
-                  endpoints.every((ep) => selectedEndpointIds.has(`${ep.Namespace}/${ep.Name}`))
+                  visibleEndpoints.length > 0 &&
+                  visibleEndpoints.every((ep) =>
+                    selectedEndpointIds.has(`${ep.Namespace}/${ep.Name}`)
+                  )
                 }
                 indeterminate={
-                  endpoints.some((ep) => selectedEndpointIds.has(`${ep.Namespace}/${ep.Name}`)) &&
-                  !endpoints.every((ep) => selectedEndpointIds.has(`${ep.Namespace}/${ep.Name}`))
+                  visibleEndpoints.some((ep) =>
+                    selectedEndpointIds.has(`${ep.Namespace}/${ep.Name}`)
+                  ) &&
+                  !visibleEndpoints.every((ep) =>
+                    selectedEndpointIds.has(`${ep.Namespace}/${ep.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedEndpointIds);
-                    endpoints.forEach((ep) => newSelection.add(`${ep.Namespace}/${ep.Name}`));
+                    visibleEndpoints.forEach((ep) =>
+                      newSelection.add(`${ep.Namespace}/${ep.Name}`)
+                    );
                     setSelectedEndpointIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedEndpointIds);
-                    endpoints.forEach((ep) => newSelection.delete(`${ep.Namespace}/${ep.Name}`));
+                    visibleEndpoints.forEach((ep) =>
+                      newSelection.delete(`${ep.Namespace}/${ep.Name}`)
+                    );
                     setSelectedEndpointIds(newSelection);
                   }
                 }}
@@ -161,7 +184,7 @@ export const EndpointsView: FC = () => {
             />
           ) : (
             <>
-              {endpoints.length === 0 && (
+              {visibleEndpoints.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={namespaces.length !== 1 ? 6 : 5} className="px-0 py-0">
                     <EmptyState
@@ -172,7 +195,7 @@ export const EndpointsView: FC = () => {
                   </TableCell>
                 </TableRow>
               )}
-              {endpoints.map((ep) => {
+              {visibleEndpoints.map((ep) => {
                 const epId = `${ep.Namespace}/${ep.Name}`;
                 const isSelected = selectedEndpointIds.has(epId);
                 return (
@@ -227,6 +250,18 @@ export const EndpointsView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={endpoints.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedEndpointIds.size > 0 && (
         <EndpointDeleteConfirmationModal

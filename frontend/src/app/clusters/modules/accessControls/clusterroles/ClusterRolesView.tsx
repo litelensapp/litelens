@@ -15,6 +15,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -23,6 +24,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ClusterRoleDeleteConfirmationModal } from "./components/ClusterRoleDeleteConfirmationModal";
 import { useGetClusterRoles } from "./hooks/data-access/useGetClusterRoles";
 import { useDeleteClusterRole } from "./hooks/data-mutation/useDeleteClusterRole";
@@ -90,6 +92,17 @@ export const ClusterRolesView: FC = () => {
     .filter((cr) => !search || cr.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleClusterRoles,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(clusterRoles, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -119,21 +132,21 @@ export const ClusterRolesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  clusterRoles.length > 0 &&
-                  clusterRoles.every((cr) => selectedClusterRoleNames.has(cr.Name))
+                  visibleClusterRoles.length > 0 &&
+                  visibleClusterRoles.every((cr) => selectedClusterRoleNames.has(cr.Name))
                 }
                 indeterminate={
-                  clusterRoles.some((cr) => selectedClusterRoleNames.has(cr.Name)) &&
-                  !clusterRoles.every((cr) => selectedClusterRoleNames.has(cr.Name))
+                  visibleClusterRoles.some((cr) => selectedClusterRoleNames.has(cr.Name)) &&
+                  !visibleClusterRoles.every((cr) => selectedClusterRoleNames.has(cr.Name))
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedClusterRoleNames);
-                    clusterRoles.forEach((cr) => newSelection.add(cr.Name));
+                    visibleClusterRoles.forEach((cr) => newSelection.add(cr.Name));
                     setSelectedClusterRoleNames(newSelection);
                   } else {
                     const newSelection = new Set(selectedClusterRoleNames);
-                    clusterRoles.forEach((cr) => newSelection.delete(cr.Name));
+                    visibleClusterRoles.forEach((cr) => newSelection.delete(cr.Name));
                     setSelectedClusterRoleNames(newSelection);
                   }
                 }}
@@ -153,7 +166,7 @@ export const ClusterRolesView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[30%]"]}
             />
-          ) : clusterRoles.length === 0 ? (
+          ) : visibleClusterRoles.length === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="px-0 py-0">
                 <EmptyState
@@ -164,7 +177,7 @@ export const ClusterRolesView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            clusterRoles.map((cr) => {
+            visibleClusterRoles.map((cr) => {
               const isSelected = selectedClusterRoleNames.has(cr.Name);
               return (
                 <TableRow
@@ -195,6 +208,18 @@ export const ClusterRolesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={clusterRoles.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedClusterRoleNames.size > 0 && (
         <ClusterRoleDeleteConfirmationModal

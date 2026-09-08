@@ -1,8 +1,9 @@
-import { SearchInput } from "@litelens/design-system";
+import { SearchInput, TablePagination } from "@litelens/design-system";
 import { FC, useState } from "react";
 import { EventsTable } from "./components/EventsTable";
 import { useGetEvents } from "./hooks/data-access/useGetEvents";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 
 export const EventsView: FC = () => {
   const { activeContext, namespaces } = useMainLayoutContext();
@@ -22,6 +23,17 @@ export const EventsView: FC = () => {
     )
     .toSorted((a, b) => b.CreatedAt - a.CreatedAt);
 
+  const {
+    visibleItems: visibleEvents,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(events, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -39,7 +51,19 @@ export const EventsView: FC = () => {
         </div>
       </div>
 
-      <EventsTable events={events} isLoading={isLoading} />
+      <EventsTable events={visibleEvents} isLoading={isLoading} />
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={events.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
     </div>
   );
 };

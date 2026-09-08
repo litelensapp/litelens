@@ -17,6 +17,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -28,6 +29,7 @@ import { useDeleteServices } from "./hooks/data-mutation/useDeleteServices";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ServiceDeleteConfirmationModal } from "./components/ServiceDeleteConfirmationModal";
 import { ServiceStatusBadge } from "./components/ServiceStatusBadge";
 
@@ -96,6 +98,17 @@ export const ServicesView: FC = () => {
     .filter((svc) => !search || svc.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleServices,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(services, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -125,21 +138,31 @@ export const ServicesView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  services.length > 0 &&
-                  services.every((svc) => selectedServiceIds.has(`${svc.Namespace}/${svc.Name}`))
+                  visibleServices.length > 0 &&
+                  visibleServices.every((svc) =>
+                    selectedServiceIds.has(`${svc.Namespace}/${svc.Name}`)
+                  )
                 }
                 indeterminate={
-                  services.some((svc) => selectedServiceIds.has(`${svc.Namespace}/${svc.Name}`)) &&
-                  !services.every((svc) => selectedServiceIds.has(`${svc.Namespace}/${svc.Name}`))
+                  visibleServices.some((svc) =>
+                    selectedServiceIds.has(`${svc.Namespace}/${svc.Name}`)
+                  ) &&
+                  !visibleServices.every((svc) =>
+                    selectedServiceIds.has(`${svc.Namespace}/${svc.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedServiceIds);
-                    services.forEach((svc) => newSelection.add(`${svc.Namespace}/${svc.Name}`));
+                    visibleServices.forEach((svc) =>
+                      newSelection.add(`${svc.Namespace}/${svc.Name}`)
+                    );
                     setSelectedServiceIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedServiceIds);
-                    services.forEach((svc) => newSelection.delete(`${svc.Namespace}/${svc.Name}`));
+                    visibleServices.forEach((svc) =>
+                      newSelection.delete(`${svc.Namespace}/${svc.Name}`)
+                    );
                     setSelectedServiceIds(newSelection);
                   }
                 }}
@@ -177,7 +200,7 @@ export const ServicesView: FC = () => {
               ]}
             />
           ) : (
-            services.map((svc) => {
+            visibleServices.map((svc) => {
               const svcId = `${svc.Namespace}/${svc.Name}`;
               const isSelected = selectedServiceIds.has(svcId);
               return (
@@ -250,6 +273,18 @@ export const ServicesView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={services.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedServiceIds.size > 0 && (
         <ServiceDeleteConfirmationModal

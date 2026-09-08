@@ -18,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   TableSkeletonLoader,
   cn,
@@ -26,6 +27,7 @@ import { FC, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
+import { usePagination } from "../../../shared/hooks/usePagination";
 import { ResourceQuotaCreationModal } from "./components/ResourceQuotaCreationModal";
 import { ResourceQuotaDeleteConfirmationModal } from "./components/ResourceQuotaDeleteConfirmationModal";
 import { useGetResourceQuotas } from "./hooks/data-access/useGetResourceQuotas";
@@ -105,6 +107,17 @@ export const ResourceQuotasView: FC = () => {
     .filter((rq) => !search || rq.Name.toLowerCase().includes(search.toLowerCase()))
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
+  const {
+    visibleItems: visibleQuotas,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(quotas, { resetKey: search });
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -139,21 +152,29 @@ export const ResourceQuotasView: FC = () => {
             <TableHead className="w-12">
               <Checkbox
                 checked={
-                  quotas.length > 0 &&
-                  quotas.every((rq) => selectedResourceQuotaIds.has(`${rq.Namespace}/${rq.Name}`))
+                  visibleQuotas.length > 0 &&
+                  visibleQuotas.every((rq) =>
+                    selectedResourceQuotaIds.has(`${rq.Namespace}/${rq.Name}`)
+                  )
                 }
                 indeterminate={
-                  quotas.some((rq) => selectedResourceQuotaIds.has(`${rq.Namespace}/${rq.Name}`)) &&
-                  !quotas.every((rq) => selectedResourceQuotaIds.has(`${rq.Namespace}/${rq.Name}`))
+                  visibleQuotas.some((rq) =>
+                    selectedResourceQuotaIds.has(`${rq.Namespace}/${rq.Name}`)
+                  ) &&
+                  !visibleQuotas.every((rq) =>
+                    selectedResourceQuotaIds.has(`${rq.Namespace}/${rq.Name}`)
+                  )
                 }
                 onCheckedChange={(checked) => {
                   if (checked) {
                     const newSelection = new Set(selectedResourceQuotaIds);
-                    quotas.forEach((rq) => newSelection.add(`${rq.Namespace}/${rq.Name}`));
+                    visibleQuotas.forEach((rq) => newSelection.add(`${rq.Namespace}/${rq.Name}`));
                     setSelectedResourceQuotaIds(newSelection);
                   } else {
                     const newSelection = new Set(selectedResourceQuotaIds);
-                    quotas.forEach((rq) => newSelection.delete(`${rq.Namespace}/${rq.Name}`));
+                    visibleQuotas.forEach((rq) =>
+                      newSelection.delete(`${rq.Namespace}/${rq.Name}`)
+                    );
                     setSelectedResourceQuotaIds(newSelection);
                   }
                 }}
@@ -174,7 +195,7 @@ export const ResourceQuotasView: FC = () => {
               includeCheckbox={true}
               columnWidths={["w-[65%]", "w-[55%]", "w-[30%]"]}
             />
-          ) : quotas.length === 0 ? (
+          ) : visibleQuotas.length === 0 ? (
             <TableRow>
               <TableCell colSpan={namespaces.length !== 1 ? 5 : 4} className="px-0 py-0">
                 <EmptyState
@@ -190,7 +211,7 @@ export const ResourceQuotasView: FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            quotas.map((rq) => {
+            visibleQuotas.map((rq) => {
               const rqId = `${rq.Namespace}/${rq.Name}`;
               const isSelected = selectedResourceQuotaIds.has(rqId);
               return (
@@ -234,6 +255,18 @@ export const ResourceQuotasView: FC = () => {
           )}
         </TableBody>
       </Table>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={quotas.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {selectedResourceQuotaIds.size > 0 && (
         <ResourceQuotaDeleteConfirmationModal
