@@ -1,14 +1,14 @@
-import { useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_RESOURCE_QUOTA_DETAIL } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { ResourceQuotaDetail } from "../../api/resources";
 import { GetResourceQuotaByName } from "../../api/resources";
-import { useResourceQuotasUpdateEvents } from "../async-events/useResourceQuotasUpdateEvents";
+import { useResourceQuotaUpdateEvents } from "../async-events/useResourceQuotaUpdateEvents";
 
 export const useGetResourceQuotaDetail = (context: string, namespace: string, name: string) => {
-  const queryClient = useQueryClient();
-  const latestResourceQuotas = useResourceQuotasUpdateEvents();
+  const latestResourceQuota = useResourceQuotaUpdateEvents(namespace, name);
+
   const query = useQuery<ResourceQuotaDetail, Error>({
     queryKey: [QUERY_KEY_RESOURCE_QUOTA_DETAIL, { context, namespace, name }],
     queryFn: () => GetResourceQuotaByName(namespace, name),
@@ -16,18 +16,10 @@ export const useGetResourceQuotaDetail = (context: string, namespace: string, na
     enabled: !!context && !!namespace && !!name,
   });
 
-  const matchedResourceQuota = useMemo(
-    () => latestResourceQuotas.find((rq) => rq.Namespace === namespace && rq.Name === name),
-    [latestResourceQuotas, namespace, name]
-  );
+  const mergedData = useMemo(() => {
+    if (latestResourceQuota) return latestResourceQuota;
+    return query.data;
+  }, [latestResourceQuota, query.data]);
 
-  useEffect(() => {
-    if (matchedResourceQuota) {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEY_RESOURCE_QUOTA_DETAIL, { context, namespace, name }],
-      });
-    }
-  }, [matchedResourceQuota, context, namespace, name, queryClient]);
-
-  return query;
+  return { ...query, data: mergedData };
 };

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { QUERY_KEY_VALIDATING_WEBHOOK_CONFIG_YAML } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { GetValidatingWebhookConfigYAML } from "../../api/resources";
@@ -8,6 +8,7 @@ import { useValidatingWebhookConfigsUpdateEvents } from "../async-events/useVali
 export function useGetValidatingWebhookConfigYAML(context: string, name: string, enabled = true) {
   const latestValidatingWebhookConfigs = useValidatingWebhookConfigsUpdateEvents();
   const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_VALIDATING_WEBHOOK_CONFIG_YAML, { context, name }],
     queryFn: () => GetValidatingWebhookConfigYAML(name),
@@ -15,15 +16,20 @@ export function useGetValidatingWebhookConfigYAML(context: string, name: string,
     enabled: !!context && !!name && enabled,
   });
 
-  useEffect(() => {
-    const matchedValidatingWebhookConfig = latestValidatingWebhookConfigs.some(
+  const validatingWebhookConfigKeyDependency = useMemo(() => {
+    const matchedValidatingWebhookConfig = latestValidatingWebhookConfigs.find(
       (vwc) => vwc.Name === name
     );
-    if (matchedValidatingWebhookConfig)
+    if (matchedValidatingWebhookConfig) return JSON.stringify(matchedValidatingWebhookConfig);
+    return null;
+  }, [latestValidatingWebhookConfigs, name]);
+
+  useEffect(() => {
+    if (validatingWebhookConfigKeyDependency)
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_VALIDATING_WEBHOOK_CONFIG_YAML, { context, name }],
       });
-  }, [latestValidatingWebhookConfigs, context, name, queryClient]);
+  }, [validatingWebhookConfigKeyDependency, context, name, queryClient]);
 
   return query;
 }

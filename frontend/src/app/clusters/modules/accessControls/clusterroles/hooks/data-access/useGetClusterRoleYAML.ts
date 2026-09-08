@@ -8,6 +8,7 @@ import { useClusterRolesUpdateEvents } from "../async-events/useClusterRolesUpda
 export function useGetClusterRoleYAML(context: string, name: string, enabled = true) {
   const latestClusterRoles = useClusterRolesUpdateEvents();
   const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_CLUSTER_ROLE_YAML, { context, name }],
     queryFn: () => GetClusterRoleYAML(name),
@@ -15,19 +16,19 @@ export function useGetClusterRoleYAML(context: string, name: string, enabled = t
     enabled: !!context && !!name && enabled,
   });
 
-  const matchedClusterRole = useMemo(
-    () => latestClusterRoles.find((cr) => cr.Name === name),
-    [latestClusterRoles, name]
-  );
-  const matchedClusterRoleKey = JSON.stringify(matchedClusterRole);
+  const clusterRoleKeyDependency = useMemo(() => {
+    const matchedClusterRole = latestClusterRoles.find((cr) => cr.Name === name);
+    if (matchedClusterRole) return JSON.stringify(matchedClusterRole);
+    return null;
+  }, [latestClusterRoles, name]);
 
   useEffect(() => {
-    if (matchedClusterRole) {
+    if (clusterRoleKeyDependency) {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_CLUSTER_ROLE_YAML, { context, name }],
       });
     }
-  }, [matchedClusterRole, matchedClusterRoleKey, context, name, queryClient]);
+  }, [clusterRoleKeyDependency, context, name, queryClient]);
 
   return query;
 }

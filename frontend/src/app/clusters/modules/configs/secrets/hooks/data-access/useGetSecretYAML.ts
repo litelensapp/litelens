@@ -8,6 +8,7 @@ import { useSecretsUpdateEvents } from "../async-events/useSecretsUpdateEvents";
 export function useGetSecretYAML(context: string, namespace: string, name: string, enabled = true) {
   const queryClient = useQueryClient();
   const latestSecrets = useSecretsUpdateEvents();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_SECRET_YAML, { context, namespace, name }],
     queryFn: () => GetSecretYAML(namespace, name),
@@ -15,17 +16,18 @@ export function useGetSecretYAML(context: string, namespace: string, name: strin
     enabled: !!context && !!namespace && !!name && enabled,
   });
 
-  const matchedSecret = useMemo(
-    () => latestSecrets.find((s) => s.Namespace === namespace && s.Name === name),
-    [latestSecrets, namespace, name]
-  );
+  const secretKeyDependency = useMemo(() => {
+    const matchedSecret = latestSecrets.find((s) => s.Namespace === namespace && s.Name === name);
+    if (matchedSecret) return JSON.stringify(matchedSecret);
+    return null;
+  }, [latestSecrets, namespace, name]);
 
   useEffect(() => {
-    if (matchedSecret)
+    if (secretKeyDependency)
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_SECRET_YAML, { context, namespace, name }],
       });
-  }, [matchedSecret, context, namespace, name, queryClient]);
+  }, [secretKeyDependency, context, namespace, name, queryClient]);
 
   return query;
 }

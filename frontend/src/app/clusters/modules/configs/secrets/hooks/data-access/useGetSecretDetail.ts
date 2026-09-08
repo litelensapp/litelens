@@ -1,14 +1,14 @@
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { QUERY_KEY_SECRET_DETAIL } from "../../api/api.const";
 import type { SecretDetail } from "../../api/resources";
 import { GetSecretByName } from "../../api/resources";
-import { useSecretsUpdateEvents } from "../async-events/useSecretsUpdateEvents";
+import { useSecretUpdateEvents } from "../async-events/useSecretUpdateEvents";
 
 export const useGetSecretDetail = (context: string, namespace: string, name: string) => {
-  const queryClient = useQueryClient();
-  const latestSecrets = useSecretsUpdateEvents();
+  const latestSecret = useSecretUpdateEvents(namespace, name);
+
   const query = useQuery<SecretDetail, Error>({
     queryKey: [QUERY_KEY_SECRET_DETAIL, { context, namespace, name }],
     queryFn: () => GetSecretByName(namespace, name),
@@ -16,18 +16,10 @@ export const useGetSecretDetail = (context: string, namespace: string, name: str
     enabled: !!context && !!namespace && !!name,
   });
 
-  const matchedSecret = useMemo(
-    () => latestSecrets.find((s) => s.Namespace === namespace && s.Name === name),
-    [latestSecrets, namespace, name]
-  );
+  const mergedData = useMemo(() => {
+    if (latestSecret) return latestSecret;
+    return query.data;
+  }, [latestSecret, query.data]);
 
-  useEffect(() => {
-    if (matchedSecret) {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEY_SECRET_DETAIL, { context, namespace, name }],
-      });
-    }
-  }, [matchedSecret, context, namespace, name, queryClient]);
-
-  return query;
+  return { ...query, data: mergedData };
 };

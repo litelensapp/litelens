@@ -248,6 +248,7 @@ func (r *ScopedResource[L]) buildGroup(namespaces []string) *group {
 			//nolint:errcheck — only fails if already started, which it isn't yet
 			inf.SetWatchErrorHandler(func(_ *cache.Reflector, err error) {
 				if strings.Contains(err.Error(), "is forbidden") {
+					evictIndexer(inf.GetIndexer())
 					r.markForbiddenShared(inf)
 				}
 			})
@@ -267,6 +268,7 @@ func (r *ScopedResource[L]) buildGroup(namespaces []string) *group {
 			//nolint:errcheck — only fails if already started, which it isn't yet
 			inf.SetWatchErrorHandler(func(_ *cache.Reflector, err error) {
 				if strings.Contains(err.Error(), "is forbidden") {
+					evictIndexer(inf.GetIndexer())
 					r.markForbidden(g)
 				}
 			})
@@ -394,6 +396,19 @@ func (r *ScopedResource[L]) markForbiddenShared(inf cache.SharedIndexInformer) {
 
 func containsInformer(informers []cache.SharedIndexInformer, target cache.SharedIndexInformer) bool {
 	return slices.Contains(informers, target)
+}
+
+// evictIndexer removes every object currently cached in indexer. Called when
+// an informer's watch fails with "is forbidden" — client-go's Reflector
+// preserves the last-known-good cache on a watch error by design (correct
+// for a transient network blip), but that means objects fetched before RBAC
+// access was revoked would otherwise keep being served by Lister() reads
+// indefinitely, with no signal to the caller that they're now stale and
+// unauthorized.
+func evictIndexer(indexer cache.Indexer) {
+	for _, obj := range indexer.List() {
+		_ = indexer.Delete(obj)
+	}
 }
 
 func (r *ScopedResource[L]) fireEvent(namespace string) {

@@ -13,6 +13,7 @@ export function useGetResourceQuotaYAML(
 ) {
   const queryClient = useQueryClient();
   const latestResourceQuotas = useResourceQuotasUpdateEvents();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_RESOURCE_QUOTA_YAML, { context, namespace, name }],
     queryFn: () => GetResourceQuotaYAML(namespace, name),
@@ -20,18 +21,21 @@ export function useGetResourceQuotaYAML(
     enabled: !!context && !!namespace && !!name && enabled,
   });
 
-  const matchedResourceQuota = useMemo(
-    () => latestResourceQuotas.find((rq) => rq.Namespace === namespace && rq.Name === name),
-    [latestResourceQuotas, namespace, name]
-  );
+  const resourceQuotaKeyDependency = useMemo(() => {
+    const matchedResourceQuota = latestResourceQuotas.find(
+      (rq) => rq.Namespace === namespace && rq.Name === name
+    );
+    if (matchedResourceQuota) return JSON.stringify(matchedResourceQuota);
+    return null;
+  }, [latestResourceQuotas, namespace, name]);
 
   useEffect(() => {
-    if (matchedResourceQuota) {
+    if (resourceQuotaKeyDependency) {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_RESOURCE_QUOTA_YAML, { context, namespace, name }],
       });
     }
-  }, [matchedResourceQuota, context, namespace, name, queryClient]);
+  }, [resourceQuotaKeyDependency, context, namespace, name, queryClient]);
 
   return query;
 }

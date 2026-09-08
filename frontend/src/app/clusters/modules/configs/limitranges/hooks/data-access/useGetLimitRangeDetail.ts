@@ -1,14 +1,13 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_LIMIT_RANGE_DETAIL } from "../../api/api.const";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { LimitRangeDetail } from "../../api/resources";
 import { GetLimitRangeByName } from "../../api/resources";
-import { useLimitRangesUpdateEvents } from "../async-events/useLimitRangesUpdateEvents";
+import { useLimitRangeUpdateEvents } from "../async-events/useLimitRangeUpdateEvents";
 
 export const useGetLimitRangeDetail = (context: string, namespace: string, name: string) => {
-  const queryClient = useQueryClient();
-  const latestLimitRanges = useLimitRangesUpdateEvents();
+  const latestLimitRange = useLimitRangeUpdateEvents(namespace, name);
 
   const query = useQuery<LimitRangeDetail, Error>({
     queryKey: [QUERY_KEY_LIMIT_RANGE_DETAIL, { context, namespace, name }],
@@ -17,19 +16,10 @@ export const useGetLimitRangeDetail = (context: string, namespace: string, name:
     enabled: !!context && !!namespace && !!name,
   });
 
-  const limitRangeKeyDependency = useMemo(() => {
-    const matchedLimitRange = latestLimitRanges.find(
-      (lr) => lr.Namespace === namespace && lr.Name === name
-    );
-    return matchedLimitRange ? JSON.stringify(matchedLimitRange) : null;
-  }, [latestLimitRanges, namespace, name]);
+  const mergedData = useMemo(() => {
+    if (latestLimitRange) return latestLimitRange;
+    return query.data;
+  }, [latestLimitRange, query.data]);
 
-  useEffect(() => {
-    if (limitRangeKeyDependency)
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEY_LIMIT_RANGE_DETAIL, { context, namespace, name }],
-      });
-  }, [limitRangeKeyDependency, context, namespace, name, queryClient]);
-
-  return query;
+  return { ...query, data: mergedData };
 };

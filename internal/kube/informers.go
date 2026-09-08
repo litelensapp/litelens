@@ -62,6 +62,12 @@ type FactoryHandle struct {
 	debouncers   []*debouncer.Debouncer
 	synced       map[string]chan struct{}
 	syncedOnce   map[string]*sync.Once
+	// informers indexes the generic (cluster-scoped) entries below by resource
+	// key, so StopResource can evict a forbidden resource's cached objects.
+	// nsscope-managed resources handle their own eviction internally instead
+	// (see nsscope.evictIndexer) since they may back onto several
+	// namespace-scoped informers rather than one.
+	informers map[string]cache.SharedIndexInformer
 
 	cs          kubernetes.Interface
 	onForbidden func(resource string)
@@ -111,6 +117,15 @@ func (h *FactoryHandle) StopResource(resource string, onForbidden func(string)) 
 		sr.Stop()
 	} else if e, ok := h.stopChannels[resource]; ok {
 		e.once.Do(func() { close(e.ch) })
+	}
+	// Evict whatever this resource's informer already cached — otherwise a
+	// forbidden resource keeps serving stale (and now-unauthorized) objects
+	// out of its Indexer indefinitely, since client-go's Reflector never
+	// clears the cache on a watch error by itself.
+	if inf, ok := h.informers[resource]; ok {
+		for _, obj := range inf.GetIndexer().List() {
+			_ = inf.GetIndexer().Delete(obj)
+		}
 	}
 	h.forbidden.Store(resource, struct{}{})
 	select {
@@ -190,6 +205,7 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		globalStop:   make(chan struct{}),
 		synced:       make(map[string]chan struct{}),
 		syncedOnce:   make(map[string]*sync.Once),
+		informers:    make(map[string]cache.SharedIndexInformer),
 		cs:           cs,
 		onForbidden:  onForbidden,
 	}
@@ -225,6 +241,7 @@ func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)
 		h.stopChannels[e.resource] = se
 		h.synced[e.resource] = make(chan struct{})
 		h.syncedOnce[e.resource] = &sync.Once{}
+		h.informers[e.resource] = e.inf
 
 		resource := e.resource // capture for closure
 		//nolint:errcheck — only fails if already started, which it isn't yet

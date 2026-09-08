@@ -1,3 +1,10 @@
-export { GetHPAByName, GetHPAYAML, ListHPAs, UpdateHPAYAML } from "@wailsjs/go/app/App";
+export {
+  GetHPAByName,
+  GetHPAYAML,
+  ListHPAs,
+  UnwatchHPADetail,
+  UpdateHPAYAML,
+  WatchHPADetail,
+} from "@wailsjs/go/app/App";
 
 export type { HPA, HPAMetric, ScaleTargetRef, HPADetail } from "@litelens/core";

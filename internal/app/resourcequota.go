@@ -15,6 +15,43 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// WatchResourceQuotaDetail registers the frontend's interest in live
+// "resourcequota:update" detail pushes for one specific ResourceQuota
+// (namespace/name) — the one currently shown in the (single) open
+// ResourceQuota detail drawer. Call UnwatchResourceQuotaDetail on drawer
+// close/unmount to stop.
+func (a *App) WatchResourceQuotaDetail(namespace, name string) {
+	a.watchedResourceQuota.watch(namespace, name)
+}
+
+// UnwatchResourceQuotaDetail reverses WatchResourceQuotaDetail.
+func (a *App) UnwatchResourceQuotaDetail(namespace, name string) {
+	a.watchedResourceQuota.unwatch(namespace, name)
+}
+
+// emitResourceQuotaDetail pushes a fresh dto.ResourceQuotaDetail on
+// "resourcequota:update" (singular — distinct from the "resourcequotas:update"
+// list topic) for the currently-watched ResourceQuota, if any. Mirrors
+// emitResourceQuotas but is intentionally not called from within it: it's
+// wired to run off the same informer-change signal independently, so
+// detail-route consumers aren't coupled to the list emit path.
+func (a *App) emitResourceQuotaDetail() {
+	namespace, name, ok := a.watchedResourceQuota.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "resourcequotas") {
+		return
+	}
+	detail, err := kubeResources.GetResourceQuotaByName(h.ResourceQuotaLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "resourcequota:update", detail)
+}
+
 func (a *App) ListResourceQuotas() ([]dto.ResourceQuota, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
 	if !waitForResourceSyncIgnoringForbidden(h, "resourcequotas") {

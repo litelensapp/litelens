@@ -4,10 +4,11 @@ import { useMemo } from "react";
 import { QUERY_KEY_VALIDATING_WEBHOOK_CONFIG_DETAIL } from "../../api/api.const";
 import type { ValidatingWebhookConfigDetail } from "../../api/resources";
 import { GetValidatingWebhookConfigByName } from "../../api/resources";
-import { useValidatingWebhookConfigsUpdateEvents } from "../async-events/useValidatingWebhookConfigsUpdateEvents";
+import { useValidatingWebhookConfigUpdateEvents } from "../async-events/useValidatingWebhookConfigUpdateEvents";
 
 export const useGetValidatingWebhookConfigDetail = (context: string, name: string) => {
-  const latestValidatingWebhookConfigs = useValidatingWebhookConfigsUpdateEvents();
+  const latestConfig = useValidatingWebhookConfigUpdateEvents(name);
+
   const query = useQuery<ValidatingWebhookConfigDetail, Error>({
     queryKey: [QUERY_KEY_VALIDATING_WEBHOOK_CONFIG_DETAIL, { context, name }],
     queryFn: () => GetValidatingWebhookConfigByName(name),
@@ -16,12 +17,9 @@ export const useGetValidatingWebhookConfigDetail = (context: string, name: strin
   });
 
   const mergedData = useMemo(() => {
-    const matchedValidatingWebhookConfig = latestValidatingWebhookConfigs.find(
-      (vwc) => vwc.Name === name
-    ) as ValidatingWebhookConfigDetail | undefined;
-    if (matchedValidatingWebhookConfig) return matchedValidatingWebhookConfig;
+    if (latestConfig) return latestConfig;
     return query.data;
-  }, [latestValidatingWebhookConfigs, query.data, name]);
+  }, [latestConfig, query.data]);
 
   return { ...query, data: mergedData };
 };

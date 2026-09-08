@@ -1,14 +1,13 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_NETWORK_POLICY_DETAIL } from "../../api/api.const";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { NetworkPolicyDetail } from "../../api/resources";
 import { GetNetworkPolicyByName } from "../../api/resources";
-import { useNetworkPoliciesUpdateEvents } from "../async-events/useNetworkPoliciesUpdateEvents";
+import { useNetworkPolicyUpdateEvents } from "../async-events/useNetworkPolicyUpdateEvents";
 
 export const useGetNetworkPolicyDetail = (context: string, namespace: string, name: string) => {
-  const queryClient = useQueryClient();
-  const latestNetworkPolicies = useNetworkPoliciesUpdateEvents();
+  const latestNetworkPolicy = useNetworkPolicyUpdateEvents(namespace, name);
 
   const query = useQuery<NetworkPolicyDetail, Error>({
     queryKey: [QUERY_KEY_NETWORK_POLICY_DETAIL, { context, namespace, name }],
@@ -17,21 +16,10 @@ export const useGetNetworkPolicyDetail = (context: string, namespace: string, na
     enabled: !!context && !!namespace && !!name,
   });
 
-  // The pushed event carries the lighter list DTO, not the full detail shape — invalidate
-  // to refetch the detail rather than overwriting the cache with a mismatched shape.
-  const networkPolicyKeyDependency = useMemo(() => {
-    const matchedNetworkPolicy = latestNetworkPolicies.find(
-      (np) => np.Namespace === namespace && np.Name === name
-    );
-    return matchedNetworkPolicy ? JSON.stringify(matchedNetworkPolicy) : null;
-  }, [latestNetworkPolicies, namespace, name]);
+  const mergedData = useMemo(() => {
+    if (latestNetworkPolicy) return latestNetworkPolicy;
+    return query.data;
+  }, [latestNetworkPolicy, query.data]);
 
-  useEffect(() => {
-    if (networkPolicyKeyDependency)
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEY_NETWORK_POLICY_DETAIL, { context, namespace, name }],
-      });
-  }, [networkPolicyKeyDependency, context, namespace, name, queryClient]);
-
-  return query;
+  return { ...query, data: mergedData };
 };

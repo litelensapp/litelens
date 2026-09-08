@@ -1,14 +1,13 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEY_HPA_DETAIL } from "../../api/api.const";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import type { HPADetail } from "../../api/resources";
 import { GetHPAByName } from "../../api/resources";
-import { useHPAsUpdateEvents } from "../async-events/useHPAsUpdateEvents";
+import { useHPAUpdateEvents } from "../async-events/useHPAUpdateEvents";
 
 export const useGetHPADetail = (context: string, namespace: string, name: string) => {
-  const queryClient = useQueryClient();
-  const latestHPAs = useHPAsUpdateEvents();
+  const latestHPA = useHPAUpdateEvents(namespace, name);
 
   const query = useQuery<HPADetail, Error>({
     queryKey: [QUERY_KEY_HPA_DETAIL, { context, namespace, name }],
@@ -17,17 +16,10 @@ export const useGetHPADetail = (context: string, namespace: string, name: string
     enabled: !!context && !!namespace && !!name,
   });
 
-  const hpaKeyDependency = useMemo(() => {
-    const matchedHPA = latestHPAs.find((hpa) => hpa.Namespace === namespace && hpa.Name === name);
-    return matchedHPA ? JSON.stringify(matchedHPA) : null;
-  }, [latestHPAs, namespace, name]);
+  const mergedData = useMemo(() => {
+    if (latestHPA) return latestHPA;
+    return query.data;
+  }, [latestHPA, query.data]);
 
-  useEffect(() => {
-    if (hpaKeyDependency)
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEY_HPA_DETAIL, { context, namespace, name }],
-      });
-  }, [hpaKeyDependency, context, namespace, name, queryClient]);
-
-  return query;
+  return { ...query, data: mergedData };
 };

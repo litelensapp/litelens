@@ -27,6 +27,30 @@ func (a *App) ListIngresses() ([]dto.Ingress, error) {
 	return result, nil
 }
 
+func (a *App) WatchIngressDetail(namespace, name string) {
+	a.watchedIngress.watch(namespace, name)
+}
+
+func (a *App) UnwatchIngressDetail(namespace, name string) {
+	a.watchedIngress.unwatch(namespace, name)
+}
+
+func (a *App) emitIngressDetail() {
+	namespace, name, ok := a.watchedIngress.get()
+	if !ok {
+		return
+	}
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "ingresses") {
+		return
+	}
+	detail, err := kubeResources.GetIngressByName(h.IngressLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "ingress:update", detail)
+}
+
 func (a *App) GetIngressByName(namespace, name string) (dto.IngressDetail, error) {
 	h := a.activeFactory()
 	if !waitForResourceSyncIgnoringForbidden(h, "ingresses") {

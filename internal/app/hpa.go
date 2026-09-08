@@ -31,6 +31,30 @@ func (a *App) GetHPAByName(namespace, name string) (dto.HPADetail, error) {
 	return result, nil
 }
 
+func (a *App) WatchHPADetail(namespace, name string) {
+	a.watchedHPA.watch(namespace, name)
+}
+
+func (a *App) UnwatchHPADetail(namespace, name string) {
+	a.watchedHPA.unwatch(namespace, name)
+}
+
+func (a *App) emitHPADetail() {
+	namespace, name, ok := a.watchedHPA.get()
+	if !ok {
+		return
+	}
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "hpa") {
+		return
+	}
+	detail, err := kubeResources.GetHPAByName(h.HorizontalPodAutoscalerLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "hpa:update", detail)
+}
+
 func (a *App) ListHPAs() ([]dto.HPA, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
 	if !waitForResourceSyncIgnoringForbidden(h, "hpa") {

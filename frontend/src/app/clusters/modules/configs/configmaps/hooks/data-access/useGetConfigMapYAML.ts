@@ -13,6 +13,7 @@ export function useGetConfigMapYAML(
 ) {
   const queryClient = useQueryClient();
   const latestConfigMaps = useConfigMapsUpdateEvents();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_CONFIGMAP_YAML, { context, namespace, name }],
     queryFn: () => GetConfigMapYAML(namespace, name),
@@ -20,19 +21,21 @@ export function useGetConfigMapYAML(
     enabled: !!context && !!namespace && !!name && enabled,
   });
 
-  const matchedConfigMap = useMemo(
-    () => latestConfigMaps.find((cm) => cm.Namespace === namespace && cm.Name === name),
-    [latestConfigMaps, namespace, name]
-  );
-  const matchedConfigMapKey = JSON.stringify(matchedConfigMap);
+  const configMapKeyDependency = useMemo(() => {
+    const matchedConfigMap = latestConfigMaps.find(
+      (cm) => cm.Namespace === namespace && cm.Name === name
+    );
+    if (matchedConfigMap) return JSON.stringify(matchedConfigMap);
+    return null;
+  }, [latestConfigMaps, namespace, name]);
 
   useEffect(() => {
-    if (matchedConfigMap) {
+    if (configMapKeyDependency) {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_CONFIGMAP_YAML, { context, namespace, name }],
       });
     }
-  }, [matchedConfigMap, matchedConfigMapKey, context, namespace, name, queryClient]);
+  }, [configMapKeyDependency, context, namespace, name, queryClient]);
 
   return query;
 }

@@ -1,11 +1,11 @@
 ---
 name: architecture-decisions
-description: "litelens architecture decisions — IPC pattern, caching/watching, per-cluster query isolation, code splitting, view layout, DTO design, package deps, Wails bindings, macOS build"
+description: "litelens architecture decisions — IPC pattern, caching/watching, scoped detail-push pattern, per-cluster query isolation, code splitting, view layout, DTO design, package deps, Wails bindings, macOS build"
 metadata:
   node_type: memory
   type: project
   originSessionId: 4c9d20f2-fae5-4639-a340-3b791fa9bae3
-  modified: 2026-09-01T00:00:00.000Z
+  modified: 2026-09-08T00:00:00.000Z
 ---
 
 ### IPC Pattern
@@ -50,6 +50,24 @@ Existing examples:
 
 - Cluster-scoped: `GetClusterRoleByName` → `useGetClusterRoleDetail`, `GetNamespaceByName` → `useGetNamespaceDetail`, `GetNodeByName` → `useGetNodeDetail`
 - Namespace-scoped: `GetRoleByName` → `useGetRoleDetail`, `GetServiceAccountByName` → `useGetServiceAccountDetail`, `GetPodByName` → `useGetPodDetail`, `GetJobByName` → `useGetJobDetail`
+
+### Scoped Detail-Push Pattern
+
+Extends the Single-Item Detail Pattern above with a live-update path, for the subset of resources that have a genuinely separate `Xxx`/`XxxDetail` DTO (list DTO is lean, Detail DTO adds `CreatedAt`/`Labels`/`Annotations`/`ManagedFields`/etc, sometimes sensitive — e.g. Secret data). Broadcasting the full Detail payload on the existing plural list topic (`"secrets:update"`) to every subscriber whenever *any* item in the list changes is wasteful and, for sensitive fields, undesirable. Instead these resources get a second, singular Wails topic (`"secret:update"`) that only ever carries the one item currently open in that kind's detail drawer.
+
+10 resources use this pattern today: **Secret, ResourceQuota, PersistentVolumeClaim, HPA, LimitRange, NetworkPolicy, PodDisruptionBudget, Ingress, PersistentVolume, ValidatingWebhookConfig** (PersistentVolume and ValidatingWebhookConfig are cluster-scoped, so their watch/emit signatures drop the namespace argument). The other ~18 resources (Deployment, CronJob, DaemonSet, Job, ReplicaSet, StatefulSet, ConfigMap, Service, Node, Namespace, Role/RoleBinding/ClusterRole/ClusterRoleBinding, ServiceAccount, Event, Endpoint(Slice), IngressClass, …) share one DTO for list and detail, so the plural list-push already carries everything the detail view needs — no singular topic for these.
+
+**Backend:**
+
+- `internal/app/detail_watch.go` defines a shared `detailWatch` type: a single mutex-guarded `(namespace, name)` key — *not* a refcounted map — since only one detail drawer of a given kind can be open at a time. `watch(namespace, name)` sets the key; `unwatch(namespace, name)` clears it only if it still matches (guards against a stale unwatch from an already-superseded watch); `get() (namespace, name string, ok bool)` reads it. For cluster-scoped kinds the namespace half is always `""`.
+- Each resource file (e.g. `internal/app/secret.go`) adds: a `watchedXxx detailWatch` field on `App` (declared in `app.go`), `WatchXxxDetail(namespace, name)` / `UnwatchXxxDetail(namespace, name)` Wails-bound methods that thinly call `watch`/`unwatch`, and `emitXxxDetail()` — reads the current watched key via `get()`, looks the item up through the lister (`kubeResources.GetXxxByName(...)`), and `runtime.EventsEmit`s it on the singular topic only if a key is set. `emitXxxDetail` is **never called from within `emitXxxs()`** — it is a fully decoupled function.
+- `emitXxxDetail` needs its own dedicated `debouncer.Debouncer` instance (`debXxxDetail := debouncer.NewDebouncer(...)`, registered via `h.RegisterDebouncer(...)` in `app.go`) — `Debouncer` holds exactly one callback and one timer, so it can't be shared with the existing list-emit debouncer. Both debouncers are triggered side by side (`.Trigger(ns)`) from the same informer event-handler callback (`SetXxxsEventHandler` or the raw informer `AddEventHandler` block for kinds without that helper).
+
+**Frontend:**
+
+- `useXxxUpdateEvents(namespace, name)` (or `(name)` for cluster-scoped kinds) — in a `useEffect` keyed on the watched identity, calls `WatchXxxDetail`/`UnwatchXxxDetail` on mount/unmount and subscribes to the singular topic via `EventsOn`, filtering pushes to the exact watched item. Values are staged in local `useState`, but **stale values are discarded via a `useMemo` guard** (`return latest && latest.Name === name ? latest : undefined`), not by resetting state synchronously inside the effect — a synchronous `setState(undefined)` reset in the effect body trips the `react-hooks/set-state-in-effect` ESLint rule and causes a redundant cascading render.
+- The owning `useGetXxxDetail` hook calls `useXxxUpdateEvents` and merges its result over `useQuery` data via `useMemo`: `latest ?? query.data`.
+- **Gotcha (caused 2 real bugs, in Ingress and ValidatingWebhookConfig, fixed 2026-09):** do not merge a Detail hook's local push state directly from the *plural* list-topic hook's payload via an unsafe `as XxxDetail` cast. The list DTO is missing the Detail-only fields, so the cast silently produces an object with those fields `undefined` — invisible at compile time, but every subsequent list-topic push (e.g. another item's status changing) overwrites the merged detail with a payload stripped of `Annotations`/`CreatedAt`/`Labels`/etc. The singular-topic pattern above exists specifically to avoid this: only fully-populated Detail payloads for the exact watched item are ever merged in.
 
 ### Per-Cluster Query Isolation
 

@@ -8,6 +8,7 @@ import { useIngressClassesUpdateEvents } from "../async-events/useIngressClasses
 export function useGetIngressClassYAML(context: string, name: string, enabled = true) {
   const latestIngressClasses = useIngressClassesUpdateEvents();
   const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: [QUERY_KEY_INGRESS_CLASS_YAML, { context, name }],
     queryFn: () => GetIngressClassYAML(name),
@@ -15,19 +16,19 @@ export function useGetIngressClassYAML(context: string, name: string, enabled = 
     enabled: !!context && !!name && enabled,
   });
 
-  const matchedIngressClass = useMemo(
-    () => latestIngressClasses.find((ic) => ic.Name === name),
-    [latestIngressClasses, name]
-  );
-  const matchedIngressClassKey = JSON.stringify(matchedIngressClass);
+  const ingressClassKeyDependency = useMemo(() => {
+    const matchedIngressClass = latestIngressClasses.find((ic) => ic.Name === name);
+    if (matchedIngressClass) return JSON.stringify(matchedIngressClass);
+    return null;
+  }, [latestIngressClasses, name]);
 
   useEffect(() => {
-    if (matchedIngressClass) {
+    if (ingressClassKeyDependency) {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY_INGRESS_CLASS_YAML, { context, name }],
       });
     }
-  }, [matchedIngressClass, matchedIngressClassKey, context, name, queryClient]);
+  }, [ingressClassKeyDependency, context, name, queryClient]);
 
   return query;
 }
