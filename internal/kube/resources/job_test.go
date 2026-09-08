@@ -179,6 +179,24 @@ func TestToJob_PodsStatuses_OmitsZeroCounts(t *testing.T) {
 	}
 }
 
+func TestToJob_PodsStatuses_AllZeroCounts_ReturnsEmptyNotNil(t *testing.T) {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "test-job",
+			Namespace:         "default",
+			CreationTimestamp: metav1.Time{Time: fixedTime},
+		},
+		Status: batchv1.JobStatus{},
+	}
+	got := toJob(job)
+	if got.PodsStatuses == nil {
+		t.Fatal("PodsStatuses must not be nil when all counts are zero, to avoid marshaling as JSON null")
+	}
+	if len(got.PodsStatuses) != 0 {
+		t.Errorf("PodsStatuses = %v; want empty", got.PodsStatuses)
+	}
+}
+
 func TestToJob_NoCompletions(t *testing.T) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

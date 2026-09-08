@@ -152,7 +152,7 @@ func toJob(j *batchv1.Job) dto.Job {
 			return humanAge(j.Status.CompletionTime.Time)
 		}(),
 		PodsStatuses: func() []string {
-			var statuses []string
+			statuses := []string{}
 			if j.Status.Active > 0 {
 				statuses = append(statuses, fmt.Sprintf("%d Active", j.Status.Active))
 			}
