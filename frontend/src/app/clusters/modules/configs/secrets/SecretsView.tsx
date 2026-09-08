@@ -82,12 +82,12 @@ const SecretTableCtaButtons: FC<SecretTableCtaButtonsProps> = ({ namespace, name
 };
 
 export const SecretsView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext();
+
   const [search, setSearch] = useState("");
   const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext();
 
   const { mutate: deleteSecrets, isPending: isBulkDeletePending } = useDeleteSecrets();
 

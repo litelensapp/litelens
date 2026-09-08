@@ -80,6 +80,40 @@ func TestStopResourceIdempotent(t *testing.T) {
 	h.StopResource("pods", func(string) {}) // Should not panic due to sync.Once
 }
 
+// TestStopResourceEvictsCachedObjects reproduces the bug where a
+// cluster-scoped resource (e.g. Nodes) whose access is revoked mid-session
+// keeps serving objects fetched before the revocation: StopResource is the
+// real forbidden path for these generic (non-nsscope) resources, called by
+// both the watch-error handler and the sync-timeout goroutine, but
+// previously never touched the informer's own cache. client-go's Reflector
+// never clears that cache on a watch error by itself, so without eviction
+// here a forbidden resource's stale, now-unauthorized data would be served
+// by Lister() reads indefinitely.
+func TestStopResourceEvictsCachedObjects(t *testing.T) {
+	cs := fake.NewSimpleClientset(&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node-a"}})
+	h := NewFactoryHandle(cs, func(string) {})
+	defer h.Stop()
+
+	<-h.GetSyncedChan("nodes")
+	before, err := h.Factory.Core().V1().Nodes().Lister().List(labels.Everything())
+	if err != nil {
+		t.Fatalf("unexpected error listing nodes: %v", err)
+	}
+	if len(before) != 1 {
+		t.Fatalf("expected 1 node cached before StopResource, got %d", len(before))
+	}
+
+	h.StopResource("nodes", func(string) {})
+
+	after, err := h.Factory.Core().V1().Nodes().Lister().List(labels.Everything())
+	if err != nil {
+		t.Fatalf("unexpected error listing nodes after StopResource: %v", err)
+	}
+	if len(after) != 0 {
+		t.Fatalf("expected StopResource to evict cached nodes, got %d remaining", len(after))
+	}
+}
+
 // TestIsForbiddenResourceNeverRegistered verifies that IsForbidden returns false
 // for a resource that was never registered / never encountered an error.
 func TestIsForbiddenResourceNeverRegistered(t *testing.T) {

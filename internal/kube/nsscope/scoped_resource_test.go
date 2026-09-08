@@ -192,3 +192,31 @@ func TestMarkForbiddenIgnoresSupersededGroup(t *testing.T) {
 		t.Fatalf("expected superseded group's failure to be ignored, got OnForbidden calls: %v", forbiddenCalls)
 	}
 }
+
+// TestForbiddenWatchEvictsCachedObjects reproduces the bug where access to a
+// resource (e.g. Secrets) is revoked mid-session: the informer's watch fails
+// with a 403, OnForbidden fires (driving the frontend's "access denied"
+// toast), but objects fetched before the revocation were still being served
+// by Lister() reads indefinitely, since client-go's Reflector never clears
+// its own cache on a watch error. Rescope's real watch pipeline can't be
+// driven directly against a fake clientset's cache-independent 403, so this
+// exercises the same evictIndexer helper the watch-error handlers call,
+// against a populated indexer built the same way ScopedResource builds one.
+func TestForbiddenWatchEvictsCachedObjects(t *testing.T) {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	if err := indexer.Add(newPod("ns-a", "a1")); err != nil {
+		t.Fatalf("failed to seed indexer: %v", err)
+	}
+	if err := indexer.Add(newPod("ns-a", "a2")); err != nil {
+		t.Fatalf("failed to seed indexer: %v", err)
+	}
+	if len(indexer.List()) != 2 {
+		t.Fatalf("expected indexer to be seeded with 2 objects, got %d", len(indexer.List()))
+	}
+
+	evictIndexer(indexer)
+
+	if got := len(indexer.List()); got != 0 {
+		t.Fatalf("expected evictIndexer to clear the cache, got %d objects remaining", got)
+	}
+}

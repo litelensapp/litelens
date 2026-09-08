@@ -257,17 +257,6 @@ export const EndpointSlicesView: FC = () => {
                   </TableRow>
                 );
               })}
-              {slices.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
-                    <EmptyState
-                      icon={<NetworkIcon className="size-8" />}
-                      title="No EndpointSlices"
-                      description="EndpointSlices are created automatically by Services"
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
             </>
           )}
         </TableBody>
