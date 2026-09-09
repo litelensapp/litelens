@@ -18,7 +18,12 @@ interface UseCatchForbiddenResourceOptions {
 }
 
 interface UseCatchForbiddenResourceResult {
-  forbiddenResources: Set<string>;
+  // Resource name -> set of namespaces it's known forbidden in ("" = cluster-wide
+  // or "forbidden somewhere, namespace unknown" e.g. from the labelMap poll below).
+  // A Map (not a plain Set<string>) so a revisit toast (see MainLayout's
+  // handleSelectItem) can name the same namespace(s) the original live event did,
+  // instead of falling back to a generic no-namespace message.
+  forbiddenResources: Map<string, Set<string>>;
 }
 
 // Renders as "" for a cluster-wide denial (namespace === "") so toast copy doesn't
@@ -26,11 +31,30 @@ interface UseCatchForbiddenResourceResult {
 const namespaceSuffix = (namespace: string): string =>
   namespace ? ` in namespace "${namespace}"` : "";
 
+// Same idea as namespaceSuffix, but for a resource's full set of known-forbidden
+// namespaces (used when toasting from accumulated state rather than a single event).
+export const formatForbiddenNamespaces = (namespaces: Set<string>): string => {
+  if (namespaces.size === 0 || namespaces.has("")) return "";
+  const list = Array.from(namespaces)
+    .map((ns) => `"${ns}"`)
+    .join(", ");
+  return ` in namespace${namespaces.size > 1 ? "s" : ""} ${list}`;
+};
+
 export const useCatchForbiddenResource = (
   activeResource: string,
   options?: UseCatchForbiddenResourceOptions
 ): UseCatchForbiddenResourceResult => {
-  const [forbiddenResources, setForbiddenResources] = useState<Set<string>>(new Set());
+  const [forbiddenResources, setForbiddenResources] = useState<Map<string, Set<string>>>(new Map());
+  const addForbiddenResource = (resource: string, namespace: string) => {
+    setForbiddenResources((prev) => {
+      const next = new Map(prev);
+      const namespaces = new Set(next.get(resource));
+      namespaces.add(namespace);
+      next.set(resource, namespaces);
+      return next;
+    });
+  };
 
   // Reset forbidden state when the drawer transitions from closed to open, or when
   // the active cluster context changes. Using the React-approved derived-state pattern
@@ -39,12 +63,12 @@ export const useCatchForbiddenResource = (
   const [prevOpen, setPrevOpen] = useState(options?.open);
   if (options?.open !== prevOpen) {
     setPrevOpen(options?.open);
-    if (options?.open) setForbiddenResources(new Set());
+    if (options?.open) setForbiddenResources(new Map());
   }
   const [prevActiveContext, setPrevActiveContext] = useState(options?.activeContext);
   if (options?.activeContext !== prevActiveContext) {
     setPrevActiveContext(options?.activeContext);
-    setForbiddenResources(new Set());
+    setForbiddenResources(new Map());
   }
 
   // Tracks whether a toast was already shown in the current open session to prevent
@@ -65,7 +89,7 @@ export const useCatchForbiddenResource = (
       "resource:forbidden",
       (payload: { resource: string; namespace: string }) => {
         const { resource, namespace } = payload;
-        setForbiddenResources((prev) => new Set([...prev, resource]));
+        addForbiddenResource(resource, namespace);
         if (activeResourceRef.current !== resource) return;
 
         const opts = optionsRef.current;
@@ -113,7 +137,9 @@ export const useCatchForbiddenResource = (
     if (!opts?.resourceName) return;
 
     IsResourceForbidden(activeResourceRef.current, opts.namespace ?? "").then((forbidden) => {
-      if (cancelled || !forbidden || drawerToastFiredRef.current) return;
+      if (cancelled || !forbidden) return;
+      addForbiddenResource(activeResourceRef.current, opts.namespace ?? "");
+      if (drawerToastFiredRef.current) return;
       const currentOpts = optionsRef.current;
       if (!currentOpts?.resourceName) return;
       drawerToastFiredRef.current = true;
@@ -149,9 +175,10 @@ export const useCatchForbiddenResource = (
     ).then((results) => {
       if (cancelled) return;
       const forbidden = results.filter((r): r is string => r !== null);
-      if (forbidden.length > 0) {
-        setForbiddenResources((prev) => new Set([...prev, ...forbidden]));
-      }
+      // Namespace unknown here — IsResourceForbidden("", resource) only reports
+      // "forbidden somewhere", not which namespace(s). "" renders as no namespace
+      // suffix (same as before this poll existed) rather than claiming a specific one.
+      forbidden.forEach((resource) => addForbiddenResource(resource, ""));
     });
     return () => {
       cancelled = true;
