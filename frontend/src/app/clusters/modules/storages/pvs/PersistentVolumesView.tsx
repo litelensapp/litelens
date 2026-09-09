@@ -23,6 +23,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -32,7 +33,6 @@ import { PersistentVolumeStatusBadge } from "./components/PersistentVolumeStatus
 import { useGetPersistentVolumes } from "./hooks/data-access/useGetPersistentVolumes";
 import { useDeletePersistentVolume } from "./hooks/data-mutation/useDeletePersistentVolume";
 import { useDeletePersistentVolumes } from "./hooks/data-mutation/useDeletePersistentVolumes";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PersistentVolumeTableCtaButtonsProps {
   name: string;
@@ -82,9 +82,14 @@ const PersistentVolumeTableCtaButtons: FC<PersistentVolumeTableCtaButtonsProps> 
 };
 
 export const PersistentVolumesView: FC = () => {
-  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
-  const { onTogglePersistentVolumeDetail } = useDetailDrawerContext();
+  const {
+    onTogglePersistentVolumeDetail,
+    onToggleStorageClassDetail,
+    onTogglePersistentVolumeClaimDetail,
+  } = useDetailDrawerContext();
+
+  const openBrowserURL = useOpenBrowserURL();
 
   const [search, setSearch] = useState("");
   const [selectedPVNames, setSelectedPVNames] = useState<Set<string>>(new Set());
@@ -214,10 +219,41 @@ export const PersistentVolumesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{p.Name}</TableCell>
-                  <TableCell className="text-xs">{p.StorageClass}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.StorageClass ? (
+                      <ResourceLink
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStorageClassDetail(p.StorageClass);
+                        }}
+                      >
+                        {p.StorageClass}
+                      </ResourceLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{p.Capacity}</TableCell>
                   <TableCell className="text-xs">
-                    <ResourceLink>{p.Claim}</ResourceLink>
+                    {(() => {
+                      const [claimNamespace, claimName] = p.Claim?.includes("/")
+                        ? p.Claim.split("/")
+                        : [];
+                      return claimNamespace &&
+                        claimName &&
+                        p.Status.toLowerCase() !== "released" ? (
+                        <ResourceLink
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePersistentVolumeClaimDetail(claimNamespace, claimName);
+                          }}
+                        >
+                          {p.Claim}
+                        </ResourceLink>
+                      ) : (
+                        p.Claim
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-xs">{p.Age}</TableCell>
                   <TableCell>

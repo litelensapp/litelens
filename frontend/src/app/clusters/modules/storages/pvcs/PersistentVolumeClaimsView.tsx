@@ -23,6 +23,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -32,7 +33,6 @@ import { PersistentVolumeClaimStatusBadge } from "./components/PersistentVolumeC
 import { useGetPersistentVolumeClaims } from "./hooks/data-access/useGetPersistentVolumeClaims";
 import { useDeletePersistentVolumeClaim } from "./hooks/data-mutation/useDeletePersistentVolumeClaim";
 import { useDeletePersistentVolumeClaims } from "./hooks/data-mutation/useDeletePersistentVolumeClaims";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PersistentVolumeClaimTableCtaButtonsProps {
   name: string;
@@ -92,13 +92,18 @@ const PersistentVolumeClaimTableCtaButtons: FC<PersistentVolumeClaimTableCtaButt
 };
 
 export const PersistentVolumeClaimsView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const {
+    onToggleNamespaceDetail,
+    onTogglePersistentVolumeClaimDetail,
+    onToggleStorageClassDetail,
+  } = useDetailDrawerContext();
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selectedPVCKeys, setSelectedPVCKeys] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePersistentVolumeClaimDetail } = useDetailDrawerContext();
 
   const { mutate: deletePersistentVolumeClaims, isPending: isBulkDeletePending } =
     useDeletePersistentVolumeClaims();
@@ -244,7 +249,20 @@ export const PersistentVolumeClaimsView: FC = () => {
                       </ResourceLink>
                     </TableCell>
                   )}
-                  <TableCell className="text-xs">{p.StorageClass}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.StorageClass ? (
+                      <ResourceLink
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStorageClassDetail(p.StorageClass);
+                        }}
+                      >
+                        {p.StorageClass}
+                      </ResourceLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{p.Size}</TableCell>
                   <TableCell className="max-w-xs truncate text-xs">{p.Pods}</TableCell>
                   <TableCell className="text-xs">{p.Age}</TableCell>
