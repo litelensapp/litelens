@@ -28,6 +28,8 @@ type Deployment struct {
 	Selector          string
 	NodeSelector      string
 	StrategyType      string
+	MaxSurge          string
+	MaxUnavailable    string
 	Conditions        []DeploymentCondition
 	Tolerations       int
 	TolerationDetails []TolerationDetail

@@ -51,6 +51,7 @@ import { DeploymentConditionBadge } from "./DeploymentConditionBadge";
 import { DeploymentDeleteConfirmationModal } from "./DeploymentDeleteConfirmationModal";
 import { DeploymentRestartConfirmationModal } from "./DeploymentRestartConfirmationModal";
 import { DeploymentScaleModal } from "./DeploymentScaleModal";
+import { DeploymentStrategyBadge } from "./DeploymentStrategyBadge";
 
 const DeploymentTolerationsField: FC<{ deployment: Deployment }> = ({ deployment }) => {
   const [showTolerations, setShowTolerations] = useState(false);
@@ -282,7 +283,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
           {deployment.StrategyType && (
             <>
               <span className="text-h3 text-muted-foreground">Strategy Type</span>
-              <span className="text-body font-mono">{deployment.StrategyType}</span>
+              <DeploymentStrategyBadge deployment={deployment} />
             </>
           )}
 

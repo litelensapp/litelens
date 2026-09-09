@@ -81,6 +81,20 @@ func toDeployment(d *appsv1.Deployment) dto.Deployment {
 			return strings.Join(parts, ", ")
 		}(),
 		StrategyType: string(d.Spec.Strategy.Type),
+		MaxSurge: func() string {
+			ru := d.Spec.Strategy.RollingUpdate
+			if ru == nil || ru.MaxSurge == nil {
+				return ""
+			}
+			return ru.MaxSurge.String()
+		}(),
+		MaxUnavailable: func() string {
+			ru := d.Spec.Strategy.RollingUpdate
+			if ru == nil || ru.MaxUnavailable == nil {
+				return ""
+			}
+			return ru.MaxUnavailable.String()
+		}(),
 		Conditions: func() []dto.DeploymentCondition {
 			out := make([]dto.DeploymentCondition, 0, len(d.Status.Conditions))
 			for _, c := range d.Status.Conditions {
