@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   RouteIcon,
@@ -31,6 +32,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { IngressDeleteConfirmationModal } from "./components/IngressDeleteConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const IngressRulesCell: FC<{ rules: IngressRule[] }> = ({ rules }) => {
   const items = (rules ?? []).flatMap((rule, ri) =>
@@ -116,6 +118,7 @@ const IngressTableCtaButtons: FC<IngressTableCtaButtonsProps> = ({ name, namespa
 };
 
 export const IngressesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedIngressIds, setSelectedIngressIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -146,6 +149,12 @@ export const IngressesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Ingresses</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="An Ingress manages external HTTP/HTTPS access to Services in a cluster, providing routing rules, TLS termination, and load balancing."
+          docsUrl="https://kubernetes.io/docs/concepts/services-networking/ingress"
+        />
         <span className="text-xs text-muted-foreground">
           {ingresses.length} item{ingresses.length !== 1 ? "s" : ""}
         </span>

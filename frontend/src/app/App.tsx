@@ -225,7 +225,9 @@ export const App: FC = () => {
   const prevContextRef = useRef("");
   const connectAttemptRef = useRef(0);
 
-  // Clear cached data for the previous cluster when switching
+  // Evict every cluster-scoped query (any context, not just the one being
+  // left) when switching clusters, so a cluster revisited later starts fresh
+  // instead of briefly showing data cached from an earlier visit.
   useEffect(() => {
     const prev = prevContextRef.current;
     if (prev && prev !== activeContext) {
@@ -233,16 +235,16 @@ export const App: FC = () => {
         predicate: (query) =>
           query.queryKey.some(
             (k) =>
-              k === prev ||
+              (typeof k === "string" && connectedContexts.has(k)) ||
               (typeof k === "object" &&
                 k !== null &&
                 "context" in k &&
-                (k as { context: string }).context === prev)
+                connectedContexts.has((k as { context: string }).context))
           ),
       });
     }
     prevContextRef.current = activeContext;
-  }, [activeContext, queryClient]);
+  }, [activeContext, connectedContexts, queryClient]);
 
   function connectTo(ctx: string) {
     const attempt = ++connectAttemptRef.current;

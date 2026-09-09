@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -30,6 +31,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { RoleDeleteConfirmationModal } from "./components/RoleDeleteConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const RoleTableCtaButtons: FC<{ namespace: string; name: string }> = ({ namespace, name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -77,6 +79,7 @@ const RoleTableCtaButtons: FC<{ namespace: string; name: string }> = ({ namespac
 };
 
 export const RolesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -107,6 +110,11 @@ export const RolesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Roles</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A Role defines a set of permissions within a single namespace, specifying which actions can be performed on which resources."
+          docsUrl="https://kubernetes.io/docs/reference/access-authn-authz/rbac"
+        />
         <span className="text-xs text-muted-foreground">
           {roles.length} item{roles.length !== 1 ? "s" : ""}
         </span>

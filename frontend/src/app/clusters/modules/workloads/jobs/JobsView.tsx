@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { JobResumedBadge } from "./components/JobResumedBadge";
 import { useGetJobs } from "./hooks/data-access/useGetJobs";
 import { useDeleteJob } from "./hooks/data-mutation/useDeleteJob";
 import { useDeleteJobs } from "./hooks/data-mutation/useDeleteJobs";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface JobTableCtaButtonsProps {
   name: string;
@@ -82,6 +84,7 @@ const JobTableCtaButtons: FC<JobTableCtaButtonsProps> = ({ namespace, name }) =>
 };
 
 export const JobsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleJobDetail } = useDetailDrawerContext();
 
@@ -116,6 +119,11 @@ export const JobsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Jobs</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A Job creates one or more Pods and ensures a specified number of them successfully terminate, used for run-to-completion tasks."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/controllers/job"
+        />
         <span className="text-xs text-muted-foreground">
           {jobs.length} item{jobs.length !== 1 ? "s" : ""}
         </span>

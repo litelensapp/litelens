@@ -10,6 +10,7 @@ import {
   ResourceBulkDeletionButton,
   ResourceCell,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   ScrollTextIcon,
@@ -40,6 +41,7 @@ import { PodStatusBadge } from "./components/PodStatusBadge";
 import { useGetPods } from "./hooks/data-access/useGetPods";
 import { useDeletePod } from "./hooks/data-mutation/useDeletePod";
 import { useDeletePods } from "./hooks/data-mutation/useDeletePods";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PodTableCtaButtonsProps {
   name: string;
@@ -101,6 +103,7 @@ const PodTableCtaButtons: FC<PodTableCtaButtonsProps> = ({ name, namespace, onLo
 };
 
 export const PodsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
@@ -150,9 +153,15 @@ export const PodsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Pods</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A Pod is the smallest deployable unit in Kubernetes, wrapping one or more containers that share storage, network, and a spec for how to run."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/pods"
+        />
         <span className="text-xs text-muted-foreground">
           {pods.length} item{pods.length !== 1 ? "s" : ""}
         </span>
+
         <div className="ml-auto flex items-center gap-4">
           <ResourceBulkDeletionButton
             count={selectedPodIds.size}

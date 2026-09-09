@@ -9,6 +9,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   SearchInput,
   Table,
@@ -29,6 +30,7 @@ import { PriorityClassDeleteConfirmationModal } from "./components/PriorityClass
 import { useGetPriorityClasses } from "./hooks/data-access/useGetPriorityClasses";
 import { useDeletePriorityClass } from "./hooks/data-mutation/useDeletePriorityClass";
 import { useDeletePriorityClasses } from "./hooks/data-mutation/useDeletePriorityClasses";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PriorityClassTableCtaButtonsProps {
   name: string;
@@ -74,6 +76,7 @@ const PriorityClassTableCtaButtons: FC<PriorityClassTableCtaButtonsProps> = ({ n
 };
 
 export const PriorityClassesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
   const { onTogglePriorityClass } = useDetailDrawerContext();
 
@@ -122,6 +125,12 @@ export const PriorityClassesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Priority Classes</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-xl" }}
+          description="A PriorityClass defines a mapping from a name to an integer priority value, used to influence Pod scheduling and preemption order."
+          docsUrl="https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption"
+        />
         <span className="text-xs text-muted-foreground">
           {priorityClasses.length} item{priorityClasses.length === 1 ? "" : "s"}
         </span>

@@ -2,9 +2,12 @@ import {
   Button,
   Checkbox,
   ChevronDownIcon,
+  Divider,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Input,
+  SearchIcon,
   Separator,
   cn,
 } from "@litelens/design-system";
@@ -31,6 +34,15 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
   const selectedNamespaces = useMemo(() => new Set(namespaces), [namespaces]);
 
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredNamespaces = useMemo(
+    () =>
+      search.trim()
+        ? sortedNamespaces.filter((ns) => ns.toLowerCase().includes(search.toLowerCase()))
+        : sortedNamespaces,
+    [sortedNamespaces, search]
+  );
 
   const triggerLabel = useMemo(() => {
     if (namespaces.length === 0) {
@@ -43,7 +55,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
   }, [namespaces]);
 
   const handleSelectAll = () => {
-    onNamespacesChange(sortedNamespaces);
+    onNamespacesChange(filteredNamespaces);
   };
 
   const handleClearAll = () => {
@@ -73,7 +85,13 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch("");
+      }}
+    >
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
@@ -88,6 +106,22 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="w-72" align="end">
+        <div className="px-2 pt-2">
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              placeholder="Search namespace…"
+              className="pl-8 text-sm"
+            />
+          </div>
+        </div>
+
+        <Divider className="mt-2" />
+
         <div className="px-2 py-2">
           <Button
             type="button"
@@ -95,6 +129,7 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
             size="sm"
             onClick={handleSelectAll}
             className="w-full justify-start text-xs"
+            disabled={filteredNamespaces.length === 0}
           >
             Select All
           </Button>
@@ -103,24 +138,30 @@ export const NamespaceMultiSelect: FC<NamespaceMultiSelectProps> = ({
         <Separator />
 
         <div className="max-h-64 space-y-2 overflow-y-auto p-2">
-          {sortedNamespaces.map((ns) => (
-            <div
-              key={ns}
-              className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/50"
-            >
-              <Checkbox
-                checked={selectedNamespaces.has(ns)}
-                onCheckedChange={() => handleToggleNamespace(ns)}
-                id={`ns-${ns}`}
-              />
-              <label
-                htmlFor={`ns-${ns}`}
-                className="flex-1 cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          {filteredNamespaces.length === 0 ? (
+            <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+              No namespace found.
+            </p>
+          ) : (
+            filteredNamespaces.map((ns) => (
+              <div
+                key={ns}
+                className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/50"
               >
-                {ns}
-              </label>
-            </div>
-          ))}
+                <Checkbox
+                  checked={selectedNamespaces.has(ns)}
+                  onCheckedChange={() => handleToggleNamespace(ns)}
+                  id={`ns-${ns}`}
+                />
+                <label
+                  htmlFor={`ns-${ns}`}
+                  className="flex-1 cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {ns}
+                </label>
+              </div>
+            ))
+          )}
         </div>
 
         <Separator className="my-2" />

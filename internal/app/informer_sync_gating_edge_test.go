@@ -595,7 +595,17 @@ func TestWaitForSyncIgnoringForbiddenDoesNotSkipSyncWait(t *testing.T) {
 		},
 	}
 
-	// Mark pods as forbidden BEFORE querying (simulating a 403 state)
+	// Wait for the initial cache sync to complete before simulating the 403 —
+	// otherwise StopResource races the informer's first LIST (StopResource
+	// closes the group's stop channel, which the sync-wait goroutine also
+	// selects on, so it can abandon the informer and declare a timeout
+	// before any data is ever cached; see kube/nsscope's "continuing in
+	// background" log path). A real 403 is only detected via the watch
+	// error handler, which fires after the initial sync has already
+	// populated the cache, so waiting here matches production timing.
+	<-h.GetSyncedChan("pods")
+
+	// Mark pods as forbidden AFTER the initial sync (simulating a 403 state)
 	h.StopResource("pods", func(string, string) {})
 
 	// Verify IsForbidden returns true

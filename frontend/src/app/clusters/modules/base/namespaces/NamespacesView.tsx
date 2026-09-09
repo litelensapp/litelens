@@ -11,6 +11,7 @@ import {
   ResourceBulkDeletionButton,
   ResourceCreationButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   SearchInput,
   Table,
@@ -34,6 +35,7 @@ import { NamespaceStatusBadge } from "./components/NamespaceStatusBadge";
 import { useGetNamespaces } from "./hooks/data-access/useGetNamespaces";
 import { useDeleteNamespace } from "./hooks/data-mutation/useDeleteNamespace";
 import { useDeleteNamespaces } from "./hooks/data-mutation/useDeleteNamespaces";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const NamespaceTableCtaButtons: FC<{ name: string }> = ({ name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -78,6 +80,7 @@ const NamespaceTableCtaButtons: FC<{ name: string }> = ({ name }) => {
 };
 
 export const NamespacesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedNamespaceNames, setSelectedNamespaceNames] = useState<Set<string>>(new Set());
@@ -109,6 +112,12 @@ export const NamespacesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Namespaces</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-2xl" }}
+          description="A Namespace provides a mechanism for isolating groups of resources within a single cluster."
+          docsUrl="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces"
+        />
         <span className="text-xs text-muted-foreground">
           {namespaces.length} item{namespaces.length === 1 ? "" : "s"}
         </span>

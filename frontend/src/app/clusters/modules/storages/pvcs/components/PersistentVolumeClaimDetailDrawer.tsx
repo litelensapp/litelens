@@ -89,7 +89,8 @@ const PVCDrawerCtaButtons: FC<PVCDrawerCtaButtonsProps> = ({ name, namespace, on
 };
 
 const PVCOverviewTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onTogglePodDetail, onToggleStorageClassDetail } =
+    useDetailDrawerContext();
 
   const hasLabels = Object.keys(pvc.Labels ?? {}).length > 0;
   const hasAnnotations = Object.keys(pvc.Annotations ?? {}).length > 0;
@@ -152,7 +153,13 @@ const PVCOverviewTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
         </span>
 
         <span className="text-h3 text-muted-foreground">Storage Class</span>
-        <span className="text-body font-mono">{pvc.StorageClass || "—"}</span>
+        {pvc.StorageClass ? (
+          <ResourceLink onClick={() => onToggleStorageClassDetail(pvc.StorageClass)}>
+            {pvc.StorageClass}
+          </ResourceLink>
+        ) : (
+          <span className="text-body font-mono">—</span>
+        )}
 
         <span className="text-h3 text-muted-foreground">Storage</span>
         <span className="text-body font-mono">{pvc.Size || "—"}</span>
@@ -162,7 +169,9 @@ const PVCOverviewTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
           {(pvc.Pods ?? []).length > 0 ? (
             <div className="flex flex-col gap-1">
               {pvc.Pods.map((pod) => (
-                <span key={pod}>{pod}</span>
+                <ResourceLink key={pod} onClick={() => onTogglePodDetail(pvc.Namespace, pod)}>
+                  {pod}
+                </ResourceLink>
               ))}
             </div>
           ) : (

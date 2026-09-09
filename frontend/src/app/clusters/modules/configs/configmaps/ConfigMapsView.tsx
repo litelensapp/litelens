@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { ConfigMapDeleteConfirmationModal } from "./components/ConfigMapDeleteCo
 import { useGetConfigMaps } from "./hooks/data-access/useGetConfigMaps";
 import { useDeleteConfigMap } from "./hooks/data-mutation/useDeleteConfigMap";
 import { useDeleteConfigMaps } from "./hooks/data-mutation/useDeleteConfigMaps";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ConfigMapTableCtaButtonsProps {
   name: string;
@@ -82,6 +84,7 @@ const ConfigMapTableCtaButtons: FC<ConfigMapTableCtaButtonsProps> = ({ namespace
 };
 
 export const ConfigMapsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleConfigMapDetail } = useDetailDrawerContext();
 
@@ -112,6 +115,11 @@ export const ConfigMapsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Config Maps</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A ConfigMap stores non-confidential configuration data as key-value pairs, which Pods can consume as environment variables, command-line arguments, or files."
+          docsUrl="https://kubernetes.io/docs/concepts/configuration/configmap"
+        />
         <span className="text-xs text-muted-foreground">
           {configmaps.length} item{configmaps.length !== 1 ? "s" : ""}
         </span>

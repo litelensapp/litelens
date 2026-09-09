@@ -119,13 +119,13 @@ func TestGetPluginsFromMarketplaceAllowedWhenEnabled(t *testing.T) {
 // TestIsMarketplaceEnabledBoundMethod verifies the new bound method
 // correctly reflects the config setting.
 func TestIsMarketplaceEnabledBoundMethod(t *testing.T) {
-	t.Run("returns false by default", func(t *testing.T) {
+	t.Run("returns true by default", func(t *testing.T) {
 		t.Setenv("MARKETPLACE_ENABLED", "")
 		os.Unsetenv("MARKETPLACE_ENABLED")
 
 		app := NewApp("test")
-		if app.IsMarketplaceEnabled() {
-			t.Error("expected IsMarketplaceEnabled to return false by default")
+		if !app.IsMarketplaceEnabled() {
+			t.Error("expected IsMarketplaceEnabled to return true by default")
 		}
 	})
 

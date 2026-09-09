@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -22,6 +23,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -90,12 +92,18 @@ const PersistentVolumeClaimTableCtaButtons: FC<PersistentVolumeClaimTableCtaButt
 };
 
 export const PersistentVolumeClaimsView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const {
+    onToggleNamespaceDetail,
+    onTogglePersistentVolumeClaimDetail,
+    onToggleStorageClassDetail,
+  } = useDetailDrawerContext();
+
+  const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selectedPVCKeys, setSelectedPVCKeys] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePersistentVolumeClaimDetail } = useDetailDrawerContext();
 
   const { mutate: deletePersistentVolumeClaims, isPending: isBulkDeletePending } =
     useDeletePersistentVolumeClaims();
@@ -124,6 +132,12 @@ export const PersistentVolumeClaimsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Persistent Volume Claims</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-xl" }}
+          description="A PersistentVolumeClaim is a request for storage by a user, which Kubernetes binds to a matching PersistentVolume."
+          docsUrl="https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims"
+        />
         <span className="text-xs text-muted-foreground">
           {pvcs.length} item{pvcs.length !== 1 ? "s" : ""}
         </span>
@@ -235,7 +249,20 @@ export const PersistentVolumeClaimsView: FC = () => {
                       </ResourceLink>
                     </TableCell>
                   )}
-                  <TableCell className="text-xs">{p.StorageClass}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.StorageClass ? (
+                      <ResourceLink
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStorageClassDetail(p.StorageClass);
+                        }}
+                      >
+                        {p.StorageClass}
+                      </ResourceLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{p.Size}</TableCell>
                   <TableCell className="max-w-xs truncate text-xs">{p.Pods}</TableCell>
                   <TableCell className="text-xs">{p.Age}</TableCell>

@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { RoleBindingDeleteConfirmationModal } from "./components/RoleBindingDele
 import { useGetRoleBindings } from "./hooks/data-access/useGetRoleBindings";
 import { useDeleteRoleBinding } from "./hooks/data-mutation/useDeleteRoleBinding";
 import { useDeleteRoleBindings } from "./hooks/data-mutation/useDeleteRoleBindings";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const RoleBindingTableCtaButtons: FC<{ namespace: string; name: string }> = ({
   namespace,
@@ -81,6 +83,7 @@ const RoleBindingTableCtaButtons: FC<{ namespace: string; name: string }> = ({
 };
 
 export const RoleBindingsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedRoleBindingIds, setSelectedRoleBindingIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -112,6 +115,11 @@ export const RoleBindingsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Role Bindings</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A RoleBinding grants the permissions defined in a Role (or ClusterRole) to a user, group, or service account within a single namespace."
+          docsUrl="https://kubernetes.io/docs/reference/access-authn-authz/rbac"
+        />
         <span className="text-xs text-muted-foreground">
           {roleBindings.length} item{roleBindings.length !== 1 ? "s" : ""}
         </span>

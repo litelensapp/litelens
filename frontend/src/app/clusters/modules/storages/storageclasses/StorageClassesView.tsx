@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   SaveIcon,
   SearchInput,
@@ -29,6 +30,7 @@ import { StorageClassDeleteConfirmationModal } from "./components/StorageClassDe
 import { useGetStorageClasses } from "./hooks/data-access/useGetStorageClasses";
 import { useDeleteStorageClass } from "./hooks/data-mutation/useDeleteStorageClass";
 import { useDeleteStorageClasses } from "./hooks/data-mutation/useDeleteStorageClasses";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const StorageClassTableCtaButtons: FC<{ name: string }> = ({ name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -73,6 +75,7 @@ const StorageClassTableCtaButtons: FC<{ name: string }> = ({ name }) => {
 };
 
 export const StorageClassesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
   const { onToggleStorageClassDetail } = useDetailDrawerContext();
   const [search, setSearch] = useState("");
@@ -103,6 +106,11 @@ export const StorageClassesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Storage Classes</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A StorageClass describes the classes of storage available in a cluster and enables dynamic provisioning of PersistentVolumes."
+          docsUrl="https://kubernetes.io/docs/concepts/storage/storage-classes"
+        />
         <span className="text-xs text-muted-foreground">
           {classes.length} item{classes.length !== 1 ? "s" : ""}
         </span>

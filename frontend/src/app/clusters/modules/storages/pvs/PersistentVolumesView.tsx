@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -22,6 +23,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -81,7 +83,13 @@ const PersistentVolumeTableCtaButtons: FC<PersistentVolumeTableCtaButtonsProps> 
 
 export const PersistentVolumesView: FC = () => {
   const { activeContext } = useMainLayoutContext();
-  const { onTogglePersistentVolumeDetail } = useDetailDrawerContext();
+  const {
+    onTogglePersistentVolumeDetail,
+    onToggleStorageClassDetail,
+    onTogglePersistentVolumeClaimDetail,
+  } = useDetailDrawerContext();
+
+  const openBrowserURL = useOpenBrowserURL();
 
   const [search, setSearch] = useState("");
   const [selectedPVNames, setSelectedPVNames] = useState<Set<string>>(new Set());
@@ -111,6 +119,12 @@ export const PersistentVolumesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Persistent Volumes</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A PersistentVolume is a piece of storage in the cluster provisioned by an administrator or dynamically via a StorageClass."
+          docsUrl="https://kubernetes.io/docs/concepts/storage/persistent-volumes"
+        />
         <span className="text-xs text-muted-foreground">
           {pvs.length} item{pvs.length !== 1 ? "s" : ""}
         </span>
@@ -205,10 +219,41 @@ export const PersistentVolumesView: FC = () => {
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{p.Name}</TableCell>
-                  <TableCell className="text-xs">{p.StorageClass}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.StorageClass ? (
+                      <ResourceLink
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStorageClassDetail(p.StorageClass);
+                        }}
+                      >
+                        {p.StorageClass}
+                      </ResourceLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{p.Capacity}</TableCell>
                   <TableCell className="text-xs">
-                    <ResourceLink>{p.Claim}</ResourceLink>
+                    {(() => {
+                      const [claimNamespace, claimName] = p.Claim?.includes("/")
+                        ? p.Claim.split("/")
+                        : [];
+                      return claimNamespace &&
+                        claimName &&
+                        p.Status.toLowerCase() !== "released" ? (
+                        <ResourceLink
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePersistentVolumeClaimDetail(claimNamespace, claimName);
+                          }}
+                        >
+                          {p.Claim}
+                        </ResourceLink>
+                      ) : (
+                        p.Claim
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-xs">{p.Age}</TableCell>
                   <TableCell>

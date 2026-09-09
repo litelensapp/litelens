@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { ServiceAccountDetailDrawer } from "./components/ServiceAccountDetailDra
 import { useGetServiceAccounts } from "./hooks/data-access/useGetServiceAccounts";
 import { useDeleteServiceAccount } from "./hooks/data-mutation/useDeleteServiceAccount";
 import { useDeleteServiceAccounts } from "./hooks/data-mutation/useDeleteServiceAccounts";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 type DrawerState = { name: string | null; namespace: string | null; open: boolean };
 
@@ -93,6 +95,7 @@ const ServiceAccountTableCtaButtons: FC<{ namespace: string; name: string }> = (
 };
 
 export const ServiceAccountsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedSAIds, setSelectedSAIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -133,6 +136,11 @@ export const ServiceAccountsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Service Accounts</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A ServiceAccount provides an identity for processes running in a Pod to authenticate with the Kubernetes API."
+          docsUrl="https://kubernetes.io/docs/concepts/security/service-accounts"
+        />
         <span className="text-xs text-muted-foreground">
           {serviceAccounts.length} item{serviceAccounts.length !== 1 ? "s" : ""}
         </span>

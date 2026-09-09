@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   SearchInput,
   ShieldIcon,
@@ -29,6 +30,7 @@ import { ClusterRoleDeleteConfirmationModal } from "./components/ClusterRoleDele
 import { useGetClusterRoles } from "./hooks/data-access/useGetClusterRoles";
 import { useDeleteClusterRole } from "./hooks/data-mutation/useDeleteClusterRole";
 import { useDeleteClusterRoles } from "./hooks/data-mutation/useDeleteClusterRoles";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ClusterRoleTableCtaButtonsProps {
   name: string;
@@ -77,6 +79,7 @@ const ClusterRoleTableCtaButtons: FC<ClusterRoleTableCtaButtonsProps> = ({ name 
 };
 
 export const ClusterRolesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedClusterRoleNames, setSelectedClusterRoleNames] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -107,6 +110,11 @@ export const ClusterRolesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Cluster Roles</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A ClusterRole defines a set of permissions that apply cluster-wide, across all namespaces, unlike a namespaced Role."
+          docsUrl="https://kubernetes.io/docs/reference/access-authn-authz/rbac"
+        />
         <span className="text-xs text-muted-foreground">
           {clusterRoles.length} item{clusterRoles.length !== 1 ? "s" : ""}
         </span>

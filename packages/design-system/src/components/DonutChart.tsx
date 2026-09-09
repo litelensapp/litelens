@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { ResourceLink } from "./ResourceLink";
+import { ResourceLink } from "./resources/ResourceLink";
 
 const RADIUS = 36;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;

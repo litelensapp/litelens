@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   SearchInput,
   Table,
@@ -29,6 +30,7 @@ import { ValidatingWebhookConfigDeleteConfirmationModal } from "./components/Val
 import { useGetValidatingWebhookConfigs } from "./hooks/data-access/useGetValidatingWebhookConfigs";
 import { useDeleteValidatingWebhookConfig } from "./hooks/data-mutation/useDeleteValidatingWebhookConfig";
 import { useDeleteValidatingWebhookConfigs } from "./hooks/data-mutation/useDeleteValidatingWebhookConfigs";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ValidatingWebhookConfigTableCtaButtonsProps {
   name: string;
@@ -81,6 +83,7 @@ const ValidatingWebhookConfigTableCtaButtons: FC<ValidatingWebhookConfigTableCta
 };
 
 export const ValidatingWebhookConfigsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedVWCNames, setSelectedVWCNames] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -112,6 +115,12 @@ export const ValidatingWebhookConfigsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Validating Webhook Configs</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A ValidatingWebhookConfiguration registers admission webhooks that can accept or reject requests to the Kubernetes API before they're persisted."
+          docsUrl="https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers"
+        />
         <span className="text-xs text-muted-foreground">
           {validatingWebhookConfigs.length} item{validatingWebhookConfigs.length !== 1 ? "s" : ""}
         </span>

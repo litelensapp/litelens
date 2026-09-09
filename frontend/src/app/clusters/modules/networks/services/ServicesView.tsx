@@ -9,6 +9,7 @@ import {
   NetworkIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -32,6 +33,7 @@ import { useUnifiedTray } from "../../../shared/components/trays/unified/Unified
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { ServiceDeleteConfirmationModal } from "./components/ServiceDeleteConfirmationModal";
 import { ServiceStatusBadge } from "./components/ServiceStatusBadge";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ServiceTableCtaButtonsProps {
   namespace: string;
@@ -83,6 +85,7 @@ const ServiceTableCtaButtons: FC<ServiceTableCtaButtonsProps> = ({ namespace, na
 };
 
 export const ServicesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -113,6 +116,12 @@ export const ServicesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Services</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A Service exposes a set of Pods as a network endpoint, enabling stable access to them via a fixed IP or DNS name."
+          docsUrl="https://kubernetes.io/docs/concepts/services-networking/service"
+        />
         <span className="text-xs text-muted-foreground">
           {services.length} item{services.length === 1 ? "" : "s"}
         </span>

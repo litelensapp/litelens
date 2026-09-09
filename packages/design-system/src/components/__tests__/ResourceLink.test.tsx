@@ -1,6 +1,6 @@
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { ResourceLink } from "../ResourceLink";
+import { ResourceLink } from "../resources/ResourceLink";
 
 afterEach(() => cleanup());
 

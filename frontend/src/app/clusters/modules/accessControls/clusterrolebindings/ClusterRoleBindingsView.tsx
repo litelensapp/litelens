@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -32,6 +33,7 @@ import { ClusterRoleBindingDeleteConfirmationModal } from "./components/ClusterR
 import { useGetClusterRoleBindings } from "./hooks/data-access/useGetClusterRoleBindings";
 import { useDeleteClusterRoleBinding } from "./hooks/data-mutation/useDeleteClusterRoleBinding";
 import { useDeleteClusterRoleBindings } from "./hooks/data-mutation/useDeleteClusterRoleBindings";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ClusterRoleBindingTableCtaButtonsProps {
   name: string;
@@ -84,6 +86,7 @@ const ClusterRoleBindingTableCtaButtons: FC<ClusterRoleBindingTableCtaButtonsPro
 };
 
 export const ClusterRoleBindingsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedClusterRoleBindingNames, setSelectedClusterRoleBindingNames] = useState<
     Set<string>
@@ -121,6 +124,11 @@ export const ClusterRoleBindingsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Cluster Role Bindings</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A ClusterRoleBinding grants the permissions defined in a ClusterRole to a user, group, or service account across the entire cluster."
+          docsUrl="https://kubernetes.io/docs/reference/access-authn-authz/rbac"
+        />
         <span className="text-xs text-muted-foreground">
           {clusterRoleBindings.length} item{clusterRoleBindings.length !== 1 ? "s" : ""}
         </span>

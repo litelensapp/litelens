@@ -9,6 +9,7 @@ import {
   MoreVerticalIcon,
   PencilIcon,
   PlayIcon,
+  ResourceExplanationTooltip,
   ResourceLink,
   SearchInput,
   SquareIcon,
@@ -97,6 +98,7 @@ async function handleActivate(pf: PortForward) {
 }
 
 export const PortForwardingView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
@@ -116,6 +118,12 @@ export const PortForwardingView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Port Forwarding</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-2xl" }}
+          description="Port forwarding creates a direct network tunnel to a Pod or Service, letting you reach it from your local machine without exposing it on the cluster."
+          docsUrl="https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster"
+        />
         <span className="text-xs text-muted-foreground">
           {sessions.length} item{sessions.length === 1 ? "" : "s"}
         </span>

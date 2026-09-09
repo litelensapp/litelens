@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   RouteIcon,
   SearchInput,
@@ -32,6 +33,7 @@ import { useDeleteIngressClass } from "./hooks/data-mutation/useDeleteIngressCla
 import { useDeleteIngressClasses } from "./hooks/data-mutation/useDeleteIngressClasses";
 import { useSetIngressClassAsDefault } from "./hooks/data-mutation/useSetIngressClassAsDefault";
 import { useUnsetIngressClassAsDefault } from "./hooks/data-mutation/useUnsetIngressClassAsDefault";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface IngressClassTableCtaButtonsProps {
   name: string;
@@ -93,6 +95,7 @@ const IngressClassTableCtaButtons: FC<IngressClassTableCtaButtonsProps> = ({ nam
 };
 
 export const IngressClassesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -150,6 +153,12 @@ export const IngressClassesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Ingress Classes</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-xl" }}
+          description="An IngressClass specifies which Ingress controller should implement a given Ingress, along with controller-specific configuration."
+          docsUrl="https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class"
+        />
         <span className="text-xs text-muted-foreground">
           {ingressClasses.length} item{ingressClasses.length !== 1 ? "s" : ""}
         </span>

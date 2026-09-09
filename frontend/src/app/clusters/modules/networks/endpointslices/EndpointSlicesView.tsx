@@ -8,6 +8,7 @@ import {
   NetworkIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { EndpointSliceDeleteConfirmationModal } from "./components/EndpointSliceDeleteConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface EndpointSliceTableCtaButtonsProps {
   name: string;
@@ -85,6 +87,7 @@ const EndpointSliceTableCtaButtons: FC<EndpointSliceTableCtaButtonsProps> = ({
 };
 
 export const EndpointSlicesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedSliceIds, setSelectedSliceIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -119,6 +122,12 @@ export const EndpointSlicesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Endpoint Slices</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="An EndpointSlice tracks network endpoints for a Service, offering a more scalable alternative to the Endpoints API."
+          docsUrl="https://kubernetes.io/docs/concepts/services-networking/endpoint-slices"
+        />
         <span className="text-xs text-muted-foreground">
           {slices.length} item{slices.length === 1 ? "" : "s"}
         </span>

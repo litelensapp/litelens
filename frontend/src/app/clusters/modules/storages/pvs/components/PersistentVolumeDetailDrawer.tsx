@@ -7,6 +7,7 @@ import {
   ResourceDetailDrawer,
   ResourceDetailDrawerHeader,
   ResourceDetailEmptyBody,
+  ResourceLink,
   ResourceModificationButton,
   ScrollArea,
   SheetTitle,
@@ -19,6 +20,7 @@ import {
 import { FC, useEffect, useState } from "react";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
+import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
@@ -29,6 +31,9 @@ import { PersistentVolumeDeleteConfirmationModal } from "./PersistentVolumeDelet
 import { PersistentVolumeStatusBadge } from "./PersistentVolumeStatusBadge";
 
 const PersistentVolumeOverviewTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv }) => {
+  const { onToggleStorageClassDetail, onTogglePersistentVolumeClaimDetail } =
+    useDetailDrawerContext();
+  const [claimNamespace, claimName] = pv.Claim?.includes("/") ? pv.Claim.split("/") : [];
   return (
     <ScrollArea className="h-full">
       <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
@@ -65,10 +70,24 @@ const PersistentVolumeOverviewTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv })
         <PersistentVolumeStatusBadge status={pv.Status} />
 
         <span className="text-h3 text-muted-foreground">Storage Class</span>
-        <span className="text-body">{pv.StorageClass}</span>
+        {pv.StorageClass ? (
+          <ResourceLink onClick={() => onToggleStorageClassDetail(pv.StorageClass)}>
+            {pv.StorageClass}
+          </ResourceLink>
+        ) : (
+          <span className="text-body">—</span>
+        )}
 
         <span className="text-h3 text-muted-foreground">Claim</span>
-        <span className="text-body">{pv.Claim}</span>
+        {claimName && claimNamespace && pv.Status.toLowerCase() !== "released" ? (
+          <ResourceLink
+            onClick={() => onTogglePersistentVolumeClaimDetail(claimNamespace, claimName)}
+          >
+            {pv.Claim}
+          </ResourceLink>
+        ) : (
+          <span className="text-body">{pv.Claim}</span>
+        )}
 
         <span className="text-h3 text-muted-foreground">Volume Mode</span>
         <span className="text-body">{pv.VolumeMode}</span>
