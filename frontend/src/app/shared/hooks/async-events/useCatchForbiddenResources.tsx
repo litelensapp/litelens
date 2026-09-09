@@ -6,11 +6,28 @@ import { IsResourceForbidden } from "@wailsjs/go/app/App";
 interface UseCatchForbiddenResourcesOptions {
   labelMap: Record<string, string>;
   activeContext?: string;
+  // Namespaces this dashboard is currently aggregating across (mirrors the
+  // `activeNamespaces` cluster-wide config — empty/undefined means "all
+  // namespaces"). A forbidden event/poll result for a namespace outside this
+  // set is ignored, so denying a resource in a namespace the user isn't even
+  // viewing doesn't toast here.
+  namespaces?: string[];
 }
 
 interface UseCatchForbiddenResourcesResult {
   forbiddenResources: Set<string>;
 }
+
+// Renders as "" for a cluster-wide denial (namespace === "") so toast copy doesn't
+// claim a specific namespace when none was actually identified.
+const namespaceSuffix = (namespace: string): string =>
+  namespace ? ` in namespace "${namespace}"` : "";
+
+// A forbidden namespace applies to this hook instance when it's cluster-wide
+// (namespace === ""), when the dashboard is viewing all namespaces (activeNamespaces
+// empty), or when it's one of the specific namespaces being aggregated.
+const appliesToActiveNamespaces = (namespace: string, activeNamespaces: string[]): boolean =>
+  namespace === "" || activeNamespaces.length === 0 || activeNamespaces.includes(namespace);
 
 // For a caller that depends on several resource kinds at once (e.g. a dashboard
 // aggregating pods/deployments/jobs summaries), rather than a single resource
@@ -47,14 +64,17 @@ export const useCatchForbiddenResources = (
     const unsub = EventsOn(
       "resource:forbidden",
       (payload: { resource: string; namespace: string }) => {
-        const { resource } = payload;
+        const { resource, namespace } = payload;
         setForbiddenResources((prev) => new Set([...prev, resource]));
         if (!activeResourcesRef.current.has(resource)) return;
+        if (!appliesToActiveNamespaces(namespace, optionsRef.current.namespaces ?? [])) return;
         if (toastFiredRef.current.has(resource)) return;
 
         toastFiredRef.current.add(resource);
         const label = optionsRef.current.labelMap[resource] ?? resource;
-        renderErrorToast({ title: `Access denied: cannot list ${label}` });
+        renderErrorToast({
+          title: `Access denied: cannot list ${label}${namespaceSuffix(namespace)}`,
+        });
       }
     );
     return () => {
@@ -68,17 +88,27 @@ export const useCatchForbiddenResources = (
   useEffect(() => {
     let cancelled = false;
     const opts = optionsRef.current;
+    const activeNamespaces = opts.namespaces ?? [];
+    // Viewing all namespaces: a resource forbidden anywhere applies, same as the
+    // "any namespace" semantics of IsResourceForbidden(resource, ""). Viewing a
+    // specific subset: check each one individually so a denial in a namespace
+    // outside that subset doesn't false-positive the toast.
+    const namespacesToCheck = activeNamespaces.length > 0 ? activeNamespaces : [""];
 
-    const promises = Array.from(activeResourcesRef.current).map(async (resource) => {
-      const forbidden = await IsResourceForbidden(resource, "");
-      if (cancelled || !forbidden) return;
+    const promises = Array.from(activeResourcesRef.current).flatMap((resource) =>
+      namespacesToCheck.map(async (namespace) => {
+        const forbidden = await IsResourceForbidden(resource, namespace);
+        if (cancelled || !forbidden) return;
 
-      setForbiddenResources((prev) => new Set([...prev, resource]));
-      if (toastFiredRef.current.has(resource)) return;
-      toastFiredRef.current.add(resource);
-      const label = opts.labelMap[resource] ?? resource;
-      renderErrorToast({ title: `Access denied: cannot list ${label}` });
-    });
+        setForbiddenResources((prev) => new Set([...prev, resource]));
+        if (toastFiredRef.current.has(resource)) return;
+        toastFiredRef.current.add(resource);
+        const label = opts.labelMap[resource] ?? resource;
+        renderErrorToast({
+          title: `Access denied: cannot list ${label}${namespaceSuffix(namespace)}`,
+        });
+      })
+    );
 
     Promise.all(promises);
     return () => {

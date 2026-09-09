@@ -34,6 +34,7 @@ export const OverviewView: FC<OverviewViewProps> = ({ onNavigateToView }) => {
     {
       labelMap: RESOURCE_LABEL,
       activeContext,
+      namespaces,
     }
   );
 

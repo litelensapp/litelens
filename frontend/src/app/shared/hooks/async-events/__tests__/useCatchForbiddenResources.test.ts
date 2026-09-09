@@ -103,6 +103,34 @@ describe("useCatchForbiddenResources", () => {
       });
     });
 
+    it("includes the namespace in the toast when the event carries one", () => {
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments", "nodes"], {
+          labelMap: LABEL_MAP,
+        })
+      );
+
+      fireForbiddenEvent("deployments", "ns-b");
+
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: 'Access denied: cannot list Deployments in namespace "ns-b"',
+      });
+    });
+
+    it("omits the namespace clause for a cluster-wide denial", () => {
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments", "nodes"], {
+          labelMap: LABEL_MAP,
+        })
+      );
+
+      fireForbiddenEvent("deployments", "");
+
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: "Access denied: cannot list Deployments",
+      });
+    });
+
     it("does NOT toast for an event not in the array, but still records it", () => {
       const { result } = renderHook(() =>
         useCatchForbiddenResources(["pods", "deployments"], {
@@ -141,6 +169,73 @@ describe("useCatchForbiddenResources", () => {
 
       rerender({ context: "cluster2" });
       expect(result.current.forbiddenResources.size).toBe(0);
+    });
+  });
+
+  describe("Namespace scoping (aggregated dashboard views)", () => {
+    it("does not toast when a namespace outside the viewed set is forbidden", () => {
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
+          namespaces: ["ns-a"],
+        })
+      );
+
+      fireForbiddenEvent("deployments", "ns-b");
+
+      expect(ErrorToastSpy).not.toHaveBeenCalled();
+    });
+
+    it("toasts when a namespace within the viewed set is forbidden", () => {
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
+          namespaces: ["ns-a", "ns-b"],
+        })
+      );
+
+      fireForbiddenEvent("deployments", "ns-b");
+
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: 'Access denied: cannot list Deployments in namespace "ns-b"',
+      });
+    });
+
+    it("toasts on a cluster-wide denial regardless of the viewed namespace set", () => {
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
+          namespaces: ["ns-a"],
+        })
+      );
+
+      fireForbiddenEvent("deployments", "");
+
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: "Access denied: cannot list Deployments",
+      });
+    });
+
+    it("polls each viewed namespace at mount and toasts only for the forbidden one", async () => {
+      isResourceForbiddenMock.mockImplementation((resource: string, namespace: string) =>
+        Promise.resolve(resource === "deployments" && namespace === "ns-b")
+      );
+
+      renderHook(() =>
+        useCatchForbiddenResources(["pods", "deployments"], {
+          labelMap: LABEL_MAP,
+          namespaces: ["ns-a", "ns-b"],
+        })
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(isResourceForbiddenMock).toHaveBeenCalledWith("deployments", "ns-a");
+      expect(isResourceForbiddenMock).toHaveBeenCalledWith("deployments", "ns-b");
+      expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: 'Access denied: cannot list Deployments in namespace "ns-b"',
+      });
     });
   });
 
