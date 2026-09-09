@@ -9,6 +9,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   ResourceRestartButton,
@@ -34,6 +35,7 @@ import { useUnifiedTray } from "../../../shared/components/trays/unified/Unified
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { DaemonSetDeleteConfirmationModal } from "./components/DaemonSetDeleteConfirmationModal";
 import { DaemonSetRestartConfirmationModal } from "./components/DaemonSetRestartConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface DaemonSetTableCtaButtonsProps {
   namespace: string;
@@ -99,6 +101,7 @@ const DaemonSetTableCtaButtons: FC<DaemonSetTableCtaButtonsProps> = ({ namespace
 };
 
 export const DaemonSetsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleDaemonSetDetail } = useDetailDrawerContext();
   const [search, setSearch] = useState("");
@@ -132,6 +135,12 @@ export const DaemonSetsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Daemon Sets</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A DaemonSet ensures that a copy of a Pod runs on all, or a subset of, Nodes in the cluster."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset"
+        />
         <span className="text-xs text-muted-foreground">
           {daemonsets.length} item{daemonsets.length !== 1 ? "s" : ""}
         </span>

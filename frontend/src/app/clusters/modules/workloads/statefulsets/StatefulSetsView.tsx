@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -30,6 +31,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { StatefulSetDeleteConfirmationModal } from "./components/StatefulSetDeleteConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface StatefulSetTableCtaButtonsProps {
   namespace: string;
@@ -81,6 +83,7 @@ const StatefulSetTableCtaButtons: FC<StatefulSetTableCtaButtonsProps> = ({ names
 };
 
 export const StatefulSetsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedStatefulSetIds, setSelectedStatefulSetIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -115,6 +118,12 @@ export const StatefulSetsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Stateful Sets</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A StatefulSet manages the deployment and scaling of Pods that need stable, unique network identities and persistent storage."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset"
+        />
         <span className="text-xs text-muted-foreground">
           {statefulsets.length} item{statefulsets.length !== 1 ? "s" : ""}
         </span>

@@ -8,6 +8,7 @@ import {
   PackageIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   ResourceRestartButton,
@@ -37,6 +38,7 @@ import { DeploymentConditionBadge } from "./components/DeploymentConditionBadge"
 import { DeploymentDeleteConfirmationModal } from "./components/DeploymentDeleteConfirmationModal";
 import { DeploymentRestartConfirmationModal } from "./components/DeploymentRestartConfirmationModal";
 import { DeploymentScaleModal } from "./components/DeploymentScaleModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface DeploymentTableCtaButtonsProps {
   namespace: string;
@@ -129,6 +131,7 @@ const DeploymentTableCtaButtons: FC<DeploymentTableCtaButtonsProps> = ({
 };
 
 export const DeploymentsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleDeploymentDetail } = useDetailDrawerContext();
 
@@ -164,6 +167,12 @@ export const DeploymentsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Deployments</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A Deployment manages a replicated set of Pods, providing declarative updates, rollbacks, and scaling for stateless applications."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/controllers/deployment"
+        />
         <span className="text-xs text-muted-foreground">
           {deployments.length} item{deployments.length !== 1 ? "s" : ""}
         </span>

@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   ScalingIcon,
@@ -30,6 +31,7 @@ import { HPAStatusBadge } from "./components/HPAStatusBadge";
 import { useGetHPAs } from "./hooks/data-access/useGetHPAs";
 import { useDeleteHPA } from "./hooks/data-mutation/useDeleteHPA";
 import { useDeleteHPAs } from "./hooks/data-mutation/useDeleteHPAs";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface HPATableCtaButtonsProps {
   name: string;
@@ -81,6 +83,7 @@ const HPATableCtaButtons: FC<HPATableCtaButtonsProps> = ({ namespace, name }) =>
 };
 
 export const HPAView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedHPAIds, setSelectedHPAIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -111,6 +114,12 @@ export const HPAView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Horizontal Pod Autoscalers</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A HorizontalPodAutoscaler automatically scales the number of Pod replicas based on observed CPU/memory utilization or custom metrics."
+          docsUrl="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale"
+        />
         <span className="text-xs text-muted-foreground">
           {hpas.length} item{hpas.length !== 1 ? "s" : ""}
         </span>

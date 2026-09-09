@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { PersistentVolumeStatusBadge } from "./components/PersistentVolumeStatus
 import { useGetPersistentVolumes } from "./hooks/data-access/useGetPersistentVolumes";
 import { useDeletePersistentVolume } from "./hooks/data-mutation/useDeletePersistentVolume";
 import { useDeletePersistentVolumes } from "./hooks/data-mutation/useDeletePersistentVolumes";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PersistentVolumeTableCtaButtonsProps {
   name: string;
@@ -80,6 +82,7 @@ const PersistentVolumeTableCtaButtons: FC<PersistentVolumeTableCtaButtonsProps> 
 };
 
 export const PersistentVolumesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
   const { onTogglePersistentVolumeDetail } = useDetailDrawerContext();
 
@@ -111,6 +114,12 @@ export const PersistentVolumesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Persistent Volumes</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A PersistentVolume is a piece of storage in the cluster provisioned by an administrator or dynamically via a StorageClass."
+          docsUrl="https://kubernetes.io/docs/concepts/storage/persistent-volumes"
+        />
         <span className="text-xs text-muted-foreground">
           {pvs.length} item{pvs.length !== 1 ? "s" : ""}
         </span>

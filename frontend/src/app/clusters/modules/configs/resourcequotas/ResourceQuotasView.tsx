@@ -10,6 +10,7 @@ import {
   ResourceBulkDeletionButton,
   ResourceCreationButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -33,6 +34,7 @@ import { ResourceQuotaDeleteConfirmationModal } from "./components/ResourceQuota
 import { useGetResourceQuotas } from "./hooks/data-access/useGetResourceQuotas";
 import { useDeleteResourceQuota } from "./hooks/data-mutation/useDeleteResourceQuota";
 import { useDeleteResourceQuotas } from "./hooks/data-mutation/useDeleteResourceQuotas";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ResourceQuotaTableCtaButtonsProps {
   name: string;
@@ -87,6 +89,7 @@ const ResourceQuotaTableCtaButtons: FC<ResourceQuotaTableCtaButtonsProps> = ({
 };
 
 export const ResourceQuotasView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedResourceQuotaIds, setSelectedResourceQuotaIds] = useState<Set<string>>(new Set());
@@ -122,6 +125,11 @@ export const ResourceQuotasView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Resource Quotas</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A ResourceQuota limits aggregate resource consumption, such as CPU, memory, and object counts, within a namespace."
+          docsUrl="https://kubernetes.io/docs/concepts/policy/resource-quotas"
+        />
         <span className="text-xs text-muted-foreground">
           {quotas.length} item{quotas.length !== 1 ? "s" : ""}
         </span>

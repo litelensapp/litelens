@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -29,6 +30,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { LeaseDeleteConfirmationModal } from "./components/LeaseDeleteConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface LeaseTableCtaButtonsProps {
   namespace: string;
@@ -76,6 +78,7 @@ const LeaseTableCtaButtons: FC<LeaseTableCtaButtonsProps> = ({ namespace, name }
 };
 
 export const LeasesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -149,6 +152,11 @@ export const LeasesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Leases</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A Lease is a lightweight resource used for system components to coordinate behavior, such as leader election and node heartbeats."
+          docsUrl="https://kubernetes.io/docs/concepts/architecture/leases"
+        />
         <span className="text-xs text-muted-foreground">
           {leases.length} item{leases.length === 1 ? "" : "s"}
         </span>

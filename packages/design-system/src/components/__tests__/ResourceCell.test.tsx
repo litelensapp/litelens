@@ -1,6 +1,6 @@
 import { render, cleanup } from "@testing-library/react";
 import { describe, it, expect, afterEach } from "vitest";
-import { ResourceCell } from "../ResourceCell";
+import { ResourceCell } from "../resources/ResourceCell";
 
 afterEach(() => cleanup());
 

@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { PersistentVolumeClaimStatusBadge } from "./components/PersistentVolumeC
 import { useGetPersistentVolumeClaims } from "./hooks/data-access/useGetPersistentVolumeClaims";
 import { useDeletePersistentVolumeClaim } from "./hooks/data-mutation/useDeletePersistentVolumeClaim";
 import { useDeletePersistentVolumeClaims } from "./hooks/data-mutation/useDeletePersistentVolumeClaims";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PersistentVolumeClaimTableCtaButtonsProps {
   name: string;
@@ -90,6 +92,7 @@ const PersistentVolumeClaimTableCtaButtons: FC<PersistentVolumeClaimTableCtaButt
 };
 
 export const PersistentVolumeClaimsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedPVCKeys, setSelectedPVCKeys] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -124,6 +127,12 @@ export const PersistentVolumeClaimsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Persistent Volume Claims</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-xl" }}
+          description="A PersistentVolumeClaim is a request for storage by a user, which Kubernetes binds to a matching PersistentVolume."
+          docsUrl="https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims"
+        />
         <span className="text-xs text-muted-foreground">
           {pvcs.length} item{pvcs.length !== 1 ? "s" : ""}
         </span>

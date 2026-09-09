@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { cn } from "../utils/common";
+import { cn } from "../../utils/common";
 
 function barColor(percent: number): string {
   if (percent <= 50) return "bg-success";

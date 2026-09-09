@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -30,6 +31,7 @@ import { NetworkPolicyDeleteConfirmationModal } from "./components/NetworkPolicy
 import { useGetNetworkPolicies } from "./hooks/data-access/useGetNetworkPolicies";
 import { useDeleteNetworkPolicies } from "./hooks/data-mutation/useDeleteNetworkPolicies";
 import { useDeleteNetworkPolicy } from "./hooks/data-mutation/useDeleteNetworkPolicy";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface NetworkPolicyTableCtaButtonsProps {
   name: string;
@@ -84,6 +86,7 @@ const NetworkPolicyTableCtaButtons: FC<NetworkPolicyTableCtaButtonsProps> = ({
 };
 
 export const NetworkPoliciesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -118,6 +121,12 @@ export const NetworkPoliciesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Network Policies</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A NetworkPolicy controls traffic flow between Pods and network endpoints, allowing you to restrict which traffic is permitted."
+          docsUrl="https://kubernetes.io/docs/concepts/services-networking/network-policies"
+        />
         <span className="text-xs text-muted-foreground">
           {policies.length} item{policies.length !== 1 ? "s" : ""}
         </span>

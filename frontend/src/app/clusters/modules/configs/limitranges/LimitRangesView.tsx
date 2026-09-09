@@ -9,6 +9,7 @@ import {
   ResourceBulkDeletionButton,
   ResourceCreationButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -33,6 +34,7 @@ import { LimitRangeDeleteConfirmationModal } from "./components/LimitRangeDelete
 import { useGetLimitRanges } from "./hooks/data-access/useGetLimitRanges";
 import { useDeleteLimitRange } from "./hooks/data-mutation/useDeleteLimitRange";
 import { useDeleteLimitRanges } from "./hooks/data-mutation/useDeleteLimitRanges";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface LimitRangeTableCtaButtonsProps {
   name: string;
@@ -84,6 +86,7 @@ const LimitRangeTableCtaButtons: FC<LimitRangeTableCtaButtonsProps> = ({ name, n
 };
 
 export const LimitRangesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedLimitRangeIds, setSelectedLimitRangeIds] = useState<Set<string>>(new Set());
@@ -115,6 +118,11 @@ export const LimitRangesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Limit Ranges</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A LimitRange constrains the resource requests and limits that containers or Pods can request within a namespace."
+          docsUrl="https://kubernetes.io/docs/concepts/policy/limit-range"
+        />
         <span className="text-xs text-muted-foreground">
           {limitranges.length} item{limitranges.length !== 1 ? "s" : ""}
         </span>

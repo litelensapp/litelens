@@ -1,6 +1,6 @@
-import { Button } from "../atoms/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../atoms/tooltip";
-import { cn } from "../utils/common";
+import { Button } from "../../atoms/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../atoms/tooltip";
+import { cn } from "../../utils/common";
 import { FC, MouseEvent, ReactNode, useLayoutEffect, useRef, useState } from "react";
 
 interface ResourceLinkProps {

@@ -8,6 +8,7 @@ import {
   ResourceBulkDeletionButton,
   ResourceCell,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceModificationButton,
   SearchInput,
   ServerIcon,
@@ -41,6 +42,7 @@ import { NodeDrainConfirmationModal } from "./components/NodeDrainConfirmationMo
 import { NodeSchedulableBadge } from "./components/NodeSchedulableBadge";
 import { NodeUncordonButton } from "./components/NodeUncordonButton";
 import { NodeUncordonConfirmationModal } from "./components/NodeUncordonConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const NodeTableCtaButtons: FC<{ name: string; unschedulable: boolean }> = ({
   name,
@@ -141,6 +143,7 @@ const NodeTableCtaButtons: FC<{ name: string; unschedulable: boolean }> = ({
 };
 
 export const NodesView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
   const { onToggleNodeDetail } = useDetailDrawerContext();
 
@@ -184,6 +187,11 @@ export const NodesView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Nodes</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A Node is a worker machine in Kubernetes that runs containerized workloads, managed by the control plane."
+          docsUrl="https://kubernetes.io/docs/concepts/architecture/nodes"
+        />
         <span className="text-xs text-muted-foreground">
           {nodes.length} item{nodes.length === 1 ? "" : "s"}
         </span>

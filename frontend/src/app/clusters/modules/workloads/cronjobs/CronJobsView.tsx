@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   ResourceResumeButton,
@@ -36,6 +37,7 @@ import { useCreateJobFromCronJob } from "./hooks/data-mutation/useCreateJobFromC
 import { useDeleteCronJob } from "./hooks/data-mutation/useDeleteCronJob";
 import { useDeleteCronJobs } from "./hooks/data-mutation/useDeleteCronJobs";
 import { useSetCronJobSuspend } from "./hooks/data-mutation/useSetCronJobSuspend";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface CronJobTableCtaButtonsProps {
   name: string;
@@ -134,6 +136,7 @@ const CronJobTableCtaButtons: FC<CronJobTableCtaButtonsProps> = ({
 };
 
 export const CronJobsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedCronJobIds, setSelectedCronJobIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -168,6 +171,12 @@ export const CronJobsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Cron Jobs</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A CronJob creates Jobs on a repeating schedule, similar to a cron entry on a Unix system."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs"
+        />
         <span className="text-xs text-muted-foreground">
           {cronjobs.length} item{cronjobs.length === 1 ? "" : "s"}
         </span>

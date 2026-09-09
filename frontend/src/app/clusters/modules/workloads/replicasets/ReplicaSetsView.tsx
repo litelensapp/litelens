@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   ResourceScaleButton,
@@ -33,6 +34,7 @@ import { useUnifiedTray } from "../../../shared/components/trays/unified/Unified
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { ReplicaSetDeleteConfirmationModal } from "./components/ReplicaSetDeleteConfirmationModal";
 import { ReplicaSetScaleModal } from "./components/ReplicaSetScaleModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ReplicaSetTableCtaButtonsProps {
   namespace: string;
@@ -117,6 +119,7 @@ const ReplicaSetTableCtaButtons: FC<ReplicaSetTableCtaButtonsProps> = ({
 };
 
 export const ReplicaSetsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedReplicaSetIds, setSelectedReplicaSetIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -151,6 +154,12 @@ export const ReplicaSetsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Replica Sets</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="A ReplicaSet ensures that a specified number of identical Pod replicas are running at any given time."
+          docsUrl="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset"
+        />
         <span className="text-xs text-muted-foreground">
           {replicasets.length} item{replicasets.length == 1 ? "" : "s"}
         </span>

@@ -16,6 +16,7 @@ export {
   ChevronsRightIcon,
   ChevronUpIcon,
   CircleCheckIcon,
+  CircleHelpIcon,
   CircleXIcon,
   ClockIcon,
   ContainerIcon,

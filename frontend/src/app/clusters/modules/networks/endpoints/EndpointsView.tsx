@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   RouteIcon,
@@ -30,6 +31,7 @@ import { useDetailDrawerContext } from "../../../shared/components/details/Detai
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { EndpointDeleteConfirmationModal } from "./components/EndpointDeleteConfirmationModal";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface EndpointTableCtaButtonsProps {
   name: string;
@@ -81,6 +83,7 @@ const EndpointTableCtaButtons: FC<EndpointTableCtaButtonsProps> = ({ name, names
 };
 
 export const EndpointsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedEndpointIds, setSelectedEndpointIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -111,6 +114,12 @@ export const EndpointsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Endpoints</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          classNames={{ content: "max-w-lg" }}
+          description="An Endpoints object tracks the IP addresses and ports of the Pods that back a Service."
+          docsUrl="https://kubernetes.io/docs/concepts/services-networking/service"
+        />
         <span className="text-xs text-muted-foreground">
           {endpoints.length} item{endpoints.length === 1 ? "" : "s"}
         </span>

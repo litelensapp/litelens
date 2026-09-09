@@ -8,6 +8,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -31,6 +32,7 @@ import { SecretDeleteConfirmationModal } from "./components/SecretDeleteConfirma
 import { useGetSecrets } from "./hooks/data-access/useGetSecrets";
 import { useDeleteSecret } from "./hooks/data-mutation/useDeleteSecret";
 import { useDeleteSecrets } from "./hooks/data-mutation/useDeleteSecrets";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface SecretTableCtaButtonsProps {
   name: string;
@@ -82,6 +84,7 @@ const SecretTableCtaButtons: FC<SecretTableCtaButtonsProps> = ({ namespace, name
 };
 
 export const SecretsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext();
 
@@ -112,6 +115,11 @@ export const SecretsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Secrets</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A Secret stores sensitive data, such as passwords, tokens, or keys, keeping it separate from application code."
+          docsUrl="https://kubernetes.io/docs/concepts/configuration/secret"
+        />
         <span className="text-xs text-muted-foreground">
           {secrets.length} item{secrets.length !== 1 ? "s" : ""}
         </span>

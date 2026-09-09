@@ -257,8 +257,8 @@ const ContainerBlock: FC<{
                 <div className="flex flex-col gap-0.5">
                   <span className="text-body font-mono break-all">{label}</span>
                   <div className="mt-0.5 flex flex-wrap gap-1">
-                    {params.map((p) => (
-                      <Badge key={p} variant="secondary" className="text-xs">
+                    {params.map((p, i) => (
+                      <Badge key={`${i}-${p}`} variant="secondary" className="text-xs">
                         {p}
                       </Badge>
                     ))}
@@ -277,8 +277,8 @@ const ContainerBlock: FC<{
                 <div className="flex flex-col gap-0.5">
                   <span className="text-body font-mono break-all">{label}</span>
                   <div className="mt-0.5 flex flex-wrap gap-1">
-                    {params.map((p) => (
-                      <Badge key={p} variant="secondary" className="text-xs">
+                    {params.map((p, i) => (
+                      <Badge key={`${i}-${p}`} variant="secondary" className="text-xs">
                         {p}
                       </Badge>
                     ))}
@@ -297,8 +297,8 @@ const ContainerBlock: FC<{
                 <div className="flex flex-col gap-0.5">
                   <span className="font-mono text-xs break-all">{label}</span>
                   <div className="mt-0.5 flex flex-wrap gap-1">
-                    {params.map((p) => (
-                      <Badge key={p} variant="secondary" className="text-xs">
+                    {params.map((p, i) => (
+                      <Badge key={`${i}-${p}`} variant="secondary" className="text-xs">
                         {p}
                       </Badge>
                     ))}

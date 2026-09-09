@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   ResourceBulkDeletionButton,
   ResourceDeletionButton,
+  ResourceExplanationTooltip,
   ResourceLink,
   ResourceModificationButton,
   SearchInput,
@@ -29,6 +30,7 @@ import { PodDisruptionBudgetDeleteConfirmationModal } from "./components/PodDisr
 import { useGetPodDisruptionBudgets } from "./hooks/data-access/useGetPodDisruptionBudgets";
 import { useDeletePodDisruptionBudget } from "./hooks/data-mutation/useDeletePodDisruptionBudget";
 import { useDeletePodDisruptionBudgets } from "./hooks/data-mutation/useDeletePodDisruptionBudgets";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface PodDisruptionBudgetTableCtaButtonsProps {
   name: string;
@@ -86,6 +88,7 @@ const PodDisruptionBudgetTableCtaButtons: FC<PodDisruptionBudgetTableCtaButtonsP
 };
 
 export const PodDisruptionBudgetsView: FC = () => {
+  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
   const { onToggleNamespaceDetail, onTogglePodDisruptionBudgetDetail } = useDetailDrawerContext();
 
@@ -120,6 +123,11 @@ export const PodDisruptionBudgetsView: FC = () => {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-h1">Pod Disruption Budgets</span>
+        <ResourceExplanationTooltip
+          onOpenDocs={openBrowserURL}
+          description="A PodDisruptionBudget limits the number of Pods of a replicated application that can be down simultaneously during voluntary disruptions."
+          docsUrl="https://kubernetes.io/docs/tasks/run-application/configure-pdb"
+        />
         <span className="text-xs text-muted-foreground">
           {pdbs.length} item{pdbs.length !== 1 ? "s" : ""}
         </span>
