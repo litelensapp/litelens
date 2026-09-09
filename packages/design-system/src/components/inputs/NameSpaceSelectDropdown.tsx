@@ -3,27 +3,40 @@ import { SearchIcon } from "../../atoms/icon";
 import { Input } from "../../atoms/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../atoms/select";
 
-const TIMEZONES: string[] = Intl.supportedValuesOf("timeZone");
-
-interface TimezoneSelectProps {
+interface NameSpaceSelectDropdownProps {
+  namespaces: string[];
   value: string;
-  onChange: (tz: string) => void;
+  onChange: (namespace: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  positionerClassName?: string;
   "aria-labelledby"?: string;
 }
 
-export const TimezoneSelect: FC<TimezoneSelectProps> = ({
+export const NameSpaceSelectDropdown: FC<NameSpaceSelectDropdownProps> = ({
+  namespaces,
   value,
   onChange,
+  disabled = false,
+  placeholder = "Select namespace",
+  className,
+  positionerClassName,
   "aria-labelledby": ariaLabelledBy,
 }) => {
   const [search, setSearch] = useState("");
 
+  const sortedNamespaces = useMemo(
+    () => namespaces.slice().sort((a, b) => a.localeCompare(b)),
+    [namespaces]
+  );
+
   const filtered = useMemo(
     () =>
       search.trim()
-        ? TIMEZONES.filter((tz) => tz.toLowerCase().includes(search.toLowerCase()))
-        : TIMEZONES,
-    [search]
+        ? sortedNamespaces.filter((ns) => ns.toLowerCase().includes(search.toLowerCase()))
+        : sortedNamespaces,
+    [sortedNamespaces, search]
   );
 
   return (
@@ -35,11 +48,16 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
       onOpenChange={(open) => {
         if (!open) setSearch("");
       }}
+      disabled={disabled}
     >
-      <SelectTrigger aria-labelledby={ariaLabelledBy} className="w-full">
-        <SelectValue />
+      <SelectTrigger aria-labelledby={ariaLabelledBy} aria-label="Namespace" className={className}>
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent alignItemWithTrigger={false} className="max-h-72">
+      <SelectContent
+        alignItemWithTrigger={false}
+        positionerClassName={positionerClassName}
+        className="max-h-72"
+      >
         <div className="sticky top-0 z-10 border-b bg-popover p-1.5">
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -48,17 +66,17 @@ export const TimezoneSelect: FC<TimezoneSelectProps> = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
-              placeholder="Search timezone…"
+              placeholder="Search namespace…"
               className="pl-8 text-sm"
             />
           </div>
         </div>
         {filtered.length === 0 ? (
-          <p className="px-3 py-4 text-center text-sm text-muted-foreground">No timezone found.</p>
+          <p className="px-3 py-4 text-center text-sm text-muted-foreground">No namespace found.</p>
         ) : (
-          filtered.map((tz) => (
-            <SelectItem key={tz} value={tz}>
-              {tz}
+          filtered.map((ns) => (
+            <SelectItem key={ns} value={ns}>
+              {ns}
             </SelectItem>
           ))
         )}
