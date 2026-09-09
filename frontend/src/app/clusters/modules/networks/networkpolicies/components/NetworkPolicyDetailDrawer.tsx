@@ -71,7 +71,7 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
   return (
     <ScrollArea className="h-full">
       {/* Metadata */}
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {new Date(np.CreatedAt).toLocaleString()} ({np.CreatedAt})

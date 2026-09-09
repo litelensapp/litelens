@@ -251,12 +251,12 @@ export const DaemonSetsView: FC = () => {
                   )}
                   <TableCell className="text-xs">{ds.Pods}</TableCell>
                   <TableCell>
-                    {!ds.NodeSelector || ds.NodeSelector === "<none>" ? (
+                    {Object.keys(ds.NodeSelector ?? {}).length === 0 ? (
                       <span className="text-xs text-muted-foreground">—</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
-                        {ds.NodeSelector.split(",").map((s) => (
-                          <AnnotationBadge key={s} label={s} />
+                        {Object.entries(ds.NodeSelector).map(([k, v]) => (
+                          <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
                         ))}
                       </div>
                     )}

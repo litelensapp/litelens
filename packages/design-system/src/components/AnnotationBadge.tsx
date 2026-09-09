@@ -16,7 +16,7 @@ export const AnnotationBadge: FC<Props> = ({ label }) => {
   }, [label]);
 
   const badge = (
-    <Badge variant="secondary" className="max-w-2xs cursor-default font-mono text-xs">
+    <Badge variant="secondary" className="max-w-full min-w-0 cursor-default font-mono text-xs">
       <span ref={spanRef} className="block truncate">
         {label}
       </span>
@@ -27,7 +27,7 @@ export const AnnotationBadge: FC<Props> = ({ label }) => {
 
   return (
     <Tooltip>
-      <TooltipTrigger className="text-left">{badge}</TooltipTrigger>
+      <TooltipTrigger className="max-w-full min-w-0 text-left">{badge}</TooltipTrigger>
       <TooltipContent>
         <span className="font-mono break-all">{label}</span>
       </TooltipContent>

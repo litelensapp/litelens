@@ -13,8 +13,8 @@ export interface ReplicaSet {
   Labels: Record<string, string>;
   Annotations: Record<string, string>;
   ManagedFields: ManagedField[];
-  Selector: string;
-  NodeSelector: string;
+  Selector: Record<string, string>;
+  NodeSelector: Record<string, string>;
   Images: string[];
   ReplicasDetail: string;
   Tolerations: number;

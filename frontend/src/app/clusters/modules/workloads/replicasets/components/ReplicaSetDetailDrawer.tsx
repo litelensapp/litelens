@@ -122,7 +122,7 @@ const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {rs.Age} ago ({rs.CreatedAt})
@@ -178,17 +178,25 @@ const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
           </>
         )}
 
-        {rs.Selector && (
+        {Object.keys(rs.Selector ?? {}).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Selector</span>
-            <span className="text-body font-mono">{rs.Selector}</span>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(rs.Selector).map(([k, v]) => (
+                <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+              ))}
+            </div>
           </>
         )}
 
-        {rs.NodeSelector && rs.NodeSelector !== "<none>" && (
+        {Object.keys(rs.NodeSelector ?? {}).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Node Selector</span>
-            <span className="text-body font-mono">{rs.NodeSelector}</span>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(rs.NodeSelector).map(([k, v]) => (
+                <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+              ))}
+            </div>
           </>
         )}
 

@@ -18,8 +18,8 @@ type ReplicaSet struct {
 	Labels         map[string]string
 	Annotations    map[string]string
 	ManagedFields  []ManagedField
-	Selector       string
-	NodeSelector   string
+	Selector       map[string]string
+	NodeSelector   map[string]string
 	Images         []string
 	ReplicasDetail string
 	Tolerations    int

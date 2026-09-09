@@ -3,8 +3,6 @@ package kubeResources
 import (
 	"fmt"
 	"log"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -16,14 +14,9 @@ import (
 func toDaemonSet(ds *appsv1.DaemonSet) dto.DaemonSet {
 	pods := fmt.Sprintf("%d/%d", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
 
-	selectorParts := make([]string, 0, len(ds.Spec.Template.Spec.NodeSelector))
-	for k, v := range ds.Spec.Template.Spec.NodeSelector {
-		selectorParts = append(selectorParts, fmt.Sprintf("%s=%s", k, v))
-	}
-	sort.Strings(selectorParts)
-	nodeSelector := strings.Join(selectorParts, ", ")
-	if nodeSelector == "" {
-		nodeSelector = "<none>"
+	nodeSelector := ds.Spec.Template.Spec.NodeSelector
+	if nodeSelector == nil {
+		nodeSelector = map[string]string{}
 	}
 
 	return dto.DaemonSet{
@@ -46,20 +39,11 @@ func toDaemonSet(ds *appsv1.DaemonSet) dto.DaemonSet {
 			return ds.Annotations
 		}(),
 		ManagedFields: toManagedFields(ds),
-		Selector: func() string {
-			if ds.Spec.Selector == nil {
-				return ""
+		Selector: func() map[string]string {
+			if ds.Spec.Selector == nil || ds.Spec.Selector.MatchLabels == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(ds.Spec.Selector.MatchLabels))
-			for k := range ds.Spec.Selector.MatchLabels {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+ds.Spec.Selector.MatchLabels[k])
-			}
-			return strings.Join(parts, ", ")
+			return ds.Spec.Selector.MatchLabels
 		}(),
 		Images: func() []string {
 			out := make([]string, 0, len(ds.Spec.Template.Spec.Containers))

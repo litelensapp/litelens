@@ -46,7 +46,7 @@ const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
   const cronDescription = cj.Schedule ? getCronDescription(cj.Schedule) : null;
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-x-4 gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-x-4 gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {cj.Age} ago ({cj.CreatedAt})
@@ -255,7 +255,11 @@ const CronJobJobsTab: FC<{ cj: CronJob }> = ({ cj }) => {
                 <TableCell>
                   <JobConditionBadge condition={j.Status} />
                 </TableCell>
-                <TableCell className="max-w-40 truncate font-mono text-xs">{j.Selector}</TableCell>
+                <TableCell className="max-w-40 truncate font-mono text-xs">
+                  {Object.entries(j.Selector ?? {})
+                    .map(([k, v]) => (v ? `${k}=${v}` : k))
+                    .join(", ")}
+                </TableCell>
                 <TableCell className="font-mono text-xs">{j.StartTime || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{j.Duration || "—"}</TableCell>
               </TableRow>

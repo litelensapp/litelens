@@ -177,7 +177,7 @@ const PortForwardDrawerBody: FC<PortForwardDetailDrawerProps & { portForward: Po
 
       <ScrollArea className="flex-1">
         <div className="flex flex-col divide-y">
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Resource Name</span>
             <span className="text-body">
               <ResourceLink
@@ -191,7 +191,7 @@ const PortForwardDrawerBody: FC<PortForwardDetailDrawerProps & { portForward: Po
               </ResourceLink>
             </span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Namespace</span>
             <span className="text-body">
               <ResourceLink onClick={() => pf.Namespace && onToggleNamespaceDetail(pf.Namespace)}>
@@ -199,33 +199,33 @@ const PortForwardDrawerBody: FC<PortForwardDetailDrawerProps & { portForward: Po
               </ResourceLink>
             </span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Kind</span>
             <span className="text-body">{pf.Kind || "—"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Pod Port</span>
             <span className="text-body font-mono">{pf.PodPort || "—"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Service Port</span>
             <span className="text-body font-mono">{pf.ServicePort || "—"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Local Port</span>
             <span className="text-body font-mono">{pf.LocalPort || "—"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Protocol</span>
             <span className="text-body">{pf.Protocol || "—"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Address</span>
             <span className="text-body font-mono">
               {pf.Address ? `${pf.Scheme}://${pf.Address}` : "—"}
             </span>
           </div>
-          <div className="grid grid-cols-[160px_1fr] items-center px-4 py-3">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center px-4 py-3">
             <span className="text-h3 text-muted-foreground">Status</span>
             <PortForwardStatusBadge status={pf.Status || "—"} />
           </div>

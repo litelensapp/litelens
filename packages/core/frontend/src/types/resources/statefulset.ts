@@ -10,7 +10,7 @@ export interface StatefulSet {
   Labels: Record<string, string>;
   Annotations: Record<string, string>;
   ManagedFields: ManagedField[];
-  Selector: string;
+  Selector: Record<string, string>;
   Images: string[];
   Affinities: number;
   PodStatus: string;

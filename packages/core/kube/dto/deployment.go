@@ -25,8 +25,8 @@ type Deployment struct {
 	Annotations       map[string]string
 	ManagedFields     []ManagedField
 	ReplicasDetail    string
-	Selector          string
-	NodeSelector      string
+	Selector          map[string]string
+	NodeSelector      map[string]string
 	StrategyType      string
 	MaxSurge          string
 	MaxUnavailable    string

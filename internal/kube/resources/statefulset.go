@@ -3,8 +3,6 @@ package kubeResources
 import (
 	"fmt"
 	"log"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -72,20 +70,11 @@ func toStatefulSet(ss *appsv1.StatefulSet) dto.StatefulSet {
 			return ss.Annotations
 		}(),
 		ManagedFields: toManagedFields(ss),
-		Selector: func() string {
-			if ss.Spec.Selector == nil {
-				return ""
+		Selector: func() map[string]string {
+			if ss.Spec.Selector == nil || ss.Spec.Selector.MatchLabels == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(ss.Spec.Selector.MatchLabels))
-			for k := range ss.Spec.Selector.MatchLabels {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+ss.Spec.Selector.MatchLabels[k])
-			}
-			return strings.Join(parts, ", ")
+			return ss.Spec.Selector.MatchLabels
 		}(),
 		Images: func() []string {
 			out := make([]string, 0, len(ss.Spec.Template.Spec.Containers))

@@ -214,7 +214,7 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-0">
-        <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+        <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
           <span className="text-h3 text-muted-foreground">Created</span>
           <span className="text-body font-mono">
             {deployment.Age} ago ({deployment.CreatedAt})
@@ -266,17 +266,25 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
           <span className="text-h3 text-muted-foreground">Replicas</span>
           <span className="text-body font-mono">{deployment.ReplicasDetail}</span>
 
-          {deployment.Selector && (
+          {Object.keys(deployment.Selector ?? {}).length > 0 && (
             <>
               <span className="text-h3 text-muted-foreground">Selector</span>
-              <AnnotationBadge label={deployment.Selector} />
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(deployment.Selector).map(([k, v]) => (
+                  <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+                ))}
+              </div>
             </>
           )}
 
-          {deployment.NodeSelector && (
+          {Object.keys(deployment.NodeSelector ?? {}).length > 0 && (
             <>
               <span className="text-h3 text-muted-foreground">Node Selector</span>
-              <AnnotationBadge label={deployment.NodeSelector} />
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(deployment.NodeSelector).map(([k, v]) => (
+                  <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+                ))}
+              </div>
             </>
           )}
 

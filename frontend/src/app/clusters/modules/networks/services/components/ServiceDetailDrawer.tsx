@@ -69,7 +69,7 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
     <ScrollArea className="h-full">
       <div className="flex flex-col">
         {/* Metadata */}
-        <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+        <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
           <span className="text-h3 text-muted-foreground">Created</span>
           <span className="text-body font-mono">
             {svc.Age} ago ({svc.CreatedAt})
@@ -121,12 +121,12 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
             </>
           )}
 
-          {svc.Selector !== "-" && (
+          {Object.keys(svc.Selector ?? {}).length > 0 && (
             <>
               <span className="text-h3 text-muted-foreground">Selector</span>
               <div className="flex flex-wrap gap-1">
-                {svc.Selector.split(",").map((s) => (
-                  <AnnotationBadge key={s} label={s} />
+                {Object.entries(svc.Selector).map(([k, v]) => (
+                  <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
                 ))}
               </div>
             </>
@@ -145,7 +145,7 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
         {/* Connection section */}
         <Separator />
         <SectionDivider label="Connection" className="border-y-0 bg-muted/50 tracking-wide" />
-        <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 px-4 py-3">
+        <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 px-4 py-3">
           <span className="text-h3 text-muted-foreground">Cluster IP</span>
           <span className="text-body font-mono">{svc.ClusterIP}</span>
 

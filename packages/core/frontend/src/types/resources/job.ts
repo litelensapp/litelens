@@ -24,7 +24,7 @@ export interface Job {
   Labels: Record<string, string>;
   Annotations: Record<string, string>;
   ManagedFields: ManagedField[];
-  Selector: string;
+  Selector: Record<string, string>;
   CompletionMode: string;
   StartTime: string;
   StartTimeAge: string;

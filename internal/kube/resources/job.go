@@ -3,8 +3,6 @@ package kubeResources
 import (
 	"fmt"
 	"log"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -106,20 +104,11 @@ func toJob(j *batchv1.Job) dto.Job {
 			return j.Annotations
 		}(),
 		ManagedFields: toManagedFields(j),
-		Selector: func() string {
-			if j.Spec.Selector == nil {
-				return ""
+		Selector: func() map[string]string {
+			if j.Spec.Selector == nil || j.Spec.Selector.MatchLabels == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(j.Spec.Selector.MatchLabels))
-			for k := range j.Spec.Selector.MatchLabels {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+j.Spec.Selector.MatchLabels[k])
-			}
-			return strings.Join(parts, ", ")
+			return j.Spec.Selector.MatchLabels
 		}(),
 		CompletionMode: func() string {
 			if j.Spec.CompletionMode == nil {

@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"reflect"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -103,8 +104,8 @@ func TestToReplicaSet_NilSelector_EmptySelector(t *testing.T) {
 	rs.Spec.Selector = nil
 
 	got := toReplicaSet(rs)
-	if got.Selector != "" {
-		t.Errorf("Selector = %q; want empty string", got.Selector)
+	if len(got.Selector) != 0 {
+		t.Errorf("Selector = %v; want empty map", got.Selector)
 	}
 }
 
@@ -115,8 +116,9 @@ func TestToReplicaSet_WithSelector(t *testing.T) {
 	}
 
 	got := toReplicaSet(rs)
-	if got.Selector != "app=test" {
-		t.Errorf("Selector = %q; want %q", got.Selector, "app=test")
+	want := map[string]string{"app": "test"}
+	if !reflect.DeepEqual(got.Selector, want) {
+		t.Errorf("Selector = %v; want %v", got.Selector, want)
 	}
 }
 

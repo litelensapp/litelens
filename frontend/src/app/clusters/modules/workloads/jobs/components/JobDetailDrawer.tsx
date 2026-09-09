@@ -48,7 +48,7 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {j.Age} ago ({j.CreatedAt})
@@ -113,10 +113,14 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
           </>
         )}
 
-        {j.Selector && (
+        {Object.keys(j.Selector ?? {}).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Selector</span>
-            <span className="text-body font-mono">{j.Selector}</span>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(j.Selector).map(([k, v]) => (
+                <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+              ))}
+            </div>
           </>
         )}
 

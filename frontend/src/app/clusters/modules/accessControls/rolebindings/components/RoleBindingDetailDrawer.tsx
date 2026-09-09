@@ -40,7 +40,7 @@ const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
     useDetailDrawerContext();
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {rb.Age} ago ({rb.CreatedAt})

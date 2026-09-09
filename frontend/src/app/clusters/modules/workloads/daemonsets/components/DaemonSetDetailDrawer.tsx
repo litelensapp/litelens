@@ -44,7 +44,7 @@ const DaemonSetOverviewTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {ds.Age} ago ({ds.CreatedAt})
@@ -91,19 +91,23 @@ const DaemonSetOverviewTab: FC<{ ds: DaemonSet }> = ({ ds }) => {
           </>
         )}
 
-        {ds.Selector && (
+        {Object.keys(ds.Selector ?? {}).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Selector</span>
-            <span className="text-body font-mono">{ds.Selector}</span>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(ds.Selector).map(([k, v]) => (
+                <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+              ))}
+            </div>
           </>
         )}
 
-        {ds.NodeSelector && ds.NodeSelector !== "<none>" && (
+        {Object.keys(ds.NodeSelector ?? {}).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Node Selector</span>
             <div className="flex flex-wrap gap-1">
-              {ds.NodeSelector.split(",").map((s) => (
-                <AnnotationBadge key={s} label={s} />
+              {Object.entries(ds.NodeSelector).map(([k, v]) => (
+                <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
               ))}
             </div>
           </>

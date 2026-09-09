@@ -65,7 +65,7 @@ export const PodContainerDots: FC<{
                   <div className="flex flex-col gap-2">
                     <div className="text-center text-xs font-semibold">{title}</div>
                     {fields.length > 0 && (
-                      <div className="grid grid-cols-[160px_1fr] gap-2 text-xs">
+                      <div className="grid grid-cols-[160px_minmax(0,1fr)] gap-2 text-xs">
                         {fields.map(([fLabel, fValue]) => (
                           <div key={fLabel} className="contents">
                             <span className="text-right font-mono text-muted-foreground">

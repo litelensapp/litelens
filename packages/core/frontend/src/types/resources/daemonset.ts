@@ -4,13 +4,13 @@ export interface DaemonSet {
   Name: string;
   Namespace: string;
   Pods: string;
-  NodeSelector: string;
+  NodeSelector: Record<string, string>;
   Age: string;
   CreatedAt: string;
   Labels: Record<string, string>;
   Annotations: Record<string, string>;
   ManagedFields: ManagedField[];
-  Selector: string;
+  Selector: Record<string, string>;
   Images: string[];
   StrategyType: string;
   Tolerations: number;
