@@ -28,9 +28,9 @@ describe("AnnotationBadge", () => {
     expect(badge).toBeTruthy();
   });
 
-  it("renders with max-w-2xs constraint", () => {
+  it("renders with max-w-full min-w-0 constraint", () => {
     const { container } = render(<AnnotationBadge label="a-very-long-label-text" />);
-    const badge = container.querySelector(".max-w-2xs");
+    const badge = container.querySelector(".max-w-full.min-w-0");
     expect(badge).toBeTruthy();
   });
 
