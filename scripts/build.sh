@@ -12,7 +12,7 @@ fi
 # "${args[@]+"${args[@]}"}" avoids "unbound variable" under set -u when args is
 # empty, since bash <4.4 (e.g. macOS's stock /bin/bash 3.2) treats "${args[@]}"
 # on an empty array as unset rather than an empty expansion.
-wails build "${args[@]+"${args[@]}"}"
+go tool wails build "${args[@]+"${args[@]}"}"
 
 # Linux: build the install-helper binary
 if [[ "$(uname)" == "Linux" ]]; then
