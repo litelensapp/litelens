@@ -212,6 +212,7 @@ const LimitRangeDrawerBody: FC<
     open,
     resourceName: lrName,
     resourceLabel: "LimitRange",
+    namespace: lrNamespace,
     onForbiddenDetected: onClose,
   });
 

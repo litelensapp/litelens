@@ -22,7 +22,7 @@ func NewRoleBindingsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listersrbacv1.RoleBindingLister] {
 	return New(Config[listersrbacv1.RoleBindingLister]{

@@ -274,6 +274,7 @@ const RoleDrawerBody: FC<
     open,
     resourceName: roleName,
     resourceLabel: "Role",
+    namespace: roleNamespace,
     onForbiddenDetected: onClose,
   });
 

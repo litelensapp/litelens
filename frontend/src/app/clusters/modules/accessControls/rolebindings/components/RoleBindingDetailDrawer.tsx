@@ -286,6 +286,7 @@ const RoleBindingDrawerBody: FC<
     open,
     resourceName: roleBindingName,
     resourceLabel: "RoleBinding",
+    namespace: roleBindingNamespace,
     onForbiddenDetected: onClose,
   });
 

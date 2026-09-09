@@ -280,6 +280,7 @@ const EndpointDrawerBody: FC<
     open,
     resourceName: endpointName,
     resourceLabel: "Endpoint",
+    namespace: endpointNamespace,
     onForbiddenDetected: onClose,
   });
 

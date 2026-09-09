@@ -326,6 +326,7 @@ const NetworkPolicyDrawerBody: FC<
     open,
     resourceName: npName,
     resourceLabel: "Network Policy",
+    namespace: npNamespace,
     onForbiddenDetected: onClose,
   });
 

@@ -285,14 +285,25 @@ func (h *FactoryHandle) EventLister() listerscorev1.EventLister {
 // ListerX/GetSyncedChan(resource) never observe a nil/unset state.
 func (h *FactoryHandle) initScopedResources() {
 	clearForbidden := func(resource string) func() {
-		return func() { h.forbidden.Delete(resource) }
+		return func() {
+			// Deletes every forbidden record for resource, across every
+			// namespace — a real Rescope tears down and rebuilds every
+			// informer in the group, so all of them deserve a clean slate
+			// to retry against, not just the ones for the new namespace set.
+			h.forbidden.Range(func(k, _ any) bool {
+				if fk, ok := k.(forbiddenKey); ok && fk.resource == resource {
+					h.forbidden.Delete(k)
+				}
+				return true
+			})
+		}
 	}
-	onScopedForbidden := func(name string) {
-		h.forbidden.Store(name, struct{}{})
+	onScopedForbidden := func(name, namespace string) {
+		h.forbidden.Store(forbiddenKey{name, namespace}, struct{}{})
 		select {
 		case <-h.globalStop:
 		default:
-			h.onForbidden(name)
+			h.onForbidden(name, namespace)
 		}
 	}
 	h.pod = nsscope.NewPodsResource(

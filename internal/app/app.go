@@ -289,9 +289,13 @@ func (a *App) Connect(contextName string, seq int64) error {
 
 	a.emitConnectStatus(contextName, "Starting informers...")
 	var forbiddenOnce sync.Map
-	h := kube.NewFactoryHandle(cs, func(resource string) {
-		if _, loaded := forbiddenOnce.LoadOrStore(resource, true); !loaded {
-			wailsruntime.EventsEmit(a.ctx, "resource:forbidden", resource)
+	h := kube.NewFactoryHandle(cs, func(resource, namespace string) {
+		key := resource + "\x00" + namespace
+		if _, loaded := forbiddenOnce.LoadOrStore(key, true); !loaded {
+			wailsruntime.EventsEmit(a.ctx, "resource:forbidden", map[string]string{
+				"resource":  resource,
+				"namespace": namespace,
+			})
 		}
 	})
 
@@ -774,14 +778,22 @@ func (a *App) Connect(contextName string, seq int64) error {
 	return nil
 }
 
-// IsResourceForbidden reports whether the given resource is known to be forbidden
-// (403) in the currently active cluster context.
-func (a *App) IsResourceForbidden(resource string) bool {
+// IsResourceForbidden reports whether the given resource is known to be
+// forbidden (403) in the currently active cluster context. Pass "" for
+// namespace to ask "is this resource forbidden in any namespace" (dashboard/
+// cluster-scoped callers); pass a specific namespace to ask "is this resource
+// forbidden in this namespace specifically" (per-namespace detail drawers) —
+// this distinction is what keeps a 403 in namespace B from being reported for
+// a resource read in namespace A.
+func (a *App) IsResourceForbidden(resource, namespace string) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	h, ok := a.factories[a.activeContext]
 	if !ok {
 		return false
 	}
-	return h.IsForbidden(resource)
+	if namespace == "" {
+		return h.IsForbidden(resource)
+	}
+	return h.IsNamespaceForbidden(resource, namespace)
 }

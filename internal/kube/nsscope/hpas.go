@@ -22,7 +22,7 @@ func NewHorizontalPodAutoscalersResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listersautoscalingv2.HorizontalPodAutoscalerLister] {
 	return New(Config[listersautoscalingv2.HorizontalPodAutoscalerLister]{

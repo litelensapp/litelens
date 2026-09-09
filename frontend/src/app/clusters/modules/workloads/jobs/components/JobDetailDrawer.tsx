@@ -324,6 +324,7 @@ const JobDrawerBody: FC<
     open,
     resourceName: jobName,
     resourceLabel: "Job",
+    namespace: jobNamespace,
     onForbiddenDetected: onClose,
   });
 

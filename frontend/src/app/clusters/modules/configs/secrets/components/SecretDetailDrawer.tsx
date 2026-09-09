@@ -536,6 +536,7 @@ const SecretDrawerBody: FC<
     open,
     resourceName: secretName,
     resourceLabel: "Secret",
+    namespace: secretNamespace,
     onForbiddenDetected: onClose,
   });
 

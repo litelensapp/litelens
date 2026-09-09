@@ -326,6 +326,7 @@ const DaemonSetDrawerBody: FC<
     open,
     resourceName: dsName,
     resourceLabel: "DaemonSet",
+    namespace: dsNamespace,
     onForbiddenDetected: onClose,
   });
 

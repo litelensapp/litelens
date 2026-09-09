@@ -322,6 +322,7 @@ const EndpointSliceDrawerBody: FC<
     open,
     resourceName: sliceName,
     resourceLabel: "Endpoint Slice",
+    namespace: sliceNamespace,
     onForbiddenDetected: onClose,
   });
 

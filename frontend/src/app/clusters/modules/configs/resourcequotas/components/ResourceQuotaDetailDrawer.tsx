@@ -212,6 +212,7 @@ const ResourceQuotaDrawerBody: FC<
     open,
     resourceName: rqName,
     resourceLabel: "ResourceQuota",
+    namespace: rqNamespace,
     onForbiddenDetected: onClose,
   });
 

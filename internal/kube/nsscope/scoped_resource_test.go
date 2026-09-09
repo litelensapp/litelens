@@ -172,7 +172,7 @@ func TestMarkForbiddenIgnoresSupersededGroup(t *testing.T) {
 		BuildMultiLister: func(m map[string]listerscorev1.PodLister) listerscorev1.PodLister {
 			return &multiPodLister{listers: m}
 		},
-		OnForbidden: func(name string) { forbiddenCalls = append(forbiddenCalls, name) },
+		OnForbidden: func(name, _ string) { forbiddenCalls = append(forbiddenCalls, name) },
 	})
 	defer r.Stop()
 
@@ -186,10 +186,74 @@ func TestMarkForbiddenIgnoresSupersededGroup(t *testing.T) {
 	// Simulate the old (superseded, already-stopped) group's sync-wait
 	// discovering a failure after the swap — it must not poison the new
 	// group's forbidden state.
-	r.markForbidden(old)
+	r.markForbidden(old, 0, "ns-a")
 
 	if len(forbiddenCalls) != 0 {
 		t.Fatalf("expected superseded group's failure to be ignored, got OnForbidden calls: %v", forbiddenCalls)
+	}
+}
+
+// TestMarkForbiddenOnlyStopsItsOwnNamespace reproduces the multi-namespace
+// bug: when namespaces ns-a (permitted) and ns-b (forbidden) are both active,
+// ns-b's informer failing must not stop ns-a's sibling informer in the same
+// group. Before the per-namespace nsStop split, markForbidden closed the
+// group's single shared stop channel, killing every namespace's informer
+// (and therefore future updates) the moment any one of them was denied.
+func TestMarkForbiddenOnlyStopsItsOwnNamespace(t *testing.T) {
+	cs := fake.NewSimpleClientset()
+	var forbiddenCalls []struct{ name, namespace string }
+	r := New(Config[listerscorev1.PodLister]{
+		Name:          "pods",
+		MaxNamespaces: 10,
+		NewNamespacedInformer: func(ns string) cache.SharedIndexInformer {
+			indexers := cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}
+			return corev1informers.NewFilteredPodInformer(cs, ns, 0, indexers, nil)
+		},
+		NewClusterWideInformer: func() cache.SharedIndexInformer {
+			indexers := cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}
+			return corev1informers.NewFilteredPodInformer(cs, "", 0, indexers, nil)
+		},
+		BuildLister: func(indexer cache.Indexer) listerscorev1.PodLister {
+			return listerscorev1.NewPodLister(indexer)
+		},
+		BuildMultiLister: func(m map[string]listerscorev1.PodLister) listerscorev1.PodLister {
+			return &multiPodLister{listers: m}
+		},
+		OnForbidden: func(name, namespace string) {
+			forbiddenCalls = append(forbiddenCalls, struct{ name, namespace string }{name, namespace})
+		},
+	})
+	defer r.Stop()
+
+	r.Rescope([]string{"ns-a", "ns-b"})
+	<-r.SyncedChan()
+	g := r.group
+
+	// Simulate ns-b's watch failing with a 403 (idx 1, since Rescope sorts
+	// namespaces alphabetically: ns-a=0, ns-b=1).
+	r.markForbidden(g, 1, "ns-b")
+
+	if len(forbiddenCalls) != 1 || forbiddenCalls[0].namespace != "ns-b" {
+		t.Fatalf("expected exactly one OnForbidden call for ns-b, got %v", forbiddenCalls)
+	}
+
+	select {
+	case <-g.nsStop[1]:
+		// Expected: ns-b's own informer was stopped.
+	default:
+		t.Fatal("expected ns-b's private stop channel to be closed")
+	}
+	select {
+	case <-g.nsStop[0]:
+		t.Fatal("expected ns-a's informer to keep running after ns-b was marked forbidden")
+	default:
+		// Expected: ns-a's informer is untouched.
+	}
+	select {
+	case <-g.stop:
+		t.Fatal("expected the group's shared stop channel to remain open")
+	default:
+		// Expected.
 	}
 }
 

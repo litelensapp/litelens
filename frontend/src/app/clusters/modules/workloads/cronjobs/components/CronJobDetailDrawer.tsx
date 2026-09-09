@@ -312,6 +312,7 @@ const CronJobDrawerBody: FC<
     open,
     resourceName: cronJobName,
     resourceLabel: "CronJob",
+    namespace: cronJobNamespace,
     onForbiddenDetected: onClose,
   });
 

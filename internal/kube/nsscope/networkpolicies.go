@@ -22,7 +22,7 @@ func NewNetworkPoliciesResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listersnetworkingv1.NetworkPolicyLister] {
 	return New(Config[listersnetworkingv1.NetworkPolicyLister]{

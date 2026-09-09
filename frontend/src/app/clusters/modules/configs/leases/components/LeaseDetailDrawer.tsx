@@ -178,6 +178,7 @@ const LeaseDrawerBody: FC<
     open,
     resourceName: leaseName,
     resourceLabel: "Lease",
+    namespace: leaseNamespace,
     onForbiddenDetected: onClose,
   });
 

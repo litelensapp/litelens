@@ -356,6 +356,7 @@ const ServiceDrawerBody: FC<
     open,
     resourceName: serviceName,
     resourceLabel: "Service",
+    namespace: serviceNamespace,
     onForbiddenDetected: onClose,
   });
 

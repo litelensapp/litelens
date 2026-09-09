@@ -253,6 +253,7 @@ const PVCDrawerBody: FC<
     open,
     resourceName: pvcName,
     resourceLabel: "PersistentVolumeClaim",
+    namespace: pvcNamespace,
     onForbiddenDetected: onClose,
   });
 

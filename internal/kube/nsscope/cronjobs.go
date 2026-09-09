@@ -21,7 +21,7 @@ func NewCronJobsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listersbatchv1.CronJobLister] {
 	return New(Config[listersbatchv1.CronJobLister]{

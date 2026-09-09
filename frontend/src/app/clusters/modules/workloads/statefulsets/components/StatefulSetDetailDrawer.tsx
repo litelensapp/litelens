@@ -314,6 +314,7 @@ const StatefulSetDrawerBody: FC<
     open,
     resourceName: statefulSetName,
     resourceLabel: "StatefulSet",
+    namespace: statefulSetNamespace,
     onForbiddenDetected: onClose,
   });
 
