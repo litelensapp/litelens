@@ -26,7 +26,7 @@ type Service struct {
 	ClusterIP  string
 	Ports      string
 	ExternalIP string
-	Selector   string
+	Selector   map[string]string
 	Age        string
 	Status     string
 

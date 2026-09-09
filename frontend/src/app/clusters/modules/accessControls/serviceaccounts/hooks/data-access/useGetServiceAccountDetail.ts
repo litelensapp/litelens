@@ -4,10 +4,11 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_SERVICE_ACCOUNT_DETAIL } from "../../api/api.const";
 import type { ServiceAccount } from "../../api/resources";
 import { GetServiceAccountByName } from "../../api/resources";
-import { useServiceAccountsUpdateEvents } from "../async-events/useServiceAccountsUpdateEvents";
+import { useServiceAccountDetailUpdateEvents } from "../async-events/useServiceAccountDetailUpdateEvents";
 
 export const useGetServiceAccountDetail = (context: string, namespace: string, name: string) => {
-  const latestServiceAccounts = useServiceAccountsUpdateEvents();
+  // Scoped "serviceaccount:update" pushes for this one ServiceAccount — see useServiceAccountDetailUpdateEvents.
+  const latestServiceAccount = useServiceAccountDetailUpdateEvents(namespace, name);
 
   const query = useQuery<ServiceAccount, Error>({
     queryKey: [QUERY_KEY_SERVICE_ACCOUNT_DETAIL, { context, namespace, name }],
@@ -17,12 +18,9 @@ export const useGetServiceAccountDetail = (context: string, namespace: string, n
   });
 
   const mergedData = useMemo(() => {
-    const matchedServiceAccount = latestServiceAccounts.find(
-      (sa) => sa.Namespace === namespace && sa.Name === name
-    );
-    if (matchedServiceAccount) return matchedServiceAccount;
+    if (latestServiceAccount) return latestServiceAccount;
     return query.data;
-  }, [latestServiceAccounts, query.data, namespace, name]);
+  }, [latestServiceAccount, query.data]);
 
   return {
     ...query,

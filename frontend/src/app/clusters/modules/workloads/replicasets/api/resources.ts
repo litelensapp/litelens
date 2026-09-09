@@ -1,9 +1,11 @@
 export {
   GetReplicaSetByName,
-  GetReplicaSetsSummary,
   GetReplicaSetYAML,
+  GetReplicaSetsSummary,
   ListReplicaSets,
+  UnwatchReplicaSetDetail,
   UpdateReplicaSetYAML,
+  WatchReplicaSetDetail,
 } from "@wailsjs/go/app/App";
 
 export type { ReplicaSet, ReplicaSetSummary } from "@litelens/core";

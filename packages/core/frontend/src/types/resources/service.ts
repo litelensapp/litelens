@@ -15,7 +15,7 @@ export interface Service {
   ClusterIP: string;
   Ports: string;
   ExternalIP: string;
-  Selector: string;
+  Selector: Record<string, string>;
   Age: string;
   Status: string;
   // detail fields

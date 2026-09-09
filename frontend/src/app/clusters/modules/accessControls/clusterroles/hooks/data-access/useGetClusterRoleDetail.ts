@@ -4,10 +4,12 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_CLUSTER_ROLE_DETAIL } from "../../api/api.const";
 import type { ClusterRole } from "../../api/resources";
 import { GetClusterRoleByName } from "../../api/resources";
-import { useClusterRolesUpdateEvents } from "../async-events/useClusterRolesUpdateEvents";
+import { useClusterRoleDetailUpdateEvents } from "../async-events/useClusterRoleDetailUpdateEvents";
 
 export const useGetClusterRoleDetail = (context: string, name: string) => {
-  const latestClusterRoles = useClusterRolesUpdateEvents();
+  // Scoped "clusterrole:update" pushes for this one ClusterRole — see useClusterRoleDetailUpdateEvents.
+  const latestClusterRole = useClusterRoleDetailUpdateEvents(name);
+
   const query = useQuery<ClusterRole, Error>({
     queryKey: [QUERY_KEY_CLUSTER_ROLE_DETAIL, { context, name }],
     queryFn: () => GetClusterRoleByName(name),
@@ -16,10 +18,12 @@ export const useGetClusterRoleDetail = (context: string, name: string) => {
   });
 
   const mergedData = useMemo(() => {
-    const matchedClusterRole = latestClusterRoles.find((cr) => cr.Name === name);
-    if (matchedClusterRole) return matchedClusterRole;
+    if (latestClusterRole) return latestClusterRole;
     return query.data;
-  }, [latestClusterRoles, query.data, name]);
+  }, [latestClusterRole, query.data]);
 
-  return { ...query, data: mergedData };
+  return {
+    ...query,
+    data: mergedData,
+  };
 };

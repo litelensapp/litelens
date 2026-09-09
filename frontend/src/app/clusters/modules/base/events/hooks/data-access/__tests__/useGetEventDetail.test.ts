@@ -28,6 +28,8 @@ vi.mock("@wailsjs/runtime/runtime", () => ({ EventsOn: eventsOnMock }));
 const getEventByNameMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
 vi.mock("../../../api/resources", () => ({
   GetEventByName: getEventByNameMock,
+  WatchEventDetail: vi.fn(),
+  UnwatchEventDetail: vi.fn(),
 }));
 
 function makeWrapper() {
@@ -134,7 +136,7 @@ describe("useGetEventDetail", () => {
 
     const latestEvent = mockEvent("event-1", "default");
     latestEvent.Message = "Updated message";
-    triggerEvent("events:update", [latestEvent, mockEvent("other", "default")]);
+    triggerEvent("event:update", latestEvent);
 
     await waitFor(() => {
       expect(result.current.data).toEqual(latestEvent);
@@ -152,7 +154,7 @@ describe("useGetEventDetail", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     const latestEvent = mockEvent("event-1", "kube-system");
-    triggerEvent("events:update", [latestEvent]);
+    triggerEvent("event:update", latestEvent);
 
     await waitFor(() => {
       expect(result.current.data).toEqual(queryEvent);
@@ -170,7 +172,7 @@ describe("useGetEventDetail", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     const latestEvent = mockEvent("different-event", "default");
-    triggerEvent("events:update", [latestEvent]);
+    triggerEvent("event:update", latestEvent);
 
     await waitFor(() => {
       expect(result.current.data).toEqual(queryEvent);

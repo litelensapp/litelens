@@ -29,6 +29,7 @@ import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
+import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
@@ -43,9 +44,11 @@ import { JobResumedBadge } from "./JobResumedBadge";
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
+  const resourceLinks = useResourceLinks();
+
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {j.Age} ago ({j.CreatedAt})
@@ -92,10 +95,32 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
           </>
         )}
 
-        {j.Selector && (
+        {j.OwnerKind && (
+          <>
+            <span className="text-h3 text-muted-foreground">Controlled by</span>
+            <span className="text-body font-mono">
+              {j.OwnerKind}:{" "}
+              {resourceLinks[j.OwnerKind.toLowerCase()] ? (
+                <ResourceLink
+                  onClick={() => resourceLinks[j.OwnerKind.toLowerCase()](j.Namespace, j.OwnerName)}
+                >
+                  {j.OwnerName}
+                </ResourceLink>
+              ) : (
+                j.OwnerName
+              )}
+            </span>
+          </>
+        )}
+
+        {Object.keys(j.Selector ?? {}).length > 0 && (
           <>
             <span className="text-h3 text-muted-foreground">Selector</span>
-            <span className="text-body font-mono">{j.Selector}</span>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(j.Selector).map(([k, v]) => (
+                <AnnotationBadge key={k} label={v ? `${k}=${v}` : k} />
+              ))}
+            </div>
           </>
         )}
 

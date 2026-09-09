@@ -218,3 +218,35 @@ func (a *App) UpdateDeploymentYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchDeploymentDetail registers the frontend's interest in live "deployment:update"
+// detail pushes for one specific Deployment (namespace/name) — the one currently
+// shown in the (single) open Deployment detail drawer. Call UnwatchDeploymentDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchDeploymentDetail(namespace, name string) {
+	a.watchedDeployment.watch(namespace, name)
+}
+
+// UnwatchDeploymentDetail reverses WatchDeploymentDetail.
+func (a *App) UnwatchDeploymentDetail(namespace, name string) {
+	a.watchedDeployment.unwatch(namespace, name)
+}
+
+// emitDeploymentDetail pushes a fresh detail on "deployment:update" (singular — distinct from the
+// "deployments:update" list topic) for the currently-watched Deployment, if any.
+func (a *App) emitDeploymentDetail() {
+	namespace, name, ok := a.watchedDeployment.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "deployments") {
+		return
+	}
+	detail, err := kubeResources.GetDeploymentByName(h.DeploymentLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "deployment:update", detail)
+}

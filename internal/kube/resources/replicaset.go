@@ -3,8 +3,6 @@ package kubeResources
 import (
 	"fmt"
 	"log"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -75,36 +73,17 @@ func toReplicaSet(rs *appsv1.ReplicaSet) dto.ReplicaSet {
 			return rs.Annotations
 		}(),
 		ManagedFields: toManagedFields(rs),
-		Selector: func() string {
-			if rs.Spec.Selector == nil {
-				return ""
+		Selector: func() map[string]string {
+			if rs.Spec.Selector == nil || rs.Spec.Selector.MatchLabels == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(rs.Spec.Selector.MatchLabels))
-			for k := range rs.Spec.Selector.MatchLabels {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+rs.Spec.Selector.MatchLabels[k])
-			}
-			return strings.Join(parts, ", ")
+			return rs.Spec.Selector.MatchLabels
 		}(),
-		NodeSelector: func() string {
-			ns := rs.Spec.Template.Spec.NodeSelector
-			if len(ns) == 0 {
-				return ""
+		NodeSelector: func() map[string]string {
+			if rs.Spec.Template.Spec.NodeSelector == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(ns))
-			for k := range ns {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+ns[k])
-			}
-			return strings.Join(parts, ", ")
+			return rs.Spec.Template.Spec.NodeSelector
 		}(),
 		Images: func() []string {
 			out := make([]string, 0, len(rs.Spec.Template.Spec.Containers))

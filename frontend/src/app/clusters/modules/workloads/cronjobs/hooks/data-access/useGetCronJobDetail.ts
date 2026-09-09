@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { QUERY_KEY_CRONJOB_DETAIL } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
+import { QUERY_KEY_CRONJOB_DETAIL } from "../../api/api.const";
 import type { CronJob } from "../../api/resources";
 import { GetCronJobByName } from "../../api/resources";
-import { useCronJobsUpdateEvents } from "../async-events/useCronJobsUpdateEvents";
+import { useCronJobDetailUpdateEvents } from "../async-events/useCronJobDetailUpdateEvents";
 
 export const useGetCronJobDetail = (context: string, namespace: string, name: string) => {
-  const latestCronJobs = useCronJobsUpdateEvents();
+  // Scoped "cronjob:update" pushes for this one CronJob — see useCronJobDetailUpdateEvents.
+  const latestCronJob = useCronJobDetailUpdateEvents(namespace, name);
 
   const query = useQuery<CronJob, Error>({
     queryKey: [QUERY_KEY_CRONJOB_DETAIL, { context, namespace, name }],
@@ -16,14 +17,10 @@ export const useGetCronJobDetail = (context: string, namespace: string, name: st
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched cronjob from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedCronJob = latestCronJobs.find(
-      (cj) => cj.Namespace === namespace && cj.Name === name
-    );
-    if (matchedCronJob) return matchedCronJob;
+    if (latestCronJob) return latestCronJob;
     return query.data;
-  }, [latestCronJobs, query.data, namespace, name]);
+  }, [latestCronJob, query.data]);
 
   return {
     ...query,

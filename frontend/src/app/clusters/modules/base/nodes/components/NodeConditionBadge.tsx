@@ -58,7 +58,7 @@ export const NodeConditionBadge: FC<Props> = ({ condition }) => {
     <Tooltip>
       <TooltipTrigger>{badge}</TooltipTrigger>
       <TooltipContent className="max-w-lg">
-        <div className="grid grid-cols-[160px_1fr] gap-2 text-xs">
+        <div className="grid grid-cols-[160px_minmax(0,1fr)] gap-2 text-xs">
           {fields.map(([label, value]) => (
             <div key={label} className="contents">
               <span className="text-right font-mono text-muted-foreground">{label}</span>

@@ -4,10 +4,11 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_EVENT_DETAIL } from "../../api/api.const";
 import type { Event } from "../../api/resources";
 import { GetEventByName } from "../../api/resources";
-import { useEventsUpdateEvents } from "../async-events/useEventsUpdateEvents";
+import { useEventDetailUpdateEvents } from "../async-events/useEventDetailUpdateEvents";
 
 export const useGetEventDetail = (context: string, namespace: string, name: string) => {
-  const latestEvents = useEventsUpdateEvents();
+  // Scoped "event:update" pushes for this one Event — see useEventDetailUpdateEvents.
+  const latestEvent = useEventDetailUpdateEvents(namespace, name);
 
   const query = useQuery<Event, Error>({
     queryKey: [QUERY_KEY_EVENT_DETAIL, { context, namespace, name }],
@@ -16,12 +17,10 @@ export const useGetEventDetail = (context: string, namespace: string, name: stri
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched event from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedEvent = latestEvents.find((e) => e.Namespace === namespace && e.Name === name);
-    if (matchedEvent) return matchedEvent;
+    if (latestEvent) return latestEvent;
     return query.data;
-  }, [latestEvents, query.data, namespace, name]);
+  }, [latestEvent, query.data]);
 
   return {
     ...query,

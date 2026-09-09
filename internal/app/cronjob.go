@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 
 	kubeResources "github.com/litelensapp/litelens/internal/kube/resources"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
@@ -12,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -125,6 +128,80 @@ func (a *App) DeleteCronJobs(items []dto.CronJobRef) error {
 	return err
 }
 
+// SetCronJobSuspend patches a CronJob's spec.suspend field, pausing (true) or resuming
+// (false) its schedule without deleting the resource or its Job history.
+func (a *App) SetCronJobSuspend(namespace, name string, suspend bool) error {
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
+	}
+
+	patchBody := map[string]any{
+		"spec": map[string]any{"suspend": suspend},
+	}
+	patchBytes, err := json.Marshal(patchBody)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
+	defer cancel()
+	_, err = cs.BatchV1().CronJobs(namespace).Patch(
+		ctx, name, types.MergePatchType, patchBytes, metav1.PatchOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("set CronJob suspend: %w", err)
+	}
+
+	a.emitCronJobs()
+	a.emitCronJobDetail()
+
+	return nil
+}
+
+// CreateJobFromCronJob triggers an on-demand run of a CronJob by creating a Job from its
+// JobTemplate, mirroring `kubectl create job --from=cronjob/<name>`.
+func (a *App) CreateJobFromCronJob(namespace, name string) error {
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
+	}
+
+	readCtx, readCancel := context.WithTimeout(context.Background(), apiReadTimeout)
+	defer readCancel()
+	cj, err := cs.BatchV1().CronJobs(namespace).Get(readCtx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("get CronJob: %w", err)
+	}
+
+	annotations := map[string]string{
+		"cronjob.kubernetes.io/instantiate": "manual",
+	}
+	maps.Copy(annotations, cj.Spec.JobTemplate.Annotations)
+
+	job := &batchv1.Job{
+		GenerateName: fmt.Sprintf("%s-manual-", name),
+		Namespace:    namespace,
+		Annotations:  annotations,
+		Labels:       cj.Spec.JobTemplate.Labels,
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(cj, batchv1.SchemeGroupVersion.WithKind("CronJob")),
+		},
+		Spec: cj.Spec.JobTemplate.Spec,
+	}
+
+	mutationCtx, mutationCancel := context.WithTimeout(context.Background(), apiMutationTimeout)
+	defer mutationCancel()
+	_, err = cs.BatchV1().Jobs(namespace).Create(mutationCtx, job, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("create Job from CronJob: %w", err)
+	}
+
+	a.emitJobs()
+
+	return nil
+}
+
 func (a *App) GetCronJobYAML(namespace, name string) (string, error) {
 	cs, err := a.activeClientset()
 	if err != nil {
@@ -168,4 +245,36 @@ func (a *App) UpdateCronJobYAML(namespace, yamlString string) error {
 	a.emitCronJobs()
 
 	return nil
+}
+
+// WatchCronJobDetail registers the frontend's interest in live "cronjob:update"
+// detail pushes for one specific CronJob (namespace/name) — the one currently
+// shown in the (single) open CronJob detail drawer. Call UnwatchCronJobDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchCronJobDetail(namespace, name string) {
+	a.watchedCronJob.watch(namespace, name)
+}
+
+// UnwatchCronJobDetail reverses WatchCronJobDetail.
+func (a *App) UnwatchCronJobDetail(namespace, name string) {
+	a.watchedCronJob.unwatch(namespace, name)
+}
+
+// emitCronJobDetail pushes a fresh detail on "cronjob:update" (singular — distinct from the
+// "cronjobs:update" list topic) for the currently-watched CronJob, if any.
+func (a *App) emitCronJobDetail() {
+	namespace, name, ok := a.watchedCronJob.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "cronjobs") {
+		return
+	}
+	detail, err := kubeResources.GetCronJobByName(h.CronJobLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "cronjob:update", detail)
 }

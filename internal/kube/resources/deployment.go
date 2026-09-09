@@ -3,7 +3,6 @@ package kubeResources
 import (
 	"fmt"
 	"log"
-	"sort"
 	"strings"
 	"time"
 
@@ -49,38 +48,33 @@ func toDeployment(d *appsv1.Deployment) dto.Deployment {
 				desired, d.Status.UpdatedReplicas, d.Status.Replicas,
 				d.Status.AvailableReplicas, d.Status.UnavailableReplicas)
 		}(),
-		Selector: func() string {
-			if d.Spec.Selector == nil {
-				return ""
+		Selector: func() map[string]string {
+			if d.Spec.Selector == nil || d.Spec.Selector.MatchLabels == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(d.Spec.Selector.MatchLabels))
-			for k := range d.Spec.Selector.MatchLabels {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+d.Spec.Selector.MatchLabels[k])
-			}
-			return strings.Join(parts, ", ")
+			return d.Spec.Selector.MatchLabels
 		}(),
-		NodeSelector: func() string {
-			ns := d.Spec.Template.Spec.NodeSelector
-			if len(ns) == 0 {
-				return ""
+		NodeSelector: func() map[string]string {
+			if d.Spec.Template.Spec.NodeSelector == nil {
+				return map[string]string{}
 			}
-			keys := make([]string, 0, len(ns))
-			for k := range ns {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			parts := make([]string, 0, len(keys))
-			for _, k := range keys {
-				parts = append(parts, k+"="+ns[k])
-			}
-			return strings.Join(parts, ", ")
+			return d.Spec.Template.Spec.NodeSelector
 		}(),
 		StrategyType: string(d.Spec.Strategy.Type),
+		MaxSurge: func() string {
+			ru := d.Spec.Strategy.RollingUpdate
+			if ru == nil || ru.MaxSurge == nil {
+				return ""
+			}
+			return ru.MaxSurge.String()
+		}(),
+		MaxUnavailable: func() string {
+			ru := d.Spec.Strategy.RollingUpdate
+			if ru == nil || ru.MaxUnavailable == nil {
+				return ""
+			}
+			return ru.MaxUnavailable.String()
+		}(),
 		Conditions: func() []dto.DeploymentCondition {
 			out := make([]dto.DeploymentCondition, 0, len(d.Status.Conditions))
 			for _, c := range d.Status.Conditions {

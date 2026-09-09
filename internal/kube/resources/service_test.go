@@ -2,6 +2,7 @@ package kubeResources
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -161,13 +162,13 @@ func TestToService_NoPorts_EmptyString(t *testing.T) {
 	}
 }
 
-func TestToService_EmptySelector_IsDash(t *testing.T) {
+func TestToService_EmptySelector_IsEmptyMap(t *testing.T) {
 	svc := makeService("svc", "default")
 	svc.Spec.Selector = map[string]string{}
 
 	got := toService(svc)
-	if got.Selector != "-" {
-		t.Errorf("Selector = %q; want %q", got.Selector, "-")
+	if len(got.Selector) != 0 {
+		t.Errorf("Selector = %v; want empty map", got.Selector)
 	}
 }
 
@@ -176,8 +177,9 @@ func TestToService_WithSelector(t *testing.T) {
 	svc.Spec.Selector = map[string]string{"app": "nginx"}
 
 	got := toService(svc)
-	if got.Selector != "app=nginx" {
-		t.Errorf("Selector = %q; want %q", got.Selector, "app=nginx")
+	want := map[string]string{"app": "nginx"}
+	if !reflect.DeepEqual(got.Selector, want) {
+		t.Errorf("Selector = %v; want %v", got.Selector, want)
 	}
 }
 

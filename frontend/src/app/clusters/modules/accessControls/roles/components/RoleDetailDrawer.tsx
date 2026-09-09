@@ -34,7 +34,7 @@ const RoleOverviewTab: FC<{ role: Role }> = ({ role }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
         <span className="text-h3 text-muted-foreground">Created</span>
         <span className="text-body font-mono">
           {role.Age} ago ({role.CreatedAt})
@@ -94,7 +94,7 @@ const RoleOverviewTab: FC<{ role: Role }> = ({ role }) => {
               key={`${rule.Resources.join(",")}|${rule.Verbs.join(",")}`}
               className="col-span-2 flex flex-col gap-2 rounded-md border border-zinc-800 p-3"
             >
-              <div className="grid grid-cols-[120px_1fr] items-start gap-y-2 text-xs">
+              <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-y-2 text-xs">
                 <span className="text-muted-foreground">Resources</span>
                 <div className="flex flex-wrap gap-1">
                   {rule.Resources.length > 0 ? (

@@ -9,13 +9,13 @@ type DaemonSet struct {
 	Name          string
 	Namespace     string
 	Pods          string
-	NodeSelector  string
+	NodeSelector  map[string]string
 	Age           string
 	CreatedAt     string
 	Labels        map[string]string
 	Annotations   map[string]string
 	ManagedFields []ManagedField
-	Selector      string
+	Selector      map[string]string
 	Images        []string
 	StrategyType  string
 	Tolerations   int

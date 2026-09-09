@@ -4,4 +4,6 @@ export * from "./ResourceCreationButton";
 export * from "./ResourceDeletionButton";
 export * from "./ResourceModificationButton";
 export * from "./ResourceRestartButton";
+export * from "./ResourceResumeButton";
+export * from "./ResourceRunNowButton";
 export * from "./ResourceScaleButton";

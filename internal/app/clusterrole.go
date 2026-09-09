@@ -142,3 +142,36 @@ func (a *App) UpdateClusterRoleYAML(yamlString string) error {
 
 	return nil
 }
+
+// WatchClusterRoleDetail registers the frontend's interest in live "clusterrole:update"
+// detail pushes for one specific ClusterRole (name) — the one currently shown in
+// the (single) open ClusterRole detail drawer. Call UnwatchClusterRoleDetail on
+// drawer close/unmount to stop.
+func (a *App) WatchClusterRoleDetail(name string) {
+	a.watchedClusterRole.watch("", name)
+}
+
+// UnwatchClusterRoleDetail reverses WatchClusterRoleDetail.
+func (a *App) UnwatchClusterRoleDetail(name string) {
+	a.watchedClusterRole.unwatch("", name)
+}
+
+// emitClusterRoleDetail pushes a fresh ClusterRole detail on "clusterrole:update" (singular
+// — distinct from the "clusterroles:update" list topic) for the currently-watched
+// ClusterRole, if any.
+func (a *App) emitClusterRoleDetail() {
+	_, name, ok := a.watchedClusterRole.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "clusterroles") {
+		return
+	}
+	detail, err := kubeResources.GetClusterRoleByName(h.Factory.Rbac().V1().ClusterRoles().Lister(), name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "clusterrole:update", detail)
+}

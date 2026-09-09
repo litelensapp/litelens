@@ -15,7 +15,7 @@ type StatefulSet struct {
 	Labels        map[string]string
 	Annotations   map[string]string
 	ManagedFields []ManagedField
-	Selector      string
+	Selector      map[string]string
 	Images        []string
 	Affinities    int
 	PodStatus     string

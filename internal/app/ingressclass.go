@@ -197,3 +197,36 @@ func (a *App) UpdateIngressClassYAML(yamlString string) error {
 
 	return nil
 }
+
+// WatchIngressClassDetail registers the frontend's interest in live "ingressclass:update"
+// detail pushes for one specific IngressClass (name) — the one currently shown in
+// the (single) open IngressClass detail drawer. Call UnwatchIngressClassDetail on
+// drawer close/unmount to stop.
+func (a *App) WatchIngressClassDetail(name string) {
+	a.watchedIngressClass.watch("", name)
+}
+
+// UnwatchIngressClassDetail reverses WatchIngressClassDetail.
+func (a *App) UnwatchIngressClassDetail(name string) {
+	a.watchedIngressClass.unwatch("", name)
+}
+
+// emitIngressClassDetail pushes a fresh IngressClass detail on "ingressclass:update" (singular
+// — distinct from the "ingressclasses:update" list topic) for the currently-watched
+// IngressClass, if any.
+func (a *App) emitIngressClassDetail() {
+	_, name, ok := a.watchedIngressClass.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "ingressclasses") {
+		return
+	}
+	detail, err := kubeResources.GetIngressClassByName(h.Factory.Networking().V1().IngressClasses().Lister(), name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "ingressclass:update", detail)
+}

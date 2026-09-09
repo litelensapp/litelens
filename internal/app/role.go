@@ -143,3 +143,35 @@ func (a *App) UpdateRoleYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchRoleDetail registers the frontend's interest in live "role:update"
+// detail pushes for one specific Role (namespace/name) — the one currently
+// shown in the (single) open Role detail drawer. Call UnwatchRoleDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchRoleDetail(namespace, name string) {
+	a.watchedRole.watch(namespace, name)
+}
+
+// UnwatchRoleDetail reverses WatchRoleDetail.
+func (a *App) UnwatchRoleDetail(namespace, name string) {
+	a.watchedRole.unwatch(namespace, name)
+}
+
+// emitRoleDetail pushes a fresh detail on "role:update" (singular — distinct from the
+// "roles:update" list topic) for the currently-watched Role, if any.
+func (a *App) emitRoleDetail() {
+	namespace, name, ok := a.watchedRole.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "roles") {
+		return
+	}
+	detail, err := kubeResources.GetRoleByName(h.RoleLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "role:update", detail)
+}

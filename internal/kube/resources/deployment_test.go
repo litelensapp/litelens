@@ -1,7 +1,7 @@
 package kubeResources
 
 import (
-	"strings"
+	"reflect"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -50,25 +50,25 @@ func makeDeployment(name, namespace string) *appsv1.Deployment {
 	}
 }
 
-func TestToDeployment_NodeSelectorNil_ReturnsEmptyString(t *testing.T) {
+func TestToDeployment_NodeSelectorNil_ReturnsEmptyMap(t *testing.T) {
 	d := makeDeployment("d1", "default")
 	d.Spec.Template.Spec.NodeSelector = nil
 	got := toDeployment(d)
-	if got.NodeSelector != "" {
-		t.Errorf("NodeSelector = %q; want empty string", got.NodeSelector)
+	if len(got.NodeSelector) != 0 {
+		t.Errorf("NodeSelector = %v; want empty map", got.NodeSelector)
 	}
 }
 
-func TestToDeployment_NodeSelectorEmpty_ReturnsEmptyString(t *testing.T) {
+func TestToDeployment_NodeSelectorEmpty_ReturnsEmptyMap(t *testing.T) {
 	d := makeDeployment("d1", "default")
 	d.Spec.Template.Spec.NodeSelector = map[string]string{}
 	got := toDeployment(d)
-	if got.NodeSelector != "" {
-		t.Errorf("NodeSelector = %q; want empty string", got.NodeSelector)
+	if len(got.NodeSelector) != 0 {
+		t.Errorf("NodeSelector = %v; want empty map", got.NodeSelector)
 	}
 }
 
-func TestToDeployment_NodeSelectorMultiEntry_SortedByKey(t *testing.T) {
+func TestToDeployment_NodeSelectorMultiEntry_ReturnsAllEntries(t *testing.T) {
 	d := makeDeployment("d1", "default")
 	d.Spec.Template.Spec.NodeSelector = map[string]string{
 		"zone":   "us-west",
@@ -76,12 +76,9 @@ func TestToDeployment_NodeSelectorMultiEntry_SortedByKey(t *testing.T) {
 		"memory": "high",
 	}
 	got := toDeployment(d)
-	parts := strings.Split(got.NodeSelector, ", ")
-	if len(parts) != 3 {
-		t.Fatalf("expected 3 parts; got %d: %q", len(parts), got.NodeSelector)
-	}
-	if parts[0] != "disk=ssd" || parts[1] != "memory=high" || parts[2] != "zone=us-west" {
-		t.Errorf("NodeSelector not sorted correctly: %q", got.NodeSelector)
+	want := map[string]string{"zone": "us-west", "disk": "ssd", "memory": "high"}
+	if !reflect.DeepEqual(got.NodeSelector, want) {
+		t.Errorf("NodeSelector = %v; want %v", got.NodeSelector, want)
 	}
 }
 

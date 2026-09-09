@@ -341,6 +341,7 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   const { forbiddenResources } = useCatchForbiddenResource(activeResource, {
     labelMap: mergedResourceLabels,
     activeContext,
+    namespaces,
   });
 
   function handleNamespacesChange(ns: string[]) {
@@ -360,12 +361,12 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   function handleSelectItem(item: NavItem<ViewType>) {
     if (item.view) {
       setActiveResource(item.view);
-      const namespaces = forbiddenResources.get(item.view);
-      if (namespaces) {
+      const forbiddenNamespaces = forbiddenResources.get(item.view);
+      if (forbiddenNamespaces) {
         const label =
           mergedResourceLabels[item.view as keyof typeof mergedResourceLabels] ?? item.view;
         renderErrorToast({
-          title: `Access denied: cannot list ${label}${formatForbiddenNamespaces(namespaces)}`,
+          title: `Access denied: cannot list ${label}${formatForbiddenNamespaces(forbiddenNamespaces)}`,
         });
       }
     }

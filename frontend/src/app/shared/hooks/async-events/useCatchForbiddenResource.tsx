@@ -15,6 +15,12 @@ interface UseCatchForbiddenResourceOptions {
   // so denying access in namespace B doesn't toast/close a drawer open on a
   // resource in namespace A. Omit for cluster-scoped resources.
   namespace?: string;
+  // List-view (labelMap) mode only: namespaces currently being viewed (mirrors
+  // the `activeNamespaces` cluster-wide config — empty/undefined means "all
+  // namespaces"). Used by the mount/activeContext-change reconciliation poll so
+  // it can check IsResourceForbidden per namespace instead of losing namespace
+  // detail behind a single "forbidden anywhere" check.
+  namespaces?: string[];
 }
 
 interface UseCatchForbiddenResourceResult {
@@ -168,18 +174,23 @@ export const useCatchForbiddenResource = (
     const labelMap = optionsRef.current?.labelMap;
     if (!labelMap) return;
     let cancelled = false;
+    // Viewing all namespaces: a resource forbidden anywhere applies, same as the
+    // "any namespace" semantics of IsResourceForbidden(resource, ""). Viewing a
+    // specific subset: check each one individually so the reconciled state (and
+    // any toast built from it) can still name the actual namespace, matching
+    // useCatchForbiddenResources' equivalent poll.
+    const activeNamespaces = optionsRef.current?.namespaces ?? [];
+    const namespacesToCheck = activeNamespaces.length > 0 ? activeNamespaces : [""];
+
     Promise.all(
-      Object.keys(labelMap).map((resource) =>
-        IsResourceForbidden(resource, "").then((forbidden) => (forbidden ? resource : null))
+      Object.keys(labelMap).flatMap((resource) =>
+        namespacesToCheck.map(async (namespace) => {
+          const forbidden = await IsResourceForbidden(resource, namespace);
+          if (cancelled || !forbidden) return;
+          addForbiddenResource(resource, namespace);
+        })
       )
-    ).then((results) => {
-      if (cancelled) return;
-      const forbidden = results.filter((r): r is string => r !== null);
-      // Namespace unknown here — IsResourceForbidden("", resource) only reports
-      // "forbidden somewhere", not which namespace(s). "" renders as no namespace
-      // suffix (same as before this poll existed) rather than claiming a specific one.
-      forbidden.forEach((resource) => addForbiddenResource(resource, ""));
-    });
+    );
     return () => {
       cancelled = true;
     };

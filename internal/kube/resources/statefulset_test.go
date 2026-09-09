@@ -1,6 +1,7 @@
 package kubeResources
 
 import (
+	"reflect"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -122,8 +123,8 @@ func TestToStatefulSet_NilSelector_EmptySelector(t *testing.T) {
 	ss.Spec.Selector = nil
 
 	got := toStatefulSet(ss)
-	if got.Selector != "" {
-		t.Errorf("Selector = %q; want empty string", got.Selector)
+	if len(got.Selector) != 0 {
+		t.Errorf("Selector = %v; want empty map", got.Selector)
 	}
 }
 
@@ -134,8 +135,9 @@ func TestToStatefulSet_WithSelector(t *testing.T) {
 	}
 
 	got := toStatefulSet(ss)
-	if got.Selector != "app=mysql" {
-		t.Errorf("Selector = %q; want %q", got.Selector, "app=mysql")
+	want := map[string]string{"app": "mysql"}
+	if !reflect.DeepEqual(got.Selector, want) {
+		t.Errorf("Selector = %v; want %v", got.Selector, want)
 	}
 }
 

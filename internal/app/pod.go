@@ -52,6 +52,44 @@ func (a *App) GetPodByName(namespace, name string) (dto.Pod, error) {
 	return result, nil
 }
 
+// WatchPodDetail registers the frontend's interest in live "pod:update"
+// detail pushes for one specific Pod (namespace/name) — the one currently
+// shown in the (single) open Pod detail drawer. Call UnwatchPodDetail on
+// drawer close/unmount to stop. The "pods:update" list topic only ever
+// carries the lean (detail=false) dto.Pod shape (see kubeResources.ListPods),
+// so detail-only fields like ManagedFields would otherwise be silently wiped
+// out by every list push while a drawer is open; this opt-in scoped topic
+// carries the full detail=true shape instead.
+func (a *App) WatchPodDetail(namespace, name string) {
+	a.watchedPod.watch(namespace, name)
+}
+
+// UnwatchPodDetail reverses WatchPodDetail.
+func (a *App) UnwatchPodDetail(namespace, name string) {
+	a.watchedPod.unwatch(namespace, name)
+}
+
+// emitPodDetail pushes a fresh detail=true dto.Pod on "pod:update" (singular
+// — distinct from the "pods:update" list topic) for the currently-watched
+// Pod, if any. Mirrors emitSecretDetail: wired to run off the same
+// informer-change signal as emitPods but kept independent of it.
+func (a *App) emitPodDetail() {
+	namespace, name, ok := a.watchedPod.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "pods") {
+		return
+	}
+	detail, err := kubeResources.GetPodByName(h.PodLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "pod:update", detail)
+}
+
 func (a *App) GetPodsSummary() (dto.PodSummary, error) {
 	h, namespaces := a.activeFactoryAndNamespaces()
 	if !waitForResourceSyncIgnoringForbidden(h, "pods") {

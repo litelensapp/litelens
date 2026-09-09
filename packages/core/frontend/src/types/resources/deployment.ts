@@ -21,9 +21,11 @@ export interface Deployment {
   Annotations: Record<string, string>;
   ManagedFields: ManagedField[];
   ReplicasDetail: string;
-  Selector: string;
-  NodeSelector: string;
+  Selector: Record<string, string>;
+  NodeSelector: Record<string, string>;
   StrategyType: string;
+  MaxSurge: string;
+  MaxUnavailable: string;
   Conditions: DeploymentCondition[];
   Tolerations: number;
   TolerationDetails: TolerationDetail[];

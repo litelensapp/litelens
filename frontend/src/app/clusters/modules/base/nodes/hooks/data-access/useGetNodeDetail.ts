@@ -1,13 +1,14 @@
-import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_NODE_DETAIL } from "../../api/api.const";
 import type { Node } from "../../api/resources";
 import { GetNodeByName } from "../../api/resources";
-import { useNodesUpdateEvents } from "../async-events/useNodesUpdateEvents";
+import { useNodeDetailUpdateEvents } from "../async-events/useNodeDetailUpdateEvents";
 
 export const useGetNodeDetail = (context: string, name: string) => {
-  const latestNodes = useNodesUpdateEvents();
+  // Scoped "node:update" pushes for this one Node — see useNodeDetailUpdateEvents.
+  const latestNode = useNodeDetailUpdateEvents(name);
 
   const query = useQuery<Node, Error>({
     queryKey: [QUERY_KEY_NODE_DETAIL, { context, name }],
@@ -16,12 +17,10 @@ export const useGetNodeDetail = (context: string, name: string) => {
     enabled: !!context && !!name,
   });
 
-  // Merge event-driven data: prefer matched node from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedNode = latestNodes.find((n) => n.Name === name);
-    if (matchedNode) return matchedNode;
+    if (latestNode) return latestNode;
     return query.data;
-  }, [latestNodes, query.data, name]);
+  }, [latestNode, query.data]);
 
   return {
     ...query,

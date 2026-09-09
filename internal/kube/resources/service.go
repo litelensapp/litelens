@@ -34,14 +34,8 @@ func toService(svc *corev1.Service) dto.Service {
 		}
 	}
 
-	selectorParts := make([]string, 0, len(svc.Spec.Selector))
-	for k, v := range svc.Spec.Selector {
-		selectorParts = append(selectorParts, fmt.Sprintf("%s=%s", k, v))
-	}
-	selector := strings.Join(selectorParts, ",")
-	if selector == "" {
-		selector = "-"
-	}
+	selector := make(map[string]string, len(svc.Spec.Selector))
+	maps.Copy(selector, svc.Spec.Selector)
 
 	status := "Active"
 	if svc.DeletionTimestamp != nil {

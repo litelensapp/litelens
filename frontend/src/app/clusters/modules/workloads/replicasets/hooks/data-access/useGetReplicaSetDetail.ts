@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { QUERY_KEY_REPLICASET_DETAIL } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
+import { QUERY_KEY_REPLICASET_DETAIL } from "../../api/api.const";
 import type { ReplicaSet } from "../../api/resources";
 import { GetReplicaSetByName } from "../../api/resources";
-import { useReplicaSetsUpdateEvents } from "../async-events/useReplicaSetsUpdateEvents";
+import { useReplicaSetDetailUpdateEvents } from "../async-events/useReplicaSetDetailUpdateEvents";
 
 export const useGetReplicaSetDetail = (context: string, namespace: string, name: string) => {
-  const latestReplicaSets = useReplicaSetsUpdateEvents();
+  // Scoped "replicaset:update" pushes for this one ReplicaSet — see useReplicaSetDetailUpdateEvents.
+  const latestReplicaSet = useReplicaSetDetailUpdateEvents(namespace, name);
 
   const query = useQuery<ReplicaSet, Error>({
     queryKey: [QUERY_KEY_REPLICASET_DETAIL, { context, namespace, name }],
@@ -16,14 +17,10 @@ export const useGetReplicaSetDetail = (context: string, namespace: string, name:
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched replicaset from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedReplicaSet = latestReplicaSets.find(
-      (rs) => rs.Namespace === namespace && rs.Name === name
-    );
-    if (matchedReplicaSet) return matchedReplicaSet;
+    if (latestReplicaSet) return latestReplicaSet;
     return query.data;
-  }, [latestReplicaSets, query.data, namespace, name]);
+  }, [latestReplicaSet, query.data]);
 
   return {
     ...query,

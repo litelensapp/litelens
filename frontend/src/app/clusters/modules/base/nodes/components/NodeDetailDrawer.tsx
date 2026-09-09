@@ -56,7 +56,7 @@ const KVSection: FC<{ title: string; data: Record<string, string> }> = ({ title,
   return (
     <div>
       <SectionDivider label={title} className="border-y-0 bg-muted/50 tracking-wide uppercase" />
-      <div className="grid grid-cols-[160px_1fr] gap-y-2 px-4 py-3">
+      <div className="grid grid-cols-[160px_minmax(0,1fr)] gap-y-2 px-4 py-3">
         {entries.map(([k, v]) => (
           <Fragment key={k}>
             <span className="text-h3 font-mono text-muted-foreground">{k}</span>
@@ -73,7 +73,7 @@ const NodeInfoTab: FC<{ node: Node }> = ({ node }) => {
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-0">
         {/* Metadata — single grid so all labels align */}
-        <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4">
+        <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
           <span className="text-h3 text-muted-foreground">Created</span>
           <span className="text-body font-mono">
             {node.Age} ago ({node.CreatedAt})

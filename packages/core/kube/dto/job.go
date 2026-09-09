@@ -30,13 +30,15 @@ type Job struct {
 	Labels         map[string]string
 	Annotations    map[string]string
 	ManagedFields  []ManagedField
-	Selector       string
+	Selector       map[string]string
 	CompletionMode string
 	StartTime      string
 	StartTimeAge   string
 	CompletedAt    string
 	CompletedAtAge string
 	PodsStatuses   []string
+	OwnerKind      string
+	OwnerName      string
 }
 
 type JobSummary struct {

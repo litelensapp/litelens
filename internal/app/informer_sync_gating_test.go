@@ -547,8 +547,7 @@ func BenchmarkListPods_PostSync(b *testing.B) {
 	// Wait for sync before starting benchmark.
 	<-h.GetSyncedChan("pods")
 
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		a.activeNamespaces = []string{"default"}
 		_, _ = a.ListPods()
 	}

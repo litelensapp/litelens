@@ -12,10 +12,14 @@ const getNodeByNameMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../modules/base/nodes/api/resources", () => ({
   GetNodeByName: getNodeByNameMock,
+  WatchNodeDetail: vi.fn(),
+  UnwatchNodeDetail: vi.fn(),
 }));
 
 vi.mock("../modules/workloads/deployments/api/resources", () => ({
   GetDeploymentByName: getDeploymentByNameMock,
+  WatchDeploymentDetail: vi.fn(),
+  UnwatchDeploymentDetail: vi.fn(),
 }));
 
 function makeWrapper() {

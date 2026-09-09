@@ -97,7 +97,7 @@ const InitContainerBlock: FC<{ icd: PodContainerDetail }> = ({ icd }) => {
         <PodStatusBadge status={icd.Status} />
       </div>
 
-      <div className="grid grid-cols-[140px_1fr] gap-y-1.5">
+      <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-y-1.5">
         <span className="text-h3 text-muted-foreground">Image</span>
         <span className="text-body font-mono break-all">{icd.Image}</span>
 
@@ -169,7 +169,7 @@ const ContainerBlock: FC<{
         <PodStatusBadge status={cd.Status} />
       </div>
 
-      <div className="grid grid-cols-[140px_1fr] gap-y-1.5">
+      <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-y-1.5">
         {cd.LastStatus && (
           <>
             <span className="text-h3 text-muted-foreground">Last Status</span>
@@ -389,12 +389,12 @@ const VolumeBlock: FC<{ v: PodVolume }> = ({ v }) => (
       <span className="font-mono font-semibold">{v.Name}</span>
     </div>
     <div className="divide-y">
-      <div className="grid grid-cols-[140px_1fr] px-3 py-2">
+      <div className="grid grid-cols-[140px_minmax(0,1fr)] px-3 py-2">
         <span className="text-muted-foreground">Kind</span>
         <span className="font-mono">{v.Kind}</span>
       </div>
       {v.Kind === "emptyDir" && (
-        <div className="grid grid-cols-[140px_1fr] px-3 py-2">
+        <div className="grid grid-cols-[140px_minmax(0,1fr)] px-3 py-2">
           <span className="text-muted-foreground">Medium</span>
           <span className={cn("font-mono", !v.Medium && "text-muted-foreground italic")}>
             {v.Medium || "<node's default medium>"}
@@ -402,25 +402,25 @@ const VolumeBlock: FC<{ v: PodVolume }> = ({ v }) => (
         </div>
       )}
       {v.HostPath && (
-        <div className="grid grid-cols-[140px_1fr] px-3 py-2">
+        <div className="grid grid-cols-[140px_minmax(0,1fr)] px-3 py-2">
           <span className="text-muted-foreground">Host Path</span>
           <span className="font-mono">{v.HostPath}</span>
         </div>
       )}
       {v.CheckBehavior && (
-        <div className="grid grid-cols-[140px_1fr] px-3 py-2">
+        <div className="grid grid-cols-[140px_minmax(0,1fr)] px-3 py-2">
           <span className="text-muted-foreground">CheckIcon Behavior</span>
           <span className="font-mono">{v.CheckBehavior}</span>
         </div>
       )}
       {v.DefaultMode && (
-        <div className="grid grid-cols-[140px_1fr] px-3 py-2">
+        <div className="grid grid-cols-[140px_minmax(0,1fr)] px-3 py-2">
           <span className="text-muted-foreground">Default Mount Mode</span>
           <span className="font-mono">{v.DefaultMode}</span>
         </div>
       )}
       {(v.Sources ?? []).length > 0 && (
-        <div className="grid grid-cols-[140px_1fr] items-start px-3 py-2">
+        <div className="grid grid-cols-[140px_minmax(0,1fr)] items-start px-3 py-2">
           <span className="text-muted-foreground">Sources</span>
           <div className="flex flex-col gap-2">
             {v.Sources.map((src) => (
@@ -431,25 +431,25 @@ const VolumeBlock: FC<{ v: PodVolume }> = ({ v }) => (
                 <div className="bg-muted/50 px-3 py-1.5 font-medium">{sourceLabel(src.Type)}</div>
                 <div className="divide-y">
                   {src.Expiration && (
-                    <div className="grid grid-cols-[100px_1fr] px-3 py-1.5">
+                    <div className="grid grid-cols-[100px_minmax(0,1fr)] px-3 py-1.5">
                       <span className="text-muted-foreground">Expiration</span>
                       <span className="font-mono">{src.Expiration}</span>
                     </div>
                   )}
                   {src.Path && (
-                    <div className="grid grid-cols-[100px_1fr] px-3 py-1.5">
+                    <div className="grid grid-cols-[100px_minmax(0,1fr)] px-3 py-1.5">
                       <span className="text-muted-foreground">Path</span>
                       <span className="font-mono">{src.Path}</span>
                     </div>
                   )}
                   {src.Name && (
-                    <div className="grid grid-cols-[100px_1fr] px-3 py-1.5">
+                    <div className="grid grid-cols-[100px_minmax(0,1fr)] px-3 py-1.5">
                       <span className="text-muted-foreground">Name</span>
                       <span className="font-mono">{src.Name}</span>
                     </div>
                   )}
                   {(src.Items ?? []).length > 0 && (
-                    <div className="grid grid-cols-[100px_1fr] items-start px-3 py-1.5">
+                    <div className="grid grid-cols-[100px_minmax(0,1fr)] items-start px-3 py-1.5">
                       <span className="text-muted-foreground">Items</span>
                       <div className="flex flex-col gap-0.5">
                         {src.Items.map((item) => (
@@ -488,7 +488,7 @@ const PodOverviewTab: FC<{
     <>
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-0">
-          <div className="grid grid-cols-[160px_1fr] items-start gap-y-3 p-4 text-xs">
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4 text-xs">
             <span className="text-muted-foreground">Name</span>
             <span className="font-mono">{pod.Name}</span>
 
@@ -518,7 +518,15 @@ const PodOverviewTab: FC<{
             <PodQoSBadge qos={pod.QoS} />
 
             <span className="text-muted-foreground">Service Account</span>
-            <span className="font-mono">{pod.ServiceAccount || "—"}</span>
+            {pod.ServiceAccount ? (
+              <ResourceLink
+                onClick={() => resourceLinks.serviceaccount(pod.Namespace, pod.ServiceAccount)}
+              >
+                {pod.ServiceAccount}
+              </ResourceLink>
+            ) : (
+              <span className="font-mono">—</span>
+            )}
 
             <span className="text-muted-foreground">Priority Class</span>
             <span className="font-mono">{pod.PriorityClass || "—"}</span>

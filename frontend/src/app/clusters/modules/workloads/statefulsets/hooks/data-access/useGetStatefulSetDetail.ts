@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { QUERY_KEY_STATEFULSET_DETAIL } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
+import { QUERY_KEY_STATEFULSET_DETAIL } from "../../api/api.const";
 import type { StatefulSet } from "../../api/resources";
 import { GetStatefulSetByName } from "../../api/resources";
-import { useStatefulSetsUpdateEvents } from "../async-events/useStatefulSetsUpdateEvents";
+import { useStatefulSetDetailUpdateEvents } from "../async-events/useStatefulSetDetailUpdateEvents";
 
 export const useGetStatefulSetDetail = (context: string, namespace: string, name: string) => {
-  const latestStatefulSets = useStatefulSetsUpdateEvents();
+  // Scoped "statefulset:update" pushes for this one StatefulSet — see useStatefulSetDetailUpdateEvents.
+  const latestStatefulSet = useStatefulSetDetailUpdateEvents(namespace, name);
 
   const query = useQuery<StatefulSet, Error>({
     queryKey: [QUERY_KEY_STATEFULSET_DETAIL, { context, namespace, name }],
@@ -16,14 +17,10 @@ export const useGetStatefulSetDetail = (context: string, namespace: string, name
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched statefulset from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedStatefulSet = latestStatefulSets.find(
-      (ss) => ss.Namespace === namespace && ss.Name === name
-    );
-    if (matchedStatefulSet) return matchedStatefulSet;
+    if (latestStatefulSet) return latestStatefulSet;
     return query.data;
-  }, [latestStatefulSets, query.data, namespace, name]);
+  }, [latestStatefulSet, query.data]);
 
   return {
     ...query,

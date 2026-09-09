@@ -276,3 +276,36 @@ func (a *App) DrainNode(name string) error {
 	}
 	return nil
 }
+
+// WatchNodeDetail registers the frontend's interest in live "node:update"
+// detail pushes for one specific Node (name) — the one currently shown in
+// the (single) open Node detail drawer. Call UnwatchNodeDetail on
+// drawer close/unmount to stop.
+func (a *App) WatchNodeDetail(name string) {
+	a.watchedNode.watch("", name)
+}
+
+// UnwatchNodeDetail reverses WatchNodeDetail.
+func (a *App) UnwatchNodeDetail(name string) {
+	a.watchedNode.unwatch("", name)
+}
+
+// emitNodeDetail pushes a fresh Node detail on "node:update" (singular
+// — distinct from the "nodes:update" list topic) for the currently-watched
+// Node, if any.
+func (a *App) emitNodeDetail() {
+	_, name, ok := a.watchedNode.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "nodes") {
+		return
+	}
+	detail, err := kubeResources.GetNodeByName(h.Factory.Core().V1().Nodes().Lister(), name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "node:update", detail)
+}

@@ -150,7 +150,7 @@ func TestToDaemonSet_WithSelector(t *testing.T) {
 		},
 	}
 	got := toDaemonSet(ds)
-	if got.Selector == "" {
+	if len(got.Selector) == 0 {
 		t.Error("Selector should not be empty")
 	}
 }
@@ -164,7 +164,7 @@ func TestToDaemonSet_NoSelector(t *testing.T) {
 		},
 	}
 	got := toDaemonSet(ds)
-	if got.Selector != "" {
-		t.Errorf("Selector = %q; want empty string", got.Selector)
+	if len(got.Selector) != 0 {
+		t.Errorf("Selector = %v; want empty map", got.Selector)
 	}
 }

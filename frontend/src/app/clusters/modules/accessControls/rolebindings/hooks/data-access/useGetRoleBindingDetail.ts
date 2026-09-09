@@ -4,10 +4,11 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_ROLE_BINDING_DETAIL } from "../../api/api.const";
 import type { RoleBinding } from "../../api/resources";
 import { GetRoleBindingByName } from "../../api/resources";
-import { useRoleBindingsUpdateEvents } from "../async-events/useRoleBindingsUpdateEvents";
+import { useRoleBindingDetailUpdateEvents } from "../async-events/useRoleBindingDetailUpdateEvents";
 
 export const useGetRoleBindingDetail = (context: string, namespace: string, name: string) => {
-  const latestRoleBindings = useRoleBindingsUpdateEvents();
+  // Scoped "rolebinding:update" pushes for this one RoleBinding — see useRoleBindingDetailUpdateEvents.
+  const latestRoleBinding = useRoleBindingDetailUpdateEvents(namespace, name);
 
   const query = useQuery<RoleBinding, Error>({
     queryKey: [QUERY_KEY_ROLE_BINDING_DETAIL, { context, namespace, name }],
@@ -17,12 +18,9 @@ export const useGetRoleBindingDetail = (context: string, namespace: string, name
   });
 
   const mergedData = useMemo(() => {
-    const matchedRoleBinding = latestRoleBindings.find(
-      (rb) => rb.Namespace === namespace && rb.Name === name
-    );
-    if (matchedRoleBinding) return matchedRoleBinding;
+    if (latestRoleBinding) return latestRoleBinding;
     return query.data;
-  }, [latestRoleBindings, query.data, namespace, name]);
+  }, [latestRoleBinding, query.data]);
 
   return {
     ...query,
