@@ -9,6 +9,7 @@ import {
   ResourceLink,
   ResourceModificationButton,
   ResourceResumeButton,
+  ResourceRunNowButton,
   ScrollArea,
   SheetTitle,
   Table,
@@ -37,9 +38,11 @@ import { JobResumedBadge } from "../../jobs/components/JobResumedBadge";
 import { useGetJobs } from "../../jobs/hooks/data-access/useGetJobs";
 import type { CronJob } from "../api/resources";
 import { useGetCronJobDetail } from "../hooks/data-access/useGetCronJobDetail";
+import { useCreateJobFromCronJob } from "../hooks/data-mutation/useCreateJobFromCronJob";
 import { useDeleteCronJob } from "../hooks/data-mutation/useDeleteCronJob";
 import { useSetCronJobSuspend } from "../hooks/data-mutation/useSetCronJobSuspend";
 import { getCronDescription } from "../utils/cronDescription";
+import { CronJobCreateJobConfirmationModal } from "./CronJobCreateJobConfirmationModal";
 import { CronJobDeleteConfirmationModal } from "./CronJobDeleteConfirmationModal";
 import { CronJobResumeConfirmationModal } from "./CronJobResumeConfirmationModal";
 import { CronJobResumedBadge } from "./CronJobResumedBadge";
@@ -161,11 +164,15 @@ const CronJobDrawerCtaButtons: FC<CronJobDrawerCtaButtonsProps> = ({
   suspended,
   onClose,
 }) => {
+  const { openTab } = useUnifiedTray();
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
-  const { openTab } = useUnifiedTray();
+  const [showCreateJobModal, setShowCreateJobModal] = useState(false);
+
   const { mutate: deleteCronJob, isPending: isDeletePending } = useDeleteCronJob();
   const { mutate: setCronJobSuspend, isPending: isResumePending } = useSetCronJobSuspend();
+  const { mutate: createJobFromCronJob, isPending: isCreateJobPending } = useCreateJobFromCronJob();
 
   const handleDeleteConfirm = () => {
     deleteCronJob(
@@ -186,10 +193,23 @@ const CronJobDrawerCtaButtons: FC<CronJobDrawerCtaButtonsProps> = ({
     );
   };
 
+  const handleCreateJobConfirm = () => {
+    createJobFromCronJob(
+      { namespace: cronJobNamespace, name: cronJobName },
+      { onSuccess: () => setShowCreateJobModal(false) }
+    );
+  };
+
   return (
     <>
       <ButtonGroup>
         <TooltipProvider>
+          <ResourceRunNowButton
+            mode="icon-button"
+            ariaLabel="Run CronJob now"
+            disabled={isCreateJobPending}
+            onClick={() => setShowCreateJobModal(true)}
+          />
           <ResourceResumeButton
             mode="icon-button"
             ariaLabel="Resume CronJob"
@@ -233,6 +253,15 @@ const CronJobDrawerCtaButtons: FC<CronJobDrawerCtaButtonsProps> = ({
         isPending={isResumePending}
         onClose={() => setShowResumeModal(false)}
         onConfirm={handleResumeConfirm}
+      />
+
+      <CronJobCreateJobConfirmationModal
+        open={showCreateJobModal}
+        name={cronJobName}
+        namespace={cronJobNamespace}
+        isPending={isCreateJobPending}
+        onClose={() => setShowCreateJobModal(false)}
+        onConfirm={handleCreateJobConfirm}
       />
     </>
   );

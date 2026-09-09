@@ -562,8 +562,7 @@ func BenchmarkGetSyncedChan(b *testing.B) {
 	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		h.GetSyncedChan("pods")
 	}
 }
@@ -633,8 +632,7 @@ func BenchmarkIsForbidden(b *testing.B) {
 	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		h.IsForbidden("pods")
 	}
 }
