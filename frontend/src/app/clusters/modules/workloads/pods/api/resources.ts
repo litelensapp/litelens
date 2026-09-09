@@ -9,7 +9,9 @@ export {
   StopExec,
   StopLogs,
   StreamLogs,
+  UnwatchPodDetail,
   UpdatePodYAML,
+  WatchPodDetail,
 } from "@wailsjs/go/app/App";
 
 export type {

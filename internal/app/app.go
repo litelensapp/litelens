@@ -78,6 +78,7 @@ type App struct {
 	// emitXxxDetail trio in secret.go/resourcequota.go/pvc.go/etc. For
 	// cluster-scoped kinds (PersistentVolume, ValidatingWebhookConfig) the
 	// namespace half of the key is always "".
+	watchedPod                     detailWatch
 	watchedSecret                  detailWatch
 	watchedResourceQuota           detailWatch
 	watchedPersistentVolumeClaim   detailWatch
@@ -355,6 +356,7 @@ func (a *App) Connect(contextName string, seq int64) error {
 	debEndpoints := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEndpoints() }, isCtx)
 	debEndpointSlices := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitEndpointSlices() }, isCtx)
 	debPods := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPods() }, isCtx)
+	debPodDetail := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(_ string) { a.emitPodDetail() }, isCtx)
 	// Scope the Pods informer(s) to the namespace filter already known at
 	// connect time (restoredNamespaces), avoiding a cluster-wide Pods LIST
 	// when the caller only cares about a handful of namespaces. See
@@ -362,6 +364,7 @@ func (a *App) Connect(contextName string, seq int64) error {
 	h.SetPodsEventHandler(func(ns string) {
 		if a.isActive(contextName) {
 			debPods.Trigger(ns)
+			debPodDetail.Trigger(ns)
 		}
 	})
 	h.RescopePods(restoredNamespaces)
@@ -451,6 +454,7 @@ func (a *App) Connect(contextName string, seq int64) error {
 	h.RegisterDebouncer(debEndpoints)
 	h.RegisterDebouncer(debEndpointSlices)
 	h.RegisterDebouncer(debPods)
+	h.RegisterDebouncer(debPodDetail)
 	h.RegisterDebouncer(debDeployments)
 	h.RegisterDebouncer(debDaemonSets)
 	h.RegisterDebouncer(debReplicaSets)

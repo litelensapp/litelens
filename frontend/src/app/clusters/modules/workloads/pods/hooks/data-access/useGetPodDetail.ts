@@ -4,12 +4,13 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_POD_DETAIL } from "../../api/api.const";
 import type { Pod } from "../../api/resources";
 import { GetPodByName } from "../../api/resources";
-import { usePodsUpdateEvents } from "../async-events/usePodsUpdateEvents";
+import { usePodDetailUpdateEvents } from "../async-events/usePodDetailUpdateEvents";
 
 export const useGetPodDetail = (context: string, namespace: string, name: string) => {
-  // Live push-updates for this pod only arrive while its namespace is part of the active namespace filter.
-  // Initial load via GetPodByName is unaffected either way.
-  const latestPods = usePodsUpdateEvents();
+  // Scoped "pod:update" pushes (detail=true) for this one pod — see
+  // usePodDetailUpdateEvents. Unlike the "pods:update" list topic, this
+  // never drops detail-only fields like ManagedFields.
+  const latestPod = usePodDetailUpdateEvents(namespace, name);
 
   const query = useQuery<Pod, Error>({
     queryKey: [QUERY_KEY_POD_DETAIL, { context, namespace, name }],
@@ -18,12 +19,10 @@ export const useGetPodDetail = (context: string, namespace: string, name: string
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched pod from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedPod = latestPods.find((p) => p.Namespace === namespace && p.Name === name);
-    if (matchedPod) return matchedPod;
+    if (latestPod) return latestPod;
     return query.data;
-  }, [latestPods, query.data, namespace, name]);
+  }, [latestPod, query.data]);
 
   return {
     ...query,
