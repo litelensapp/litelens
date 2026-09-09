@@ -128,5 +128,35 @@ export const useCatchForbiddenResource = (
     };
   }, [open]);
 
+  // List-view mode reconciliation: the live "resource:forbidden" event fires at
+  // most once per resource for the lifetime of the backend's cluster connection
+  // (see FactoryHandle.StopResource), but a frontend-only reload (e.g. Ctrl+R,
+  // which remounts React without restarting the Go backend) resets
+  // forbiddenResources to empty without a new event ever coming. Without this,
+  // a resource forbidden before the reload would silently stop toasting/graying
+  // out in the nav until the next full cluster reconnect. Poll each labelMap
+  // resource's already-known state once on mount / activeContext change so a
+  // pre-existing 403 is still reflected after a reload.
+  const activeContext = options?.activeContext;
+  useEffect(() => {
+    const labelMap = optionsRef.current?.labelMap;
+    if (!labelMap) return;
+    let cancelled = false;
+    Promise.all(
+      Object.keys(labelMap).map((resource) =>
+        IsResourceForbidden(resource, "").then((forbidden) => (forbidden ? resource : null))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const forbidden = results.filter((r): r is string => r !== null);
+      if (forbidden.length > 0) {
+        setForbiddenResources((prev) => new Set([...prev, ...forbidden]));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeContext]);
+
   return { forbiddenResources };
 };
