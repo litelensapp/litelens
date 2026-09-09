@@ -169,3 +169,35 @@ func (a *App) UpdateCronJobYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchCronJobDetail registers the frontend's interest in live "cronjob:update"
+// detail pushes for one specific CronJob (namespace/name) — the one currently
+// shown in the (single) open CronJob detail drawer. Call UnwatchCronJobDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchCronJobDetail(namespace, name string) {
+	a.watchedCronJob.watch(namespace, name)
+}
+
+// UnwatchCronJobDetail reverses WatchCronJobDetail.
+func (a *App) UnwatchCronJobDetail(namespace, name string) {
+	a.watchedCronJob.unwatch(namespace, name)
+}
+
+// emitCronJobDetail pushes a fresh detail on "cronjob:update" (singular — distinct from the
+// "cronjobs:update" list topic) for the currently-watched CronJob, if any.
+func (a *App) emitCronJobDetail() {
+	namespace, name, ok := a.watchedCronJob.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "cronjobs") {
+		return
+	}
+	detail, err := kubeResources.GetCronJobByName(h.CronJobLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "cronjob:update", detail)
+}

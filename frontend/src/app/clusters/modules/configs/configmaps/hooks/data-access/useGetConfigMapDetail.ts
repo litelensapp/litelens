@@ -4,10 +4,12 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_CONFIGMAP_DETAIL } from "../../api/api.const";
 import type { ConfigMap } from "../../api/resources";
 import { GetConfigMapByName } from "../../api/resources";
-import { useConfigMapsUpdateEvents } from "../async-events/useConfigMapsUpdateEvents";
+import { useConfigMapDetailUpdateEvents } from "../async-events/useConfigMapDetailUpdateEvents";
 
 export const useGetConfigMapDetail = (context: string, namespace: string, name: string) => {
-  const latestConfigMaps = useConfigMapsUpdateEvents();
+  // Scoped "configmap:update" pushes for this one ConfigMap — see useConfigMapDetailUpdateEvents.
+  const latestConfigMap = useConfigMapDetailUpdateEvents(namespace, name);
+
   const query = useQuery<ConfigMap, Error>({
     queryKey: [QUERY_KEY_CONFIGMAP_DETAIL, { context, namespace, name }],
     queryFn: () => GetConfigMapByName(namespace, name),
@@ -16,12 +18,12 @@ export const useGetConfigMapDetail = (context: string, namespace: string, name: 
   });
 
   const mergedData = useMemo(() => {
-    const matchedConfigMap = latestConfigMaps.find(
-      (cm) => cm.Namespace === namespace && cm.Name === name
-    );
-    if (matchedConfigMap) return matchedConfigMap;
+    if (latestConfigMap) return latestConfigMap;
     return query.data;
-  }, [latestConfigMaps, query.data, namespace, name]);
+  }, [latestConfigMap, query.data]);
 
-  return { ...query, data: mergedData };
+  return {
+    ...query,
+    data: mergedData,
+  };
 };

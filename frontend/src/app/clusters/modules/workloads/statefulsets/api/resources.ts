@@ -1,9 +1,11 @@
 export {
   GetStatefulSetByName,
-  GetStatefulSetsSummary,
   GetStatefulSetYAML,
+  GetStatefulSetsSummary,
   ListStatefulSets,
+  UnwatchStatefulSetDetail,
   UpdateStatefulSetYAML,
+  WatchStatefulSetDetail,
 } from "@wailsjs/go/app/App";
 
 export type { StatefulSet, StatefulSetSummary } from "@litelens/core";

@@ -143,3 +143,35 @@ func (a *App) UpdateRoleBindingYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchRoleBindingDetail registers the frontend's interest in live "rolebinding:update"
+// detail pushes for one specific RoleBinding (namespace/name) — the one currently
+// shown in the (single) open RoleBinding detail drawer. Call UnwatchRoleBindingDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchRoleBindingDetail(namespace, name string) {
+	a.watchedRoleBinding.watch(namespace, name)
+}
+
+// UnwatchRoleBindingDetail reverses WatchRoleBindingDetail.
+func (a *App) UnwatchRoleBindingDetail(namespace, name string) {
+	a.watchedRoleBinding.unwatch(namespace, name)
+}
+
+// emitRoleBindingDetail pushes a fresh detail on "rolebinding:update" (singular — distinct from the
+// "rolebindings:update" list topic) for the currently-watched RoleBinding, if any.
+func (a *App) emitRoleBindingDetail() {
+	namespace, name, ok := a.watchedRoleBinding.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "rolebindings") {
+		return
+	}
+	detail, err := kubeResources.GetRoleBindingByName(h.RoleBindingLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "rolebinding:update", detail)
+}

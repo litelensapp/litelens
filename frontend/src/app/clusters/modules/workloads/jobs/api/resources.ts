@@ -1,9 +1,11 @@
 export {
   GetJobByName,
-  GetJobsSummary,
   GetJobYAML,
+  GetJobsSummary,
   ListJobs,
+  UnwatchJobDetail,
   UpdateJobYAML,
+  WatchJobDetail,
 } from "@wailsjs/go/app/App";
 
 export type { JobCondition, Job, JobSummary } from "@litelens/core";

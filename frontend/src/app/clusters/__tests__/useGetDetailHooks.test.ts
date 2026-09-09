@@ -15,14 +15,20 @@ const getPodByNameMock = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 
 vi.mock("../modules/base/nodes/api/resources", () => ({
   GetNodeByName: getNodeByNameMock,
+  WatchNodeDetail: vi.fn(),
+  UnwatchNodeDetail: vi.fn(),
 }));
 
 vi.mock("../modules/workloads/deployments/api/resources", () => ({
   GetDeploymentByName: getDeploymentByNameMock,
+  WatchDeploymentDetail: vi.fn(),
+  UnwatchDeploymentDetail: vi.fn(),
 }));
 
 vi.mock("../modules/workloads/pods/api/resources", () => ({
   GetPodByName: getPodByNameMock,
+  WatchPodDetail: vi.fn(),
+  UnwatchPodDetail: vi.fn(),
 }));
 
 function makeWrapper() {

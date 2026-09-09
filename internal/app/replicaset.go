@@ -189,3 +189,35 @@ func (a *App) UpdateReplicaSetYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchReplicaSetDetail registers the frontend's interest in live "replicaset:update"
+// detail pushes for one specific ReplicaSet (namespace/name) — the one currently
+// shown in the (single) open ReplicaSet detail drawer. Call UnwatchReplicaSetDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchReplicaSetDetail(namespace, name string) {
+	a.watchedReplicaSet.watch(namespace, name)
+}
+
+// UnwatchReplicaSetDetail reverses WatchReplicaSetDetail.
+func (a *App) UnwatchReplicaSetDetail(namespace, name string) {
+	a.watchedReplicaSet.unwatch(namespace, name)
+}
+
+// emitReplicaSetDetail pushes a fresh detail on "replicaset:update" (singular — distinct from the
+// "replicasets:update" list topic) for the currently-watched ReplicaSet, if any.
+func (a *App) emitReplicaSetDetail() {
+	namespace, name, ok := a.watchedReplicaSet.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "replicasets") {
+		return
+	}
+	detail, err := kubeResources.GetReplicaSetByName(h.ReplicaSetLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "replicaset:update", detail)
+}

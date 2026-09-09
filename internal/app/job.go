@@ -169,3 +169,35 @@ func (a *App) UpdateJobYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchJobDetail registers the frontend's interest in live "job:update"
+// detail pushes for one specific Job (namespace/name) — the one currently
+// shown in the (single) open Job detail drawer. Call UnwatchJobDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchJobDetail(namespace, name string) {
+	a.watchedJob.watch(namespace, name)
+}
+
+// UnwatchJobDetail reverses WatchJobDetail.
+func (a *App) UnwatchJobDetail(namespace, name string) {
+	a.watchedJob.unwatch(namespace, name)
+}
+
+// emitJobDetail pushes a fresh detail on "job:update" (singular — distinct from the
+// "jobs:update" list topic) for the currently-watched Job, if any.
+func (a *App) emitJobDetail() {
+	namespace, name, ok := a.watchedJob.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "jobs") {
+		return
+	}
+	detail, err := kubeResources.GetJobByName(h.JobLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "job:update", detail)
+}

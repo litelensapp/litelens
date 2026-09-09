@@ -140,3 +140,35 @@ func (a *App) UpdateEndpointYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchEndpointDetail registers the frontend's interest in live "endpoint:update"
+// detail pushes for one specific Endpoint (namespace/name) — the one currently
+// shown in the (single) open Endpoint detail drawer. Call UnwatchEndpointDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchEndpointDetail(namespace, name string) {
+	a.watchedEndpoint.watch(namespace, name)
+}
+
+// UnwatchEndpointDetail reverses WatchEndpointDetail.
+func (a *App) UnwatchEndpointDetail(namespace, name string) {
+	a.watchedEndpoint.unwatch(namespace, name)
+}
+
+// emitEndpointDetail pushes a fresh detail on "endpoint:update" (singular — distinct from the
+// "endpoints:update" list topic) for the currently-watched Endpoint, if any.
+func (a *App) emitEndpointDetail() {
+	namespace, name, ok := a.watchedEndpoint.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "endpoints") {
+		return
+	}
+	detail, err := kubeResources.GetEndpointByName(h.EndpointsLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "endpoint:update", detail)
+}

@@ -1,10 +1,12 @@
 export {
   GetNamespaceByName,
-  GetNamespaces,
   GetNamespaceYAML,
+  GetNamespaces,
   ListNamespaces,
   SetActiveNamespaces,
+  UnwatchNamespaceDetail,
   UpdateNamespaceYAML,
+  WatchNamespaceDetail,
 } from "@wailsjs/go/app/App";
 
 export type { Namespace } from "@litelens/core";

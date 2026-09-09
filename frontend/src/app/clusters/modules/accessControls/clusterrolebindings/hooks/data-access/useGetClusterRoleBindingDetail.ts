@@ -4,10 +4,12 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_CLUSTER_ROLE_BINDING_DETAIL } from "../../api/api.const";
 import type { ClusterRoleBinding } from "../../api/resources";
 import { GetClusterRoleBindingByName } from "../../api/resources";
-import { useClusterRoleBindingsUpdateEvents } from "../async-events/useClusterRoleBindingsUpdateEvents";
+import { useClusterRoleBindingDetailUpdateEvents } from "../async-events/useClusterRoleBindingDetailUpdateEvents";
 
 export const useGetClusterRoleBindingDetail = (context: string, name: string) => {
-  const latestClusterRoleBindings = useClusterRoleBindingsUpdateEvents();
+  // Scoped "clusterrolebinding:update" pushes for this one ClusterRoleBinding — see useClusterRoleBindingDetailUpdateEvents.
+  const latestClusterRoleBinding = useClusterRoleBindingDetailUpdateEvents(name);
+
   const query = useQuery<ClusterRoleBinding, Error>({
     queryKey: [QUERY_KEY_CLUSTER_ROLE_BINDING_DETAIL, { context, name }],
     queryFn: () => GetClusterRoleBindingByName(name),
@@ -16,10 +18,12 @@ export const useGetClusterRoleBindingDetail = (context: string, name: string) =>
   });
 
   const mergedData = useMemo(() => {
-    const matchedClusterRoleBinding = latestClusterRoleBindings.find((crb) => crb.Name === name);
-    if (matchedClusterRoleBinding) return matchedClusterRoleBinding;
+    if (latestClusterRoleBinding) return latestClusterRoleBinding;
     return query.data;
-  }, [latestClusterRoleBindings, query.data, name]);
+  }, [latestClusterRoleBinding, query.data]);
 
-  return { ...query, data: mergedData };
+  return {
+    ...query,
+    data: mergedData,
+  };
 };

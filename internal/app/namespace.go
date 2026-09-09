@@ -272,3 +272,36 @@ func (a *App) SetActiveNamespaces(namespaces []string, seq int64) error {
 	a.emitRoleBindings()
 	return nil
 }
+
+// WatchNamespaceDetail registers the frontend's interest in live "namespace:update"
+// detail pushes for one specific Namespace (name) — the one currently shown in
+// the (single) open Namespace detail drawer. Call UnwatchNamespaceDetail on
+// drawer close/unmount to stop.
+func (a *App) WatchNamespaceDetail(name string) {
+	a.watchedNamespace.watch("", name)
+}
+
+// UnwatchNamespaceDetail reverses WatchNamespaceDetail.
+func (a *App) UnwatchNamespaceDetail(name string) {
+	a.watchedNamespace.unwatch("", name)
+}
+
+// emitNamespaceDetail pushes a fresh Namespace detail on "namespace:update" (singular
+// — distinct from the "namespaces:update" list topic) for the currently-watched
+// Namespace, if any.
+func (a *App) emitNamespaceDetail() {
+	_, name, ok := a.watchedNamespace.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "namespaces") {
+		return
+	}
+	detail, err := kubeResources.GetNamespaceByName(h.Factory.Core().V1().Namespaces().Lister(), name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "namespace:update", detail)
+}

@@ -198,3 +198,35 @@ func (a *App) UpdateDaemonSetYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchDaemonSetDetail registers the frontend's interest in live "daemonset:update"
+// detail pushes for one specific DaemonSet (namespace/name) — the one currently
+// shown in the (single) open DaemonSet detail drawer. Call UnwatchDaemonSetDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchDaemonSetDetail(namespace, name string) {
+	a.watchedDaemonSet.watch(namespace, name)
+}
+
+// UnwatchDaemonSetDetail reverses WatchDaemonSetDetail.
+func (a *App) UnwatchDaemonSetDetail(namespace, name string) {
+	a.watchedDaemonSet.unwatch(namespace, name)
+}
+
+// emitDaemonSetDetail pushes a fresh detail on "daemonset:update" (singular — distinct from the
+// "daemonsets:update" list topic) for the currently-watched DaemonSet, if any.
+func (a *App) emitDaemonSetDetail() {
+	namespace, name, ok := a.watchedDaemonSet.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "daemonsets") {
+		return
+	}
+	detail, err := kubeResources.GetDaemonSetByName(h.DaemonSetLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "daemonset:update", detail)
+}

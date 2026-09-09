@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { QUERY_KEY_DAEMONSET_DETAIL } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
+import { QUERY_KEY_DAEMONSET_DETAIL } from "../../api/api.const";
 import type { DaemonSet } from "../../api/resources";
 import { GetDaemonSetByName } from "../../api/resources";
-import { useDaemonSetsUpdateEvents } from "../async-events/useDaemonSetsUpdateEvents";
+import { useDaemonSetDetailUpdateEvents } from "../async-events/useDaemonSetDetailUpdateEvents";
 
 export const useGetDaemonSetDetail = (context: string, namespace: string, name: string) => {
-  const latestDaemonSets = useDaemonSetsUpdateEvents();
+  // Scoped "daemonset:update" pushes for this one DaemonSet — see useDaemonSetDetailUpdateEvents.
+  const latestDaemonSet = useDaemonSetDetailUpdateEvents(namespace, name);
 
   const query = useQuery<DaemonSet, Error>({
     queryKey: [QUERY_KEY_DAEMONSET_DETAIL, { context, namespace, name }],
@@ -16,14 +17,10 @@ export const useGetDaemonSetDetail = (context: string, namespace: string, name: 
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched daemonset from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedDaemonSet = latestDaemonSets.find(
-      (ds) => ds.Namespace === namespace && ds.Name === name
-    );
-    if (matchedDaemonSet) return matchedDaemonSet;
+    if (latestDaemonSet) return latestDaemonSet;
     return query.data;
-  }, [latestDaemonSets, query.data, namespace, name]);
+  }, [latestDaemonSet, query.data]);
 
   return {
     ...query,

@@ -144,3 +144,35 @@ func (a *App) UpdateServiceAccountYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchServiceAccountDetail registers the frontend's interest in live "serviceaccount:update"
+// detail pushes for one specific ServiceAccount (namespace/name) — the one currently
+// shown in the (single) open ServiceAccount detail drawer. Call UnwatchServiceAccountDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchServiceAccountDetail(namespace, name string) {
+	a.watchedServiceAccount.watch(namespace, name)
+}
+
+// UnwatchServiceAccountDetail reverses WatchServiceAccountDetail.
+func (a *App) UnwatchServiceAccountDetail(namespace, name string) {
+	a.watchedServiceAccount.unwatch(namespace, name)
+}
+
+// emitServiceAccountDetail pushes a fresh detail on "serviceaccount:update" (singular — distinct from the
+// "serviceaccounts:update" list topic) for the currently-watched ServiceAccount, if any.
+func (a *App) emitServiceAccountDetail() {
+	namespace, name, ok := a.watchedServiceAccount.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "serviceaccounts") {
+		return
+	}
+	detail, err := kubeResources.GetServiceAccountByName(h.ServiceAccountLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "serviceaccount:update", detail)
+}

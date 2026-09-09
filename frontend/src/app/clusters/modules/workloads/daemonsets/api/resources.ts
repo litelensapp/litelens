@@ -1,9 +1,11 @@
 export {
   GetDaemonSetByName,
-  GetDaemonSetsSummary,
   GetDaemonSetYAML,
+  GetDaemonSetsSummary,
   ListDaemonSets,
+  UnwatchDaemonSetDetail,
   UpdateDaemonSetYAML,
+  WatchDaemonSetDetail,
 } from "@wailsjs/go/app/App";
 
 export type { DaemonSet, DaemonSetSummary } from "@litelens/core";

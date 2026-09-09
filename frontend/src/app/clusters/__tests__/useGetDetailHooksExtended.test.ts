@@ -30,34 +30,50 @@ const getNamespaceByNameMock = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 
 vi.mock("../modules/base/events/api/resources", () => ({
   GetEventByName: getEventByNameMock,
+  WatchEventDetail: vi.fn(),
+  UnwatchEventDetail: vi.fn(),
 }));
 
 vi.mock("../modules/base/namespaces/api/resources", () => ({
   GetNamespaceByName: getNamespaceByNameMock,
+  WatchNamespaceDetail: vi.fn(),
+  UnwatchNamespaceDetail: vi.fn(),
 }));
 
 vi.mock("../modules/accessControls/roles/api/resources", () => ({
   GetRoleByName: getRoleByNameMock,
+  WatchRoleDetail: vi.fn(),
+  UnwatchRoleDetail: vi.fn(),
 }));
 
 vi.mock("../modules/accessControls/serviceaccounts/api/resources", () => ({
   GetServiceAccountByName: getServiceAccountByNameMock,
+  WatchServiceAccountDetail: vi.fn(),
+  UnwatchServiceAccountDetail: vi.fn(),
 }));
 
 vi.mock("../modules/accessControls/clusterroles/api/resources", () => ({
   GetClusterRoleByName: getClusterRoleByNameMock,
+  WatchClusterRoleDetail: vi.fn(),
+  UnwatchClusterRoleDetail: vi.fn(),
 }));
 
 vi.mock("../modules/workloads/jobs/api/resources", () => ({
   GetJobByName: getJobByNameMock,
+  WatchJobDetail: vi.fn(),
+  UnwatchJobDetail: vi.fn(),
 }));
 
 vi.mock("../modules/workloads/replicasets/api/resources", () => ({
   GetReplicaSetByName: getReplicaSetByNameMock,
+  WatchReplicaSetDetail: vi.fn(),
+  UnwatchReplicaSetDetail: vi.fn(),
 }));
 
 vi.mock("../modules/networks/services/api/resources", () => ({
   GetServiceByName: getServiceByNameMock,
+  WatchServiceDetail: vi.fn(),
+  UnwatchServiceDetail: vi.fn(),
 }));
 
 function makeWrapper() {

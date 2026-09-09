@@ -27,6 +27,8 @@ const getEventByNameMock = vi.hoisted(() => vi.fn());
 vi.mock("@wailsjs/runtime/runtime", () => ({ EventsOn: eventsOnMock }));
 vi.mock("../../../api/resources", () => ({
   GetEventByName: getEventByNameMock,
+  WatchEventDetail: vi.fn(),
+  UnwatchEventDetail: vi.fn(),
 }));
 
 const mockEvent = (overrides: Partial<Event> = {}): Event => ({
@@ -81,7 +83,7 @@ describe("useGetEventDetail edge cases", () => {
       expect(result.current.data?.Name).toBe("query-event");
 
       const otherEvent = mockEvent({ Name: "other-event", Namespace: "default" });
-      triggerEvent("events:update", [otherEvent]);
+      triggerEvent("event:update", otherEvent);
 
       await waitFor(() => {
         expect(result.current.data?.Name).toBe("query-event");
@@ -103,7 +105,7 @@ describe("useGetEventDetail edge cases", () => {
       expect(result.current.data?.Namespace).toBe("default");
 
       const otherEvent = mockEvent({ Name: "test-event", Namespace: "kube-system" });
-      triggerEvent("events:update", [otherEvent]);
+      triggerEvent("event:update", otherEvent);
 
       await waitFor(() => {
         expect(result.current.data?.Namespace).toBe("default");
@@ -129,7 +131,7 @@ describe("useGetEventDetail edge cases", () => {
         Namespace: "default",
         Count: 5,
       });
-      triggerEvent("events:update", [matchedEvent]);
+      triggerEvent("event:update", matchedEvent);
 
       await waitFor(() => {
         expect(result.current.data?.Count).toBe(5);
@@ -151,7 +153,7 @@ describe("useGetEventDetail edge cases", () => {
       });
 
       const eventFromPush = mockEvent({ Name: "test-event", Namespace: "default" });
-      triggerEvent("events:update", [eventFromPush]);
+      triggerEvent("event:update", eventFromPush);
 
       await waitFor(() => {
         expect(result.current.data).toEqual(eventFromPush);
@@ -176,7 +178,7 @@ describe("useGetEventDetail edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       const event = mockEvent({ Name: "testevent", Namespace: "default" });
-      triggerEvent("events:update", [event]);
+      triggerEvent("event:update", event);
 
       await waitFor(() => {
         expect(result.current.data?.Name).toBe("TestEvent");
@@ -195,7 +197,7 @@ describe("useGetEventDetail edge cases", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       const event = mockEvent({ Name: "test-event", Namespace: "default" });
-      triggerEvent("events:update", [event]);
+      triggerEvent("event:update", event);
 
       await waitFor(() => {
         expect(result.current.data?.Namespace).toBe("Default");
@@ -226,8 +228,8 @@ describe("useGetEventDetail edge cases", () => {
     });
   });
 
-  describe("7. Multiple event pushes with one matching", () => {
-    it("finds match among multiple events", async () => {
+  describe("7. Singular event push matching the watched event", () => {
+    it("applies the pushed event when it matches", async () => {
       const queryData = mockEvent({ Name: "query-event", Namespace: "default" });
       getEventByNameMock.mockResolvedValue(queryData);
 
@@ -238,13 +240,9 @@ describe("useGetEventDetail edge cases", () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      const events = [
-        mockEvent({ Name: "event-1", Namespace: "default" }),
-        mockEvent({ Name: "target-event", Namespace: "default" }),
-        mockEvent({ Name: "event-3", Namespace: "default" }),
-      ];
+      const targetEvent = mockEvent({ Name: "target-event", Namespace: "default" });
 
-      triggerEvent("events:update", events);
+      triggerEvent("event:update", targetEvent);
 
       await waitFor(() => {
         expect(result.current.data?.Name).toBe("target-event");
@@ -265,7 +263,7 @@ describe("useGetEventDetail edge cases", () => {
       expect(result.current.data).toBeUndefined();
 
       const event = mockEvent({ Name: "test-event", Namespace: "default" });
-      triggerEvent("events:update", [event]);
+      triggerEvent("event:update", event);
 
       await waitFor(() => {
         expect(result.current.data).toEqual(event);

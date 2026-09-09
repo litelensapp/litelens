@@ -86,3 +86,35 @@ func (a *App) emitEvents() {
 	runtime.EventsEmit(a.ctx, "events:update", data)
 	runtime.EventsEmit(a.ctx, "events:warning:update", warningEvents(data))
 }
+
+// WatchEventDetail registers the frontend's interest in live "event:update"
+// detail pushes for one specific Event (namespace/name) — the one currently
+// shown in the (single) open Event detail drawer. Call UnwatchEventDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchEventDetail(namespace, name string) {
+	a.watchedEvent.watch(namespace, name)
+}
+
+// UnwatchEventDetail reverses WatchEventDetail.
+func (a *App) UnwatchEventDetail(namespace, name string) {
+	a.watchedEvent.unwatch(namespace, name)
+}
+
+// emitEventDetail pushes a fresh detail on "event:update" (singular — distinct from the
+// "events:update" list topic) for the currently-watched Event, if any.
+func (a *App) emitEventDetail() {
+	namespace, name, ok := a.watchedEvent.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "events") {
+		return
+	}
+	detail, err := kubeResources.GetEventByName(h.EventLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "event:update", detail)
+}

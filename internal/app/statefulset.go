@@ -168,3 +168,35 @@ func (a *App) UpdateStatefulSetYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchStatefulSetDetail registers the frontend's interest in live "statefulset:update"
+// detail pushes for one specific StatefulSet (namespace/name) — the one currently
+// shown in the (single) open StatefulSet detail drawer. Call UnwatchStatefulSetDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchStatefulSetDetail(namespace, name string) {
+	a.watchedStatefulSet.watch(namespace, name)
+}
+
+// UnwatchStatefulSetDetail reverses WatchStatefulSetDetail.
+func (a *App) UnwatchStatefulSetDetail(namespace, name string) {
+	a.watchedStatefulSet.unwatch(namespace, name)
+}
+
+// emitStatefulSetDetail pushes a fresh detail on "statefulset:update" (singular — distinct from the
+// "statefulsets:update" list topic) for the currently-watched StatefulSet, if any.
+func (a *App) emitStatefulSetDetail() {
+	namespace, name, ok := a.watchedStatefulSet.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "statefulsets") {
+		return
+	}
+	detail, err := kubeResources.GetStatefulSetByName(h.StatefulSetLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "statefulset:update", detail)
+}

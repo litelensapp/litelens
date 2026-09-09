@@ -139,3 +139,35 @@ func (a *App) UpdateServiceYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchServiceDetail registers the frontend's interest in live "service:update"
+// detail pushes for one specific Service (namespace/name) — the one currently
+// shown in the (single) open Service detail drawer. Call UnwatchServiceDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchServiceDetail(namespace, name string) {
+	a.watchedService.watch(namespace, name)
+}
+
+// UnwatchServiceDetail reverses WatchServiceDetail.
+func (a *App) UnwatchServiceDetail(namespace, name string) {
+	a.watchedService.unwatch(namespace, name)
+}
+
+// emitServiceDetail pushes a fresh detail on "service:update" (singular — distinct from the
+// "services:update" list topic) for the currently-watched Service, if any.
+func (a *App) emitServiceDetail() {
+	namespace, name, ok := a.watchedService.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "services") {
+		return
+	}
+	detail, err := kubeResources.GetServiceByName(h.ServiceLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "service:update", detail)
+}

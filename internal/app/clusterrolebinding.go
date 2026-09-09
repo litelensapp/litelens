@@ -142,3 +142,36 @@ func (a *App) UpdateClusterRoleBindingYAML(yamlString string) error {
 
 	return nil
 }
+
+// WatchClusterRoleBindingDetail registers the frontend's interest in live "clusterrolebinding:update"
+// detail pushes for one specific ClusterRoleBinding (name) — the one currently shown in
+// the (single) open ClusterRoleBinding detail drawer. Call UnwatchClusterRoleBindingDetail on
+// drawer close/unmount to stop.
+func (a *App) WatchClusterRoleBindingDetail(name string) {
+	a.watchedClusterRoleBinding.watch("", name)
+}
+
+// UnwatchClusterRoleBindingDetail reverses WatchClusterRoleBindingDetail.
+func (a *App) UnwatchClusterRoleBindingDetail(name string) {
+	a.watchedClusterRoleBinding.unwatch("", name)
+}
+
+// emitClusterRoleBindingDetail pushes a fresh ClusterRoleBinding detail on "clusterrolebinding:update" (singular
+// — distinct from the "clusterrolebindings:update" list topic) for the currently-watched
+// ClusterRoleBinding, if any.
+func (a *App) emitClusterRoleBindingDetail() {
+	_, name, ok := a.watchedClusterRoleBinding.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSync(h, "clusterrolebindings") {
+		return
+	}
+	detail, err := kubeResources.GetClusterRoleBindingByName(h.Factory.Rbac().V1().ClusterRoleBindings().Lister(), name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "clusterrolebinding:update", detail)
+}

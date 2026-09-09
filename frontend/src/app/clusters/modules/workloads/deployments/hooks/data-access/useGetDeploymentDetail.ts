@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { QUERY_KEY_DEPLOYMENT_DETAIL } from "../../api/api.const";
 import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
+import { QUERY_KEY_DEPLOYMENT_DETAIL } from "../../api/api.const";
 import type { Deployment } from "../../api/resources";
 import { GetDeploymentByName } from "../../api/resources";
-import { useDeploymentsUpdateEvents } from "../async-events/useDeploymentsUpdateEvents";
+import { useDeploymentDetailUpdateEvents } from "../async-events/useDeploymentDetailUpdateEvents";
 
 export const useGetDeploymentDetail = (context: string, namespace: string, name: string) => {
-  const latestDeployments = useDeploymentsUpdateEvents();
+  // Scoped "deployment:update" pushes for this one Deployment — see useDeploymentDetailUpdateEvents.
+  const latestDeployment = useDeploymentDetailUpdateEvents(namespace, name);
 
   const query = useQuery<Deployment, Error>({
     queryKey: [QUERY_KEY_DEPLOYMENT_DETAIL, { context, namespace, name }],
@@ -16,14 +17,10 @@ export const useGetDeploymentDetail = (context: string, namespace: string, name:
     enabled: !!context && !!namespace && !!name,
   });
 
-  // Merge event-driven data: prefer matched deployment from latest event if available.
   const mergedData = useMemo(() => {
-    const matchedDeployment = latestDeployments.find(
-      (d) => d.Namespace === namespace && d.Name === name
-    );
-    if (matchedDeployment) return matchedDeployment;
+    if (latestDeployment) return latestDeployment;
     return query.data;
-  }, [latestDeployments, query.data, namespace, name]);
+  }, [latestDeployment, query.data]);
 
   return {
     ...query,

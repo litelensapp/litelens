@@ -4,10 +4,11 @@ import { DEFAULT_QUERY_OPTIONS } from "../../../../../../shared/api/api";
 import { QUERY_KEY_ROLE_DETAIL } from "../../api/api.const";
 import type { Role } from "../../api/resources";
 import { GetRoleByName } from "../../api/resources";
-import { useRolesUpdateEvents } from "../async-events/useRolesUpdateEvents";
+import { useRoleDetailUpdateEvents } from "../async-events/useRoleDetailUpdateEvents";
 
 export const useGetRoleDetail = (context: string, namespace: string, name: string) => {
-  const latestRoles = useRolesUpdateEvents();
+  // Scoped "role:update" pushes for this one Role — see useRoleDetailUpdateEvents.
+  const latestRole = useRoleDetailUpdateEvents(namespace, name);
 
   const query = useQuery<Role, Error>({
     queryKey: [QUERY_KEY_ROLE_DETAIL, { context, namespace, name }],
@@ -17,10 +18,9 @@ export const useGetRoleDetail = (context: string, namespace: string, name: strin
   });
 
   const mergedData = useMemo(() => {
-    const matchedRole = latestRoles.find((r) => r.Namespace === namespace && r.Name === name);
-    if (matchedRole) return matchedRole;
+    if (latestRole) return latestRole;
     return query.data;
-  }, [latestRoles, query.data, namespace, name]);
+  }, [latestRole, query.data]);
 
   return {
     ...query,

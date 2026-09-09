@@ -153,3 +153,35 @@ func (a *App) UpdateConfigMapYAML(namespace, yamlString string) error {
 
 	return nil
 }
+
+// WatchConfigMapDetail registers the frontend's interest in live "configmap:update"
+// detail pushes for one specific ConfigMap (namespace/name) — the one currently
+// shown in the (single) open ConfigMap detail drawer. Call UnwatchConfigMapDetail
+// on drawer close/unmount to stop.
+func (a *App) WatchConfigMapDetail(namespace, name string) {
+	a.watchedConfigMap.watch(namespace, name)
+}
+
+// UnwatchConfigMapDetail reverses WatchConfigMapDetail.
+func (a *App) UnwatchConfigMapDetail(namespace, name string) {
+	a.watchedConfigMap.unwatch(namespace, name)
+}
+
+// emitConfigMapDetail pushes a fresh detail on "configmap:update" (singular — distinct from the
+// "configmaps:update" list topic) for the currently-watched ConfigMap, if any.
+func (a *App) emitConfigMapDetail() {
+	namespace, name, ok := a.watchedConfigMap.get()
+	if !ok {
+		return
+	}
+
+	h := a.activeFactory()
+	if !waitForResourceSyncIgnoringForbidden(h, "configmaps") {
+		return
+	}
+	detail, err := kubeResources.GetConfigMapByName(h.ConfigMapLister(), namespace, name)
+	if err != nil {
+		return
+	}
+	runtime.EventsEmit(a.ctx, "configmap:update", detail)
+}
