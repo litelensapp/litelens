@@ -2,7 +2,10 @@ import { NavItem } from "@litelens/core";
 import { ErrorBoundary, renderErrorToast } from "@litelens/design-system";
 import { FC, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInstalledPlugins } from "../marketplace/hooks/data-access/useGetInstalledPlugins";
-import { useCatchForbiddenResource } from "../shared/hooks/async-events/useCatchForbiddenResource";
+import {
+  formatForbiddenNamespaces,
+  useCatchForbiddenResource,
+} from "../shared/hooks/async-events/useCatchForbiddenResource";
 import { isPluginMounted, shouldResetActiveResource } from "./MainLayout.utils";
 import { MainLayoutProvider } from "./MainLayoutContext";
 import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
@@ -357,10 +360,13 @@ export const MainLayout: FC<MainLayoutProps> = ({ activeContext, onOpenMarketpla
   function handleSelectItem(item: NavItem<ViewType>) {
     if (item.view) {
       setActiveResource(item.view);
-      if (forbiddenResources.has(item.view)) {
+      const namespaces = forbiddenResources.get(item.view);
+      if (namespaces) {
         const label =
           mergedResourceLabels[item.view as keyof typeof mergedResourceLabels] ?? item.view;
-        renderErrorToast({ title: `Access denied: cannot list ${label}` });
+        renderErrorToast({
+          title: `Access denied: cannot list ${label}${formatForbiddenNamespaces(namespaces)}`,
+        });
       }
     }
   }
