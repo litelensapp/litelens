@@ -327,4 +327,44 @@ describe("useCatchForbiddenResource", () => {
       expect(onForbiddenDetected).toHaveBeenCalledOnce();
     });
   });
+
+  // ── Reconciliation poll: the FE-reload namespace bug ────────────────────────
+  describe("List-view reconciliation poll (mount / activeContext change)", () => {
+    const LABEL_MAP: Record<string, string> = { secrets: "Secrets" };
+
+    it("checks IsResourceForbidden per active namespace, not just a single blank check", async () => {
+      isResourceForbiddenMock.mockImplementation(
+        async (_resource: string, namespace: string) => namespace === "ns-b"
+      );
+
+      const { result } = renderHook(() =>
+        useCatchForbiddenResource("secrets", {
+          labelMap: LABEL_MAP,
+          namespaces: ["ns-a", "ns-b"],
+        })
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(isResourceForbiddenMock).toHaveBeenCalledWith("secrets", "ns-a");
+      expect(isResourceForbiddenMock).toHaveBeenCalledWith("secrets", "ns-b");
+      expect(result.current.forbiddenResources.get("secrets")).toEqual(new Set(["ns-b"]));
+    });
+
+    it("falls back to a single '' (any-namespace) check when no namespaces are given", async () => {
+      isResourceForbiddenMock.mockResolvedValue(true);
+
+      renderHook(() => useCatchForbiddenResource("secrets", { labelMap: LABEL_MAP }));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(isResourceForbiddenMock).toHaveBeenCalledWith("secrets", "");
+      expect(isResourceForbiddenMock).toHaveBeenCalledTimes(1);
+    });
+  });
 });
