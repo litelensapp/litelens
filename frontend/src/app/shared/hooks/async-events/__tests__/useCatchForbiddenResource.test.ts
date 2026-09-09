@@ -300,6 +300,9 @@ describe("useCatchForbiddenResource", () => {
       fireForbiddenEvent("secrets", "ns-a");
 
       expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: 'Access denied: cannot get Secret "my-secret" in namespace "ns-a"',
+      });
       expect(onForbiddenDetected).toHaveBeenCalledOnce();
     });
 
@@ -318,6 +321,9 @@ describe("useCatchForbiddenResource", () => {
       fireForbiddenEvent("secrets", ""); // cluster-wide/all-namespaces denial
 
       expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(ErrorToastSpy).toHaveBeenCalledWith({
+        title: 'Access denied: cannot get Secret "my-secret"',
+      });
       expect(onForbiddenDetected).toHaveBeenCalledOnce();
     });
   });

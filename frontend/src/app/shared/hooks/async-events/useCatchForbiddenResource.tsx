@@ -21,6 +21,11 @@ interface UseCatchForbiddenResourceResult {
   forbiddenResources: Set<string>;
 }
 
+// Renders as "" for a cluster-wide denial (namespace === "") so toast copy doesn't
+// claim a specific namespace when none was actually identified.
+const namespaceSuffix = (namespace: string): string =>
+  namespace ? ` in namespace "${namespace}"` : "";
+
 export const useCatchForbiddenResource = (
   activeResource: string,
   options?: UseCatchForbiddenResourceOptions
@@ -75,12 +80,16 @@ export const useCatchForbiddenResource = (
           // Drawer mode: show per-resource "cannot get" toast and close the drawer
           drawerToastFiredRef.current = true;
           const label = opts.resourceLabel ?? activeResourceRef.current;
-          renderErrorToast({ title: `Access denied: cannot get ${label} "${opts.resourceName}"` });
+          renderErrorToast({
+            title: `Access denied: cannot get ${label} "${opts.resourceName}"${namespaceSuffix(namespace)}`,
+          });
           opts.onForbiddenDetected?.();
         } else if (opts?.labelMap) {
           // List-view mode: show "cannot list X" toast using labelMap
           const label = opts.labelMap[resource] ?? resource;
-          renderErrorToast({ title: `Access denied: cannot list ${label}` });
+          renderErrorToast({
+            title: `Access denied: cannot list ${label}${namespaceSuffix(namespace)}`,
+          });
         }
       }
     );
@@ -110,7 +119,7 @@ export const useCatchForbiddenResource = (
       drawerToastFiredRef.current = true;
       const label = currentOpts.resourceLabel ?? activeResourceRef.current;
       renderErrorToast({
-        title: `Access denied: cannot get ${label} "${currentOpts.resourceName}"`,
+        title: `Access denied: cannot get ${label} "${currentOpts.resourceName}"${namespaceSuffix(currentOpts.namespace ?? "")}`,
       });
       currentOpts.onForbiddenDetected?.();
     });
