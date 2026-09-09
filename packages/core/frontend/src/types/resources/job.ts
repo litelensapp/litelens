@@ -31,6 +31,8 @@ export interface Job {
   CompletedAt: string;
   CompletedAtAge: string;
   PodsStatuses: string[];
+  OwnerKind: string;
+  OwnerName: string;
 }
 
 export interface JobSummary {

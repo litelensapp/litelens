@@ -167,6 +167,18 @@ func toJob(j *batchv1.Job) dto.Job {
 			}
 			return statuses
 		}(),
+		OwnerKind: func() string {
+			if len(j.OwnerReferences) > 0 {
+				return j.OwnerReferences[0].Kind
+			}
+			return ""
+		}(),
+		OwnerName: func() string {
+			if len(j.OwnerReferences) > 0 {
+				return j.OwnerReferences[0].Name
+			}
+			return ""
+		}(),
 	}
 }
 

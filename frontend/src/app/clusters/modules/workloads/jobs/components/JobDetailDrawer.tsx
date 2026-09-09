@@ -29,6 +29,7 @@ import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
+import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
 import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
@@ -42,6 +43,8 @@ import { JobResumedBadge } from "./JobResumedBadge";
 
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
   const { onToggleNamespaceDetail } = useDetailDrawerContext();
+
+  const resourceLinks = useResourceLinks();
 
   return (
     <ScrollArea className="h-full">
@@ -89,6 +92,24 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
                 <ManagedFieldBlock key={`${mf.Manager}/${mf.Operation}`} mf={mf} />
               ))}
             </div>
+          </>
+        )}
+
+        {j.OwnerKind && (
+          <>
+            <span className="text-h3 text-muted-foreground">Controlled by</span>
+            <span className="text-body font-mono">
+              {j.OwnerKind}:{" "}
+              {resourceLinks[j.OwnerKind.toLowerCase()] ? (
+                <ResourceLink
+                  onClick={() => resourceLinks[j.OwnerKind.toLowerCase()](j.Namespace, j.OwnerName)}
+                >
+                  {j.OwnerName}
+                </ResourceLink>
+              ) : (
+                j.OwnerName
+              )}
+            </span>
           </>
         )}
 

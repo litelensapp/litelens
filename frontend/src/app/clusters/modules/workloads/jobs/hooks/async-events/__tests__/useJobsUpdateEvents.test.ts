@@ -58,6 +58,8 @@ describe("useJobsUpdateEvents", () => {
         CompletedAt: "2025-01-01T00:00:10Z",
         CompletedAtAge: "1h",
         PodsStatuses: ["1 Succeeded"],
+        OwnerKind: "",
+        OwnerName: "",
       },
     ];
     triggerEvent("jobs:update", payload);
@@ -91,6 +93,8 @@ describe("useJobsUpdateEvents", () => {
         CompletedAt: "2025-01-01T00:00:10Z",
         CompletedAtAge: "1h",
         PodsStatuses: ["1 Succeeded"],
+        OwnerKind: "",
+        OwnerName: "",
       },
     ];
     triggerEvent("jobs:update", payload1);
@@ -121,6 +125,8 @@ describe("useJobsUpdateEvents", () => {
         CompletedAt: "",
         CompletedAtAge: "",
         PodsStatuses: ["1 Running"],
+        OwnerKind: "",
+        OwnerName: "",
       },
     ];
     triggerEvent("jobs:update", payload2);

@@ -37,6 +37,8 @@ type Job struct {
 	CompletedAt    string
 	CompletedAtAge string
 	PodsStatuses   []string
+	OwnerKind      string
+	OwnerName      string
 }
 
 type JobSummary struct {
