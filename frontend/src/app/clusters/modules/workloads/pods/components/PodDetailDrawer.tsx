@@ -518,7 +518,15 @@ const PodOverviewTab: FC<{
             <PodQoSBadge qos={pod.QoS} />
 
             <span className="text-muted-foreground">Service Account</span>
-            <span className="font-mono">{pod.ServiceAccount || "—"}</span>
+            {pod.ServiceAccount ? (
+              <ResourceLink
+                onClick={() => resourceLinks.serviceaccount(pod.Namespace, pod.ServiceAccount)}
+              >
+                {pod.ServiceAccount}
+              </ResourceLink>
+            ) : (
+              <span className="font-mono">—</span>
+            )}
 
             <span className="text-muted-foreground">Priority Class</span>
             <span className="font-mono">{pod.PriorityClass || "—"}</span>
