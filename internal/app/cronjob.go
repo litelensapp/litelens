@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -123,6 +125,37 @@ func (a *App) DeleteCronJobs(items []dto.CronJobRef) error {
 	a.emitCronJobs()
 
 	return err
+}
+
+// SetCronJobSuspend patches a CronJob's spec.suspend field, pausing (true) or resuming
+// (false) its schedule without deleting the resource or its Job history.
+func (a *App) SetCronJobSuspend(namespace, name string, suspend bool) error {
+	cs, err := a.activeClientset()
+	if err != nil {
+		return err
+	}
+
+	patchBody := map[string]any{
+		"spec": map[string]any{"suspend": suspend},
+	}
+	patchBytes, err := json.Marshal(patchBody)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), apiMutationTimeout)
+	defer cancel()
+	_, err = cs.BatchV1().CronJobs(namespace).Patch(
+		ctx, name, types.MergePatchType, patchBytes, metav1.PatchOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("set CronJob suspend: %w", err)
+	}
+
+	a.emitCronJobs()
+	a.emitCronJobDetail()
+
+	return nil
 }
 
 func (a *App) GetCronJobYAML(namespace, name string) (string, error) {

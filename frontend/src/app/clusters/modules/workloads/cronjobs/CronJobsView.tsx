@@ -9,6 +9,7 @@ import {
   ResourceDeletionButton,
   ResourceLink,
   ResourceModificationButton,
+  ResourceResumeButton,
   SearchInput,
   Table,
   TableBody,
@@ -21,29 +22,45 @@ import {
   TimerIcon,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
-import { useGetCronJobs } from "./hooks/data-access/useGetCronJobs";
-import { useDeleteCronJob } from "./hooks/data-mutation/useDeleteCronJob";
-import { useDeleteCronJobs } from "./hooks/data-mutation/useDeleteCronJobs";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { CronJobDeleteConfirmationModal } from "./components/CronJobDeleteConfirmationModal";
+import { CronJobResumeConfirmationModal } from "./components/CronJobResumeConfirmationModal";
 import { CronJobResumedBadge } from "./components/CronJobResumedBadge";
+import { useGetCronJobs } from "./hooks/data-access/useGetCronJobs";
+import { useDeleteCronJob } from "./hooks/data-mutation/useDeleteCronJob";
+import { useDeleteCronJobs } from "./hooks/data-mutation/useDeleteCronJobs";
+import { useSetCronJobSuspend } from "./hooks/data-mutation/useSetCronJobSuspend";
 
 interface CronJobTableCtaButtonsProps {
   name: string;
   namespace: string;
+  suspended: boolean;
 }
 
-const CronJobTableCtaButtons: FC<CronJobTableCtaButtonsProps> = ({ namespace, name }) => {
+const CronJobTableCtaButtons: FC<CronJobTableCtaButtonsProps> = ({
+  namespace,
+  name,
+  suspended,
+}) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
   const { openTab } = useUnifiedTray();
 
   const { mutate: deleteCronJob, isPending: isDeletePending } = useDeleteCronJob();
+  const { mutate: setCronJobSuspend, isPending: isResumePending } = useSetCronJobSuspend();
 
   const handleDeleteConfirm = () => {
     deleteCronJob({ namespace, name }, { onSuccess: () => setShowDeleteModal(false) });
+  };
+
+  const handleResumeConfirm = () => {
+    setCronJobSuspend(
+      { namespace, name, suspend: false },
+      { onSuccess: () => setShowResumeModal(false) }
+    );
   };
 
   return (
@@ -57,6 +74,10 @@ const CronJobTableCtaButtons: FC<CronJobTableCtaButtonsProps> = ({ namespace, na
           <MoreVerticalIcon className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <ResourceResumeButton
+            disabled={!suspended || isResumePending}
+            onClick={() => setShowResumeModal(true)}
+          />
           <ResourceModificationButton
             onClick={() => openTab("modification", { kind: "CronJob", name, namespace })}
           />
@@ -75,6 +96,15 @@ const CronJobTableCtaButtons: FC<CronJobTableCtaButtonsProps> = ({ namespace, na
         isPending={isDeletePending}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <CronJobResumeConfirmationModal
+        open={showResumeModal}
+        name={name}
+        namespace={namespace}
+        isPending={isResumePending}
+        onClose={() => setShowResumeModal(false)}
+        onConfirm={handleResumeConfirm}
       />
     </>
   );
@@ -252,7 +282,11 @@ export const CronJobsView: FC = () => {
                 </TableCell>
                 <TableCell className="text-xs">{cj.Age}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <CronJobTableCtaButtons name={cj.Name} namespace={cj.Namespace} />
+                  <CronJobTableCtaButtons
+                    name={cj.Name}
+                    namespace={cj.Namespace}
+                    suspended={cj.Suspend}
+                  />
                 </TableCell>
               </TableRow>
             ))
