@@ -46,7 +46,7 @@ func TestGetSyncedChanConcurrentReads(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	// Spawn multiple concurrent readers on the same resource
@@ -85,7 +85,7 @@ func TestGetSyncedChanConcurrentReads(t *testing.T) {
 // and IsForbidden reflects the state change.
 func TestGetSyncedChanAfterForbidden(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	// Initially, resource should not be forbidden
@@ -94,7 +94,7 @@ func TestGetSyncedChanAfterForbidden(t *testing.T) {
 	}
 
 	// Mark the resource as forbidden
-	h.StopResource("pods", func(string) {})
+	h.StopResource("pods", func(string, string) {})
 
 	// After forbidden, IsForbidden should return true
 	if !h.IsForbidden("pods") {
@@ -130,7 +130,7 @@ func TestListConfigMapsGatingPattern(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	// Create an App with this factory handle
@@ -155,7 +155,7 @@ func TestListConfigMapsGatingPattern(t *testing.T) {
 	}
 
 	// Now mark configmaps as forbidden (simulating a 403 in one namespace)
-	h.StopResource("configmaps", func(string) {})
+	h.StopResource("configmaps", func(string, string) {})
 
 	// ListConfigMaps should still return the ConfigMaps from accessible namespaces.
 	// With a fake clientset, the data is still available; the forbidden flag is
@@ -188,7 +188,7 @@ func TestGetConfigMapByNameGatingPattern(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -211,7 +211,7 @@ func TestGetConfigMapByNameGatingPattern(t *testing.T) {
 	}
 
 	// Mark configmaps as forbidden (simulating a 403 in one namespace)
-	h.StopResource("configmaps", func(string) {})
+	h.StopResource("configmaps", func(string, string) {})
 
 	// GetConfigMapByName should still return the ConfigMap from the accessible namespace.
 	// With a fake clientset, the data is still available; the forbidden flag is
@@ -232,7 +232,7 @@ func TestGetConfigMapByNameGatingPattern(t *testing.T) {
 // do not cause races or double-closes.
 func TestConcurrentGetSyncedChanWithStopResource(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	const goroutineCount = 20
@@ -258,7 +258,7 @@ func TestConcurrentGetSyncedChanWithStopResource(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			resource := resources[id%len(resources)]
-			h.StopResource(resource, func(string) {})
+			h.StopResource(resource, func(string, string) {})
 		}(i)
 	}
 
@@ -277,7 +277,7 @@ func TestConcurrentGetSyncedChanWithStopResource(t *testing.T) {
 // a resource that was never registered returns false.
 func TestUnknownResourceIsForbiddenFalse(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	if h.IsForbidden("unknown-resource") {
@@ -289,7 +289,7 @@ func TestUnknownResourceIsForbiddenFalse(t *testing.T) {
 // for an unknown resource returns an already-closed channel (immediate return).
 func TestGetSyncedChanUnknownResourceImmediate(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	ch := h.GetSyncedChan("unknown-resource")
@@ -315,7 +315,7 @@ func TestListPodsAfterCacheSyncGates(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -343,7 +343,7 @@ func TestListPodsAfterCacheSyncGates(t *testing.T) {
 // state from false to true after stopResource is called.
 func TestIsForbiddenBecomesTrueAfterStopResource(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	resource := "pods"
@@ -354,7 +354,7 @@ func TestIsForbiddenBecomesTrueAfterStopResource(t *testing.T) {
 	}
 
 	// Call stopResource
-	h.StopResource(resource, func(string) {})
+	h.StopResource(resource, func(string, string) {})
 
 	// After stopResource, should be true
 	if !h.IsForbidden(resource) {
@@ -367,12 +367,12 @@ func TestIsForbiddenBecomesTrueAfterStopResource(t *testing.T) {
 // (sync.Once guard in the implementation).
 func TestMultipleStopResourceCallsIdempotent(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	resource := "pods"
 	callCount := 0
-	onForbidden := func(string) {
+	onForbidden := func(string, string) {
 		callCount++
 	}
 
@@ -394,7 +394,7 @@ func TestMultipleStopResourceCallsIdempotent(t *testing.T) {
 // For namespace-filterable resources, see TestListConfigMapsGatingPattern.
 func TestForbiddenResourceReturnsZeroValueAndNilError_ClusterScoped(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -405,7 +405,7 @@ func TestForbiddenResourceReturnsZeroValueAndNilError_ClusterScoped(t *testing.T
 	}
 
 	// Mark nodes as forbidden
-	h.StopResource("nodes", func(string) {})
+	h.StopResource("nodes", func(string, string) {})
 
 	// ListNodes should return empty slice and nil error
 	// (nodes are cluster-scoped, so forbidden = truly inaccessible)
@@ -441,7 +441,7 @@ func TestGetNodeByNameGatingPattern(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -464,7 +464,7 @@ func TestGetNodeByNameGatingPattern(t *testing.T) {
 	}
 
 	// Mark nodes as forbidden
-	h.StopResource("nodes", func(string) {})
+	h.StopResource("nodes", func(string, string) {})
 
 	// GetNodeByName should return zero-value with nil error
 	node2, err := a.GetNodeByName("node-1")
@@ -493,7 +493,7 @@ func TestListNodesGatingPattern(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -516,7 +516,7 @@ func TestListNodesGatingPattern(t *testing.T) {
 	}
 
 	// Mark nodes as forbidden
-	h.StopResource("nodes", func(string) {})
+	h.StopResource("nodes", func(string, string) {})
 
 	// ListNodes should return an empty slice (zero-value)
 	nodes2, err := a.ListNodes()
@@ -532,7 +532,7 @@ func TestListNodesGatingPattern(t *testing.T) {
 // returns distinct channels for different resources and all close properly.
 func TestGetSyncedChanMultipleResourcesInSequence(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	resources := []string{"pods", "configmaps", "deployments"}
@@ -559,7 +559,7 @@ func TestGetSyncedChanMultipleResourcesInSequence(t *testing.T) {
 // BenchmarkGetSyncedChan benchmarks the cost of calling GetSyncedChan.
 func BenchmarkGetSyncedChan(b *testing.B) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	b.ResetTimer()
@@ -586,7 +586,7 @@ func TestWaitForSyncIgnoringForbiddenDoesNotSkipSyncWait(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -597,7 +597,7 @@ func TestWaitForSyncIgnoringForbiddenDoesNotSkipSyncWait(t *testing.T) {
 	}
 
 	// Mark pods as forbidden BEFORE querying (simulating a 403 state)
-	h.StopResource("pods", func(string) {})
+	h.StopResource("pods", func(string, string) {})
 
 	// Verify IsForbidden returns true
 	if !h.IsForbidden("pods") {
@@ -630,7 +630,7 @@ func TestWaitForSyncIgnoringForbiddenDoesNotSkipSyncWait(t *testing.T) {
 // BenchmarkIsForbidden benchmarks the cost of checking if a resource is forbidden.
 func BenchmarkIsForbidden(b *testing.B) {
 	cs := fake.NewSimpleClientset()
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	b.ResetTimer()

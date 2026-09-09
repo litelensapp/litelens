@@ -30,7 +30,7 @@ func TestListPods_WaitForSync(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	// Construct a minimal App with the handle wired in.
@@ -63,7 +63,7 @@ func TestListPods_IsForbiddenPreCheck(t *testing.T) {
 			},
 		},
 	)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -119,7 +119,7 @@ func TestGetPodByName_WaitForSync(t *testing.T) {
 			},
 		},
 	)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -150,7 +150,7 @@ func TestGetPodByName_NotFound(t *testing.T) {
 			},
 		},
 	)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -187,7 +187,7 @@ func TestListEvents_WaitForSync(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -219,7 +219,7 @@ func TestListEvents_EmptyNamespace(t *testing.T) {
 			Type: "Normal",
 		},
 	)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -260,7 +260,7 @@ func TestListWarningEvents_WaitForSync(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -295,7 +295,7 @@ func TestGetEventByName_WaitForSync(t *testing.T) {
 			Type: "Warning",
 		},
 	)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -325,7 +325,7 @@ func TestGetEventByName_NotFound(t *testing.T) {
 			Type: "Normal",
 		},
 	)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -365,7 +365,7 @@ func TestAppMethodsSyncGateRaceCondition(t *testing.T) {
 
 	// Track if onForbidden was ever called (it shouldn't be in this happy path).
 	var onForbiddenCalled bool
-	h := kube.NewFactoryHandle(cs, func(string) {
+	h := kube.NewFactoryHandle(cs, func(string, string) {
 		onForbiddenCalled = true
 	})
 	defer h.Stop()
@@ -422,7 +422,7 @@ func TestConcurrentAppMethodsWithSync(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -488,7 +488,7 @@ func TestDoubleSyncGateCheck(t *testing.T) {
 	)
 
 	forbiddenCallCount := 0
-	h := kube.NewFactoryHandle(cs, func(resource string) {
+	h := kube.NewFactoryHandle(cs, func(resource, namespace string) {
 		if resource == "pods" {
 			forbiddenCallCount++
 		}
@@ -535,7 +535,7 @@ func BenchmarkListPods_PostSync(b *testing.B) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -574,7 +574,7 @@ func TestSyncGateConcurrency(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -623,7 +623,7 @@ func TestSyncGateEventualSuccess(t *testing.T) {
 		},
 	)
 
-	h := kube.NewFactoryHandle(cs, func(string) {})
+	h := kube.NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	a := &App{
@@ -664,8 +664,8 @@ func TestMultipleFactoriesContextSwitch(t *testing.T) {
 		},
 	)
 
-	h1 := kube.NewFactoryHandle(cs1, func(string) {})
-	h2 := kube.NewFactoryHandle(cs2, func(string) {})
+	h1 := kube.NewFactoryHandle(cs1, func(string, string) {})
+	h2 := kube.NewFactoryHandle(cs2, func(string, string) {})
 	defer h1.Stop()
 	defer h2.Stop()
 

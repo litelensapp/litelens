@@ -485,6 +485,7 @@ const ConfigMapDrawerBody: FC<
     open,
     resourceName: cmName,
     resourceLabel: "ConfigMap",
+    namespace: cmNamespace,
     onForbiddenDetected: onClose,
   });
 

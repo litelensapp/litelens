@@ -243,6 +243,7 @@ const HPADrawerBody: FC<
     open,
     resourceName: hpaName,
     resourceLabel: "HPA",
+    namespace: hpaNamespace,
     onForbiddenDetected: onClose,
   });
 

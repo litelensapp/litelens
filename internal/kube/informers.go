@@ -45,6 +45,19 @@ type stopEntry struct {
 	once sync.Once
 }
 
+// forbiddenKey identifies one forbidden-access record. namespace is "" for
+// cluster-scoped resources (no namespace concept) and for a namespaced
+// resource currently backed by a single cluster-wide informer (namespaces
+// filter empty/unset) — in both cases the denial applies uniformly, with no
+// narrower namespace to scope it to. A namespaced resource split across
+// several per-namespace informers (see nsscope) instead records one key per
+// forbidden namespace, so a 403 in one namespace never poisons reads for a
+// sibling namespace the caller does have access to.
+type forbiddenKey struct {
+	resource  string
+	namespace string
+}
+
 // ResyncJitterStep is the per-resource-type increment added to the base 30s
 // resync period (via informers.WithCustomResyncConfig) so every resource's
 // periodic full re-list doesn't land on the same wall-clock instant forever
@@ -70,7 +83,7 @@ type FactoryHandle struct {
 	informers map[string]cache.SharedIndexInformer
 
 	cs          kubernetes.Interface
-	onForbidden func(resource string)
+	onForbidden func(resource, namespace string)
 
 	// The resources below are managed separately from the generic ones above
 	// (not in stopChannels/synced/syncedOnce) because their informer(s) can
@@ -111,8 +124,9 @@ type FactoryHandle struct {
 
 // StopResource closes the per-resource stop channel (at most once), records the
 // resource as forbidden, and calls onForbidden — unless Stop() has already fired.
-// Exported for testing edge cases.
-func (h *FactoryHandle) StopResource(resource string, onForbidden func(string)) {
+// Only used for cluster-scoped resources (no namespace concept), so it always
+// records/reports namespace "". Exported for testing edge cases.
+func (h *FactoryHandle) StopResource(resource string, onForbidden func(resource, namespace string)) {
 	if sr, ok := h.scoped[resource]; ok {
 		sr.Stop()
 	} else if e, ok := h.stopChannels[resource]; ok {
@@ -127,12 +141,12 @@ func (h *FactoryHandle) StopResource(resource string, onForbidden func(string)) 
 			_ = inf.GetIndexer().Delete(obj)
 		}
 	}
-	h.forbidden.Store(resource, struct{}{})
+	h.forbidden.Store(forbiddenKey{resource, ""}, struct{}{})
 	select {
 	case <-h.globalStop:
 		// Handle already stopped; skip emitting the event.
 	default:
-		onForbidden(resource)
+		onForbidden(resource, "")
 	}
 }
 
@@ -144,7 +158,7 @@ func (h *FactoryHandle) StopResource(resource string, onForbidden func(string)) 
 // onForbidden is called once per resource key when a 403 is detected;
 // keys match the ViewType strings used by the frontend (e.g. "ingresses").
 // Call Stop() when the context is no longer active.
-func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource string)) *FactoryHandle {
+func NewFactoryHandle(cs kubernetes.Interface, onForbidden func(resource, namespace string)) *FactoryHandle {
 	// Order mirrors NAV_CORE in frontend/src/app/clusters/navConfig.ts (top-to-bottom,
 	// group-by-group). It no longer gates start time (see resyncConfig below) — it's
 	// kept only because resyncTypes below reuses it to assign each type a distinct
@@ -320,13 +334,44 @@ func (h *FactoryHandle) GetSyncedChan(resource string) <-chan struct{} {
 	return ch
 }
 
-// IsForbidden reports whether the given resource key was denied access
-// (either via a 403 during watch or a failed initial cache sync).
+// IsForbidden reports whether the given resource key was denied access in
+// any namespace (either via a 403 during watch or a failed initial cache
+// sync). For a namespace-scoped resource backed by several per-namespace
+// informers, this is true as soon as ANY one namespace is forbidden — use
+// IsNamespaceForbidden when the caller cares about one specific namespace.
 func (h *FactoryHandle) IsForbidden(resource string) bool {
 	if h == nil {
 		return false
 	}
-	_, ok := h.forbidden.Load(resource)
+	forbidden := false
+	h.forbidden.Range(func(k, _ any) bool {
+		if fk, ok := k.(forbiddenKey); ok && fk.resource == resource {
+			forbidden = true
+			return false
+		}
+		return true
+	})
+	return forbidden
+}
+
+// IsNamespaceForbidden reports whether resource is denied access in
+// namespace specifically — either because that exact namespace's informer
+// was denied, or because the whole resource is currently backed by a single
+// informer (namespace filter empty/unset, or a cluster-scoped resource) that
+// was denied, which applies uniformly to every namespace. Pass "" for a
+// cluster-scoped resource or when the caller has no specific namespace in
+// mind (equivalent to IsForbidden).
+func (h *FactoryHandle) IsNamespaceForbidden(resource, namespace string) bool {
+	if h == nil {
+		return false
+	}
+	if _, ok := h.forbidden.Load(forbiddenKey{resource, ""}); ok {
+		return true
+	}
+	if namespace == "" {
+		return false
+	}
+	_, ok := h.forbidden.Load(forbiddenKey{resource, namespace})
 	return ok
 }
 

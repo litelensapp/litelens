@@ -176,6 +176,7 @@ const ServiceAccountDrawerBody: FC<
     open,
     resourceName: saName,
     resourceLabel: "ServiceAccount",
+    namespace: saNamespace,
     onForbiddenDetected: onClose,
   });
 

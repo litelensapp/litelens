@@ -22,7 +22,7 @@ func NewPersistentVolumeClaimsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.PersistentVolumeClaimLister] {
 	return New(Config[listerscorev1.PersistentVolumeClaimLister]{

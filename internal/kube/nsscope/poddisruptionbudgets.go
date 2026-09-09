@@ -24,7 +24,7 @@ func NewPodDisruptionBudgetsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listerspolicyv1.PodDisruptionBudgetLister] {
 	return New(Config[listerspolicyv1.PodDisruptionBudgetLister]{

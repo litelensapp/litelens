@@ -346,6 +346,7 @@ const ReplicaSetDrawerBody: FC<
     open,
     resourceName: rsName,
     resourceLabel: "ReplicaSet",
+    namespace: rsNamespace,
     onForbiddenDetected: onClose,
   });
 

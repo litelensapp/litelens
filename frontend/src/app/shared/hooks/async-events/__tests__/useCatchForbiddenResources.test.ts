@@ -10,7 +10,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useCatchForbiddenResources } from "../useCatchForbiddenResources";
 
 // ─── Wails runtime mock ───────────────────────────────────────────────────────
-type EventHandler = (resource: string) => void;
+type EventHandler = (payload: { resource: string; namespace: string }) => void;
 
 const { getHandler, setHandler } = vi.hoisted(() => {
   let _handler: EventHandler | null = null;
@@ -46,9 +46,9 @@ vi.mock("@litelens/design-system", async (importOriginal) => {
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fireForbiddenEvent(resource: string) {
+function fireForbiddenEvent(resource: string, namespace = "") {
   act(() => {
-    getHandler()?.(resource);
+    getHandler()?.({ resource, namespace });
   });
 }
 

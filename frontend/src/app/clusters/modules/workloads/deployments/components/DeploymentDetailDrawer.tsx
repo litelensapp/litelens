@@ -540,6 +540,7 @@ const DeploymentDrawerBody: FC<
     open,
     resourceName: deploymentName,
     resourceLabel: "Deployment",
+    namespace: deploymentNamespace,
     onForbiddenDetected: onClose,
   });
 

@@ -23,7 +23,7 @@ func NewDaemonSetsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listersappsv1.DaemonSetLister] {
 	return New(Config[listersappsv1.DaemonSetLister]{

@@ -31,7 +31,7 @@ func TestNewFactoryHandleAndGetSyncedChan(t *testing.T) {
 
 	cs := fake.NewSimpleClientset(objs...)
 
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	// NewFactoryHandle should return quickly; cache may not be synced yet.
@@ -55,7 +55,7 @@ func TestNewFactoryHandleAndGetSyncedChan(t *testing.T) {
 // an already-closed channel for unknown resources (immediate return, no blocking).
 func TestGetSyncedChanNonexistentResource(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	ch := h.GetSyncedChan("nonexistent-resource")
@@ -73,11 +73,11 @@ func TestGetSyncedChanNonexistentResource(t *testing.T) {
 // times for the same resource without panicking (sync.Once ensures no double-close).
 func TestStopResourceIdempotent(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 
 	// Manually call stopResource twice for a single resource
-	h.StopResource("pods", func(string) {})
-	h.StopResource("pods", func(string) {}) // Should not panic due to sync.Once
+	h.StopResource("pods", func(string, string) {})
+	h.StopResource("pods", func(string, string) {}) // Should not panic due to sync.Once
 }
 
 // TestStopResourceEvictsCachedObjects reproduces the bug where a
@@ -91,7 +91,7 @@ func TestStopResourceIdempotent(t *testing.T) {
 // by Lister() reads indefinitely.
 func TestStopResourceEvictsCachedObjects(t *testing.T) {
 	cs := fake.NewSimpleClientset(&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node-a"}})
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	<-h.GetSyncedChan("nodes")
@@ -103,7 +103,7 @@ func TestStopResourceEvictsCachedObjects(t *testing.T) {
 		t.Fatalf("expected 1 node cached before StopResource, got %d", len(before))
 	}
 
-	h.StopResource("nodes", func(string) {})
+	h.StopResource("nodes", func(string, string) {})
 
 	after, err := h.Factory.Core().V1().Nodes().Lister().List(labels.Everything())
 	if err != nil {
@@ -118,7 +118,7 @@ func TestStopResourceEvictsCachedObjects(t *testing.T) {
 // for a resource that was never registered / never encountered an error.
 func TestIsForbiddenResourceNeverRegistered(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	if h.IsForbidden("nonexistent-resource") {
@@ -139,13 +139,13 @@ func TestIsForbiddenOnNilHandle(t *testing.T) {
 // marks the resource as forbidden.
 func TestStopResourceRecordsForbiddenAfterCall(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 
 	if h.IsForbidden("pods") {
 		t.Fatal("expected pods to not be forbidden before stopResource")
 	}
 
-	h.StopResource("pods", func(string) {})
+	h.StopResource("pods", func(string, string) {})
 
 	if !h.IsForbidden("pods") {
 		t.Fatal("expected pods to be forbidden after stopResource")
@@ -160,12 +160,12 @@ func TestStopResourceCallsOnForbiddenWhenGlobalNotStopped(t *testing.T) {
 	cs := fake.NewSimpleClientset()
 
 	var calledResources []string
-	h := NewFactoryHandle(cs, func(resource string) {
+	h := NewFactoryHandle(cs, func(resource, namespace string) {
 		calledResources = append(calledResources, resource)
 	})
 	defer h.Stop()
 
-	h.StopResource("pods", func(resource string) {
+	h.StopResource("pods", func(resource, namespace string) {
 		calledResources = append(calledResources, resource)
 	})
 
@@ -180,14 +180,14 @@ func TestStopResourceSkipsOnForbiddenAfterStop(t *testing.T) {
 	cs := fake.NewSimpleClientset()
 
 	var calledResources []string
-	h := NewFactoryHandle(cs, func(resource string) {
+	h := NewFactoryHandle(cs, func(resource, namespace string) {
 		calledResources = append(calledResources, resource)
 	})
 
 	h.Stop()
 
 	// This should not call onForbidden because globalStop is already closed
-	h.StopResource("pods", func(resource string) {
+	h.StopResource("pods", func(resource, namespace string) {
 		calledResources = append(calledResources, resource)
 	})
 
@@ -200,7 +200,7 @@ func TestStopResourceSkipsOnForbiddenAfterStop(t *testing.T) {
 // registered and all are stopped when h.Stop() is called.
 func TestRegisterDebouncerMultiple(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 
 	debouncer1 := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(s string) {}, func() bool { return true })
 	debouncer2 := debouncer.NewDebouncer(debouncer.DefaultDebounceInterval, func(s string) {}, func() bool { return true })
@@ -220,7 +220,7 @@ func TestRegisterDebouncerMultiple(t *testing.T) {
 // panicking (sync.Once ensures the close only happens once).
 func TestStopIdempotent(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 
 	h.Stop()
 	h.Stop() // Should not panic
@@ -230,7 +230,7 @@ func TestStopIdempotent(t *testing.T) {
 // channel and all per-resource stop channels.
 func TestStopClosesAllChannels(t *testing.T) {
 	cs := fake.NewSimpleClientset()
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 
 	if len(h.stopChannels) == 0 {
 		t.Fatal("expected stopChannels to be populated after NewFactoryHandle")
@@ -273,7 +273,7 @@ func TestConcurrentGetSyncedChanAndStopResourceRace(t *testing.T) {
 	}
 
 	cs := fake.NewSimpleClientset(objs...)
-	h := NewFactoryHandle(cs, func(string) {})
+	h := NewFactoryHandle(cs, func(string, string) {})
 	defer h.Stop()
 
 	// Test resources we know are in the factory
@@ -290,7 +290,7 @@ func TestConcurrentGetSyncedChanAndStopResourceRace(t *testing.T) {
 		go func(id int) {
 			resource := resources[id%len(resources)]
 			// Stop resource (some may already be synced, some may still be syncing)
-			h.StopResource(resource, func(string) {})
+			h.StopResource(resource, func(string, string) {})
 		}(i)
 	}
 

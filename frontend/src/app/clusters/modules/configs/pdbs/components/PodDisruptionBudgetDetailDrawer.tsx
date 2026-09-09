@@ -209,6 +209,7 @@ const PDBDrawerBody: FC<
     open,
     resourceName: pdbName,
     resourceLabel: "Pod Disruption Budget",
+    namespace: pdbNamespace,
     onForbiddenDetected: onClose,
   });
 

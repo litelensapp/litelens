@@ -43,6 +43,16 @@ type group struct {
 	stop       chan struct{}
 	stopOnce   sync.Once
 	synced     chan struct{}
+
+	// nsStop/nsStopOnce hold one private stop channel per entry in
+	// informers, used only when namespaces is non-empty. A namespace whose
+	// informer is denied by RBAC is stopped by closing just its own
+	// nsStop[i] (via markForbidden), independent of every other namespace's
+	// informer in the same group — closing the shared stop above would kill
+	// every namespace's informer just because one of them was forbidden,
+	// which is exactly the bug this split avoids (see markForbidden).
+	nsStop     []chan struct{}
+	nsStopOnce []sync.Once
 }
 
 // Config holds the resource-specific hooks a ScopedResource needs. All
@@ -87,11 +97,13 @@ type Config[L any] struct {
 	// resource a clean slate to retry against. Optional.
 	ClearForbidden func()
 
-	// OnForbidden is called when every informer in the *current* group
-	// fails to sync (watch error containing "is forbidden", or sync
-	// timeout). Never called on behalf of a group that's already been
-	// superseded by a later Rescope call. Optional.
-	OnForbidden func(name string)
+	// OnForbidden is called when one informer in the *current* group fails
+	// (watch error containing "is forbidden"). namespace is the specific
+	// namespace whose informer failed, or "" if the failing informer was
+	// the cluster-wide one (namespaces == nil, i.e. every namespace is
+	// covered by a single informer). Never called on behalf of a group
+	// that's already been superseded by a later Rescope call. Optional.
+	OnForbidden func(name string, namespace string)
 
 	// GlobalStop bounds the lifetime of the cluster-wide informer
 	// (NewClusterWideInformer) independently of any single group's stop
@@ -260,19 +272,23 @@ func (r *ScopedResource[L]) buildGroup(namespaces []string) *group {
 		}
 	} else {
 		g.informers = make([]cache.SharedIndexInformer, len(namespaces))
+		g.nsStop = make([]chan struct{}, len(namespaces))
+		g.nsStopOnce = make([]sync.Once, len(namespaces))
 		for i, ns := range namespaces {
 			inf := r.cfg.NewNamespacedInformer(ns)
 			g.informers[i] = inf
+			g.nsStop[i] = make(chan struct{})
 			//nolint:errcheck — only fails if already started, which it isn't yet
 			inf.AddEventHandler(handler)
+			idx, namespace := i, ns // capture for closure
 			//nolint:errcheck — only fails if already started, which it isn't yet
 			inf.SetWatchErrorHandler(func(_ *cache.Reflector, err error) {
 				if strings.Contains(err.Error(), "is forbidden") {
 					evictIndexer(inf.GetIndexer())
-					r.markForbidden(g)
+					r.markForbidden(g, idx, namespace)
 				}
 			})
-			go inf.Run(g.stop)
+			go inf.Run(orDone(g.stop, g.nsStop[i]))
 		}
 	}
 
@@ -342,16 +358,20 @@ func (r *ScopedResource[L]) acquireClusterInformer() (cache.SharedIndexInformer,
 	return r.clusterInformer, true
 }
 
-// markForbidden records this resource as forbidden and notifies OnForbidden
-// — but only if g is still the current group (an older, already-superseded
-// group's failure shouldn't override a newer, healthy one). Used by
-// namespace-scoped informers, which are freshly built per group so a
-// captured *group pointer always correctly identifies "is this failure
-// about the current group". See markForbiddenShared for the cluster-wide
-// informer's counterpart, which can't rely on a captured pointer since it's
-// reused (and its handler registered only once) across groups.
-func (r *ScopedResource[L]) markForbidden(g *group) {
-	g.stopOnce.Do(func() { close(g.stop) })
+// markForbidden records namespace (one of g's namespaces, identified by
+// idx) as forbidden and notifies OnForbidden — but only if g is still the
+// current group (an older, already-superseded group's failure shouldn't
+// override a newer, healthy one). Stops only g.informers[idx] (via its own
+// private g.nsStop[idx]), leaving every other namespace's informer in g
+// running — a single namespace's RBAC denial must not take down sibling
+// namespaces the caller does have access to. Used by namespace-scoped
+// informers, which are freshly built per group so a captured *group
+// pointer always correctly identifies "is this failure about the current
+// group". See markForbiddenShared for the cluster-wide informer's
+// counterpart, which can't rely on a captured pointer since it's reused
+// (and its handler registered only once) across groups.
+func (r *ScopedResource[L]) markForbidden(g *group, idx int, namespace string) {
+	g.nsStopOnce[idx].Do(func() { close(g.nsStop[idx]) })
 
 	r.mu.RLock()
 	current := r.group == g
@@ -364,7 +384,7 @@ func (r *ScopedResource[L]) markForbidden(g *group) {
 	}
 
 	if r.cfg.OnForbidden != nil {
-		r.cfg.OnForbidden(r.cfg.Name)
+		r.cfg.OnForbidden(r.cfg.Name, namespace)
 	}
 }
 
@@ -390,12 +410,32 @@ func (r *ScopedResource[L]) markForbiddenShared(inf cache.SharedIndexInformer) {
 	g.stopOnce.Do(func() { close(g.stop) })
 
 	if r.cfg.OnForbidden != nil {
-		r.cfg.OnForbidden(r.cfg.Name)
+		// namespaces == nil here (that's what routes to the cluster-wide
+		// informer in buildGroup), so "" means every namespace is covered
+		// by the one informer that just failed — there's no narrower
+		// namespace to blame.
+		r.cfg.OnForbidden(r.cfg.Name, "")
 	}
 }
 
 func containsInformer(informers []cache.SharedIndexInformer, target cache.SharedIndexInformer) bool {
 	return slices.Contains(informers, target)
+}
+
+// orDone returns a channel that closes as soon as either a or b closes —
+// used to run each per-namespace informer on a channel that reflects both
+// "the whole group was superseded/stopped" (a) and "just this namespace was
+// marked forbidden" (b) without requiring the two to share one channel.
+func orDone(a, b <-chan struct{}) <-chan struct{} {
+	out := make(chan struct{})
+	go func() {
+		defer close(out)
+		select {
+		case <-a:
+		case <-b:
+		}
+	}()
+	return out
 }
 
 // evictIndexer removes every object currently cached in indexer. Called when

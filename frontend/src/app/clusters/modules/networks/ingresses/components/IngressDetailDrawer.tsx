@@ -253,6 +253,7 @@ const IngressDrawerBody: FC<
     open,
     resourceName: ingressName,
     resourceLabel: "Ingress",
+    namespace: ingressNamespace,
     onForbiddenDetected: onClose,
   });
 

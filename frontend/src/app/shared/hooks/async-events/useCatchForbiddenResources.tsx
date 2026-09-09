@@ -44,15 +44,19 @@ export const useCatchForbiddenResources = (
   });
 
   useEffect(() => {
-    const unsub = EventsOn("resource:forbidden", (resource: string) => {
-      setForbiddenResources((prev) => new Set([...prev, resource]));
-      if (!activeResourcesRef.current.has(resource)) return;
-      if (toastFiredRef.current.has(resource)) return;
+    const unsub = EventsOn(
+      "resource:forbidden",
+      (payload: { resource: string; namespace: string }) => {
+        const { resource } = payload;
+        setForbiddenResources((prev) => new Set([...prev, resource]));
+        if (!activeResourcesRef.current.has(resource)) return;
+        if (toastFiredRef.current.has(resource)) return;
 
-      toastFiredRef.current.add(resource);
-      const label = optionsRef.current.labelMap[resource] ?? resource;
-      renderErrorToast({ title: `Access denied: cannot list ${label}` });
-    });
+        toastFiredRef.current.add(resource);
+        const label = optionsRef.current.labelMap[resource] ?? resource;
+        renderErrorToast({ title: `Access denied: cannot list ${label}` });
+      }
+    );
     return () => {
       if (typeof unsub === "function") unsub();
     };
@@ -66,7 +70,7 @@ export const useCatchForbiddenResources = (
     const opts = optionsRef.current;
 
     const promises = Array.from(activeResourcesRef.current).map(async (resource) => {
-      const forbidden = await IsResourceForbidden(resource);
+      const forbidden = await IsResourceForbidden(resource, "");
       if (cancelled || !forbidden) return;
 
       setForbiddenResources((prev) => new Set([...prev, resource]));

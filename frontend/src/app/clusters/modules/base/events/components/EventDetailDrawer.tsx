@@ -47,6 +47,7 @@ const EventDrawerBody: FC<
     open,
     resourceName: eventName,
     resourceLabel: "Event",
+    namespace: eventNamespace,
     onForbiddenDetected: onClose,
   });
 

@@ -912,6 +912,7 @@ const PodDrawerBody: FC<
     open,
     resourceName: podName,
     resourceLabel: "Pod",
+    namespace: podNamespace,
     onForbiddenDetected: onClose,
   });
 

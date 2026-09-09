@@ -21,7 +21,7 @@ func NewSecretsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.SecretLister] {
 	return New(Config[listerscorev1.SecretLister]{

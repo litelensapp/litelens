@@ -40,7 +40,7 @@ func NewPodsResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listerscorev1.PodLister] {
 	return New(Config[listerscorev1.PodLister]{

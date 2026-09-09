@@ -20,7 +20,7 @@ import { useCatchForbiddenResource } from "../useCatchForbiddenResource";
 // ─── Wails runtime mock ───────────────────────────────────────────────────────
 // vi.hoisted runs before vi.mock hoisting, letting us share state between the
 // mock factory and the test body.
-type EventHandler = (resource: string) => void;
+type EventHandler = (payload: { resource: string; namespace: string }) => void;
 
 const { getHandler, setHandler } = vi.hoisted(() => {
   let _handler: EventHandler | null = null;
@@ -56,9 +56,9 @@ vi.mock("@litelens/design-system", async (importOriginal) => {
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fireForbiddenEvent(resource: string) {
+function fireForbiddenEvent(resource: string, namespace = "") {
   act(() => {
-    getHandler()?.(resource);
+    getHandler()?.({ resource, namespace });
   });
 }
 
@@ -262,6 +262,63 @@ describe("useCatchForbiddenResource", () => {
       fireForbiddenEvent("nodes");
 
       expect(ErrorToastSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Namespace scoping: the multi-namespace bug ──────────────────────────────
+  describe("Namespace scoping (multi-namespace bug fix)", () => {
+    it("does not toast/close the drawer when a different namespace is forbidden", () => {
+      const onForbiddenDetected = vi.fn();
+      renderHook(() =>
+        useCatchForbiddenResource("secrets", {
+          open: true,
+          resourceName: "my-secret",
+          resourceLabel: "Secret",
+          namespace: "ns-a",
+          onForbiddenDetected,
+        })
+      );
+
+      fireForbiddenEvent("secrets", "ns-b"); // a sibling namespace is forbidden
+
+      expect(ErrorToastSpy).not.toHaveBeenCalled();
+      expect(onForbiddenDetected).not.toHaveBeenCalled();
+    });
+
+    it("toasts/closes the drawer when its own namespace is forbidden", () => {
+      const onForbiddenDetected = vi.fn();
+      renderHook(() =>
+        useCatchForbiddenResource("secrets", {
+          open: true,
+          resourceName: "my-secret",
+          resourceLabel: "Secret",
+          namespace: "ns-a",
+          onForbiddenDetected,
+        })
+      );
+
+      fireForbiddenEvent("secrets", "ns-a");
+
+      expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(onForbiddenDetected).toHaveBeenCalledOnce();
+    });
+
+    it("toasts/closes the drawer on a cluster-wide forbidden event regardless of namespace", () => {
+      const onForbiddenDetected = vi.fn();
+      renderHook(() =>
+        useCatchForbiddenResource("secrets", {
+          open: true,
+          resourceName: "my-secret",
+          resourceLabel: "Secret",
+          namespace: "ns-a",
+          onForbiddenDetected,
+        })
+      );
+
+      fireForbiddenEvent("secrets", ""); // cluster-wide/all-namespaces denial
+
+      expect(ErrorToastSpy).toHaveBeenCalledOnce();
+      expect(onForbiddenDetected).toHaveBeenCalledOnce();
     });
   });
 });

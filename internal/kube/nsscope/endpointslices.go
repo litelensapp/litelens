@@ -22,7 +22,7 @@ func NewEndpointSlicesResource(
 	cs kubernetes.Interface,
 	newClusterWideInformer func() cache.SharedIndexInformer,
 	clearForbidden func(),
-	onForbidden func(name string),
+	onForbidden func(name, namespace string),
 	globalStop <-chan struct{},
 ) *ScopedResource[listersdiscoveryv1.EndpointSliceLister] {
 	return New(Config[listersdiscoveryv1.EndpointSliceLister]{

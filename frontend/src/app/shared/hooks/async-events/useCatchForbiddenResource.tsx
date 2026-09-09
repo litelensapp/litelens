@@ -10,6 +10,11 @@ interface UseCatchForbiddenResourceOptions {
   onForbiddenDetected?: () => void;
   labelMap?: Record<string, string>;
   activeContext?: string;
+  // Namespace of the specific resource this hook instance cares about (drawer
+  // mode). A forbidden event/poll result for a different namespace is ignored,
+  // so denying access in namespace B doesn't toast/close a drawer open on a
+  // resource in namespace A. Omit for cluster-scoped resources.
+  namespace?: string;
 }
 
 interface UseCatchForbiddenResourceResult {
@@ -51,23 +56,34 @@ export const useCatchForbiddenResource = (
   });
 
   useEffect(() => {
-    const unsub = EventsOn("resource:forbidden", (resource: string) => {
-      setForbiddenResources((prev) => new Set([...prev, resource]));
-      if (activeResourceRef.current !== resource) return;
+    const unsub = EventsOn(
+      "resource:forbidden",
+      (payload: { resource: string; namespace: string }) => {
+        const { resource, namespace } = payload;
+        setForbiddenResources((prev) => new Set([...prev, resource]));
+        if (activeResourceRef.current !== resource) return;
 
-      const opts = optionsRef.current;
-      if (opts?.resourceName && opts?.open) {
-        // Drawer mode: show per-resource "cannot get" toast and close the drawer
-        drawerToastFiredRef.current = true;
-        const label = opts.resourceLabel ?? activeResourceRef.current;
-        renderErrorToast({ title: `Access denied: cannot get ${label} "${opts.resourceName}"` });
-        opts.onForbiddenDetected?.();
-      } else if (opts?.labelMap) {
-        // List-view mode: show "cannot list X" toast using labelMap
-        const label = opts.labelMap[resource] ?? resource;
-        renderErrorToast({ title: `Access denied: cannot list ${label}` });
+        const opts = optionsRef.current;
+        // A namespace-scoped forbidden event only applies to this hook instance
+        // when it's cluster-wide (namespace === "") or matches the specific
+        // namespace this instance cares about.
+        const appliesToThisNamespace =
+          namespace === "" || !opts?.namespace || opts.namespace === namespace;
+        if (!appliesToThisNamespace) return;
+
+        if (opts?.resourceName && opts?.open) {
+          // Drawer mode: show per-resource "cannot get" toast and close the drawer
+          drawerToastFiredRef.current = true;
+          const label = opts.resourceLabel ?? activeResourceRef.current;
+          renderErrorToast({ title: `Access denied: cannot get ${label} "${opts.resourceName}"` });
+          opts.onForbiddenDetected?.();
+        } else if (opts?.labelMap) {
+          // List-view mode: show "cannot list X" toast using labelMap
+          const label = opts.labelMap[resource] ?? resource;
+          renderErrorToast({ title: `Access denied: cannot list ${label}` });
+        }
       }
-    });
+    );
     return () => {
       if (typeof unsub === "function") unsub();
     };
@@ -87,7 +103,7 @@ export const useCatchForbiddenResource = (
     const opts = optionsRef.current;
     if (!opts?.resourceName) return;
 
-    IsResourceForbidden(activeResourceRef.current).then((forbidden) => {
+    IsResourceForbidden(activeResourceRef.current, opts.namespace ?? "").then((forbidden) => {
       if (cancelled || !forbidden || drawerToastFiredRef.current) return;
       const currentOpts = optionsRef.current;
       if (!currentOpts?.resourceName) return;
