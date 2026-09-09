@@ -6,6 +6,7 @@ import {
   ResourceDetailDrawer,
   ResourceDetailDrawerHeader,
   ResourceDetailEmptyBody,
+  ResourceLink,
   ResourceModificationButton,
   ScrollArea,
   SheetTitle,
@@ -18,6 +19,7 @@ import {
 import { FC, useEffect, useState } from "react";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
+import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -68,6 +70,8 @@ const PeerBlock: FC<{ peer: NetworkPolicyPeer }> = ({ peer }) => (
 );
 
 const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
+  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+
   return (
     <ScrollArea className="h-full">
       {/* Metadata */}
@@ -81,7 +85,9 @@ const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
         <span className="text-body font-mono">{np.Name}</span>
 
         <span className="text-h3 text-muted-foreground">Namespace</span>
-        <span className="text-body font-mono text-success">{np.Namespace}</span>
+        <ResourceLink onClick={() => onToggleNamespaceDetail(np.Namespace)}>
+          {np.Namespace}
+        </ResourceLink>
 
         <span className="text-h3 text-muted-foreground">Labels</span>
         <div className="flex flex-wrap gap-1">

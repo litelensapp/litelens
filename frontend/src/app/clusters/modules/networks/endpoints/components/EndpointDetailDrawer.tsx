@@ -24,10 +24,6 @@ import {
   TooltipProvider,
 } from "@litelens/design-system";
 import { FC, useEffect, useState } from "react";
-import type { Endpoint } from "../api/resources";
-import { useGetEndpointDetail } from "../hooks/data-access/useGetEndpointDetail";
-import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { useDeleteEndpoint } from "../hooks/data-mutation/useDeleteEndpoint";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
@@ -35,6 +31,10 @@ import { SectionDivider } from "../../../../shared/components/details/SectionDiv
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
+import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import type { Endpoint } from "../api/resources";
+import { useGetEndpointDetail } from "../hooks/data-access/useGetEndpointDetail";
+import { useDeleteEndpoint } from "../hooks/data-mutation/useDeleteEndpoint";
 import { EndpointDeleteConfirmationModal } from "./EndpointDeleteConfirmationModal";
 
 const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
@@ -60,10 +60,7 @@ const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
           <span className="text-body font-mono">{ep.Name}</span>
 
           <span className="text-h3 text-muted-foreground">Namespace</span>
-          <ResourceLink
-            className="text-body font-mono"
-            onClick={() => onToggleNamespaceDetail(ep.Namespace)}
-          >
+          <ResourceLink onClick={() => onToggleNamespaceDetail(ep.Namespace)}>
             {ep.Namespace}
           </ResourceLink>
 
