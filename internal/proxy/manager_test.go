@@ -140,6 +140,41 @@ func TestManagerStopDuringReady(t *testing.T) {
 	}
 }
 
+// TestManagerStopWaitsForProcessExit guards against a race that mattered
+// when two cluster contexts share the same local proxy port (e.g. each
+// context's setup command binds its own tunnel to the same address):
+// switching contexts calls Stop() on the outgoing manager immediately
+// followed by Connect() on the incoming one, so Stop() must not return until
+// the outgoing process has actually been reaped — otherwise the incoming
+// setup command's port-readiness poll could observe the old, still-dying
+// process's listener and report Ready before the new context's own setup
+// actually finished.
+func TestManagerStopWaitsForProcessExit(t *testing.T) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", "", func(string, string) {})
+	m.SetupTimeout(5 * time.Second)
+
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	select {
+	case <-m.Wait():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not unblock in time")
+	}
+
+	m.Stop()
+
+	m.mu.Lock()
+	procDone := m.procDone
+	m.mu.Unlock()
+	select {
+	case <-procDone:
+	default:
+		t.Fatal("Stop() returned before the setup command process was reaped")
+	}
+}
+
 func TestManagerReconnectReusesReady(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}

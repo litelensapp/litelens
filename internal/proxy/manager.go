@@ -60,6 +60,8 @@ type Manager struct {
 	cmd         *exec.Cmd
 	cancelFunc  context.CancelFunc
 	settledChan chan struct{}
+	procDone    chan struct{} // closed once the current/most recent launch's process has actually exited; nil until a process is first started
+	procErr     error         // cmd.Wait() result for procDone; valid only after procDone is closed
 
 	setupTimeout        time.Duration
 	healthCheckInterval time.Duration
@@ -183,18 +185,31 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 		return
 	}
 
+	// Single Wait() call, shared between the early-exit detection below,
+	// watchProcessDeath (spawned later, after Ready), and Stop() — exec.Cmd.Wait
+	// may only be called once. procDone is stored on the Manager (not just a
+	// local var) so Stop() can block until the process is actually reaped
+	// before returning: two contexts can be configured with setup commands
+	// that bind the same local proxy port, and Stop() previously only sent the
+	// kill signal and returned immediately, so a fresh Connect() to the other
+	// context could start racing to bind that port before this process had
+	// actually released it.
+	procDone := make(chan struct{})
 	m.mu.Lock()
 	m.cmd = cmd
+	m.procDone = procDone
 	m.mu.Unlock()
 
 	go scanExactLine(stdout, "LITELENS_SETUP_READY", readyMarkerChan, m.contextName)
 	go logLines(stderr, m.contextName)
 
-	// Single Wait() call, shared between the early-exit detection below and
-	// watchProcessDeath (spawned later, after Ready) — exec.Cmd.Wait may only
-	// be called once.
-	waitDone := make(chan error, 1)
-	go func() { waitDone <- cmd.Wait() }()
+	go func() {
+		err := cmd.Wait()
+		m.mu.Lock()
+		m.procErr = err
+		m.mu.Unlock()
+		close(procDone)
+	}()
 
 	portReadyChan := make(chan struct{})
 	var pollStop chan struct{}
@@ -208,14 +223,14 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	m.mu.Unlock()
 	timeoutChan := time.After(timeoutDuration)
 
-	// Loop rather than a single select: a clean (nil-error) waitDone can race
+	// Loop rather than a single select: a clean (nil-error) procDone can race
 	// readyMarkerChan/portReadyChan becoming ready at the same instant (e.g. a
 	// script that prints the marker and then exits immediately) — Go's select
 	// picks among simultaneously-ready cases at random, so treating every
-	// waitDone as fatal would sometimes misreport that benign race as a
+	// procDone as fatal would sometimes misreport that benign race as a
 	// failure. Only a genuine error exit (err != nil, e.g. "command not
 	// found") is fatal; a clean exit before a ready signal just disables the
-	// waitDone case (nil channel blocks forever) and the loop re-selects
+	// procDone case (nil channel blocks forever) and the loop re-selects
 	// among the remaining cases.
 	for {
 		select {
@@ -228,7 +243,7 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 			msg := "proxy setup command ready"
 			if m.transitionIfStillStarting(Ready, seq, msg) {
 				m.emitEvent("SetupCommandReady", msg)
-				go m.watchProcessDeath(waitDone, seq)
+				go m.watchProcessDeath(procDone, seq)
 				if m.proxyAddr != "" {
 					go m.watchProxyHealth(seq)
 				}
@@ -237,12 +252,15 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 			msg := "proxy setup command ready (proxy port reachable)"
 			if m.transitionIfStillStarting(Ready, seq, msg) {
 				m.emitEvent("SetupCommandReady", msg)
-				go m.watchProcessDeath(waitDone, seq)
+				go m.watchProcessDeath(procDone, seq)
 				if m.proxyAddr != "" {
 					go m.watchProxyHealth(seq)
 				}
 			}
-		case err := <-waitDone:
+		case <-procDone:
+			m.mu.Lock()
+			err := m.procErr
+			m.mu.Unlock()
 			if err != nil {
 				// The setup command exited with an error before ever
 				// signalling ready (e.g. "command not found") — fail fast
@@ -253,7 +271,7 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 				m.transitionTo(Degraded, seq, msg)
 				m.emitEvent("SetupCommandDegraded", msg)
 			} else {
-				waitDone = nil
+				procDone = nil
 				continue
 			}
 		case <-timeoutChan:
@@ -291,12 +309,12 @@ func pollTCPReady(addr string, notifyChan chan struct{}, stop chan struct{}) {
 }
 
 // watchProcessDeath waits for the setup command process to exit after it has
-// already reached Ready. waitDone is the single shared cmd.Wait() result
-// channel started in doLaunch — exec.Cmd.Wait may only be called once, and
-// doLaunch's own select also reads from this channel for the pre-Ready
-// early-exit case, so the two must not each call cmd.Wait() independently.
-func (m *Manager) watchProcessDeath(waitDone <-chan error, seq int64) {
-	<-waitDone
+// already reached Ready. procDone is the Manager's shared cmd.Wait()
+// completion signal, started in doLaunch — exec.Cmd.Wait may only be called
+// once, and doLaunch's own select and Stop() also read this same signal, so
+// no other code may call cmd.Wait() independently.
+func (m *Manager) watchProcessDeath(procDone <-chan struct{}, seq int64) {
+	<-procDone
 	msg := "setup command process exited unexpectedly after reaching ready state"
 	if m.transitionIfStillInState(Ready, Degraded, seq, msg) {
 		log.Printf("[setup-command:%s] proxy server terminated: process exited unexpectedly", m.contextName)
@@ -344,6 +362,17 @@ func (m *Manager) watchProxyHealth(seq int64) {
 	}
 }
 
+// Stop tears down the manager's current launch, if any, and blocks until the
+// underlying setup-command process has actually been reaped (not just sent a
+// kill signal) before returning. That's required, not just tidy: two cluster
+// contexts can each run a setup command bound to the same local proxy port,
+// and a caller that switches contexts immediately calls Stop() on the
+// outgoing one followed by Connect() on the incoming one — if Stop() returned
+// before the old process actually released the port, the new setup command
+// could race it and either fail to bind or (worse) the port could appear
+// reachable from the old process's lingering listener, making the readiness
+// poll in doLaunch report Ready before the new context's own setup actually
+// finished.
 func (m *Manager) Stop() {
 	m.mu.Lock()
 	switch m.state {
@@ -352,15 +381,23 @@ func (m *Manager) Stop() {
 		return
 	case Starting:
 		cancel := m.cancelFunc
+		procDone := m.procDone
 		m.state = Stopping
 		m.mu.Unlock()
 		cancel() // doLaunch's ctx.Done() branch kills the process and transitions to Idle
+		if procDone != nil {
+			<-procDone
+		}
 	case Ready, Degraded:
 		cmd := m.cmd
+		procDone := m.procDone
 		m.state = Idle
 		m.message = ""
 		m.mu.Unlock()
 		killProcessGroup(cmd)
+		if procDone != nil {
+			<-procDone
+		}
 		log.Printf("[setup-command:%s] proxy server terminated: disconnected", m.contextName)
 		m.emitEvent("SetupCommandIdle", "")
 	case Stopping:
