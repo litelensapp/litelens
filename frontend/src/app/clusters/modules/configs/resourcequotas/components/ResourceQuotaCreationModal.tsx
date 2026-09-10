@@ -2,6 +2,7 @@ import {
   Button,
   FormModal,
   Input,
+  NameSpaceSelectDropdown,
   PlusIcon,
   Select,
   SelectContent,
@@ -161,22 +162,13 @@ export const ResourceQuotaCreationModal: FC<ResourceQuotaCreationModalProps> = (
         <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Namespace
         </span>
-        <Select
+        <NameSpaceSelectDropdown
+          namespaces={namespaces}
           value={selectedNamespace}
-          onValueChange={(val) => setNamespaceOverride(val ?? "")}
+          onChange={(val) => setNamespaceOverride(val)}
           disabled={isPending}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a namespace..." />
-          </SelectTrigger>
-          <SelectContent>
-            {namespaces.map((ns) => (
-              <SelectItem key={ns} value={ns}>
-                {ns}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select a namespace..."
+        />
       </div>
 
       {/* Values section */}
