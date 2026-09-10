@@ -33,7 +33,10 @@ import { PersistentVolumeStatusBadge } from "./PersistentVolumeStatusBadge";
 const PersistentVolumeOverviewTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv }) => {
   const { onToggleStorageClassDetail, onTogglePersistentVolumeClaimDetail } =
     useDetailDrawerContext();
+  const { namespaces: activeNamespaces } = useMainLayoutContext();
   const [claimNamespace, claimName] = pv.Claim?.includes("/") ? pv.Claim.split("/") : [];
+  const isClaimNamespaceActive =
+    activeNamespaces.length === 0 || activeNamespaces.includes(claimNamespace ?? "");
   return (
     <ScrollArea className="h-full">
       <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
@@ -79,7 +82,10 @@ const PersistentVolumeOverviewTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv })
         )}
 
         <span className="text-h3 text-muted-foreground">Claim</span>
-        {claimName && claimNamespace && pv.Status.toLowerCase() !== "released" ? (
+        {claimName &&
+        claimNamespace &&
+        pv.Status.toLowerCase() !== "released" &&
+        isClaimNamespaceActive ? (
           <ResourceLink
             onClick={() => onTogglePersistentVolumeClaimDetail(claimNamespace, claimName)}
           >

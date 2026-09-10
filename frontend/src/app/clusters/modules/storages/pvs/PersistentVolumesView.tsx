@@ -82,7 +82,7 @@ const PersistentVolumeTableCtaButtons: FC<PersistentVolumeTableCtaButtonsProps> 
 };
 
 export const PersistentVolumesView: FC = () => {
-  const { activeContext } = useMainLayoutContext();
+  const { activeContext, namespaces: activeNamespaces } = useMainLayoutContext();
   const {
     onTogglePersistentVolumeDetail,
     onToggleStorageClassDetail,
@@ -239,9 +239,13 @@ export const PersistentVolumesView: FC = () => {
                       const [claimNamespace, claimName] = p.Claim?.includes("/")
                         ? p.Claim.split("/")
                         : [];
+                      const isClaimNamespaceActive =
+                        activeNamespaces.length === 0 ||
+                        activeNamespaces.includes(claimNamespace ?? "");
                       return claimNamespace &&
                         claimName &&
-                        p.Status.toLowerCase() !== "released" ? (
+                        p.Status.toLowerCase() !== "released" &&
+                        isClaimNamespaceActive ? (
                         <ResourceLink
                           onClick={(e) => {
                             e.stopPropagation();
