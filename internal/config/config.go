@@ -23,14 +23,16 @@ type MarketplaceRepository struct {
 }
 
 type Settings struct {
-	AccessToken              string                  `json:"accessToken"`
-	ClusterProxies           map[string]ClusterProxy `json:"clusterProxies"`
-	ClusterDefaultNamespaces map[string][]string     `json:"clusterDefaultNamespaces"`
-	ShellPath                string                  `json:"shellPath"`
-	KubeconfigPaths          []string                `json:"kubeconfigPaths"`
-	Locale                   string                  `json:"locale"`
-	PluginDisabledState      map[string]bool         `json:"pluginDisabledState"`
-	MarketplaceRepositories  []MarketplaceRepository `json:"marketplaceRepositories"`
+	AccessToken                     string                  `json:"accessToken"`
+	ClusterProxies                  map[string]ClusterProxy `json:"clusterProxies"`
+	ClusterDefaultNamespaces        map[string][]string     `json:"clusterDefaultNamespaces"`
+	ShellPath                       string                  `json:"shellPath"`
+	KubeconfigPaths                 []string                `json:"kubeconfigPaths"`
+	Locale                          string                  `json:"locale"`
+	PluginDisabledState             map[string]bool         `json:"pluginDisabledState"`
+	MarketplaceRepositories         []MarketplaceRepository `json:"marketplaceRepositories"`
+	ProxySetupEnabled               bool                    `json:"proxySetupEnabled"`
+	ProxyHealthCheckIntervalSeconds int                     `json:"proxyHealthCheckIntervalSeconds"`
 }
 
 // legacySettings is used internally for migration only: it mirrors the old flat structure.

@@ -61,7 +61,11 @@ const useGetDefaultNamespacesMock = vi.hoisted(() => vi.fn());
 const useGetNamespacesForContextMock = vi.hoisted(() => vi.fn());
 const useSaveClusterProxyMock = vi.hoisted(() => vi.fn());
 const useSaveDefaultNamespacesMock = vi.hoisted(() => vi.fn());
+const useGetSettingsMock = vi.hoisted(() => vi.fn());
 
+vi.mock("../../settings/hooks/data-access/useGetSettings", () => ({
+  useGetSettings: useGetSettingsMock,
+}));
 vi.mock("../shared/hooks/data-access/useGetContextKubeconfigPath", () => ({
   useGetContextKubeconfigPath: useGetContextKubeconfigPathMock,
 }));
@@ -127,6 +131,7 @@ function mockHooksForContext(contextName: string | null, fixture: ClusterFixture
   }));
   useSaveClusterProxyMock.mockReturnValue({ mutate: vi.fn() });
   useSaveDefaultNamespacesMock.mockReturnValue({ mutate: vi.fn() });
+  useGetSettingsMock.mockReturnValue({ data: { proxySetupEnabled: true } });
 }
 
 function getProxyInput() {

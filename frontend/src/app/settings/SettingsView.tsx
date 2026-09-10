@@ -5,6 +5,7 @@ import { useIsMarketplaceEnabled } from "../shared/hooks/useIsMarketplaceEnabled
 import { AppContent } from "./components/AppContent";
 import { K8sContent } from "./components/K8sContent";
 import { MarketplaceContent } from "./components/MarketplaceContent";
+import { ProxyContent } from "./components/ProxyContent";
 import { SandboxContent } from "./components/SandboxContent";
 import { SectionHeader } from "./components/SectionHeader";
 import { SettingsSidebar } from "./components/SettingsSidebar";
@@ -60,6 +61,7 @@ export const SettingsView: FC<{
               {displaySection === "sandbox" && <SandboxContent />}
               {displaySection === "kubernetes" && <K8sContent />}
               {displaySection === "app" && <AppContent />}
+              {displaySection === "proxy" && <ProxyContent />}
               {displaySection === "marketplace" && <MarketplaceContent />}
               {pluginTab && <pluginTab.component />}
             </div>

@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/url"
+	"time"
 
 	"github.com/litelensapp/litelens/internal/proxy"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -30,7 +31,9 @@ func proxyDialAddr(httpProxy, httpsProxy string) string {
 // first use. If a manager already exists but was configured with a different
 // command or proxy address (the user edited setup command/proxy in settings),
 // the stale manager is stopped and replaced with a fresh one.
-func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy string) *proxy.Manager {
+// healthCheckIntervalSeconds is applied to the returned manager either way
+// (new or reused); <= 0 leaves the manager's built-in default untouched.
+func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy string, healthCheckIntervalSeconds int) *proxy.Manager {
 	proxyAddr := proxyDialAddr(httpProxy, httpsProxy)
 
 	a.proxyManagersMu.RLock()
@@ -38,6 +41,7 @@ func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy str
 		unchanged := m.Command() == command && m.ProxyAddr() == proxyAddr
 		a.proxyManagersMu.RUnlock()
 		if unchanged {
+			applyHealthCheckInterval(m, healthCheckIntervalSeconds)
 			return m
 		}
 		m.Stop()
@@ -53,6 +57,7 @@ func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy str
 
 	if m, exists := a.proxyManagers[contextName]; exists {
 		if m.Command() == command && m.ProxyAddr() == proxyAddr {
+			applyHealthCheckInterval(m, healthCheckIntervalSeconds)
 			return m
 		}
 		m.Stop()
@@ -65,8 +70,16 @@ func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy str
 			"message": message,
 		})
 	})
+	applyHealthCheckInterval(m, healthCheckIntervalSeconds)
 	a.proxyManagers[contextName] = m
 	return m
+}
+
+func applyHealthCheckInterval(m *proxy.Manager, seconds int) {
+	if seconds <= 0 {
+		return
+	}
+	m.SetHealthCheckInterval(time.Duration(seconds) * time.Second)
 }
 
 // GetProxyStatus returns the current setup-command proxy status for

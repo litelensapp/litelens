@@ -278,6 +278,8 @@ func (a *App) Connect(contextName string, seq int64) error {
 	httpProxy := proxyCfg.HttpProxy
 	httpsProxy := proxyCfg.HttpsProxy
 	setupCommand := proxyCfg.SetupCommand
+	proxySetupEnabled := a.settings.ProxySetupEnabled
+	healthCheckIntervalSeconds := a.settings.ProxyHealthCheckIntervalSeconds
 	kubeconfigPaths := a.settings.KubeconfigPaths
 	previousContext := a.activeContext
 	a.mu.RUnlock()
@@ -293,9 +295,9 @@ func (a *App) Connect(contextName string, seq int64) error {
 		a.stopProxyManager(previousContext)
 	}
 
-	if setupCommand != "" {
+	if setupCommand != "" && proxySetupEnabled {
 		a.emitConnectStatus(contextName, "Starting proxy server")
-		mgr := a.ensureProxyManager(contextName, setupCommand, httpProxy, httpsProxy)
+		mgr := a.ensureProxyManager(contextName, setupCommand, httpProxy, httpsProxy, healthCheckIntervalSeconds)
 		mgr.Connect()
 		a.emitConnectStatus(contextName, "Connecting to proxy server...")
 		<-mgr.Wait() // pauses here through e.g. an SSO browser flow the command opens, until ready/timeout/failure

@@ -77,10 +77,10 @@ func NewManager(contextName, command, proxyAddr string, emitEvent func(eventName
 	closed := make(chan struct{})
 	close(closed)
 	return &Manager{
-		contextName:  contextName,
-		command:      command,
-		proxyAddr:    proxyAddr,
-		emitEvent:    emitEvent,
+		contextName:         contextName,
+		command:             command,
+		proxyAddr:           proxyAddr,
+		emitEvent:           emitEvent,
 		state:               Idle,
 		settledChan:         closed,
 		setupTimeout:        5 * time.Minute,
