@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os/exec"
 	"strings"
 	"sync"
@@ -25,6 +26,7 @@ const (
 type Manager struct {
 	contextName string
 	command     string
+	proxyAddr   string // host:port to poll as a readiness fallback; see doLaunch
 	emitEvent   func(eventName, message string)
 
 	mu          sync.Mutex
@@ -37,12 +39,21 @@ type Manager struct {
 	setupTimeout time.Duration
 }
 
-func NewManager(contextName, command string, emitEvent func(eventName, message string)) *Manager {
+// NewManager creates a Manager for a setup command. proxyAddr, if non-empty,
+// is the host:port of the proxy the command is expected to stand up (i.e.
+// this cluster's configured httpProxy/httpsProxy address) — it's polled as a
+// readiness fallback alongside the LITELENS_SETUP_READY stdout marker, since
+// not every setup command can be made to print a marker (e.g. a script whose
+// last step execs a long-running foreground tunnel like `aws ssm
+// start-session`, which never returns to reach a later echo). Pass "" to
+// rely on the stdout marker alone.
+func NewManager(contextName, command, proxyAddr string, emitEvent func(eventName, message string)) *Manager {
 	closed := make(chan struct{})
 	close(closed)
 	return &Manager{
 		contextName:  contextName,
 		command:      command,
+		proxyAddr:    proxyAddr,
 		emitEvent:    emitEvent,
 		state:        Idle,
 		settledChan:  closed,
@@ -58,6 +69,10 @@ func (m *Manager) SetupTimeout(d time.Duration) {
 
 func (m *Manager) Command() string {
 	return m.command
+}
+
+func (m *Manager) ProxyAddr() string {
+	return m.proxyAddr
 }
 
 // Wait returns a channel that closes once the in-flight (or most recently
@@ -122,6 +137,13 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	go scanExactLine(stdout, "LITELENS_SETUP_READY", readyMarkerChan, m.contextName)
 	go logLines(stderr, m.contextName)
 
+	portReadyChan := make(chan struct{})
+	var pollStop chan struct{}
+	if m.proxyAddr != "" {
+		pollStop = make(chan struct{})
+		go pollTCPReady(m.proxyAddr, portReadyChan, pollStop)
+	}
+
 	m.mu.Lock()
 	timeoutDuration := m.setupTimeout
 	m.mu.Unlock()
@@ -135,10 +157,38 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 			m.emitEvent("SetupCommandReady", "proxy setup command ready")
 			go m.watchProcessDeath(cmd, seq)
 		}
+	case <-portReadyChan:
+		if m.transitionIfStillStarting(Ready, seq) {
+			m.emitEvent("SetupCommandReady", "proxy setup command ready (proxy port reachable)")
+			go m.watchProcessDeath(cmd, seq)
+		}
 	case <-time.After(timeoutDuration):
 		killProcessGroup(cmd)
 		m.transitionTo(Degraded, seq)
 		m.emitEvent("SetupCommandDegraded", "setup command timed out after 5m; proceeding without working proxy")
+	}
+
+	if pollStop != nil {
+		close(pollStop)
+	}
+}
+
+// pollTCPReady repeatedly dials addr until it accepts a connection, then
+// closes notifyChan. Stops early, without closing notifyChan, if stop is
+// closed first.
+func pollTCPReady(addr string, notifyChan chan struct{}, stop chan struct{}) {
+	for {
+		conn, err := net.DialTimeout("tcp", addr, 300*time.Millisecond)
+		if err == nil {
+			conn.Close()
+			close(notifyChan)
+			return
+		}
+		select {
+		case <-stop:
+			return
+		case <-time.After(300 * time.Millisecond):
+		}
 	}
 }
 

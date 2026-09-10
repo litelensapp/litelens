@@ -1,20 +1,43 @@
 package app
 
 import (
+	"net/url"
+
 	"github.com/litelensapp/litelens/internal/proxy"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// proxyDialAddr extracts a host:port to poll as a setup-command readiness
+// fallback from the cluster's configured proxy. Prefers httpsProxy since
+// that's what actually routes Kubernetes API traffic (HTTPS); falls back to
+// httpProxy. Returns "" if neither is set or parseable.
+func proxyDialAddr(httpProxy, httpsProxy string) string {
+	raw := httpsProxy
+	if raw == "" {
+		raw = httpProxy
+	}
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Host
+}
+
 // ensureProxyManager returns the ProxyManager for contextName, creating one on
 // first use. If a manager already exists but was configured with a different
-// command (the user edited the setup command in settings), the stale
-// manager is stopped and replaced with a fresh one for the new command.
-func (a *App) ensureProxyManager(contextName, command string) *proxy.Manager {
+// command or proxy address (the user edited setup command/proxy in settings),
+// the stale manager is stopped and replaced with a fresh one.
+func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy string) *proxy.Manager {
+	proxyAddr := proxyDialAddr(httpProxy, httpsProxy)
+
 	a.proxyManagersMu.RLock()
 	if m, exists := a.proxyManagers[contextName]; exists {
-		existingCommand := m.Command()
+		unchanged := m.Command() == command && m.ProxyAddr() == proxyAddr
 		a.proxyManagersMu.RUnlock()
-		if existingCommand == command {
+		if unchanged {
 			return m
 		}
 		m.Stop()
@@ -29,14 +52,14 @@ func (a *App) ensureProxyManager(contextName, command string) *proxy.Manager {
 	defer a.proxyManagersMu.Unlock()
 
 	if m, exists := a.proxyManagers[contextName]; exists {
-		if m.Command() == command {
+		if m.Command() == command && m.ProxyAddr() == proxyAddr {
 			return m
 		}
 		m.Stop()
 		delete(a.proxyManagers, contextName)
 	}
 
-	m := proxy.NewManager(contextName, command, func(eventName, message string) {
+	m := proxy.NewManager(contextName, command, proxyAddr, func(eventName, message string) {
 		wailsruntime.EventsEmit(a.ctx, eventName, map[string]string{
 			"context": contextName,
 			"message": message,

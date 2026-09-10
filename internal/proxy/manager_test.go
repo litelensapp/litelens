@@ -3,6 +3,7 @@ package proxy
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"os"
 	"sync"
 	"testing"
@@ -12,7 +13,7 @@ import (
 func TestManagerHappyPath(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -39,7 +40,7 @@ func TestManagerHappyPath(t *testing.T) {
 func TestManagerTimeout(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'sleep 10'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'sleep 10'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -70,7 +71,7 @@ func TestManagerTimeout(t *testing.T) {
 func TestManagerStopDuringStarting(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'sleep 10'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'sleep 10'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -104,7 +105,7 @@ func TestManagerStopDuringStarting(t *testing.T) {
 func TestManagerStopDuringReady(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -138,7 +139,7 @@ func TestManagerStopDuringReady(t *testing.T) {
 func TestManagerReconnectReusesReady(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -253,7 +254,7 @@ func TestScanExactLine(t *testing.T) {
 func TestManagerStopDuringIdle(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -271,7 +272,7 @@ func TestManagerStopDuringIdle(t *testing.T) {
 func TestManagerCrashAfterReady(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 1; exit 1'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 1; exit 1'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -319,7 +320,7 @@ func TestManagerCrashAfterReady(t *testing.T) {
 func TestManagerConcurrentConnect(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}
-	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", "", func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -392,7 +393,7 @@ func TestClusterProxyRoundTrip(t *testing.T) {
 // it raced ahead to connect while e.g. an SSO browser flow the command opens
 // was still in progress. Wait() must block until the launch settles.
 func TestManagerWaitBlocksUntilReady(t *testing.T) {
-	m := NewManager("test-ctx", "sleep 0.2 && echo LITELENS_SETUP_READY", func(name, msg string) {})
+	m := NewManager("test-ctx", "sleep 0.2 && echo LITELENS_SETUP_READY", "", func(name, msg string) {})
 	m.SetupTimeout(5 * time.Second)
 
 	if err := m.Connect(); err != nil {
@@ -423,7 +424,7 @@ func TestManagerWaitBlocksUntilReady(t *testing.T) {
 // TestManagerWaitBlocksUntilTimeout ensures Wait() also pauses for the full
 // fail-open timeout path, not just the happy path.
 func TestManagerWaitBlocksUntilTimeout(t *testing.T) {
-	m := NewManager("test-ctx", "sleep 5", func(name, msg string) {})
+	m := NewManager("test-ctx", "sleep 5", "", func(name, msg string) {})
 	m.SetupTimeout(150 * time.Millisecond)
 
 	if err := m.Connect(); err != nil {
@@ -446,11 +447,51 @@ func TestManagerWaitBlocksUntilTimeout(t *testing.T) {
 // TestManagerWaitImmediateWhenNeverConnected ensures Wait() never blocks a
 // caller when Connect() was never invoked (e.g. no setup command configured).
 func TestManagerWaitImmediateWhenNeverConnected(t *testing.T) {
-	m := NewManager("test-ctx", "", func(name, msg string) {})
+	m := NewManager("test-ctx", "", "", func(name, msg string) {})
 
 	select {
 	case <-m.Wait():
 	default:
 		t.Error("expected Wait() to be immediately ready when Connect() was never called")
+	}
+}
+
+// TestManagerReadyViaProxyPortFallback covers a command that never prints
+// LITELENS_SETUP_READY because its last step execs a long-running foreground
+// process (e.g. `aws ssm start-session`, which blocks forever keeping a
+// tunnel alive and never returns to reach a later echo). The manager must
+// still reach Ready once the configured proxy port itself becomes reachable.
+func TestManagerReadyViaProxyPortFallback(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to open listener: %v", err)
+	}
+	defer ln.Close()
+
+	var mu sync.Mutex
+	events := []string{}
+	// This command never prints the marker and just sleeps, mirroring a
+	// script whose final step is a blocking foreground tunnel.
+	m := NewManager("test-ctx", "sh -c 'sleep 10'", ln.Addr().String(), func(name, msg string) {
+		mu.Lock()
+		events = append(events, name)
+		mu.Unlock()
+	})
+	m.SetupTimeout(5 * time.Second)
+
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	select {
+	case <-m.Wait():
+	case <-time.After(3 * time.Second):
+		t.Fatal("Wait() did not unblock in time")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(events) == 0 || events[0] != "SetupCommandReady" {
+		t.Errorf("expected SetupCommandReady via proxy port fallback, got %v", events)
 	}
 }
