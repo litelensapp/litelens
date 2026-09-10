@@ -7,14 +7,14 @@ import (
 
 // ensureProxyManager returns the ProxyManager for contextName, creating one on
 // first use. If a manager already exists but was configured with a different
-// scriptPath (the user edited the setup script in settings), the stale
-// manager is stopped and replaced with a fresh one for the new path.
-func (a *App) ensureProxyManager(contextName, scriptPath string) *proxy.Manager {
+// command (the user edited the setup command in settings), the stale
+// manager is stopped and replaced with a fresh one for the new command.
+func (a *App) ensureProxyManager(contextName, command string) *proxy.Manager {
 	a.proxyManagersMu.RLock()
 	if m, exists := a.proxyManagers[contextName]; exists {
-		existingPath := m.ScriptPath()
+		existingCommand := m.Command()
 		a.proxyManagersMu.RUnlock()
-		if existingPath == scriptPath {
+		if existingCommand == command {
 			return m
 		}
 		m.Stop()
@@ -29,14 +29,14 @@ func (a *App) ensureProxyManager(contextName, scriptPath string) *proxy.Manager 
 	defer a.proxyManagersMu.Unlock()
 
 	if m, exists := a.proxyManagers[contextName]; exists {
-		if m.ScriptPath() == scriptPath {
+		if m.Command() == command {
 			return m
 		}
 		m.Stop()
 		delete(a.proxyManagers, contextName)
 	}
 
-	m := proxy.NewManager(contextName, scriptPath, func(eventName, message string) {
+	m := proxy.NewManager(contextName, command, func(eventName, message string) {
 		wailsruntime.EventsEmit(a.ctx, eventName, map[string]string{
 			"context": contextName,
 			"message": message,
@@ -58,7 +58,7 @@ func (a *App) stopProxyManager(contextName string) {
 }
 
 // stopAllProxyManagers stops every tracked ProxyManager. Called on app
-// shutdown so no setup-script subprocess is left running after the app exits.
+// shutdown so no setup-command subprocess is left running after the app exits.
 func (a *App) stopAllProxyManagers() {
 	a.proxyManagersMu.Lock()
 	for _, mgr := range a.proxyManagers {

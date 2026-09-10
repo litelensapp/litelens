@@ -277,16 +277,16 @@ func (a *App) Connect(contextName string, seq int64) error {
 	proxyCfg := a.settings.ClusterProxies[contextName]
 	httpProxy := proxyCfg.HttpProxy
 	httpsProxy := proxyCfg.HttpsProxy
-	setupScript := proxyCfg.SetupScript
+	setupCommand := proxyCfg.SetupCommand
 	kubeconfigPaths := a.settings.KubeconfigPaths
 	previousContext := a.activeContext
 	a.mu.RUnlock()
 
-	if setupScript != "" {
-		a.emitConnectStatus(contextName, "Starting proxy setup script...")
-		mgr := a.ensureProxyManager(contextName, setupScript)
+	if setupCommand != "" {
+		a.emitConnectStatus(contextName, "Starting proxy setup command...")
+		mgr := a.ensureProxyManager(contextName, setupCommand)
 		mgr.Connect()
-		a.emitConnectStatus(contextName, "Waiting for setup script...")
+		a.emitConnectStatus(contextName, "Waiting for setup command...")
 	}
 
 	if previousContext != "" && previousContext != contextName {

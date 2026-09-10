@@ -35,7 +35,7 @@ interface ClusterSettingsModalProps {
 
 export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextName, onClose }) => {
   const [proxy, setProxy] = useState("");
-  const [setupScript, setSetupScript] = useState("");
+  const [setupCommand, setSetupCommand] = useState("");
   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
   const [manualNamespace, setManualNamespace] = useState("");
   const [status, setStatus] = useState<SaveStatus>("idle");
@@ -55,7 +55,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
   if (contextName && clusterProxy && contextName !== loadedContextName) {
     setLoadedContextName(contextName);
     setProxy(clusterProxy.httpProxy ?? "");
-    setSetupScript(clusterProxy.setupScript ?? "");
+    setSetupCommand(clusterProxy.setupCommand ?? "");
     setSelectedNamespaces(defaultNamespaces ?? []);
     setStatus("idle");
   } else if (!contextName && loadedContextName !== null) {
@@ -84,9 +84,9 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
     e.preventDefault();
     if (!contextName) return;
     const trimmedProxy = proxy.trim();
-    const trimmedScript = setupScript.trim();
+    const trimmedCommand = setupCommand.trim();
     setProxy(trimmedProxy);
-    setSetupScript(trimmedScript);
+    setSetupCommand(trimmedCommand);
     setStatus("saving");
 
     let completed = 0;
@@ -109,7 +109,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
         proxy: config.ClusterProxy.createFrom({
           httpProxy: trimmedProxy,
           httpsProxy: trimmedProxy,
-          setupScript: trimmedScript,
+          setupCommand: trimmedCommand,
         }),
       },
       {
@@ -193,23 +193,23 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
 
             <div className="flex flex-col gap-2">
               <label
-                htmlFor="cluster-setup-script"
+                htmlFor="cluster-setup-command"
                 className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
               >
-                Proxy Setup Script (Optional)
+                Proxy Setup Command (Optional)
               </label>
               <Input
-                id="cluster-setup-script"
-                value={setupScript}
-                onChange={(e) => setSetupScript(e.target.value)}
-                placeholder="/path/to/setup-script.sh"
+                id="cluster-setup-command"
+                value={setupCommand}
+                onChange={(e) => setSetupCommand(e.target.value)}
+                placeholder="ssm-proxy start --profile my-cluster"
                 className="font-mono"
               />
             </div>
             <p className="text-left text-xs text-muted-foreground">
-              Script must print the exact line{" "}
+              Command must print the exact line{" "}
               <code className="text-foreground">LITELENS_SETUP_READY</code> when its proxy is
-              authenticated/live. Failures are fail-open — the app continues even if the script
+              authenticated/live. Failures are fail-open — the app continues even if the command
               fails.
             </p>
 

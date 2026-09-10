@@ -29,10 +29,10 @@ func TestManagerHappyPath(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	if len(events) == 0 {
-		t.Fatal("expected SetupScriptReady event")
+		t.Fatal("expected SetupCommandReady event")
 	}
-	if events[0] != "SetupScriptReady" {
-		t.Errorf("expected SetupScriptReady, got %s", events[0])
+	if events[0] != "SetupCommandReady" {
+		t.Errorf("expected SetupCommandReady, got %s", events[0])
 	}
 }
 
@@ -57,13 +57,13 @@ func TestManagerTimeout(t *testing.T) {
 	defer mu.Unlock()
 	found := false
 	for _, e := range events {
-		if e == "SetupScriptDegraded" {
+		if e == "SetupCommandDegraded" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected SetupScriptDegraded event, got %v", events)
+		t.Errorf("expected SetupCommandDegraded event, got %v", events)
 	}
 }
 
@@ -91,7 +91,7 @@ func TestManagerStopDuringStarting(t *testing.T) {
 	defer mu.Unlock()
 	found := false
 	for _, e := range events {
-		if e == "SetupScriptDegraded" || e == "SetupScriptReady" || e == "SetupScriptCrashed" {
+		if e == "SetupCommandDegraded" || e == "SetupCommandReady" || e == "SetupCommandCrashed" {
 			found = true
 			break
 		}
@@ -125,13 +125,13 @@ func TestManagerStopDuringReady(t *testing.T) {
 	defer mu.Unlock()
 	readyFound := false
 	for _, e := range events {
-		if e == "SetupScriptReady" {
+		if e == "SetupCommandReady" {
 			readyFound = true
 			break
 		}
 	}
 	if !readyFound {
-		t.Errorf("expected SetupScriptReady before Stop, got %v", events)
+		t.Errorf("expected SetupCommandReady before Stop, got %v", events)
 	}
 }
 
@@ -155,7 +155,7 @@ func TestManagerReconnectReusesReady(t *testing.T) {
 	mu.Lock()
 	readyCount := 0
 	for _, e := range events {
-		if e == "SetupScriptReady" {
+		if e == "SetupCommandReady" {
 			readyCount++
 		}
 	}
@@ -171,14 +171,14 @@ func TestManagerReconnectReusesReady(t *testing.T) {
 	mu.Lock()
 	readyCountAfter := 0
 	for _, e := range events {
-		if e == "SetupScriptReady" {
+		if e == "SetupCommandReady" {
 			readyCountAfter++
 		}
 	}
 	mu.Unlock()
 
 	if readyCount != 1 || readyCountAfter != 1 {
-		t.Errorf("expected exactly one SetupScriptReady event even after second Connect, got %d then %d", readyCount, readyCountAfter)
+		t.Errorf("expected exactly one SetupCommandReady event even after second Connect, got %d then %d", readyCount, readyCountAfter)
 	}
 }
 
@@ -288,7 +288,7 @@ func TestManagerCrashAfterReady(t *testing.T) {
 	mu.Lock()
 	readyFound := false
 	for _, e := range events {
-		if e == "SetupScriptReady" {
+		if e == "SetupCommandReady" {
 			readyFound = true
 			break
 		}
@@ -296,7 +296,7 @@ func TestManagerCrashAfterReady(t *testing.T) {
 	mu.Unlock()
 
 	if !readyFound {
-		t.Fatal("expected SetupScriptReady event before process crash")
+		t.Fatal("expected SetupCommandReady event before process crash")
 	}
 
 	time.Sleep(1500 * time.Millisecond)
@@ -304,7 +304,7 @@ func TestManagerCrashAfterReady(t *testing.T) {
 	mu.Lock()
 	crashFound := false
 	for _, e := range events {
-		if e == "SetupScriptCrashed" {
+		if e == "SetupCommandCrashed" {
 			crashFound = true
 			break
 		}
@@ -312,7 +312,7 @@ func TestManagerCrashAfterReady(t *testing.T) {
 	mu.Unlock()
 
 	if !crashFound {
-		t.Errorf("expected SetupScriptCrashed event after process death, got %v", events)
+		t.Errorf("expected SetupCommandCrashed event after process death, got %v", events)
 	}
 }
 
@@ -341,28 +341,28 @@ func TestManagerConcurrentConnect(t *testing.T) {
 	mu.Lock()
 	readyCount := 0
 	for _, e := range events {
-		if e == "SetupScriptReady" {
+		if e == "SetupCommandReady" {
 			readyCount++
 		}
 	}
 	mu.Unlock()
 
 	if readyCount != 1 {
-		t.Errorf("expected exactly one SetupScriptReady event with concurrent Connects, got %d", readyCount)
+		t.Errorf("expected exactly one SetupCommandReady event with concurrent Connects, got %d", readyCount)
 	}
 }
 
 func TestClusterProxyRoundTrip(t *testing.T) {
 	type ClusterProxy struct {
-		HttpProxy   string `json:"httpProxy"`
-		HttpsProxy  string `json:"httpsProxy"`
-		SetupScript string `json:"setupScript"`
+		HttpProxy    string `json:"httpProxy"`
+		HttpsProxy   string `json:"httpsProxy"`
+		SetupCommand string `json:"setupCommand"`
 	}
 
 	original := ClusterProxy{
-		HttpProxy:   "http://proxy.example.com:8080",
-		HttpsProxy:  "https://proxy.example.com:8443",
-		SetupScript: "/path/to/setup.sh",
+		HttpProxy:    "http://proxy.example.com:8080",
+		HttpsProxy:   "https://proxy.example.com:8443",
+		SetupCommand: "ssm-proxy start",
 	}
 
 	data, err := json.Marshal(original)
@@ -382,7 +382,7 @@ func TestClusterProxyRoundTrip(t *testing.T) {
 	if unmarshaled.HttpsProxy != original.HttpsProxy {
 		t.Errorf("httpsProxy mismatch: %v vs %v", unmarshaled.HttpsProxy, original.HttpsProxy)
 	}
-	if unmarshaled.SetupScript != original.SetupScript {
-		t.Errorf("setupScript mismatch: %v vs %v", unmarshaled.SetupScript, original.SetupScript)
+	if unmarshaled.SetupCommand != original.SetupCommand {
+		t.Errorf("setupCommand mismatch: %v vs %v", unmarshaled.SetupCommand, original.SetupCommand)
 	}
 }

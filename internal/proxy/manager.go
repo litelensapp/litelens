@@ -24,7 +24,7 @@ const (
 
 type Manager struct {
 	contextName string
-	scriptPath  string
+	command     string
 	emitEvent   func(eventName, message string)
 
 	mu         sync.Mutex
@@ -36,10 +36,10 @@ type Manager struct {
 	setupTimeout time.Duration
 }
 
-func NewManager(contextName, scriptPath string, emitEvent func(eventName, message string)) *Manager {
+func NewManager(contextName, command string, emitEvent func(eventName, message string)) *Manager {
 	return &Manager{
 		contextName:  contextName,
-		scriptPath:   scriptPath,
+		command:      command,
 		emitEvent:    emitEvent,
 		state:        Idle,
 		setupTimeout: 5 * time.Minute,
@@ -52,8 +52,8 @@ func (m *Manager) SetupTimeout(d time.Duration) {
 	m.setupTimeout = d
 }
 
-func (m *Manager) ScriptPath() string {
-	return m.scriptPath
+func (m *Manager) Command() string {
+	return m.command
 }
 
 func (m *Manager) Connect() error {
@@ -83,14 +83,14 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64) {
 	}
 	m.mu.Unlock()
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", m.scriptPath)
+	cmd := exec.CommandContext(ctx, "sh", "-c", m.command)
 	setProcessGroup(cmd)
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err != nil {
 		m.transitionTo(Degraded, seq)
-		m.emitEvent("SetupScriptDegraded", fmt.Sprintf("failed to start setup script: %v", err))
+		m.emitEvent("SetupCommandDegraded", fmt.Sprintf("failed to start setup command: %v", err))
 		return
 	}
 
@@ -111,20 +111,20 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64) {
 		m.transitionTo(Idle, seq)
 	case <-readyMarkerChan:
 		if m.transitionIfStillStarting(Ready, seq) {
-			m.emitEvent("SetupScriptReady", "proxy setup script ready")
+			m.emitEvent("SetupCommandReady", "proxy setup command ready")
 			go m.watchProcessDeath(cmd, seq)
 		}
 	case <-time.After(timeoutDuration):
 		killProcessGroup(cmd)
 		m.transitionTo(Degraded, seq)
-		m.emitEvent("SetupScriptDegraded", "setup script timed out after 5m; proceeding without working proxy")
+		m.emitEvent("SetupCommandDegraded", "setup command timed out after 5m; proceeding without working proxy")
 	}
 }
 
 func (m *Manager) watchProcessDeath(cmd *exec.Cmd, seq int64) {
 	cmd.Wait()
 	if m.transitionIfStillInState(Ready, Degraded, seq) {
-		m.emitEvent("SetupScriptCrashed", "setup script process exited unexpectedly after reaching ready state")
+		m.emitEvent("SetupCommandCrashed", "setup command process exited unexpectedly after reaching ready state")
 	}
 }
 
@@ -188,16 +188,16 @@ func scanExactLine(source io.Reader, target string, notifyChan chan struct{}) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Printf("error reading setup script stdout: %v", err)
+		log.Printf("error reading setup command stdout: %v", err)
 	}
 }
 
 func logLines(source io.Reader, contextName string) {
 	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
-		log.Printf("[setup-script:%s] %s", contextName, scanner.Text())
+		log.Printf("[setup-command:%s] %s", contextName, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		log.Printf("error reading setup script stderr for %s: %v", contextName, err)
+		log.Printf("error reading setup command stderr for %s: %v", contextName, err)
 	}
 }

@@ -27,11 +27,11 @@ export function useConnectStatusEvents(contextName: string): ConnectStatusResult
       "connect:status",
       (payload: { context: string; message: string }) => {
         if (payload.context !== contextName || !isActive) return;
-        const setupScriptMessages = [
-          "Starting proxy setup script...",
-          "Waiting for setup script...",
+        const setupCommandMessages = [
+          "Starting proxy setup command...",
+          "Waiting for setup command...",
         ];
-        const isSetupMessage = setupScriptMessages.some((msg) => payload.message.includes(msg));
+        const isSetupMessage = setupCommandMessages.some((msg) => payload.message.includes(msg));
         const isError =
           !isSetupMessage &&
           (payload.message.startsWith("Failed") || payload.message.startsWith("Cannot"));
@@ -40,26 +40,26 @@ export function useConnectStatusEvents(contextName: string): ConnectStatusResult
     );
 
     const unsubscribeDegraded = EventsOn(
-      "SetupScriptDegraded",
+      "SetupCommandDegraded",
       (payload: { context: string; message: string }) => {
         if (payload.context !== contextName || !isActive) return;
-        setWarningBanner({ title: "Setup Script Failed", description: payload.message });
+        setWarningBanner({ title: "Setup Command Failed", description: payload.message });
       }
     );
 
     const unsubscribeCrashed = EventsOn(
-      "SetupScriptCrashed",
+      "SetupCommandCrashed",
       (payload: { context: string; message: string }) => {
         if (payload.context !== contextName || !isActive) return;
-        setWarningBanner({ title: "Setup Script Crashed", description: payload.message });
+        setWarningBanner({ title: "Setup Command Crashed", description: payload.message });
       }
     );
 
     const unsubscribePortInUse = EventsOn(
-      "SetupScriptPortInUse",
+      "SetupCommandPortInUse",
       (payload: { context: string; message: string }) => {
         if (payload.context !== contextName || !isActive) return;
-        setWarningBanner({ title: "Setup Script Error", description: payload.message });
+        setWarningBanner({ title: "Setup Command Error", description: payload.message });
       }
     );
 
