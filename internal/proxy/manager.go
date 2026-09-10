@@ -159,44 +159,6 @@ func (m *Manager) Connect() error {
 	return nil
 }
 
-// tryReuseReachableProxy probes proxyAddr before running the setup command at
-// all. Many setup scripts perform their own SSO/browser login as part of
-// standing up a tunnel — if the tunnel is already up (e.g. left running from
-// a previous app session, or established outside the app entirely), running
-// the script again would trigger that login flow for no reason. Returns true
-// if it found the proxy already reachable and transitioned the manager to
-// Ready — in which case doLaunch has nothing left to do. Returns false if the
-// caller should proceed with the normal launch (proxy unreachable, or the
-// launch was cancelled/superseded while probing).
-func (m *Manager) tryReuseReachableProxy(ctx context.Context, seq int64) bool {
-	reachable := make(chan bool, 1)
-	go func() {
-		conn, err := net.DialTimeout("tcp", m.proxyAddr, 2*time.Second)
-		if err == nil {
-			conn.Close()
-		}
-		reachable <- err == nil
-	}()
-
-	select {
-	case <-ctx.Done():
-		m.transitionTo(Idle, seq, "")
-		m.emitEvent("SetupCommandIdle", "")
-		return true
-	case ok := <-reachable:
-		if !ok {
-			return false
-		}
-		msg := fmt.Sprintf("proxy already reachable at %s; reused without running setup command", m.proxyAddr)
-		if m.transitionIfStillStarting(Ready, seq, msg) {
-			log.Printf("[setup-command:%s] proxy already reachable at %s, skipping setup command", m.contextName, m.proxyAddr)
-			m.emitEvent("SetupCommandReady", msg)
-			go m.watchProxyHealth(seq)
-		}
-		return true
-	}
-}
-
 func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}) {
 	defer close(settled)
 
@@ -206,10 +168,6 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 		return
 	}
 	m.mu.Unlock()
-
-	if m.proxyAddr != "" && m.tryReuseReachableProxy(ctx, seq) {
-		return
-	}
 
 	readyMarkerChan := make(chan struct{})
 

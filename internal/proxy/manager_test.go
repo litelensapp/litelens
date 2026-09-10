@@ -2,11 +2,9 @@ package proxy
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net"
 	"os"
-	"path/filepath"
 	"slices"
 	"sync"
 	"testing"
@@ -405,11 +403,6 @@ func TestManagerCrashAfterReady(t *testing.T) {
 // must demote Ready -> Degraded once the port stops responding, and kill the
 // now-useless process so a subsequent Connect() can actually restart it.
 func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
-	// Reserve a free port, then release it immediately so nothing is
-	// listening when Connect() runs its reachability preflight — otherwise
-	// the preflight would find the port already reachable and skip running
-	// the setup command entirely (see TestManagerReusesReachableProxy...),
-	// which isn't the scenario this test is exercising.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to open listener: %v", err)
@@ -474,58 +467,6 @@ func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	t.Fatalf("expected SetupCommandDegraded event once the proxy port died, got %v", events)
-}
-
-// TestManagerReusesReachableProxyWithoutRunningSetupCommand covers the
-// preflight added to doLaunch: many setup scripts perform their own
-// SSO/browser login as part of standing up a tunnel, so if the tunnel is
-// already reachable (e.g. left running from a previous app session),
-// Connect() should skip running the script again rather than triggering that
-// login flow for no reason.
-func TestManagerReusesReachableProxyWithoutRunningSetupCommand(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to open listener: %v", err)
-	}
-	defer ln.Close()
-	addr := ln.Addr().String()
-
-	ranMarker := filepath.Join(t.TempDir(), "setup-command-ran")
-	command := fmt.Sprintf("sh -c 'touch %s; echo LITELENS_SETUP_READY'", ranMarker)
-
-	var mu sync.Mutex
-	events := []string{}
-	m := NewManager("test-ctx", command, addr, func(name, msg string) {
-		mu.Lock()
-		events = append(events, name)
-		mu.Unlock()
-	})
-	m.SetupTimeout(2 * time.Second)
-
-	if err := m.Connect(); err != nil {
-		t.Fatalf("Connect failed: %v", err)
-	}
-
-	select {
-	case <-m.Wait():
-	case <-time.After(2 * time.Second):
-		t.Fatal("Wait() did not unblock in time")
-	}
-
-	status := m.Status()
-	if status.State != Ready.String() {
-		t.Fatalf("expected state ready, got %s (%s)", status.State, status.Message)
-	}
-
-	if _, err := os.Stat(ranMarker); err == nil {
-		t.Fatalf("setup command should not have run when the proxy was already reachable")
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-	if len(events) != 2 || events[0] != "SetupCommandStarting" || events[1] != "SetupCommandReady" {
-		t.Fatalf("unexpected event sequence: %v", events)
-	}
 }
 
 func TestManagerConcurrentConnect(t *testing.T) {
