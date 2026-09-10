@@ -232,6 +232,12 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	go scanExactLine(stdout, "LITELENS_SETUP_READY", readyMarkerChan, m.contextName)
 	go logLines(stderr, m.contextName)
 
+	// Single Wait() call, shared between the early-exit detection below and
+	// watchProcessDeath (spawned later, after Ready) — exec.Cmd.Wait may only
+	// be called once.
+	waitDone := make(chan error, 1)
+	go func() { waitDone <- cmd.Wait() }()
+
 	portReadyChan := make(chan struct{})
 	var pollStop chan struct{}
 	if m.proxyAddr != "" {
@@ -242,37 +248,64 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	m.mu.Lock()
 	timeoutDuration := m.setupTimeout
 	m.mu.Unlock()
+	timeoutChan := time.After(timeoutDuration)
 
-	select {
-	case <-ctx.Done():
-		killProcessGroup(cmd)
-		log.Printf("[setup-command:%s] proxy server terminated: connect cancelled", m.contextName)
-		m.transitionTo(Idle, seq, "")
-		m.emitEvent("SetupCommandIdle", "")
-	case <-readyMarkerChan:
-		msg := "proxy setup command ready"
-		if m.transitionIfStillStarting(Ready, seq, msg) {
-			m.emitEvent("SetupCommandReady", msg)
-			go m.watchProcessDeath(cmd, seq)
-			if m.proxyAddr != "" {
-				go m.watchProxyHealth(seq)
+	// Loop rather than a single select: a clean (nil-error) waitDone can race
+	// readyMarkerChan/portReadyChan becoming ready at the same instant (e.g. a
+	// script that prints the marker and then exits immediately) — Go's select
+	// picks among simultaneously-ready cases at random, so treating every
+	// waitDone as fatal would sometimes misreport that benign race as a
+	// failure. Only a genuine error exit (err != nil, e.g. "command not
+	// found") is fatal; a clean exit before a ready signal just disables the
+	// waitDone case (nil channel blocks forever) and the loop re-selects
+	// among the remaining cases.
+	for {
+		select {
+		case <-ctx.Done():
+			killProcessGroup(cmd)
+			log.Printf("[setup-command:%s] proxy server terminated: connect cancelled", m.contextName)
+			m.transitionTo(Idle, seq, "")
+			m.emitEvent("SetupCommandIdle", "")
+		case <-readyMarkerChan:
+			msg := "proxy setup command ready"
+			if m.transitionIfStillStarting(Ready, seq, msg) {
+				m.emitEvent("SetupCommandReady", msg)
+				go m.watchProcessDeath(waitDone, seq)
+				if m.proxyAddr != "" {
+					go m.watchProxyHealth(seq)
+				}
 			}
-		}
-	case <-portReadyChan:
-		msg := "proxy setup command ready (proxy port reachable)"
-		if m.transitionIfStillStarting(Ready, seq, msg) {
-			m.emitEvent("SetupCommandReady", msg)
-			go m.watchProcessDeath(cmd, seq)
-			if m.proxyAddr != "" {
-				go m.watchProxyHealth(seq)
+		case <-portReadyChan:
+			msg := "proxy setup command ready (proxy port reachable)"
+			if m.transitionIfStillStarting(Ready, seq, msg) {
+				m.emitEvent("SetupCommandReady", msg)
+				go m.watchProcessDeath(waitDone, seq)
+				if m.proxyAddr != "" {
+					go m.watchProxyHealth(seq)
+				}
 			}
+		case err := <-waitDone:
+			if err != nil {
+				// The setup command exited with an error before ever
+				// signalling ready (e.g. "command not found") — fail fast
+				// instead of sitting through the rest of the timeout with no
+				// feedback.
+				msg := fmt.Sprintf("setup command exited before becoming ready: %v", err)
+				log.Printf("[setup-command:%s] proxy server terminated: exited before ready (%v)", m.contextName, err)
+				m.transitionTo(Degraded, seq, msg)
+				m.emitEvent("SetupCommandDegraded", msg)
+			} else {
+				waitDone = nil
+				continue
+			}
+		case <-timeoutChan:
+			killProcessGroup(cmd)
+			log.Printf("[setup-command:%s] proxy server terminated: setup command timed out after 5m", m.contextName)
+			msg := "setup command timed out after 5m; proceeding without working proxy"
+			m.transitionTo(Degraded, seq, msg)
+			m.emitEvent("SetupCommandDegraded", msg)
 		}
-	case <-time.After(timeoutDuration):
-		killProcessGroup(cmd)
-		log.Printf("[setup-command:%s] proxy server terminated: setup command timed out after 5m", m.contextName)
-		msg := "setup command timed out after 5m; proceeding without working proxy"
-		m.transitionTo(Degraded, seq, msg)
-		m.emitEvent("SetupCommandDegraded", msg)
+		break
 	}
 
 	if pollStop != nil {
@@ -299,8 +332,13 @@ func pollTCPReady(addr string, notifyChan chan struct{}, stop chan struct{}) {
 	}
 }
 
-func (m *Manager) watchProcessDeath(cmd *exec.Cmd, seq int64) {
-	cmd.Wait()
+// watchProcessDeath waits for the setup command process to exit after it has
+// already reached Ready. waitDone is the single shared cmd.Wait() result
+// channel started in doLaunch — exec.Cmd.Wait may only be called once, and
+// doLaunch's own select also reads from this channel for the pre-Ready
+// early-exit case, so the two must not each call cmd.Wait() independently.
+func (m *Manager) watchProcessDeath(waitDone <-chan error, seq int64) {
+	<-waitDone
 	msg := "setup command process exited unexpectedly after reaching ready state"
 	if m.transitionIfStillInState(Ready, Degraded, seq, msg) {
 		log.Printf("[setup-command:%s] proxy server terminated: process exited unexpectedly", m.contextName)
