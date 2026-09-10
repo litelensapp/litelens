@@ -386,3 +386,71 @@ func TestClusterProxyRoundTrip(t *testing.T) {
 		t.Errorf("setupCommand mismatch: %v vs %v", unmarshaled.SetupCommand, original.SetupCommand)
 	}
 }
+
+// TestManagerWaitBlocksUntilReady guards against the bug where a caller
+// (App.Connect) started the setup command but never actually paused for it —
+// it raced ahead to connect while e.g. an SSO browser flow the command opens
+// was still in progress. Wait() must block until the launch settles.
+func TestManagerWaitBlocksUntilReady(t *testing.T) {
+	m := NewManager("test-ctx", "sleep 0.2 && echo LITELENS_SETUP_READY", func(name, msg string) {})
+	m.SetupTimeout(5 * time.Second)
+
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	start := time.Now()
+	select {
+	case <-m.Wait():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not unblock in time")
+	}
+	elapsed := time.Since(start)
+
+	if elapsed < 150*time.Millisecond {
+		t.Errorf("Wait() returned too early (%v); it should have paused for the command to signal readiness", elapsed)
+	}
+
+	// A subsequent Wait() call on an already-settled manager must return
+	// immediately, not re-block on a stale/new channel.
+	select {
+	case <-m.Wait():
+	default:
+		t.Error("expected Wait() to be immediately ready after the manager settled")
+	}
+}
+
+// TestManagerWaitBlocksUntilTimeout ensures Wait() also pauses for the full
+// fail-open timeout path, not just the happy path.
+func TestManagerWaitBlocksUntilTimeout(t *testing.T) {
+	m := NewManager("test-ctx", "sleep 5", func(name, msg string) {})
+	m.SetupTimeout(150 * time.Millisecond)
+
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	start := time.Now()
+	select {
+	case <-m.Wait():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not unblock in time")
+	}
+	elapsed := time.Since(start)
+
+	if elapsed < 100*time.Millisecond {
+		t.Errorf("Wait() returned too early (%v); it should have paused through the setup timeout", elapsed)
+	}
+}
+
+// TestManagerWaitImmediateWhenNeverConnected ensures Wait() never blocks a
+// caller when Connect() was never invoked (e.g. no setup command configured).
+func TestManagerWaitImmediateWhenNeverConnected(t *testing.T) {
+	m := NewManager("test-ctx", "", func(name, msg string) {})
+
+	select {
+	case <-m.Wait():
+	default:
+		t.Error("expected Wait() to be immediately ready when Connect() was never called")
+	}
+}

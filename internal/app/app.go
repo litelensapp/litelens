@@ -287,6 +287,7 @@ func (a *App) Connect(contextName string, seq int64) error {
 		mgr := a.ensureProxyManager(contextName, setupCommand)
 		mgr.Connect()
 		a.emitConnectStatus(contextName, "Waiting for setup command...")
+		<-mgr.Wait() // pauses here through e.g. an SSO browser flow the command opens, until ready/timeout/failure
 	}
 
 	if previousContext != "" && previousContext != contextName {

@@ -27,21 +27,25 @@ type Manager struct {
 	command     string
 	emitEvent   func(eventName, message string)
 
-	mu         sync.Mutex
-	state      State
-	launchSeq  int64
-	cmd        *exec.Cmd
-	cancelFunc context.CancelFunc
+	mu          sync.Mutex
+	state       State
+	launchSeq   int64
+	cmd         *exec.Cmd
+	cancelFunc  context.CancelFunc
+	settledChan chan struct{}
 
 	setupTimeout time.Duration
 }
 
 func NewManager(contextName, command string, emitEvent func(eventName, message string)) *Manager {
+	closed := make(chan struct{})
+	close(closed)
 	return &Manager{
 		contextName:  contextName,
 		command:      command,
 		emitEvent:    emitEvent,
 		state:        Idle,
+		settledChan:  closed,
 		setupTimeout: 5 * time.Minute,
 	}
 }
@@ -56,6 +60,19 @@ func (m *Manager) Command() string {
 	return m.command
 }
 
+// Wait returns a channel that closes once the in-flight (or most recently
+// completed) launch has settled into Idle, Ready, or Degraded. If Connect
+// hasn't been called since the manager was created, or since it last
+// returned to Idle, the channel is already closed. Callers that want
+// Connect() to pause until the setup command signals readiness (e.g. an SSO
+// browser flow the command opens) should call Connect() followed by
+// <-mgr.Wait().
+func (m *Manager) Wait() <-chan struct{} {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.settledChan
+}
+
 func (m *Manager) Connect() error {
 	m.mu.Lock()
 	if m.state != Idle {
@@ -67,13 +84,17 @@ func (m *Manager) Connect() error {
 	seq := m.launchSeq
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancelFunc = cancel
+	settled := make(chan struct{})
+	m.settledChan = settled
 	m.mu.Unlock()
 
-	go m.doLaunch(ctx, seq)
+	go m.doLaunch(ctx, seq, settled)
 	return nil
 }
 
-func (m *Manager) doLaunch(ctx context.Context, seq int64) {
+func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}) {
+	defer close(settled)
+
 	readyMarkerChan := make(chan struct{})
 
 	m.mu.Lock()
