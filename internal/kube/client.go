@@ -1,6 +1,8 @@
 package kube
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -9,9 +11,24 @@ import (
 )
 
 // Ping verifies the API server is reachable by fetching the server version.
-func Ping(cs kubernetes.Interface) error {
-	_, err := cs.Discovery().ServerVersion()
-	return err
+// ServerVersion() has no context/deadline of its own, so it's run in a
+// goroutine and raced against ctx: without this, a proxy that accepts the
+// TCP connection but never replies (e.g. a setup command's SSO-backed proxy
+// that reports ready a moment before it's actually forwarding traffic) hangs
+// Ping forever, and with it the Connect() call awaiting this result.
+func Ping(ctx context.Context, cs kubernetes.Interface) error {
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := cs.Discovery().ServerVersion()
+		errCh <- err
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("timed out waiting for API server: %w", ctx.Err())
+	}
 }
 
 // NewClientset builds a Kubernetes clientset for the given context.

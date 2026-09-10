@@ -5,6 +5,7 @@ import {
   Divider,
   HouseIcon,
   LockIcon,
+  NetworkIcon,
   PackageIcon,
   ServerIcon,
 } from "@litelens/design-system";
@@ -61,6 +62,18 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({ section, onSelect })
         >
           <ServerIcon className="size-4 shrink-0" />
           {SECTION_HEADER.kubernetes}
+        </Button>
+
+        <Button
+          variant="ghost"
+          onClick={() => onSelect("proxy")}
+          className={cn(
+            "w-full justify-start font-medium",
+            section === "proxy" && "bg-secondary text-secondary-foreground"
+          )}
+        >
+          <NetworkIcon className="size-4 shrink-0" />
+          {SECTION_HEADER.proxy}
         </Button>
 
         {isMarketplaceEnabled && (

@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FC, useEffect, useReducer, useRef } from "react";
 import { AboutModal } from "./about/AboutModal";
 import { useMenuOpenAboutEvents } from "./about/hooks/async-events/useMenuOpenAboutEvents";
-import { AppFooter } from "./AppFooter";
+import { AppFooter } from "./footer/AppFooter";
 import { ClusterRail } from "./ClusterRail";
 import { ClusterSettingsModal } from "./clusters/ClusterSettingsModal";
 import { ConnectingView } from "./clusters/ConnectingView";
@@ -314,7 +314,11 @@ export const App: FC = () => {
           )}
         </div>
 
-        <AppFooter updateInfo={updateInfo} onUpdateClick={() => setUpdateModalOpen(true)} />
+        <AppFooter
+          activeContext={connectingContext ?? connectFailedCtx ?? activeContext}
+          updateInfo={updateInfo}
+          onUpdateClick={() => setUpdateModalOpen(true)}
+        />
 
         {aboutOpen && aboutPayload && (
           <AboutModal

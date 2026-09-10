@@ -1,11 +1,13 @@
 package kube
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -18,7 +20,7 @@ import (
 func TestPing_ValidServer(t *testing.T) {
 	cs := fake.NewSimpleClientset()
 
-	if err := Ping(cs); err != nil {
+	if err := Ping(context.Background(), cs); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 }
@@ -31,8 +33,28 @@ func TestPing_UnreachableServer(t *testing.T) {
 		return true, nil, errors.New("connection refused")
 	})
 
-	if err := Ping(cs); err == nil {
+	if err := Ping(context.Background(), cs); err == nil {
 		t.Fatal("expected error when server is unreachable, got nil")
+	}
+}
+
+// TestPing_TimesOutWhenServerHangs verifies Ping returns an error (rather
+// than blocking forever) when the discovery call never returns — e.g. a
+// proxy that accepts the connection but never replies.
+func TestPing_TimesOutWhenServerHangs(t *testing.T) {
+	cs := fake.NewSimpleClientset()
+	block := make(chan struct{})
+	t.Cleanup(func() { close(block) })
+	cs.Discovery().(*fakediscovery.FakeDiscovery).PrependReactor("get", "version", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		<-block
+		return true, nil, nil
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	if err := Ping(ctx, cs); err == nil {
+		t.Fatal("expected timeout error when server hangs, got nil")
 	}
 }
 

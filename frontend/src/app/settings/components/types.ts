@@ -1,4 +1,4 @@
-export type BuiltinSection = "welcome" | "sandbox" | "kubernetes" | "app" | "marketplace";
+export type BuiltinSection = "welcome" | "sandbox" | "kubernetes" | "app" | "proxy" | "marketplace";
 
 export type Section = BuiltinSection | (string & {});
 
@@ -7,6 +7,7 @@ export const SECTION_HEADER: Record<BuiltinSection, string> = {
   sandbox: "Sandbox (beta)",
   kubernetes: "Kubernetes",
   app: "App",
+  proxy: "Proxy",
   marketplace: "Marketplace",
 };
 

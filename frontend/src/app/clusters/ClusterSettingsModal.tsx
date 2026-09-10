@@ -16,6 +16,7 @@ import { FC, useState } from "react";
 import { useGetDefaultNamespaces } from "./modules/base/namespaces/hooks/data-access/useGetDefaultNamespaces";
 import { useGetNamespacesForContext } from "./modules/base/namespaces/hooks/data-access/useGetNamespacesForContext";
 import { useSaveDefaultNamespaces } from "./modules/base/namespaces/hooks/data-mutation/useSaveDefaultNamespaces";
+import { useGetSettings } from "../settings/hooks/data-access/useGetSettings";
 import { NamespaceMultiSelect } from "./shared/components/NamespaceMultiSelect";
 import { useGetClusterProxy } from "./shared/hooks/data-access/useGetClusterProxy";
 import { useGetContextKubeconfigPath } from "./shared/hooks/data-access/useGetContextKubeconfigPath";
@@ -35,6 +36,7 @@ interface ClusterSettingsModalProps {
 
 export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextName, onClose }) => {
   const [proxy, setProxy] = useState("");
+  const [setupCommand, setSetupCommand] = useState("");
   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
   const [manualNamespace, setManualNamespace] = useState("");
   const [status, setStatus] = useState<SaveStatus>("idle");
@@ -42,6 +44,8 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
 
   const { data: kubeconfigPath } = useGetContextKubeconfigPath(contextName);
   const { data: clusterProxy } = useGetClusterProxy(contextName);
+  const { data: settings } = useGetSettings();
+  const proxySetupEnabled = settings?.proxySetupEnabled ?? false;
   const { data: defaultNamespaces } = useGetDefaultNamespaces(contextName);
   const {
     data: availableNamespaces,
@@ -54,6 +58,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
   if (contextName && clusterProxy && contextName !== loadedContextName) {
     setLoadedContextName(contextName);
     setProxy(clusterProxy.httpProxy ?? "");
+    setSetupCommand(clusterProxy.setupCommand ?? "");
     setSelectedNamespaces(defaultNamespaces ?? []);
     setStatus("idle");
   } else if (!contextName && loadedContextName !== null) {
@@ -81,8 +86,10 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!contextName) return;
-    const trimmed = proxy.trim();
-    setProxy(trimmed);
+    const trimmedProxy = proxy.trim();
+    const trimmedCommand = proxySetupEnabled ? setupCommand.trim() : "";
+    setProxy(trimmedProxy);
+    setSetupCommand(trimmedCommand);
     setStatus("saving");
 
     let completed = 0;
@@ -102,7 +109,11 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
     saveClusterProxy(
       {
         contextName,
-        proxy: config.ClusterProxy.createFrom({ httpProxy: trimmed, httpsProxy: trimmed }),
+        proxy: config.ClusterProxy.createFrom({
+          httpProxy: trimmedProxy,
+          httpsProxy: trimmedProxy,
+          setupCommand: trimmedCommand,
+        }),
       },
       {
         onSuccess: onComplete,
@@ -148,7 +159,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-2">
             <div className="flex flex-col gap-1">
               <span className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Kubeconfig
@@ -180,6 +191,32 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
             <p className="text-left text-xs text-muted-foreground">
               Applied to both HTTP and HTTPS traffic. Takes effect on the next connection.
             </p>
+
+            {proxySetupEnabled && (
+              <>
+                <Divider />
+
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="cluster-setup-command"
+                    className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                  >
+                    Proxy Setup Command (Optional)
+                  </label>
+                  <Input
+                    id="cluster-setup-command"
+                    value={setupCommand}
+                    onChange={(e) => setSetupCommand(e.target.value)}
+                    placeholder="ssm-proxy start --profile my-cluster"
+                    className="font-mono"
+                  />
+                </div>
+                <p className="text-left text-xs text-muted-foreground">
+                  Automatically spins up your proxy and lets the app connect through it for this
+                  cluster session. If it fails, the app still connects normally.
+                </p>
+              </>
+            )}
 
             <Divider />
 

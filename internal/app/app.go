@@ -11,6 +11,7 @@ import (
 	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/proxy"
 	"github.com/litelensapp/litelens/internal/updater"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -69,8 +70,10 @@ type App struct {
 	// (e.g. InstallPlugin), so acquiring mu while already holding pluginsMu is
 	// fine, but the reverse (acquiring pluginsMu while already holding mu) would
 	// risk lock-order inversion and must be avoided.
-	pluginsMu     sync.RWMutex
-	grpcServerCfg *hostgrpc.GRPCServerConfig
+	pluginsMu       sync.RWMutex
+	grpcServerCfg   *hostgrpc.GRPCServerConfig
+	proxyManagers   map[string]*proxy.Manager
+	proxyManagersMu sync.RWMutex
 
 	// watchedSecret/watchedResourceQuota/watchedPersistentVolumeClaim/... track
 	// the resource currently shown in that kind's (single) open detail drawer,
@@ -140,6 +143,7 @@ func NewApp(version string) *App {
 		execResizeChans:    make(map[string]chan remotecommand.TerminalSize),
 		pluginLoaders:      make(map[string]*plugin.PluginLoader),
 		removingPluginIDs:  make(map[string]bool),
+		proxyManagers:      make(map[string]*proxy.Manager),
 		installSourceReady: make(chan struct{}),
 	}
 }
@@ -205,6 +209,9 @@ func (a *App) DomReady(_ context.Context) {
 // PluginLoader.Launch()'s stale-lock reuse path, even after the plugins
 // directory has since changed.
 func (a *App) Shutdown(_ context.Context) {
+	// Stop proxy managers first.
+	a.stopAllProxyManagers()
+
 	// Kill plugin processes before stopping the gRPC server. Each plugin
 	// holds a long-lived ClusterContextWatch stream open for its entire
 	// lifetime (see internal/api/grpc/server.go), and grpcServerCfg.Stop() calls
@@ -267,11 +274,34 @@ func (a *App) Connect(contextName string, seq int64) error {
 
 	a.mu.RLock()
 	cs, exists := a.clients[contextName]
-	proxy := a.settings.ClusterProxies[contextName]
-	httpProxy := proxy.HttpProxy
-	httpsProxy := proxy.HttpsProxy
+	proxyCfg := a.settings.ClusterProxies[contextName]
+	httpProxy := proxyCfg.HttpProxy
+	httpsProxy := proxyCfg.HttpsProxy
+	setupCommand := proxyCfg.SetupCommand
+	proxySetupEnabled := a.settings.ProxySetupEnabled
+	healthCheckIntervalSeconds := a.settings.ProxyHealthCheckIntervalSeconds
 	kubeconfigPaths := a.settings.KubeconfigPaths
+	previousContext := a.activeContext
 	a.mu.RUnlock()
+
+	// Tear down the outgoing context's proxy manager as soon as a switch
+	// begins, not after the new context's own setup command finishes
+	// waiting. Deferring this left the previous manager sitting in Ready for
+	// as long as the new context's setup command took (e.g. its own SSO
+	// flow) — switching back to it during that window reused the still-Ready
+	// manager and skipped waiting for a fresh setup entirely, i.e. the old
+	// session was never actually cleaned up.
+	if previousContext != "" && previousContext != contextName {
+		a.stopProxyManager(previousContext)
+	}
+
+	if setupCommand != "" && proxySetupEnabled {
+		a.emitConnectStatus(contextName, "Starting proxy server")
+		mgr := a.ensureProxyManager(contextName, setupCommand, httpProxy, httpsProxy, healthCheckIntervalSeconds)
+		mgr.Connect()
+		a.emitConnectStatus(contextName, "Connecting to proxy server...")
+		<-mgr.Wait() // pauses here through e.g. an SSO browser flow the command opens, until ready/timeout/failure
+	}
 
 	var rc *rest.Config
 	if !exists {
@@ -287,7 +317,10 @@ func (a *App) Connect(contextName string, seq int64) error {
 
 	// Always verify the API server is reachable before marking connected.
 	a.emitConnectStatus(contextName, "Verifying API server connectivity...")
-	if err := kube.Ping(cs); err != nil {
+	pingCtx, cancelPing := context.WithTimeout(context.Background(), 30*time.Second)
+	err := kube.Ping(pingCtx, cs)
+	cancelPing()
+	if err != nil {
 		a.emitConnectStatus(contextName, "Cannot reach API server: "+err.Error())
 		return err
 	}
