@@ -23,15 +23,16 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
-import { useGetStatefulSets } from "./hooks/data-access/useGetStatefulSets";
-import { useDeleteStatefulSet } from "./hooks/data-mutation/useDeleteStatefulSet";
-import { useDeleteStatefulSets } from "./hooks/data-mutation/useDeleteStatefulSets";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { StatefulSetDeleteConfirmationModal } from "./components/StatefulSetDeleteConfirmationModal";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { StatefulSetHealthBadge } from "./components/StatefulSetHealthBadge";
+import { useGetStatefulSets } from "./hooks/data-access/useGetStatefulSets";
+import { useDeleteStatefulSet } from "./hooks/data-mutation/useDeleteStatefulSet";
+import { useDeleteStatefulSets } from "./hooks/data-mutation/useDeleteStatefulSets";
 
 interface StatefulSetTableCtaButtonsProps {
   namespace: string;
@@ -184,6 +185,7 @@ export const StatefulSetsView: FC = () => {
             {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Pods</TableHead>
             <TableHead>Replicas</TableHead>
+            <TableHead>Health</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -192,13 +194,13 @@ export const StatefulSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespaces.length !== 1 ? 5 : 4}
+              columns={namespaces.length !== 1 ? 6 : 5}
               includeCheckbox={true}
-              columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]"]}
+              columnWidths={["w-[65%]", "w-[55%]", "w-[35%]", "w-[40%]", "w-[30%]", "w-[30%]"]}
             />
           ) : visibleStatefulSets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespaces.length !== 1 ? 7 : 6} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
                 <EmptyState
                   icon={<DatabaseIcon className="size-8" />}
                   title="No StatefulSets"
@@ -243,6 +245,11 @@ export const StatefulSetsView: FC = () => {
                   )}
                   <TableCell className="text-xs">{ss.Pods}</TableCell>
                   <TableCell className="text-xs">{ss.Replicas}</TableCell>
+                  <TableCell className="text-xs">
+                    {ss.HealthStatus && (
+                      <StatefulSetHealthBadge status={ss.HealthStatus} message={ss.HealthMessage} />
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs">{ss.Age}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <StatefulSetTableCtaButtons namespace={ss.Namespace} name={ss.Name} />
