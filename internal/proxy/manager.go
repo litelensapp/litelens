@@ -143,6 +143,7 @@ func (m *Manager) Connect() error {
 	m.settledChan = settled
 	m.mu.Unlock()
 
+	m.emitEvent("SetupCommandStarting", "")
 	go m.doLaunch(ctx, seq, settled)
 	return nil
 }
@@ -194,6 +195,7 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 		killProcessGroup(cmd)
 		log.Printf("[setup-command:%s] proxy server terminated: connect cancelled", m.contextName)
 		m.transitionTo(Idle, seq, "")
+		m.emitEvent("SetupCommandIdle", "")
 	case <-readyMarkerChan:
 		msg := "proxy setup command ready"
 		if m.transitionIfStillStarting(Ready, seq, msg) {
@@ -265,6 +267,7 @@ func (m *Manager) Stop() {
 		m.mu.Unlock()
 		killProcessGroup(cmd)
 		log.Printf("[setup-command:%s] proxy server terminated: disconnected", m.contextName)
+		m.emitEvent("SetupCommandIdle", "")
 	case Stopping:
 		m.mu.Unlock()
 	}

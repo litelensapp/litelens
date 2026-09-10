@@ -29,11 +29,14 @@ func TestManagerHappyPath(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if len(events) == 0 {
-		t.Fatal("expected SetupCommandReady event")
+	if len(events) < 2 {
+		t.Fatalf("expected at least SetupCommandStarting and SetupCommandReady events, got %v", events)
 	}
-	if events[0] != "SetupCommandReady" {
-		t.Errorf("expected SetupCommandReady, got %s", events[0])
+	if events[0] != "SetupCommandStarting" {
+		t.Errorf("expected first event to be SetupCommandStarting, got %s", events[0])
+	}
+	if events[1] != "SetupCommandReady" {
+		t.Errorf("expected second event to be SetupCommandReady, got %s", events[1])
 	}
 }
 
@@ -491,7 +494,13 @@ func TestManagerReadyViaProxyPortFallback(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if len(events) == 0 || events[0] != "SetupCommandReady" {
-		t.Errorf("expected SetupCommandReady via proxy port fallback, got %v", events)
+	if len(events) < 2 {
+		t.Fatalf("expected at least SetupCommandStarting and SetupCommandReady events via proxy port fallback, got %v", events)
+	}
+	if events[0] != "SetupCommandStarting" {
+		t.Errorf("expected first event to be SetupCommandStarting, got %s", events[0])
+	}
+	if events[1] != "SetupCommandReady" {
+		t.Errorf("expected second event to be SetupCommandReady via proxy port fallback, got %s", events[1])
 	}
 }
