@@ -3,14 +3,17 @@ package nsscope
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	kubetesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -282,5 +285,70 @@ func TestForbiddenWatchEvictsCachedObjects(t *testing.T) {
 
 	if got := len(indexer.List()); got != 0 {
 		t.Fatalf("expected evictIndexer to clear the cache, got %d objects remaining", got)
+	}
+}
+
+// TestSyncedChanDoesNotWaitFullTimeoutForForbiddenNamespace reproduces the
+// SecretsView performance bug: when one namespace in a multi-namespace
+// selection is RBAC-forbidden, its per-namespace informer is stopped almost
+// immediately by markForbidden (via its own nsStop[i]) — but buildGroup's
+// sync-wait goroutine polls cache.WaitForCacheSync against every informer's
+// HasSynced, gated only by the group's shared stop channel or the full
+// SyncTimeout. A forbidden informer's HasSynced never becomes true once it's
+// stopped early, so SyncedChan() (and therefore every caller blocking on it —
+// ListSecrets, GetSecretByName, emitSecrets, emitSecretDetail) was stuck
+// waiting the entire SyncTimeout on every Rescope, even though the permitted
+// sibling namespace(s) synced instantly.
+func TestSyncedChanDoesNotWaitFullTimeoutForForbiddenNamespace(t *testing.T) {
+	cs := fake.NewSimpleClientset(newPod("ns-a", "a1"))
+	cs.PrependReactor("list", "pods", func(action kubetesting.Action) (bool, runtime.Object, error) {
+		la, ok := action.(kubetesting.ListAction)
+		if ok && la.GetNamespace() == "ns-b" {
+			return true, nil, apierrors.NewForbidden(corev1.Resource("pods"), "", fmt.Errorf("denied"))
+		}
+		return false, nil, nil
+	})
+
+	const syncTimeout = 2 * time.Second
+	r := New(Config[listerscorev1.PodLister]{
+		Name:          "pods",
+		MaxNamespaces: 10,
+		SyncTimeout:   syncTimeout,
+		NewNamespacedInformer: func(ns string) cache.SharedIndexInformer {
+			indexers := cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}
+			return corev1informers.NewFilteredPodInformer(cs, ns, 0, indexers, nil)
+		},
+		NewClusterWideInformer: func() cache.SharedIndexInformer {
+			indexers := cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}
+			return corev1informers.NewFilteredPodInformer(cs, "", 0, indexers, nil)
+		},
+		BuildLister: func(indexer cache.Indexer) listerscorev1.PodLister {
+			return listerscorev1.NewPodLister(indexer)
+		},
+		BuildMultiLister: func(m map[string]listerscorev1.PodLister) listerscorev1.PodLister {
+			return &multiPodLister{listers: m}
+		},
+	})
+	defer r.Stop()
+
+	start := time.Now()
+	r.Rescope([]string{"ns-a", "ns-b"})
+	select {
+	case <-r.SyncedChan():
+	case <-time.After(syncTimeout - 200*time.Millisecond):
+		t.Fatal("SyncedChan blocked for nearly the full SyncTimeout despite ns-b's informer being stopped early — expected it to give up as soon as ns-b was marked forbidden")
+	}
+	elapsed := time.Since(start)
+
+	if elapsed >= syncTimeout/2 {
+		t.Fatalf("expected SyncedChan to close well before SyncTimeout (%v) once ns-b was marked forbidden, took %v", syncTimeout, elapsed)
+	}
+
+	all, err := r.Lister().List(labels.Everything())
+	if err != nil {
+		t.Fatalf("unexpected error listing pods: %v", err)
+	}
+	if len(all) != 1 || all[0].Namespace != "ns-a" {
+		t.Fatalf("expected only ns-a's pod to be visible, got %v", all)
 	}
 }

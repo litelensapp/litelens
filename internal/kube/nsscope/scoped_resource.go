@@ -294,7 +294,33 @@ func (r *ScopedResource[L]) buildGroup(namespaces []string) *group {
 
 	syncFuncs := make([]cache.InformerSynced, len(g.informers))
 	for i, inf := range g.informers {
-		syncFuncs[i] = inf.HasSynced
+		if len(g.nsStop) == 0 {
+			// Cluster-wide group: a single informer, no per-namespace stop
+			// channel to race against. A forbidden cluster-wide informer
+			// closes the whole group's shared stop instead (see
+			// markForbiddenShared), which the sync-wait goroutine below
+			// already selects on via stopOrTimeout.
+			syncFuncs[i] = inf.HasSynced
+			continue
+		}
+		// A namespace marked forbidden has its informer stopped almost
+		// immediately via its own nsStop[i] (see markForbidden), but a
+		// stopped informer's HasSynced never becomes true — without this,
+		// cache.WaitForCacheSync below would keep polling a permanently-false
+		// syncFunc for that namespace until the full SyncTimeout elapses on
+		// every Rescope, even though every permitted sibling namespace
+		// synced instantly. Treat "stopped" as "resolved, stop waiting on
+		// this one" so the group's overall sync completes as soon as every
+		// namespace is either synced or given up on.
+		hasSynced, nsStop := inf.HasSynced, g.nsStop[i]
+		syncFuncs[i] = func() bool {
+			select {
+			case <-nsStop:
+				return true
+			default:
+				return hasSynced()
+			}
+		}
 	}
 
 	go func() {
