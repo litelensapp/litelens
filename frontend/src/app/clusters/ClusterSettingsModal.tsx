@@ -35,6 +35,7 @@ interface ClusterSettingsModalProps {
 
 export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextName, onClose }) => {
   const [proxy, setProxy] = useState("");
+  const [setupScript, setSetupScript] = useState("");
   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
   const [manualNamespace, setManualNamespace] = useState("");
   const [status, setStatus] = useState<SaveStatus>("idle");
@@ -54,6 +55,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
   if (contextName && clusterProxy && contextName !== loadedContextName) {
     setLoadedContextName(contextName);
     setProxy(clusterProxy.httpProxy ?? "");
+    setSetupScript(clusterProxy.setupScript ?? "");
     setSelectedNamespaces(defaultNamespaces ?? []);
     setStatus("idle");
   } else if (!contextName && loadedContextName !== null) {
@@ -81,8 +83,10 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!contextName) return;
-    const trimmed = proxy.trim();
-    setProxy(trimmed);
+    const trimmedProxy = proxy.trim();
+    const trimmedScript = setupScript.trim();
+    setProxy(trimmedProxy);
+    setSetupScript(trimmedScript);
     setStatus("saving");
 
     let completed = 0;
@@ -102,7 +106,11 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
     saveClusterProxy(
       {
         contextName,
-        proxy: config.ClusterProxy.createFrom({ httpProxy: trimmed, httpsProxy: trimmed }),
+        proxy: config.ClusterProxy.createFrom({
+          httpProxy: trimmedProxy,
+          httpsProxy: trimmedProxy,
+          setupScript: trimmedScript,
+        }),
       },
       {
         onSuccess: onComplete,
@@ -179,6 +187,30 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
             </div>
             <p className="text-left text-xs text-muted-foreground">
               Applied to both HTTP and HTTPS traffic. Takes effect on the next connection.
+            </p>
+
+            <Divider />
+
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="cluster-setup-script"
+                className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+              >
+                Proxy Setup Script (Optional)
+              </label>
+              <Input
+                id="cluster-setup-script"
+                value={setupScript}
+                onChange={(e) => setSetupScript(e.target.value)}
+                placeholder="/path/to/setup-script.sh"
+                className="font-mono"
+              />
+            </div>
+            <p className="text-left text-xs text-muted-foreground">
+              Script must print the exact line{" "}
+              <code className="text-foreground">LITELENS_SETUP_READY</code> when its proxy is
+              authenticated/live. Failures are fail-open — the app continues even if the script
+              fails.
             </p>
 
             <Divider />

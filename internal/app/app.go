@@ -11,6 +11,7 @@ import (
 	"github.com/litelensapp/litelens/internal/kube"
 	"github.com/litelensapp/litelens/internal/lib/debouncer"
 	"github.com/litelensapp/litelens/internal/plugin"
+	"github.com/litelensapp/litelens/internal/proxy"
 	"github.com/litelensapp/litelens/internal/updater"
 	"github.com/litelensapp/litelens/packages/core/kube/dto"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -69,8 +70,10 @@ type App struct {
 	// (e.g. InstallPlugin), so acquiring mu while already holding pluginsMu is
 	// fine, but the reverse (acquiring pluginsMu while already holding mu) would
 	// risk lock-order inversion and must be avoided.
-	pluginsMu     sync.RWMutex
-	grpcServerCfg *hostgrpc.GRPCServerConfig
+	pluginsMu       sync.RWMutex
+	grpcServerCfg   *hostgrpc.GRPCServerConfig
+	proxyManagers   map[string]*proxy.Manager
+	proxyManagersMu sync.RWMutex
 
 	// watchedSecret/watchedResourceQuota/watchedPersistentVolumeClaim/... track
 	// the resource currently shown in that kind's (single) open detail drawer,
@@ -140,6 +143,7 @@ func NewApp(version string) *App {
 		execResizeChans:    make(map[string]chan remotecommand.TerminalSize),
 		pluginLoaders:      make(map[string]*plugin.PluginLoader),
 		removingPluginIDs:  make(map[string]bool),
+		proxyManagers:      make(map[string]*proxy.Manager),
 		installSourceReady: make(chan struct{}),
 	}
 }
@@ -205,6 +209,9 @@ func (a *App) DomReady(_ context.Context) {
 // PluginLoader.Launch()'s stale-lock reuse path, even after the plugins
 // directory has since changed.
 func (a *App) Shutdown(_ context.Context) {
+	// Stop proxy managers first.
+	a.stopAllProxyManagers()
+
 	// Kill plugin processes before stopping the gRPC server. Each plugin
 	// holds a long-lived ClusterContextWatch stream open for its entire
 	// lifetime (see internal/api/grpc/server.go), and grpcServerCfg.Stop() calls
@@ -267,11 +274,24 @@ func (a *App) Connect(contextName string, seq int64) error {
 
 	a.mu.RLock()
 	cs, exists := a.clients[contextName]
-	proxy := a.settings.ClusterProxies[contextName]
-	httpProxy := proxy.HttpProxy
-	httpsProxy := proxy.HttpsProxy
+	proxyCfg := a.settings.ClusterProxies[contextName]
+	httpProxy := proxyCfg.HttpProxy
+	httpsProxy := proxyCfg.HttpsProxy
+	setupScript := proxyCfg.SetupScript
 	kubeconfigPaths := a.settings.KubeconfigPaths
+	previousContext := a.activeContext
 	a.mu.RUnlock()
+
+	if setupScript != "" {
+		a.emitConnectStatus(contextName, "Starting proxy setup script...")
+		mgr := a.ensureProxyManager(contextName, setupScript)
+		mgr.Connect()
+		a.emitConnectStatus(contextName, "Waiting for setup script...")
+	}
+
+	if previousContext != "" && previousContext != contextName {
+		a.stopProxyManager(previousContext)
+	}
 
 	var rc *rest.Config
 	if !exists {

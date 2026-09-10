@@ -9,8 +9,9 @@ import (
 )
 
 type ClusterProxy struct {
-	HttpProxy  string `json:"httpProxy"`
-	HttpsProxy string `json:"httpsProxy"`
+	HttpProxy   string `json:"httpProxy"`
+	HttpsProxy  string `json:"httpsProxy"`
+	SetupScript string `json:"setupScript"`
 }
 
 type MarketplaceRepository struct {

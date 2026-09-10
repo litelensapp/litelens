@@ -1,4 +1,4 @@
-import { Button, LineIcon, Loader2Icon, cn } from "@litelens/design-system";
+import { Button, LineIcon, Loader2Icon, TriangleAlertIcon, cn } from "@litelens/design-system";
 import { FC, useEffect, useRef } from "react";
 import { useConnectStatusEvents } from "./shared/hooks/async-events/useConnectStatusEvents";
 
@@ -39,7 +39,7 @@ export const ConnectingView: FC<ConnectingViewProps> = ({
   onReconnect,
   onOpenClusterSettings,
 }) => {
-  const lines = useConnectStatusEvents(contextName);
+  const { lines, warningBanner } = useConnectStatusEvents(contextName);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -62,6 +62,20 @@ export const ConnectingView: FC<ConnectingViewProps> = ({
           <p className="text-sm text-muted-foreground">{statusLabel}</p>
         </div>
       </div>
+
+      {warningBanner && (
+        <div className="w-full max-w-lg rounded-lg border border-destructive bg-destructive/10 px-4 py-3">
+          <div className="flex gap-3">
+            <TriangleAlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-destructive">{warningBanner.title}</p>
+              {warningBanner.description && (
+                <p className="mt-1 text-xs text-destructive/90">{warningBanner.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-lg rounded-lg border border-border bg-muted/30 p-4 font-mono text-sm">
         {lines.length === 0 && (
