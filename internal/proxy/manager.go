@@ -119,7 +119,7 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	m.cmd = cmd
 	m.mu.Unlock()
 
-	go scanExactLine(stdout, "LITELENS_SETUP_READY", readyMarkerChan)
+	go scanExactLine(stdout, "LITELENS_SETUP_READY", readyMarkerChan, m.contextName)
 	go logLines(stderr, m.contextName)
 
 	m.mu.Lock()
@@ -200,16 +200,18 @@ func (m *Manager) transitionIfStillInState(from, to State, seq int64) bool {
 	return true
 }
 
-func scanExactLine(source io.Reader, target string, notifyChan chan struct{}) {
+func scanExactLine(source io.Reader, target string, notifyChan chan struct{}, contextName string) {
 	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
-		if strings.TrimSpace(scanner.Text()) == target {
+		line := scanner.Text()
+		log.Printf("[setup-command:%s] %s", contextName, line)
+		if strings.TrimSpace(line) == target {
 			close(notifyChan)
 			return
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Printf("error reading setup command stdout: %v", err)
+		log.Printf("error reading setup command stdout for %s: %v", contextName, err)
 	}
 }
 

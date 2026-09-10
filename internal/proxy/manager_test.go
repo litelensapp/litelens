@@ -225,7 +225,7 @@ func TestScanExactLine(t *testing.T) {
 
 			notifyChan := make(chan struct{})
 
-			go scanExactLine(r, tt.target, notifyChan)
+			go scanExactLine(r, tt.target, notifyChan, "test-context")
 
 			_, err = io.WriteString(w, tt.input)
 			if err != nil {
