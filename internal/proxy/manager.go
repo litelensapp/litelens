@@ -23,6 +23,30 @@ const (
 	Stopping
 )
 
+func (s State) String() string {
+	switch s {
+	case Idle:
+		return "idle"
+	case Starting:
+		return "starting"
+	case Ready:
+		return "ready"
+	case Degraded:
+		return "degraded"
+	case Stopping:
+		return "stopping"
+	default:
+		return "unknown"
+	}
+}
+
+// Status is a snapshot of a Manager's current state, for callers (e.g. the
+// frontend footer) that want to display it without subscribing to events.
+type Status struct {
+	State   string
+	Message string
+}
+
 type Manager struct {
 	contextName string
 	command     string
@@ -31,6 +55,7 @@ type Manager struct {
 
 	mu          sync.Mutex
 	state       State
+	message     string
 	launchSeq   int64
 	cmd         *exec.Cmd
 	cancelFunc  context.CancelFunc
@@ -73,6 +98,14 @@ func (m *Manager) Command() string {
 
 func (m *Manager) ProxyAddr() string {
 	return m.proxyAddr
+}
+
+// Status returns a snapshot of the manager's current state and last status
+// message, for callers that want to display it without subscribing to events.
+func (m *Manager) Status() Status {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return Status{State: m.state.String(), Message: m.message}
 }
 
 // Wait returns a channel that closes once the in-flight (or most recently
@@ -125,8 +158,9 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err != nil {
-		m.transitionTo(Degraded, seq)
-		m.emitEvent("SetupCommandDegraded", fmt.Sprintf("failed to start setup command: %v", err))
+		msg := fmt.Sprintf("failed to start setup command: %v", err)
+		m.transitionTo(Degraded, seq, msg)
+		m.emitEvent("SetupCommandDegraded", msg)
 		return
 	}
 
@@ -151,21 +185,26 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 	select {
 	case <-ctx.Done():
 		killProcessGroup(cmd)
-		m.transitionTo(Idle, seq)
+		log.Printf("[setup-command:%s] proxy server terminated: connect cancelled", m.contextName)
+		m.transitionTo(Idle, seq, "")
 	case <-readyMarkerChan:
-		if m.transitionIfStillStarting(Ready, seq) {
-			m.emitEvent("SetupCommandReady", "proxy setup command ready")
+		msg := "proxy setup command ready"
+		if m.transitionIfStillStarting(Ready, seq, msg) {
+			m.emitEvent("SetupCommandReady", msg)
 			go m.watchProcessDeath(cmd, seq)
 		}
 	case <-portReadyChan:
-		if m.transitionIfStillStarting(Ready, seq) {
-			m.emitEvent("SetupCommandReady", "proxy setup command ready (proxy port reachable)")
+		msg := "proxy setup command ready (proxy port reachable)"
+		if m.transitionIfStillStarting(Ready, seq, msg) {
+			m.emitEvent("SetupCommandReady", msg)
 			go m.watchProcessDeath(cmd, seq)
 		}
 	case <-time.After(timeoutDuration):
 		killProcessGroup(cmd)
-		m.transitionTo(Degraded, seq)
-		m.emitEvent("SetupCommandDegraded", "setup command timed out after 5m; proceeding without working proxy")
+		log.Printf("[setup-command:%s] proxy server terminated: setup command timed out after 5m", m.contextName)
+		msg := "setup command timed out after 5m; proceeding without working proxy"
+		m.transitionTo(Degraded, seq, msg)
+		m.emitEvent("SetupCommandDegraded", msg)
 	}
 
 	if pollStop != nil {
@@ -194,8 +233,10 @@ func pollTCPReady(addr string, notifyChan chan struct{}, stop chan struct{}) {
 
 func (m *Manager) watchProcessDeath(cmd *exec.Cmd, seq int64) {
 	cmd.Wait()
-	if m.transitionIfStillInState(Ready, Degraded, seq) {
-		m.emitEvent("SetupCommandCrashed", "setup command process exited unexpectedly after reaching ready state")
+	msg := "setup command process exited unexpectedly after reaching ready state"
+	if m.transitionIfStillInState(Ready, Degraded, seq, msg) {
+		log.Printf("[setup-command:%s] proxy server terminated: process exited unexpectedly", m.contextName)
+		m.emitEvent("SetupCommandCrashed", msg)
 	}
 }
 
@@ -213,40 +254,45 @@ func (m *Manager) Stop() {
 	case Ready, Degraded:
 		cmd := m.cmd
 		m.state = Idle
+		m.message = ""
 		m.mu.Unlock()
 		killProcessGroup(cmd)
+		log.Printf("[setup-command:%s] proxy server terminated: disconnected", m.contextName)
 	case Stopping:
 		m.mu.Unlock()
 	}
 }
 
-func (m *Manager) transitionTo(newState State, seq int64) bool {
+func (m *Manager) transitionTo(newState State, seq int64, message string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.launchSeq != seq {
 		return false
 	}
 	m.state = newState
+	m.message = message
 	return true
 }
 
-func (m *Manager) transitionIfStillStarting(newState State, seq int64) bool {
+func (m *Manager) transitionIfStillStarting(newState State, seq int64, message string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.launchSeq != seq || m.state != Starting {
 		return false
 	}
 	m.state = newState
+	m.message = message
 	return true
 }
 
-func (m *Manager) transitionIfStillInState(from, to State, seq int64) bool {
+func (m *Manager) transitionIfStillInState(from, to State, seq int64, message string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.launchSeq != seq || m.state != from {
 		return false
 	}
 	m.state = to
+	m.message = message
 	return true
 }
 

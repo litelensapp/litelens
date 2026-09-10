@@ -69,6 +69,20 @@ func (a *App) ensureProxyManager(contextName, command, httpProxy, httpsProxy str
 	return m
 }
 
+// GetProxyStatus returns the current setup-command proxy status for
+// contextName, for the frontend to display without waiting for an event.
+// Returns an idle status if no manager has been created for this context yet
+// (e.g. the cluster has no setup command configured).
+func (a *App) GetProxyStatus(contextName string) proxy.Status {
+	a.proxyManagersMu.RLock()
+	mgr, exists := a.proxyManagers[contextName]
+	a.proxyManagersMu.RUnlock()
+	if !exists {
+		return proxy.Status{State: proxy.Idle.String()}
+	}
+	return mgr.Status()
+}
+
 // stopProxyManager stops and forgets the ProxyManager for contextName, if one
 // exists. Called when Connect() switches to a different cluster context.
 func (a *App) stopProxyManager(contextName string) {

@@ -314,7 +314,11 @@ export const App: FC = () => {
           )}
         </div>
 
-        <AppFooter updateInfo={updateInfo} onUpdateClick={() => setUpdateModalOpen(true)} />
+        <AppFooter
+          activeContext={activeContext}
+          updateInfo={updateInfo}
+          onUpdateClick={() => setUpdateModalOpen(true)}
+        />
 
         {aboutOpen && aboutPayload && (
           <AboutModal
