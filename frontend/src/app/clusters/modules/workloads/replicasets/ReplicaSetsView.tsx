@@ -24,17 +24,18 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
-import { useGetReplicaSets } from "./hooks/data-access/useGetReplicaSets";
-import { useDeleteReplicaSet } from "./hooks/data-mutation/useDeleteReplicaSet";
-import { useDeleteReplicaSets } from "./hooks/data-mutation/useDeleteReplicaSets";
-import { useScaleReplicaSet } from "./hooks/data-mutation/useScaleReplicaSet";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { ReplicaSetDeleteConfirmationModal } from "./components/ReplicaSetDeleteConfirmationModal";
+import { ReplicaSetHealthBadge } from "./components/ReplicaSetHealthBadge";
 import { ReplicaSetScaleModal } from "./components/ReplicaSetScaleModal";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { useGetReplicaSets } from "./hooks/data-access/useGetReplicaSets";
+import { useDeleteReplicaSet } from "./hooks/data-mutation/useDeleteReplicaSet";
+import { useDeleteReplicaSets } from "./hooks/data-mutation/useDeleteReplicaSets";
+import { useScaleReplicaSet } from "./hooks/data-mutation/useScaleReplicaSet";
 
 interface ReplicaSetTableCtaButtonsProps {
   namespace: string;
@@ -221,6 +222,7 @@ export const ReplicaSetsView: FC = () => {
             <TableHead>Desired</TableHead>
             <TableHead>Current</TableHead>
             <TableHead>Ready</TableHead>
+            <TableHead>Health</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -229,13 +231,21 @@ export const ReplicaSetsView: FC = () => {
           {isLoading ? (
             <TableSkeletonLoader
               rows={5}
-              columns={namespaces.length !== 1 ? 6 : 5}
+              columns={namespaces.length !== 1 ? 7 : 6}
               includeCheckbox={true}
-              columnWidths={["w-[65%]", "w-[55%]", "w-[30%]", "w-[30%]", "w-[30%]", "w-[30%]"]}
+              columnWidths={[
+                "w-[65%]",
+                "w-[55%]",
+                "w-[30%]",
+                "w-[30%]",
+                "w-[30%]",
+                "w-[30%]",
+                "w-[30%]",
+              ]}
             />
           ) : visibleReplicaSets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={namespaces.length !== 1 ? 8 : 7} className="px-0 py-0">
+              <TableCell colSpan={namespaces.length !== 1 ? 9 : 8} className="px-0 py-0">
                 <EmptyState
                   icon={<CopyIcon className="size-8" />}
                   title="No ReplicaSets"
@@ -281,6 +291,13 @@ export const ReplicaSetsView: FC = () => {
                   <TableCell className="text-xs">{rs.Desired}</TableCell>
                   <TableCell className="text-xs">{rs.Current}</TableCell>
                   <TableCell className="text-xs">{rs.Ready}</TableCell>
+                  <TableCell className="text-xs">
+                    {rs.HealthStatus ? (
+                      <ReplicaSetHealthBadge status={rs.HealthStatus} message={rs.HealthMessage} />
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs">{rs.Age}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <ReplicaSetTableCtaButtons
