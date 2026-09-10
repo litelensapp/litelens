@@ -6,6 +6,7 @@ import {
   useProxyStatusEvents,
 } from "../clusters/shared/hooks/async-events/useProxyStatusEvents";
 import { useGetClusterProxy } from "../clusters/shared/hooks/data-access/useGetClusterProxy";
+import { useGetSettings } from "../settings/hooks/data-access/useGetSettings";
 
 interface Props {
   activeContext: string;
@@ -36,12 +37,14 @@ const PROXY_STATUS_BADGE_VARIANT: Record<
 };
 
 export const ProxyServer: FC<Props> = ({ activeContext }) => {
+  const { data: settings } = useGetSettings();
+  const proxySetupEnabled = settings?.proxySetupEnabled ?? false;
   const { data: clusterProxy } = useGetClusterProxy(activeContext || null);
   const { data: proxyStatus } = useProxyStatusEvents(
-    clusterProxy?.setupCommand ? activeContext : null
+    proxySetupEnabled && clusterProxy?.setupCommand ? activeContext : null
   );
 
-  if (!clusterProxy?.setupCommand || !proxyStatus) return null;
+  if (!proxySetupEnabled || !clusterProxy?.setupCommand || !proxyStatus) return null;
 
   const proxyState = proxyStatus.State as ProxyStatusType;
 
