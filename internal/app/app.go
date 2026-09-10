@@ -294,10 +294,10 @@ func (a *App) Connect(contextName string, seq int64) error {
 	}
 
 	if setupCommand != "" {
-		a.emitConnectStatus(contextName, "Starting proxy setup command...")
+		a.emitConnectStatus(contextName, "Starting proxy server")
 		mgr := a.ensureProxyManager(contextName, setupCommand, httpProxy, httpsProxy)
 		mgr.Connect()
-		a.emitConnectStatus(contextName, "Waiting for setup command...")
+		a.emitConnectStatus(contextName, "Connecting to proxy server...")
 		<-mgr.Wait() // pauses here through e.g. an SSO browser flow the command opens, until ready/timeout/failure
 	}
 

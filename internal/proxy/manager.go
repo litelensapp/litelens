@@ -123,11 +123,18 @@ func (m *Manager) Wait() <-chan struct{} {
 
 func (m *Manager) Connect() error {
 	m.mu.Lock()
-	if m.state != Idle {
+	// Idle: first attempt for this context. Degraded: the previous attempt
+	// gave up (timeout/crash/failed start) and a fresh Connect should retry
+	// rather than silently no-op and leave GetProxyStatus reporting the old
+	// failure forever. Starting/Ready/Stopping are left alone: Starting and
+	// Stopping already have a launch in flight, and Ready means the proxy is
+	// still working, so restarting it would be wasteful.
+	if m.state != Idle && m.state != Degraded {
 		m.mu.Unlock()
 		return nil
 	}
 	m.state = Starting
+	m.message = ""
 	m.launchSeq++
 	seq := m.launchSeq
 	ctx, cancel := context.WithCancel(context.Background())

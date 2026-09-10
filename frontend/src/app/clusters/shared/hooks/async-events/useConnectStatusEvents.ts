@@ -27,10 +27,7 @@ export function useConnectStatusEvents(contextName: string): ConnectStatusResult
       "connect:status",
       (payload: { context: string; message: string }) => {
         if (payload.context !== contextName || !isActive) return;
-        const setupCommandMessages = [
-          "Starting proxy setup command...",
-          "Waiting for setup command...",
-        ];
+        const setupCommandMessages = ["Starting proxy server", "Connecting to proxy server..."];
         const isSetupMessage = setupCommandMessages.some((msg) => payload.message.includes(msg));
         const isError =
           !isSetupMessage &&
