@@ -14,6 +14,12 @@ export const useProxyStatusEvents = (contextName: string | null) => {
     queryKey,
     queryFn: () => GetProxyStatus(contextName!),
     ...DEFAULT_QUERY_OPTIONS,
+    // Override the default keepPreviousData: it would otherwise placeholder
+    // the outgoing cluster's proxy status while the new context's status is
+    // still loading, making a switch look like it kept the old proxy alive.
+    // Idle is the manager's real default state before Connect() runs, so it
+    // doubles as an honest "nothing known yet" placeholder.
+    placeholderData: (): proxy.Status => ({ State: "idle", Message: "" }),
     enabled: !!contextName,
   });
 

@@ -315,7 +315,7 @@ export const App: FC = () => {
         </div>
 
         <AppFooter
-          activeContext={activeContext}
+          activeContext={connectingContext ?? connectFailedCtx ?? activeContext}
           updateInfo={updateInfo}
           onUpdateClick={() => setUpdateModalOpen(true)}
         />
