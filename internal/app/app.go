@@ -315,7 +315,10 @@ func (a *App) Connect(contextName string, seq int64) error {
 
 	// Always verify the API server is reachable before marking connected.
 	a.emitConnectStatus(contextName, "Verifying API server connectivity...")
-	if err := kube.Ping(cs); err != nil {
+	pingCtx, cancelPing := context.WithTimeout(context.Background(), 30*time.Second)
+	err := kube.Ping(pingCtx, cs)
+	cancelPing()
+	if err != nil {
 		a.emitConnectStatus(contextName, "Cannot reach API server: "+err.Error())
 		return err
 	}
