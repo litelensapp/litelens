@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -253,6 +254,82 @@ func TestScanExactLine(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestManagerFailsFastOnCommandNotFound covers the gap doLaunch's select used
+// to have: before the early-exit detection, a setup command that failed
+// immediately (e.g. a script missing from PATH, the class of bug caused by a
+// GUI-launched app's stripped PATH — see resolveLoginShellPATH) went
+// undetected until the full setup timeout elapsed, which read as "stuck
+// forever" to the user. It should now demote to Degraded immediately.
+func TestManagerFailsFastOnCommandNotFound(t *testing.T) {
+	var mu sync.Mutex
+	events := []string{}
+	m := NewManager("test-ctx", "this-command-does-not-exist-anywhere", "", func(name, msg string) {
+		mu.Lock()
+		events = append(events, name)
+		mu.Unlock()
+	})
+	m.SetupTimeout(5 * time.Second)
+
+	start := time.Now()
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	select {
+	case <-m.Wait():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not unblock in time — early-exit detection did not fire")
+	}
+	if elapsed := time.Since(start); elapsed >= m.setupTimeout {
+		t.Fatalf("expected fast failure well under the %v setup timeout, took %v", m.setupTimeout, elapsed)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Contains(events, "SetupCommandDegraded") {
+		t.Errorf("expected SetupCommandDegraded event, got %v", events)
+	}
+}
+
+// TestManagerReadyThenImmediateCleanExitIsNotFailure covers the race the
+// early-exit detection introduced: cmd.Wait() completing with a nil error can
+// become ready at the same instant as readyMarkerChan (a script that prints
+// the marker and exits immediately, a legitimate pattern for setup scripts
+// that don't need to stay running). That must still report Ready, not
+// Degraded.
+func TestManagerReadyThenImmediateCleanExitIsNotFailure(t *testing.T) {
+	for i := range 20 {
+		var mu sync.Mutex
+		events := []string{}
+		m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY'", "", func(name, msg string) {
+			mu.Lock()
+			events = append(events, name)
+			mu.Unlock()
+		})
+		m.SetupTimeout(2 * time.Second)
+
+		if err := m.Connect(); err != nil {
+			t.Fatalf("Connect failed: %v", err)
+		}
+
+		select {
+		case <-m.Wait():
+		case <-time.After(2 * time.Second):
+			t.Fatal("Wait() did not unblock in time")
+		}
+
+		mu.Lock()
+		got := append([]string{}, events...)
+		mu.Unlock()
+		if !slices.Contains(got, "SetupCommandReady") {
+			t.Fatalf("run %d: expected SetupCommandReady, got %v", i, got)
+		}
+		if slices.Contains(got, "SetupCommandDegraded") {
+			t.Fatalf("run %d: a clean exit racing the ready marker must not report Degraded, got %v", i, got)
+		}
 	}
 }
 
