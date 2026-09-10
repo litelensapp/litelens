@@ -320,6 +320,64 @@ func TestManagerCrashAfterReady(t *testing.T) {
 	}
 }
 
+// TestManagerHealthCheckDetectsDeadPort covers the gap watchProcessDeath
+// can't: a setup command process that stays alive while the tunnel/proxy it
+// manages silently stops accepting connections. The periodic health check
+// must demote Ready -> Degraded once the port stops responding, and kill the
+// now-useless process so a subsequent Connect() can actually restart it.
+func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to open listener: %v", err)
+	}
+	addr := ln.Addr().String()
+
+	var mu sync.Mutex
+	events := []string{}
+	m := NewManager("test-ctx", "sh -c 'echo LITELENS_SETUP_READY; sleep 10'", addr, func(name, msg string) {
+		mu.Lock()
+		events = append(events, name)
+		mu.Unlock()
+	})
+	m.SetupTimeout(5 * time.Second)
+	m.SetHealthCheckInterval(50 * time.Millisecond)
+
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	select {
+	case <-m.Wait():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not unblock in time")
+	}
+
+	// Close the listener to simulate the tunnel dying while the wrapping
+	// process (the sleep) stays alive.
+	ln.Close()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		found := false
+		for _, e := range events {
+			if e == "SetupCommandDegraded" {
+				found = true
+				break
+			}
+		}
+		mu.Unlock()
+		if found {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	t.Fatalf("expected SetupCommandDegraded event once the proxy port died, got %v", events)
+}
+
 func TestManagerConcurrentConnect(t *testing.T) {
 	var mu sync.Mutex
 	events := []string{}

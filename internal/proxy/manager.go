@@ -61,7 +61,8 @@ type Manager struct {
 	cancelFunc  context.CancelFunc
 	settledChan chan struct{}
 
-	setupTimeout time.Duration
+	setupTimeout        time.Duration
+	healthCheckInterval time.Duration
 }
 
 // NewManager creates a Manager for a setup command. proxyAddr, if non-empty,
@@ -80,9 +81,10 @@ func NewManager(contextName, command, proxyAddr string, emitEvent func(eventName
 		command:      command,
 		proxyAddr:    proxyAddr,
 		emitEvent:    emitEvent,
-		state:        Idle,
-		settledChan:  closed,
-		setupTimeout: 5 * time.Minute,
+		state:               Idle,
+		settledChan:         closed,
+		setupTimeout:        5 * time.Minute,
+		healthCheckInterval: 10 * time.Second,
 	}
 }
 
@@ -90,6 +92,15 @@ func (m *Manager) SetupTimeout(d time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.setupTimeout = d
+}
+
+// SetHealthCheckInterval overrides the default 10s cadence at which a Ready
+// manager re-verifies its proxy port is still reachable. Exposed mainly for
+// tests that want a health check to fire within a short sleep window.
+func (m *Manager) SetHealthCheckInterval(d time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.healthCheckInterval = d
 }
 
 func (m *Manager) Command() string {
@@ -201,12 +212,18 @@ func (m *Manager) doLaunch(ctx context.Context, seq int64, settled chan struct{}
 		if m.transitionIfStillStarting(Ready, seq, msg) {
 			m.emitEvent("SetupCommandReady", msg)
 			go m.watchProcessDeath(cmd, seq)
+			if m.proxyAddr != "" {
+				go m.watchProxyHealth(seq)
+			}
 		}
 	case <-portReadyChan:
 		msg := "proxy setup command ready (proxy port reachable)"
 		if m.transitionIfStillStarting(Ready, seq, msg) {
 			m.emitEvent("SetupCommandReady", msg)
 			go m.watchProcessDeath(cmd, seq)
+			if m.proxyAddr != "" {
+				go m.watchProxyHealth(seq)
+			}
 		}
 	case <-time.After(timeoutDuration):
 		killProcessGroup(cmd)
@@ -246,6 +263,46 @@ func (m *Manager) watchProcessDeath(cmd *exec.Cmd, seq int64) {
 	if m.transitionIfStillInState(Ready, Degraded, seq, msg) {
 		log.Printf("[setup-command:%s] proxy server terminated: process exited unexpectedly", m.contextName)
 		m.emitEvent("SetupCommandCrashed", msg)
+	}
+}
+
+// watchProxyHealth periodically re-dials proxyAddr while the manager stays
+// Ready. A Ready process can go on running while the tunnel/proxy it manages
+// silently breaks internally (e.g. an SSM session dying without killing the
+// wrapping process) — watchProcessDeath alone can't catch that, since it only
+// notices the process actually exiting. Stops itself as soon as the launch it
+// was spawned for is no longer the current Ready one, or after demoting once.
+func (m *Manager) watchProxyHealth(seq int64) {
+	m.mu.Lock()
+	interval := m.healthCheckInterval
+	m.mu.Unlock()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		m.mu.Lock()
+		if m.launchSeq != seq || m.state != Ready {
+			m.mu.Unlock()
+			return
+		}
+		addr := m.proxyAddr
+		cmd := m.cmd
+		m.mu.Unlock()
+
+		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+		if err == nil {
+			conn.Close()
+			continue
+		}
+
+		msg := fmt.Sprintf("proxy port %s became unreachable", addr)
+		if m.transitionIfStillInState(Ready, Degraded, seq, msg) {
+			killProcessGroup(cmd)
+			log.Printf("[setup-command:%s] proxy server terminated: health check failed", m.contextName)
+			m.emitEvent("SetupCommandDegraded", msg)
+		}
+		return
 	}
 }
 
