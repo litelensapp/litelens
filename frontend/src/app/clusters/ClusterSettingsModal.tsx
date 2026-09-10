@@ -207,10 +207,8 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
               />
             </div>
             <p className="text-left text-xs text-muted-foreground">
-              Command must print the exact line{" "}
-              <code className="text-foreground">LITELENS_SETUP_READY</code> when its proxy is
-              authenticated/live. Failures are fail-open — the app continues even if the command
-              fails.
+              Automatically spins up your proxy and lets the app connect through it for this cluster
+              session. If it fails, the app still connects normally.
             </p>
 
             <Divider />
