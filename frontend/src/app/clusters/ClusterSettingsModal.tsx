@@ -159,7 +159,7 @@ export const ClusterSettingsModal: FC<ClusterSettingsModalProps> = ({ contextNam
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-2">
             <div className="flex flex-col gap-1">
               <span className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Kubeconfig

@@ -2,9 +2,11 @@ package proxy
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -326,11 +328,17 @@ func TestManagerCrashAfterReady(t *testing.T) {
 // must demote Ready -> Degraded once the port stops responding, and kill the
 // now-useless process so a subsequent Connect() can actually restart it.
 func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
+	// Reserve a free port, then release it immediately so nothing is
+	// listening when Connect() runs its reachability preflight — otherwise
+	// the preflight would find the port already reachable and skip running
+	// the setup command entirely (see TestManagerReusesReachableProxy...),
+	// which isn't the scenario this test is exercising.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to open listener: %v", err)
 	}
 	addr := ln.Addr().String()
+	ln.Close()
 
 	var mu sync.Mutex
 	events := []string{}
@@ -340,10 +348,18 @@ func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
 		mu.Unlock()
 	})
 	m.SetupTimeout(5 * time.Second)
-	m.SetHealthCheckInterval(50 * time.Millisecond)
+	m.SetHealthCheckInterval(100 * time.Millisecond)
 
 	if err := m.Connect(); err != nil {
 		t.Fatalf("Connect failed: %v", err)
+	}
+
+	// Give the preflight time to observe the port as closed before the
+	// tunnel (represented by this listener) comes up.
+	time.Sleep(50 * time.Millisecond)
+	ln2, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Fatalf("failed to reopen listener at %s: %v", addr, err)
 	}
 
 	select {
@@ -352,9 +368,14 @@ func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
 		t.Fatal("Wait() did not unblock in time")
 	}
 
+	// Let at least one health check tick observe the port as reachable
+	// before killing it, so this exercises a live->dead transition rather
+	// than the port simply never having come up.
+	time.Sleep(250 * time.Millisecond)
+
 	// Close the listener to simulate the tunnel dying while the wrapping
 	// process (the sleep) stays alive.
-	ln.Close()
+	ln2.Close()
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
@@ -376,6 +397,58 @@ func TestManagerHealthCheckDetectsDeadPort(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	t.Fatalf("expected SetupCommandDegraded event once the proxy port died, got %v", events)
+}
+
+// TestManagerReusesReachableProxyWithoutRunningSetupCommand covers the
+// preflight added to doLaunch: many setup scripts perform their own
+// SSO/browser login as part of standing up a tunnel, so if the tunnel is
+// already reachable (e.g. left running from a previous app session),
+// Connect() should skip running the script again rather than triggering that
+// login flow for no reason.
+func TestManagerReusesReachableProxyWithoutRunningSetupCommand(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to open listener: %v", err)
+	}
+	defer ln.Close()
+	addr := ln.Addr().String()
+
+	ranMarker := filepath.Join(t.TempDir(), "setup-command-ran")
+	command := fmt.Sprintf("sh -c 'touch %s; echo LITELENS_SETUP_READY'", ranMarker)
+
+	var mu sync.Mutex
+	events := []string{}
+	m := NewManager("test-ctx", command, addr, func(name, msg string) {
+		mu.Lock()
+		events = append(events, name)
+		mu.Unlock()
+	})
+	m.SetupTimeout(2 * time.Second)
+
+	if err := m.Connect(); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	select {
+	case <-m.Wait():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not unblock in time")
+	}
+
+	status := m.Status()
+	if status.State != Ready.String() {
+		t.Fatalf("expected state ready, got %s (%s)", status.State, status.Message)
+	}
+
+	if _, err := os.Stat(ranMarker); err == nil {
+		t.Fatalf("setup command should not have run when the proxy was already reachable")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(events) != 2 || events[0] != "SetupCommandStarting" || events[1] != "SetupCommandReady" {
+		t.Fatalf("unexpected event sequence: %v", events)
+	}
 }
 
 func TestManagerConcurrentConnect(t *testing.T) {
@@ -523,17 +596,23 @@ func TestManagerWaitImmediateWhenNeverConnected(t *testing.T) {
 // tunnel alive and never returns to reach a later echo). The manager must
 // still reach Ready once the configured proxy port itself becomes reachable.
 func TestManagerReadyViaProxyPortFallback(t *testing.T) {
+	// Reserve a free port, then release it immediately so nothing is
+	// listening when Connect() runs its reachability preflight — otherwise
+	// the preflight would find the port already reachable and skip running
+	// the setup command entirely, short-circuiting the port-poll fallback
+	// this test exercises.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to open listener: %v", err)
 	}
-	defer ln.Close()
+	addr := ln.Addr().String()
+	ln.Close()
 
 	var mu sync.Mutex
 	events := []string{}
 	// This command never prints the marker and just sleeps, mirroring a
 	// script whose final step is a blocking foreground tunnel.
-	m := NewManager("test-ctx", "sh -c 'sleep 10'", ln.Addr().String(), func(name, msg string) {
+	m := NewManager("test-ctx", "sh -c 'sleep 10'", addr, func(name, msg string) {
 		mu.Lock()
 		events = append(events, name)
 		mu.Unlock()
@@ -543,6 +622,15 @@ func TestManagerReadyViaProxyPortFallback(t *testing.T) {
 	if err := m.Connect(); err != nil {
 		t.Fatalf("Connect failed: %v", err)
 	}
+
+	// Give the preflight time to observe the port as closed before the
+	// tunnel (represented by this listener) comes up.
+	time.Sleep(50 * time.Millisecond)
+	ln2, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Fatalf("failed to reopen listener at %s: %v", addr, err)
+	}
+	defer ln2.Close()
 
 	select {
 	case <-m.Wait():
