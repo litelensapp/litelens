@@ -282,16 +282,23 @@ func (a *App) Connect(contextName string, seq int64) error {
 	previousContext := a.activeContext
 	a.mu.RUnlock()
 
+	// Tear down the outgoing context's proxy manager as soon as a switch
+	// begins, not after the new context's own setup command finishes
+	// waiting. Deferring this left the previous manager sitting in Ready for
+	// as long as the new context's setup command took (e.g. its own SSO
+	// flow) — switching back to it during that window reused the still-Ready
+	// manager and skipped waiting for a fresh setup entirely, i.e. the old
+	// session was never actually cleaned up.
+	if previousContext != "" && previousContext != contextName {
+		a.stopProxyManager(previousContext)
+	}
+
 	if setupCommand != "" {
 		a.emitConnectStatus(contextName, "Starting proxy setup command...")
 		mgr := a.ensureProxyManager(contextName, setupCommand)
 		mgr.Connect()
 		a.emitConnectStatus(contextName, "Waiting for setup command...")
 		<-mgr.Wait() // pauses here through e.g. an SSO browser flow the command opens, until ready/timeout/failure
-	}
-
-	if previousContext != "" && previousContext != contextName {
-		a.stopProxyManager(previousContext)
 	}
 
 	var rc *rest.Config
