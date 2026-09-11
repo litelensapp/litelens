@@ -11,8 +11,9 @@ Litelens — a desktop Kubernetes dashboard built with [Wails v2](https://wails.
 ### Dev
 
 ```bash
-wails dev              # hot-reload desktop app (Go + Vite)
-pnpm dev                # frontend only (vite), for pure UI work
+pnpm dev              # hot-reload desktop app (builds design-system + core frontend once, then wails dev)
+wails dev             # same as pnpm dev, without the initial build steps (requires design-system/core built first)
+pnpm --filter litelens-frontend run dev  # frontend only (vite dev server without Go backend, rarely useful)
 ```
 
 ### Build
@@ -27,7 +28,7 @@ pnpm build:app:fe        # build:ds + frontend build only (no Wails binary)
 
 ```bash
 pnpm format              # prettier --write across ts/tsx/js/json/css/md/yml
-pnpm lint:fe              # eslint frontend/src design-system/src
+pnpm lint:fe              # eslint frontend/src design-system/src packages/core/frontend/src
 pnpm lint:be              # go vet + staticcheck for ./internal/... and the packages/core module
 ```
 
@@ -74,7 +75,7 @@ minikube addons enable metrics-server
 - **Push updates via Wails events**, not polling: Go emits (`runtime.EventsEmit(a.ctx, "pods:update", pods)`), the frontend's per-resource `useXxxUpdateEvents` hook subscribes and the owning data-access hook merges the pushed payload over its `useQuery` result locally (no global cache-write hook).
 - **Scoped detail-push pattern**, for the 10 resources with a genuinely separate `Xxx`/`XxxDetail` DTO (Secret, ResourceQuota, PVC, HPA, LimitRange, NetworkPolicy, PodDisruptionBudget, Ingress, PersistentVolume, ValidatingWebhookConfig): broadcasting full Detail payloads (which can carry sensitive/heavy fields not present on the list DTO) to every list subscriber is wasteful and leaky, so these resources additionally expose a singular Wails topic (`"secret:update"`, distinct from the plural `"secrets:update"` list topic) that only fires for the one item currently open in that kind's detail drawer. `App.WatchXxxDetail(namespace, name)`/`UnwatchXxxDetail(...)` (name-only for cluster-scoped kinds PersistentVolume/ValidatingWebhookConfig) register/clear interest in a single mutex-guarded `detailWatch` (`internal/app/detail_watch.go` — one open drawer per kind at a time, so a single key suffices, no refcounting); `emitXxxDetail()` is fully decoupled from `emitXxxs()` and fires off its own dedicated `Debouncer` instance triggered alongside the existing list debouncer inside the same informer event-handler callback (`Debouncer` holds exactly one callback/timer, so it can't be shared with the list emitter). Frontend: `useXxxUpdateEvents(namespace, name)` calls `WatchXxxDetail`/`UnwatchXxxDetail` in a `useEffect`, subscribes to the singular topic, and discards stale values via a `useMemo` guard (never a synchronous `setState` reset in the effect — trips `react-hooks/set-state-in-effect`); the owning `useGetXxxDetail` hook merges this over its `useQuery` data. Do not merge a Detail hook's local state directly from the plural list-topic payload via an `as` cast — it silently drops Detail-only fields on every subsequent list push (this happened to Ingress and ValidatingWebhookConfig before the pattern existed). See `.claude/memory/architecture_decisions.md`'s "Scoped Detail-Push Pattern" section for the full writeup.
 - **Forbidden-resource (403) handling**: informer 403s emit `resource:forbidden` once per resource per connection; frontend's `useCatchForbiddenResources` toasts when the user is on/navigates to that view.
-- Adding a new Go method requires manually adding it to `frontend/src/api/resources.ts`'s re-export list (Wails bindings are auto-generated into `frontend/wailsjs/`, but that file is hand-maintained) — same for any new DTO type needing hand-added entries in `frontend/wailsjs/go/models.ts` if you're not running `wails dev`/`wails generate module` to regenerate.
+- Adding a new Go method: add it to the appropriate `frontend/src/app/clusters/modules/<group>/<resource>/api/resources.ts` file (each resource module re-exports its Wails-bound methods). New DTO types are defined in `packages/core/frontend/src/types/resources/` (one file per resource type) and re-exported from the module's `api/resources.ts` — Wails bindings are auto-generated into `frontend/wailsjs/` (no manual edits needed). After editing `packages/core/frontend/`, run `pnpm build:core:fe` to regenerate the vendor shims the frontend imports.
 - `wails generate` mutates `go.mod` — never run it as a shortcut for other tasks.
 
 ### Plugin architecture

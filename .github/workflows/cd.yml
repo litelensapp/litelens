@@ -27,7 +27,12 @@ jobs:
     # references it — it shouldn't be blocked by Windows/Linux build
     # failures within job-build.yml, so check those two job results
     # directly instead of the reusable workflow's overall (all-jobs) result.
-    if: ${{ needs.build.outputs.macos_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    # `always()` is required here: without an explicit status-check function,
+    # GitHub implicitly ANDs the whole expression with success(), which would
+    # skip this job whenever `build`'s overall conclusion is "failure" (e.g.
+    # one deb codename leg failing) even though the outputs check below would
+    # otherwise allow it to run.
+    if: ${{ always() && needs.build.outputs.macos_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
     uses: ./.github/workflows/job-publish-homebrew.yml
     secrets: inherit
     with:
@@ -41,7 +46,12 @@ jobs:
     # Windows/plain-Linux build failures within job-build.yml, so check
     # those two job results directly instead of the reusable workflow's
     # overall (all-jobs) result.
-    if: ${{ needs.build.outputs.deb_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    # `always()` is required here: without an explicit status-check function,
+    # GitHub implicitly ANDs the whole expression with success(), which would
+    # skip this job whenever `build`'s overall conclusion is "failure" (e.g.
+    # a macOS/Windows/Linux leg failing) even though the outputs check below
+    # would otherwise allow it to run.
+    if: ${{ always() && needs.build.outputs.deb_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
     uses: ./.github/workflows/job-publish-apt.yml
     secrets: inherit
     with:
