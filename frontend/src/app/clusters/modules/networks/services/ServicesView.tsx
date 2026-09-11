@@ -24,16 +24,16 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetServices } from "./hooks/data-access/useGetServices";
-import { useDeleteService } from "./hooks/data-mutation/useDeleteService";
-import { useDeleteServices } from "./hooks/data-mutation/useDeleteServices";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { ServiceDeleteConfirmationModal } from "./components/ServiceDeleteConfirmationModal";
 import { ServiceStatusBadge } from "./components/ServiceStatusBadge";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { useGetServices } from "./hooks/data-access/useGetServices";
+import { useDeleteService } from "./hooks/data-mutation/useDeleteService";
+import { useDeleteServices } from "./hooks/data-mutation/useDeleteServices";
 
 interface ServiceTableCtaButtonsProps {
   namespace: string;
@@ -182,7 +182,7 @@ export const ServicesView: FC = () => {
             {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Type</TableHead>
             <TableHead>Cluster IP</TableHead>
-            <TableHead>Ports</TableHead>
+            <TableHead className="w-200">Ports</TableHead>
             <TableHead>External IP</TableHead>
             <TableHead>Selector</TableHead>
             <TableHead>Age</TableHead>
@@ -245,7 +245,9 @@ export const ServicesView: FC = () => {
                   )}
                   <TableCell className="text-xs">{svc.Type}</TableCell>
                   <TableCell className="font-mono text-xs">{svc.ClusterIP}</TableCell>
-                  <TableCell className="font-mono text-xs">{svc.Ports}</TableCell>
+                  <TableCell className="max-w-200 font-mono text-xs wrap-break-word whitespace-normal">
+                    {svc.Ports}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{svc.ExternalIP}</TableCell>
                   <TableCell>
                     {Object.keys(svc.Selector ?? {}).length === 0 ? (
