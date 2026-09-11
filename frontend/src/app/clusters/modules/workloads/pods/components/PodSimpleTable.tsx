@@ -1,16 +1,17 @@
 import {
   ResourceCell,
   ResourceLink,
-  ScrollArea,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
 } from "@litelens/design-system";
 import { FC } from "react";
 import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
+import { usePagination } from "../../../../shared/hooks/usePagination";
 import type { Pod } from "../api/resources";
 import { PodStatusBadge } from "./PodStatusBadge";
 
@@ -21,9 +22,20 @@ interface PodSimpleTableProps {
 export const PodSimpleTable: FC<PodSimpleTableProps> = ({ pods }) => {
   const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
+  const {
+    visibleItems: visiblePods,
+    page,
+    pageCount,
+    pageSize,
+    pageSizeOptions,
+    isPaginated,
+    setPage,
+    setPageSize,
+  } = usePagination(pods);
+
   return (
-    <ScrollArea className="h-full">
-      <Table>
+    <div className="flex h-full flex-1 flex-col gap-2 overflow-y-auto">
+      <Table containerClassName="flex-1 overflow-y-auto">
         <TableHeader>
           <TableRow>
             <TableHead className="text-xs">Name</TableHead>
@@ -42,7 +54,7 @@ export const PodSimpleTable: FC<PodSimpleTableProps> = ({ pods }) => {
               </TableCell>
             </TableRow>
           ) : (
-            pods.map((p) => (
+            visiblePods.map((p) => (
               <TableRow key={`${p.Namespace}/${p.Name}`}>
                 <TableCell className="max-w-40 truncate font-mono text-xs">
                   <ResourceLink
@@ -73,6 +85,18 @@ export const PodSimpleTable: FC<PodSimpleTableProps> = ({ pods }) => {
           )}
         </TableBody>
       </Table>
-    </ScrollArea>
+
+      {isPaginated && (
+        <TablePagination
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          totalItems={pods.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
+    </div>
   );
 };
