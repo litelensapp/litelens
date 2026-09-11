@@ -27,7 +27,12 @@ jobs:
     # references it — it shouldn't be blocked by Windows/Linux build
     # failures within job-build.yml, so check those two job results
     # directly instead of the reusable workflow's overall (all-jobs) result.
-    if: ${{ needs.build.outputs.macos_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    # `always()` is required here: without an explicit status-check function,
+    # GitHub implicitly ANDs the whole expression with success(), which would
+    # skip this job whenever `build`'s overall conclusion is "failure" (e.g.
+    # one deb codename leg failing) even though the outputs check below would
+    # otherwise allow it to run.
+    if: ${{ always() && needs.build.outputs.macos_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
     uses: ./.github/workflows/job-publish-homebrew.yml
     secrets: inherit
     with:
@@ -36,12 +41,23 @@ jobs:
   publish-apt:
     name: Publish to APT
     needs: [release-version, build]
-    # APT only needs all three .deb builds (noble/jammy/focal) and the
-    # manifest that references them — it shouldn't be blocked by macOS/
-    # Windows/plain-Linux build failures within job-build.yml, so check
-    # those two job results directly instead of the reusable workflow's
-    # overall (all-jobs) result.
-    if: ${{ needs.build.outputs.deb_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    # APT only needs at least one successful .deb build (noble/jammy/focal)
+    # and the manifest that references them — job-publish-apt.yml already
+    # tolerates a partial .deb set (it includes whatever release assets
+    # exist and only errors out if none do), so this shouldn't require every
+    # codename to succeed, nor be blocked by macOS/Windows/plain-Linux build
+    # failures within job-build.yml.
+    # `always()` is required here: without an explicit status-check function,
+    # GitHub implicitly ANDs the whole expression with success(), which would
+    # skip this job whenever `build`'s overall conclusion is "failure" (e.g.
+    # any single leg failing) even though the outputs check below would
+    # otherwise allow it to run.
+    if: >-
+      ${{ always() && (
+        needs.build.outputs.deb_noble_result == 'success' ||
+        needs.build.outputs.deb_jammy_result == 'success' ||
+        needs.build.outputs.deb_focal_result == 'success'
+      ) && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
     uses: ./.github/workflows/job-publish-apt.yml
     secrets: inherit
     with:

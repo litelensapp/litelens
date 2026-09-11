@@ -17,9 +17,15 @@ on:
       macos_build_result:
         description: "Result of the standalone macOS build job (success/failure/cancelled/skipped)"
         value: ${{ jobs.build-macos.result }}
-      deb_build_result:
-        description: "Aggregate result of the .deb build matrix (noble/jammy/focal) job (success/failure/cancelled/skipped)"
-        value: ${{ jobs.build-deb.result }}
+      deb_noble_result:
+        description: "Result of the noble .deb build job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-deb-noble.result }}
+      deb_jammy_result:
+        description: "Result of the jammy .deb build job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-deb-jammy.result }}
+      deb_focal_result:
+        description: "Result of the focal .deb build job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-deb-focal.result }}
       manifest_result:
         description: "Result of the publish-manifest job (success/failure/cancelled/skipped)"
         value: ${{ jobs.publish-manifest.result }}
@@ -30,9 +36,9 @@ env:
 jobs:
   build-macos:
     # Every platform gets its own standalone job (build-windows, build-linux,
-    # build-macos, build-deb) so each one's result can be surfaced
-    # independently via the outputs above — callers that only care about one
-    # platform's artifact (e.g. cd.yml's publish-homebrew/publish-apt jobs)
+    # build-macos, build-deb-noble/jammy/focal) so each one's result can be
+    # surfaced independently via the outputs above — callers that only care
+    # about one platform's artifact (e.g. cd.yml's publish-homebrew/publish-apt jobs)
     # shouldn't be blocked by another platform's build failure.
     runs-on: macos-latest
     permissions:
@@ -94,147 +100,35 @@ jobs:
         run: |
           gh release upload "${{ inputs.version }}" build/bin/${{ env.artifact }} --repo "${{ github.repository }}" --clobber
 
-  build-deb:
-    # Its own matrix job (fail-fast: false across the three codename legs),
-    # so its aggregate result (`deb_build_result` below) is "success" only
-    # when noble, jammy, AND focal all succeed — exactly what cd.yml's
-    # publish-apt job needs, independent of the other platforms' outcomes.
-    permissions:
-      contents: write
-      actions: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact: litelens-linux-amd64-noble.deb
-            codename: noble
-            libwebkit_version: libwebkit2gtk-4.1-0
-          - artifact: litelens-linux-amd64-jammy.deb
-            codename: jammy
-            libwebkit_version: libwebkit2gtk-4.0-37
-          - artifact: litelens-linux-amd64-focal.deb
-            codename: focal
-            libwebkit_version: libwebkit2gtk-4.0-37
+  build-deb-noble:
+    # One standalone job per codename (mirrors build-windows/build-linux/
+    # build-macos above) instead of a matrix, so each codename's result is
+    # visible independently as its own output — job-publish-apt.yml already
+    # tolerates a partial .deb set (it just includes whatever release assets
+    # exist and only errors if none do), so cd.yml's publish-apt job can run
+    # off "at least one codename succeeded" instead of requiring all three.
+    uses: ./.github/workflows/job-build-deb.yml
+    with:
+      version: ${{ inputs.version }}
+      codename: noble
+      libwebkit_version: libwebkit2gtk-4.1-0
+    secrets: inherit
 
-    runs-on: ubuntu-latest
+  build-deb-jammy:
+    uses: ./.github/workflows/job-build-deb.yml
+    with:
+      version: ${{ inputs.version }}
+      codename: jammy
+      libwebkit_version: libwebkit2gtk-4.0-37
+    secrets: inherit
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup Go from go.mod
-        uses: ./.github/actions/setup-go
-
-      - name: Setup Node.js + pnpm
-        uses: ./.github/actions/setup-node-pnpm
-        with:
-          ignore-scripts: "false"
-
-      - name: Install Linux system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev desktop-file-utils
-
-      - name: Build frontend bundles
-        uses: ./.github/actions/build-frontend-bundles
-
-      - name: Build
-        shell: bash
-        run: >
-          pnpm build:app --
-          -platform linux/amd64
-          -tags webkit2_41
-          -ldflags "-s -w -X main.Version=${{ inputs.version }}"
-
-      - name: Package (Linux .deb)
-        run: |
-          set -euo pipefail
-
-          # Create debian package structure
-          mkdir -p "$DEBIAN_DIR/DEBIAN" "$DEBIAN_DIR/usr/bin" "$DEBIAN_DIR/usr/share/applications" "$DEBIAN_DIR/usr/share/icons/hicolor/256x256/apps"
-
-          # Copy control file and substitute version and libwebkit package.
-          # dpkg's Version field must start with a digit — strip the leading
-          # "v" from the release tag (e.g. v1.4.1 -> 1.4.1). Append a
-          # codename suffix (e.g. ~noble) so the three per-codename builds
-          # don't collide in the APT repo's shared pool: reprepro rejects
-          # re-including "litelens_<version>_amd64.deb" under a different
-          # codename once the same Package+Version+Architecture has already
-          # been pooled with different bytes (they differ by Depends only,
-          # since each build pins a different libwebkit package).
-          DEB_VERSION="${{ inputs.version }}"
-          DEB_VERSION="${DEB_VERSION#v}~${{ matrix.codename }}"
-
-          cp "$DEBIAN_DIR/DEBIAN/control" "$DEBIAN_DIR/DEBIAN/control.tmp"
-          sed -e "s/0\.0\.0/${DEB_VERSION}/g" \
-              -e "s/\${LIBWEBKIT_PKG}/${{ matrix.libwebkit_version }}/g" \
-              "$DEBIAN_DIR/DEBIAN/control.tmp" > "$DEBIAN_DIR/DEBIAN/control"
-          rm "$DEBIAN_DIR/DEBIAN/control.tmp"
-
-          # postinst/postrm already live at $DEBIAN_DIR/DEBIAN/ in the scaffold
-          chmod 755 "$DEBIAN_DIR/DEBIAN/postinst" "$DEBIAN_DIR/DEBIAN/postrm"
-
-          # Copy binary
-          cp build/bin/litelens "$DEBIAN_DIR/usr/bin/litelens"
-          chmod 755 "$DEBIAN_DIR/usr/bin/litelens"
-
-          # Copy icon and desktop file
-          cp build/appicon.png "$DEBIAN_DIR/usr/share/icons/hicolor/256x256/apps/litelens.png"
-          cp "$DEBIAN_DIR/litelens.desktop" "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
-
-          # Remove the source .desktop template from the packaging root —
-          # dpkg-deb packages everything under $DEBIAN_DIR (except
-          # $DEBIAN_DIR/DEBIAN/) as the payload, so leaving it here
-          # would install it to /litelens.desktop.
-          rm -f "$DEBIAN_DIR/litelens.desktop"
-
-          # Build the .deb package
-          dpkg-deb --build "$DEBIAN_DIR" build/bin/${{ matrix.artifact }}
-
-      - name: Validate .deb package (lintian)
-        run: |
-          set +e
-          lintian --display-info build/bin/${{ matrix.artifact }} || true
-
-      - name: Validate .desktop file
-        run: desktop-file-validate "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
-
-      - name: Smoke test .deb (container)
-        run: |
-          set -euo pipefail
-          docker run --rm -v ${{ github.workspace }}/build/bin:/artifacts ubuntu:${{ matrix.codename }} bash -c "
-            apt-get update
-            apt-get install -y /artifacts/${{ matrix.artifact }}
-            litelens --version
-            test -f /usr/share/applications/litelens.desktop
-          "
-
-      - name: Compute SHA256 checksum
-        shell: bash
-        run: |
-          cd build/bin
-          shasum -a 256 "${{ matrix.artifact }}" | awk '{print $1}' > "${{ matrix.artifact }}.sha256"
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.artifact }}
-          path: |
-            build/bin/${{ matrix.artifact }}
-            build/bin/${{ matrix.artifact }}.sha256
-          retention-days: 1
-
-      - name: Upload checksum artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: checksum-${{ matrix.artifact }}
-          path: build/bin/${{ matrix.artifact }}.sha256
-          retention-days: 1
-
-      - name: Upload to release
-        if: ${{ inputs.version != 'dev' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ inputs.version }}" build/bin/${{ matrix.artifact }} --repo "${{ github.repository }}" --clobber
+  build-deb-focal:
+    uses: ./.github/workflows/job-build-deb.yml
+    with:
+      version: ${{ inputs.version }}
+      codename: focal
+      libwebkit_version: libwebkit2gtk-4.0-37
+    secrets: inherit
 
   build-windows:
     # Standalone job (see build-macos above for rationale) so its result is
@@ -374,21 +268,22 @@ jobs:
           gh release upload "${{ inputs.version }}" build/bin/${{ env.artifact }} --repo "${{ github.repository }}" --clobber
 
   publish-manifest:
-    needs: [build-windows, build-linux, build-macos, build-deb]
-    # `build-deb` uses fail-fast: false, so a single codename leg failing OR
-    # being cancelled still rolls its aggregate job result up to "failure"/
-    # "cancelled" even when the other legs succeeded and uploaded their
-    # assets. Run on any non-skipped outcome (success/failure/cancelled) from
-    # any of the four build jobs so the manifest still gets built from
-    # whatever assets actually made it onto the release; the manifest-build
-    # step below only reads assets that actually exist on the release, so a
-    # fully-empty set of builds just yields an empty (but harmless) manifest.
+    needs:
+      [build-windows, build-linux, build-macos, build-deb-noble, build-deb-jammy, build-deb-focal]
+    # Each build job can fail independently now. Run on any non-skipped
+    # outcome (success/failure/cancelled) from any of the six build jobs so
+    # the manifest still gets built from whatever assets actually made it
+    # onto the release; the manifest-build step below only reads assets that
+    # actually exist on the release, so a fully-empty set of builds just
+    # yields an empty (but harmless) manifest.
     if: >-
       ${{ always() && inputs.version != 'dev' && (
         needs.build-windows.result != 'skipped' ||
         needs.build-linux.result != 'skipped' ||
         needs.build-macos.result != 'skipped' ||
-        needs.build-deb.result != 'skipped'
+        needs.build-deb-noble.result != 'skipped' ||
+        needs.build-deb-jammy.result != 'skipped' ||
+        needs.build-deb-focal.result != 'skipped'
       ) }}
     runs-on: ubuntu-latest
     permissions:
@@ -461,7 +356,16 @@ jobs:
         run: gh release upload "${{ inputs.version }}" manifest.json --repo "${{ github.repository }}" --clobber
 
   finalize-release:
-    needs: [build-windows, build-linux, build-macos, build-deb, publish-manifest]
+    needs:
+      [
+        build-windows,
+        build-linux,
+        build-macos,
+        build-deb-noble,
+        build-deb-jammy,
+        build-deb-focal,
+        publish-manifest,
+      ]
     if: ${{ always() && inputs.version != 'dev' }}
     runs-on: ubuntu-latest
     permissions:
