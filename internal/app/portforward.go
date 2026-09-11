@@ -71,7 +71,8 @@ func (a *App) monitorPortForward(id string, errCh <-chan error, cancel context.C
 		a.pfMu.Lock()
 		pf, ok := a.portForwards[id]
 		if ok && pf.Status != "Stopped" {
-			delete(a.portForwards, id)
+			pf.Status = "Error"
+			a.portForwards[id] = pf
 			delete(a.pfCancels, id)
 		}
 		a.pfMu.Unlock()
