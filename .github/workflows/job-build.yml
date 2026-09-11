@@ -7,12 +7,98 @@ on:
         type: string
         required: false
         default: "dev"
+    outputs:
+      windows_build_result:
+        description: "Result of the standalone Windows build job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-windows.result }}
+      linux_build_result:
+        description: "Result of the standalone Linux (plain tarball) build job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-linux.result }}
+      macos_build_result:
+        description: "Result of the standalone macOS build job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-macos.result }}
+      deb_build_result:
+        description: "Aggregate result of the .deb build matrix (noble/jammy/focal) job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.build-deb.result }}
+      manifest_result:
+        description: "Result of the publish-manifest job (success/failure/cancelled/skipped)"
+        value: ${{ jobs.publish-manifest.result }}
 
 env:
   DEBIAN_DIR: build/linux/debian
 
 jobs:
-  run:
+  build-macos:
+    # Every platform gets its own standalone job (build-windows, build-linux,
+    # build-macos, build-deb) so each one's result can be surfaced
+    # independently via the outputs above — callers that only care about one
+    # platform's artifact (e.g. cd.yml's publish-homebrew/publish-apt jobs)
+    # shouldn't be blocked by another platform's build failure.
+    runs-on: macos-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      artifact: litelens-darwin-arm64.zip
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Go from go.mod
+        uses: ./.github/actions/setup-go
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          ignore-scripts: "false"
+
+      - name: Build frontend bundles
+        uses: ./.github/actions/build-frontend-bundles
+
+      - name: Build
+        shell: bash
+        run: >
+          pnpm build:app --
+          -platform darwin/arm64
+          -ldflags "-s -w -X main.Version=${{ inputs.version }}"
+
+      - name: Package (macOS)
+        run: cd build/bin && zip -r ${{ env.artifact }} litelens.app
+
+      - name: Compute SHA256 checksum
+        shell: bash
+        run: |
+          cd build/bin
+          shasum -a 256 "${{ env.artifact }}" | awk '{print $1}' > "${{ env.artifact }}.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.artifact }}
+          path: |
+            build/bin/${{ env.artifact }}
+            build/bin/${{ env.artifact }}.sha256
+          retention-days: 1
+
+      - name: Upload checksum artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checksum-${{ env.artifact }}
+          path: build/bin/${{ env.artifact }}.sha256
+          retention-days: 1
+
+      - name: Upload to release
+        if: ${{ inputs.version != 'dev' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.version }}" build/bin/${{ env.artifact }} --repo "${{ github.repository }}" --clobber
+
+  build-deb:
+    # Its own matrix job (fail-fast: false across the three codename legs),
+    # so its aggregate result (`deb_build_result` below) is "success" only
+    # when noble, jammy, AND focal all succeed — exactly what cd.yml's
+    # publish-apt job needs, independent of the other platforms' outcomes.
     permissions:
       contents: write
       actions: write
@@ -20,39 +106,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
-            platform: darwin/arm64
-            artifact: litelens-darwin-arm64.zip
-          - os: windows-latest
-            platform: windows/amd64
-            artifact: litelens-windows-amd64.exe
-          - os: ubuntu-latest
-            platform: linux/amd64
-            artifact: litelens-linux-amd64.tar.gz
-            build_flags: -tags webkit2_41
-          - os: ubuntu-latest
-            platform: linux/amd64/deb
-            wails_platform: linux/amd64
-            artifact: litelens-linux-amd64-noble.deb
-            build_flags: -tags webkit2_41
+          - artifact: litelens-linux-amd64-noble.deb
             codename: noble
             libwebkit_version: libwebkit2gtk-4.1-0
-          - os: ubuntu-latest
-            platform: linux/amd64/deb
-            wails_platform: linux/amd64
-            artifact: litelens-linux-amd64-jammy.deb
-            build_flags: -tags webkit2_41
+          - artifact: litelens-linux-amd64-jammy.deb
             codename: jammy
             libwebkit_version: libwebkit2gtk-4.0-37
-          - os: ubuntu-latest
-            platform: linux/amd64/deb
-            wails_platform: linux/amd64
-            artifact: litelens-linux-amd64-focal.deb
-            build_flags: -tags webkit2_41
+          - artifact: litelens-linux-amd64-focal.deb
             codename: focal
             libwebkit_version: libwebkit2gtk-4.0-37
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -67,7 +131,6 @@ jobs:
           ignore-scripts: "false"
 
       - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev desktop-file-utils
 
       - name: Build frontend bundles
@@ -77,22 +140,11 @@ jobs:
         shell: bash
         run: >
           pnpm build:app --
-          -platform ${{ matrix.wails_platform || matrix.platform }}
-          ${{ matrix.build_flags }}
+          -platform linux/amd64
+          -tags webkit2_41
           -ldflags "-s -w -X main.Version=${{ inputs.version }}"
 
-      - name: Package (macOS)
-        if: ${{ runner.os == 'macOS' }}
-        run: cd build/bin && zip -r ${{ matrix.artifact }} litelens.app
-
-      - name: Package (Linux)
-        if: ${{ runner.os == 'Linux' && matrix.platform != 'linux/amd64/deb' }}
-        run: |
-          cp build/appicon.png build/bin/
-          cd build/bin && tar -czf ${{ matrix.artifact }} litelens litelens-install-helper appicon.png
-
       - name: Package (Linux .deb)
-        if: ${{ matrix.platform == 'linux/amd64/deb' }}
         run: |
           set -euo pipefail
 
@@ -138,17 +190,14 @@ jobs:
           dpkg-deb --build "$DEBIAN_DIR" build/bin/${{ matrix.artifact }}
 
       - name: Validate .deb package (lintian)
-        if: ${{ matrix.platform == 'linux/amd64/deb' }}
         run: |
           set +e
           lintian --display-info build/bin/${{ matrix.artifact }} || true
 
       - name: Validate .desktop file
-        if: ${{ matrix.platform == 'linux/amd64/deb' }}
         run: desktop-file-validate "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
 
       - name: Smoke test .deb (container)
-        if: ${{ matrix.platform == 'linux/amd64/deb' }}
         run: |
           set -euo pipefail
           docker run --rm -v ${{ github.workspace }}/build/bin:/artifacts ubuntu:${{ matrix.codename }} bash -c "
@@ -158,25 +207,11 @@ jobs:
             test -f /usr/share/applications/litelens.desktop
           "
 
-      - name: Rename binary (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        shell: bash
-        run: mv build/bin/litelens.exe build/bin/${{ matrix.artifact }}
-
-      - name: Compute SHA256 checksum (Unix)
-        if: runner.os != 'Windows'
+      - name: Compute SHA256 checksum
         shell: bash
         run: |
           cd build/bin
           shasum -a 256 "${{ matrix.artifact }}" | awk '{print $1}' > "${{ matrix.artifact }}.sha256"
-
-      - name: Compute SHA256 checksum (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cd build/bin
-          $hash = Get-FileHash -Algorithm SHA256 "${{ matrix.artifact }}" | Select-Object -ExpandProperty Hash
-          $hash | Out-File -Encoding ascii "${{ matrix.artifact }}.sha256"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -188,9 +223,6 @@ jobs:
           retention-days: 1
 
       - name: Upload checksum artifact
-        # Only consumed by publish-manifest below (to populate manifest.json's
-        # sha256 field) — kept as a small dedicated artifact rather than
-        # re-downloading the full build artifact just to read the checksum.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: checksum-${{ matrix.artifact }}
@@ -204,17 +236,160 @@ jobs:
         run: |
           gh release upload "${{ inputs.version }}" build/bin/${{ matrix.artifact }} --repo "${{ github.repository }}" --clobber
 
+  build-windows:
+    # Standalone job (see build-macos above for rationale) so its result is
+    # surfaced independently via `windows_build_result` below.
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      artifact: litelens-windows-amd64.exe
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Go from go.mod
+        uses: ./.github/actions/setup-go
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          ignore-scripts: "false"
+
+      - name: Build frontend bundles
+        uses: ./.github/actions/build-frontend-bundles
+
+      - name: Build
+        shell: bash
+        run: >
+          pnpm build:app --
+          -platform windows/amd64
+          -ldflags "-s -w -X main.Version=${{ inputs.version }}"
+
+      - name: Rename binary
+        shell: bash
+        run: mv build/bin/litelens.exe build/bin/${{ env.artifact }}
+
+      - name: Compute SHA256 checksum
+        shell: pwsh
+        run: |
+          cd build/bin
+          $hash = Get-FileHash -Algorithm SHA256 "${{ env.artifact }}" | Select-Object -ExpandProperty Hash
+          $hash | Out-File -Encoding ascii "${{ env.artifact }}.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.artifact }}
+          path: |
+            build/bin/${{ env.artifact }}
+            build/bin/${{ env.artifact }}.sha256
+          retention-days: 1
+
+      - name: Upload checksum artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checksum-${{ env.artifact }}
+          path: build/bin/${{ env.artifact }}.sha256
+          retention-days: 1
+
+      - name: Upload to release
+        if: ${{ inputs.version != 'dev' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.version }}" build/bin/${{ env.artifact }} --repo "${{ github.repository }}" --clobber
+
+  build-linux:
+    # Standalone job (see build-macos above for rationale) so its result is
+    # surfaced independently via `linux_build_result` below.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      artifact: litelens-linux-amd64.tar.gz
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Go from go.mod
+        uses: ./.github/actions/setup-go
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          ignore-scripts: "false"
+
+      - name: Install Linux system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev desktop-file-utils
+
+      - name: Build frontend bundles
+        uses: ./.github/actions/build-frontend-bundles
+
+      - name: Build
+        shell: bash
+        run: >
+          pnpm build:app --
+          -platform linux/amd64
+          -tags webkit2_41
+          -ldflags "-s -w -X main.Version=${{ inputs.version }}"
+
+      - name: Package (Linux)
+        run: |
+          cp build/appicon.png build/bin/
+          cd build/bin && tar -czf ${{ env.artifact }} litelens litelens-install-helper appicon.png
+
+      - name: Compute SHA256 checksum
+        shell: bash
+        run: |
+          cd build/bin
+          shasum -a 256 "${{ env.artifact }}" | awk '{print $1}' > "${{ env.artifact }}.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.artifact }}
+          path: |
+            build/bin/${{ env.artifact }}
+            build/bin/${{ env.artifact }}.sha256
+          retention-days: 1
+
+      - name: Upload checksum artifact
+        # Only consumed by publish-manifest below (to populate manifest.json's
+        # sha256 field) — kept as a small dedicated artifact rather than
+        # re-downloading the full build artifact just to read the checksum.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checksum-${{ env.artifact }}
+          path: build/bin/${{ env.artifact }}.sha256
+          retention-days: 1
+
+      - name: Upload to release
+        if: ${{ inputs.version != 'dev' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.version }}" build/bin/${{ env.artifact }} --repo "${{ github.repository }}" --clobber
+
   publish-manifest:
-    needs: run
-    # `run` uses fail-fast: false, so a single matrix leg failing OR being
-    # cancelled still rolls the aggregate job result up to "failure"/
-    # "cancelled" even when other platforms succeeded and uploaded their
-    # assets. Run on any non-skipped outcome (success/failure/cancelled) so
-    # the manifest still gets built from whatever assets actually made it
-    # onto the release; the manifest-build step below only reads assets that
-    # actually exist on the release, so a fully-empty matrix just yields an
-    # empty (but harmless) manifest.
-    if: ${{ always() && needs.run.result != 'skipped' && inputs.version != 'dev' }}
+    needs: [build-windows, build-linux, build-macos, build-deb]
+    # `build-deb` uses fail-fast: false, so a single codename leg failing OR
+    # being cancelled still rolls its aggregate job result up to "failure"/
+    # "cancelled" even when the other legs succeeded and uploaded their
+    # assets. Run on any non-skipped outcome (success/failure/cancelled) from
+    # any of the four build jobs so the manifest still gets built from
+    # whatever assets actually made it onto the release; the manifest-build
+    # step below only reads assets that actually exist on the release, so a
+    # fully-empty set of builds just yields an empty (but harmless) manifest.
+    if: >-
+      ${{ always() && inputs.version != 'dev' && (
+        needs.build-windows.result != 'skipped' ||
+        needs.build-linux.result != 'skipped' ||
+        needs.build-macos.result != 'skipped' ||
+        needs.build-deb.result != 'skipped'
+      ) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -286,7 +461,7 @@ jobs:
         run: gh release upload "${{ inputs.version }}" manifest.json --repo "${{ github.repository }}" --clobber
 
   finalize-release:
-    needs: [run, publish-manifest]
+    needs: [build-windows, build-linux, build-macos, build-deb, publish-manifest]
     if: ${{ always() && inputs.version != 'dev' }}
     runs-on: ubuntu-latest
     permissions:
