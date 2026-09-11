@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"net/http"
 	goruntime "runtime"
 
 	"github.com/joho/godotenv"
@@ -43,7 +44,7 @@ func main() {
 		MinHeight: 600,
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
-			Handler: plugin.NewPluginAssetHandler(a.PluginAssetDir),
+			Handler: buildAPIHandler(a),
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		Menu:             buildMenu(a),
@@ -57,6 +58,17 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+// buildAPIHandler mounts the two custom API routes the asset server serves
+// alongside the embedded frontend: installed-plugin assets (existing) and
+// the marketplace logo proxy (works around GitHub release assets being
+// unservable as an <img> src directly, see NewMarketplaceLogoHandler).
+func buildAPIHandler(a *app.App) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/api/plugins/", plugin.NewPluginAssetHandler(a.PluginAssetDir))
+	mux.Handle("/api/marketplace/logo", plugin.NewMarketplaceLogoHandler())
+	return mux
 }
 
 func buildMenu(a *app.App) *menu.Menu {

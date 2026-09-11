@@ -72,6 +72,13 @@ type Manifest struct {
 	Capabilities       []string                 `json:"capabilities"`
 	Assets             ManifestAssetNames       `json:"assets"`
 	SourceURL          string                   `json:"sourceUrl"`
+	// LogoURL is the direct GitHub release download URL for the plugin's logo
+	// (resolved from Assets.Logo via the litelens-plugin-<id>-logo.<ext> asset
+	// naming convention), populated by the marketplace fetch flow. Unlike the
+	// /api/plugins/{pluginID}/* route, it's servable before the plugin is
+	// installed, since the logo file doesn't exist on disk until then. Empty
+	// when the plugin has no logo.
+	LogoURL string `json:"logoUrl,omitempty"`
 }
 
 // ManifestIndex is the optional repo-wide manifest.json release asset that

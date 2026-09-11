@@ -43,7 +43,7 @@ export const PluginCardFallback: FC<PluginCardFallbackProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <PluginLogo
-              src={pluginLogoUrl(status.pluginId, status.assets?.logo)}
+              src={pluginLogoUrl(status.pluginId, true, status.assets?.logo, status.logoUrl)}
               alt={`${status.pluginId} logo`}
             />
             <h3 className="text-h3 font-medium">{status.pluginId}</h3>

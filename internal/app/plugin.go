@@ -1036,6 +1036,12 @@ func (a *App) GetPluginsFromMarketplace() *dto.MarketplaceResult {
 					continue
 				}
 				manifest.SourceURL = src.sourceURL
+				if manifest.Assets.Logo != "" {
+					logoAssetName := plugin.ResolveLogoAssetName(pluginID, manifest.Assets.Logo)
+					if logoURL, ok := assets.Lookup(logoAssetName); ok {
+						manifest.LogoURL = logoURL
+					}
+				}
 				manifests = append(manifests, manifest)
 			}
 

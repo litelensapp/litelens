@@ -18,7 +18,7 @@ env:
   DEBIAN_DIR: build/linux/debian
 
 jobs:
-  build:
+  build-deb:
     permissions:
       contents: write
       actions: write
@@ -104,12 +104,27 @@ jobs:
       - name: Validate .desktop file
         run: desktop-file-validate "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
 
+      - name: Cache apt archives for smoke test
+        if: ${{ vars.SKIP_DEB_SMOKE_TEST != 'true' }}
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .apt-cache-${{ inputs.codename }}
+          key: apt-cache-${{ inputs.codename }}-${{ hashFiles(format('{0}/DEBIAN/control', env.DEBIAN_DIR)) }}
+
       - name: Smoke test .deb (container)
+        # Set the SKIP_DEB_SMOKE_TEST repository/org variable to "true" to
+        # skip this step — the container pull + apt install can sometimes
+        # take a long time to finish.
+        if: ${{ vars.SKIP_DEB_SMOKE_TEST != 'true' }}
         run: |
           set -euo pipefail
-          docker run --rm -v ${{ github.workspace }}/build/bin:/artifacts ubuntu:${{ inputs.codename }} bash -c "
+          mkdir -p .apt-cache-${{ inputs.codename }}
+          docker run --rm \
+            -v ${{ github.workspace }}/build/bin:/artifacts \
+            -v ${{ github.workspace }}/.apt-cache-${{ inputs.codename }}:/var/cache/apt/archives \
+            ubuntu:${{ inputs.codename }} bash -c "
             apt-get update
-            apt-get install -y /artifacts/${{ env.artifact }}
+            apt-get install -y --no-install-recommends /artifacts/${{ env.artifact }}
             litelens --version
             test -f /usr/share/applications/litelens.desktop
           "
