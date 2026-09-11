@@ -87,15 +87,17 @@ export const PodSimpleTable: FC<PodSimpleTableProps> = ({ pods }) => {
       </Table>
 
       {isPaginated && (
-        <TablePagination
-          page={page}
-          pageCount={pageCount}
-          pageSize={pageSize}
-          pageSizeOptions={pageSizeOptions}
-          totalItems={pods.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
+        <div className="px-2 pb-2">
+          <TablePagination
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            pageSizeOptions={pageSizeOptions}
+            totalItems={pods.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       )}
     </div>
   );

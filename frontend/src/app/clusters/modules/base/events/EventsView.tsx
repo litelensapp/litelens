@@ -1,9 +1,9 @@
 import { ResourceExplanationTooltip, SearchInput } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { EventsTable } from "./components/EventsTable";
 import { useGetEvents } from "./hooks/data-access/useGetEvents";
-import { useMainLayoutContext } from "../../../MainLayoutContext";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 export const EventsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
