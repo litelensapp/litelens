@@ -2,22 +2,14 @@ import {
   AnnotationBadge,
   ButtonGroup,
   LoadingSpinner,
-  ResourceCell,
   ResourceDeletionButton,
   ResourceDetailDrawer,
   ResourceDetailDrawerHeader,
   ResourceDetailEmptyBody,
-  ResourceLink,
   ResourceModificationButton,
   ScrollArea,
   Separator,
   SheetTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsContent,
   TabsList,
@@ -27,10 +19,10 @@ import {
 import { FC, Fragment, useEffect, useState } from "react";
 import { useCatchForbiddenResource } from "../../../../../shared/hooks/async-events/useCatchForbiddenResource";
 import { useMainLayoutContext } from "../../../../MainLayoutContext";
-import { useDetailDrawerContext } from "../../../../shared/components/details/DetailDrawerContext";
 import { SectionDivider } from "../../../../shared/components/details/SectionDivider";
 import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlock";
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
+import { PodSimpleTable } from "../../../workloads/pods/components/PodSimpleTable";
 import { useGetPods } from "../../../workloads/pods/hooks/data-access/useGetPods";
 import { EventsTable } from "../../events/components/EventsTable";
 import { useGetEvents } from "../../events/hooks/data-access/useGetEvents";
@@ -187,65 +179,13 @@ const NodeEventsTab: FC<{ node: Node }> = ({ node }) => {
 
 const NodePodsTab: FC<{ node: Node }> = ({ node }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
   const { data: pods = [] } = useGetPods({ context: activeContext, namespaces: [] });
   const nodePods = pods
     .filter((p) => p.NodeName === node.Name)
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
-  return (
-    <ScrollArea className="h-full">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-xs">Name</TableHead>
-            <TableHead className="text-xs">Namespace</TableHead>
-            <TableHead className="text-xs">Ready</TableHead>
-            <TableHead className="text-xs">CPU</TableHead>
-            <TableHead className="text-xs">Memory</TableHead>
-            <TableHead className="text-xs">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {nodePods.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
-                Item list is empty
-              </TableCell>
-            </TableRow>
-          ) : (
-            nodePods.map((p) => (
-              <TableRow key={`${p.Namespace}/${p.Name}`}>
-                <TableCell className="max-w-35 truncate font-mono text-xs">
-                  <ResourceLink
-                    truncate
-                    truncateTextClassName="max-w-35"
-                    onClick={() => onTogglePodDetail(p.Namespace, p.Name)}
-                  >
-                    {p.Name}
-                  </ResourceLink>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <ResourceLink truncate onClick={() => onToggleNamespaceDetail(p.Namespace)}>
-                    {p.Namespace}
-                  </ResourceLink>
-                </TableCell>
-                <TableCell className="text-xs">{p.Ready}</TableCell>
-                <TableCell>
-                  <ResourceCell label={p.CPU} percent={p.CPUPercent} />
-                </TableCell>
-                <TableCell>
-                  <ResourceCell label={p.Memory} percent={p.MemPercent} />
-                </TableCell>
-                <TableCell className="text-xs text-success">{p.Status}</TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
-  );
+  return <PodSimpleTable pods={nodePods} />;
 };
 
 const NodeDrawerCtaButtons: FC<{ name: string; unschedulable: boolean; onDeleted: () => void }> = ({

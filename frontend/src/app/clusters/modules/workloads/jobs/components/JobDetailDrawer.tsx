@@ -2,7 +2,6 @@ import {
   AnnotationBadge,
   ButtonGroup,
   LoadingSpinner,
-  ResourceCell,
   ResourceDeletionButton,
   ResourceDetailDrawer,
   ResourceDetailDrawerHeader,
@@ -11,12 +10,6 @@ import {
   ResourceModificationButton,
   ScrollArea,
   SheetTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsContent,
   TabsList,
@@ -32,6 +25,7 @@ import { useUnifiedTray } from "../../../../shared/components/trays/unified/Unif
 import { useResourceLinks } from "../../../../shared/hooks/useResourceLinks";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
+import { PodSimpleTable } from "../../pods/components/PodSimpleTable";
 import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
 import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
 import type { Job } from "../api/resources";
@@ -188,7 +182,6 @@ const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
 
 const JobPodsTab: FC<{ j: Job }> = ({ j }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
   const { data: allPods = [] } = useGetPods({ context: activeContext, namespaces: [j.Namespace] });
   const pods = allPods
@@ -198,60 +191,7 @@ const JobPodsTab: FC<{ j: Job }> = ({ j }) => {
     )
     .toSorted((a, b) => a.Name.localeCompare(b.Name));
 
-  return (
-    <ScrollArea className="h-full">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-xs">Name</TableHead>
-            <TableHead className="text-xs">Namespace</TableHead>
-            <TableHead className="text-xs">Ready</TableHead>
-            <TableHead className="text-xs">CPU</TableHead>
-            <TableHead className="text-xs">Memory</TableHead>
-            <TableHead className="text-xs">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pods.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
-                Item list is empty
-              </TableCell>
-            </TableRow>
-          ) : (
-            pods.map((p) => (
-              <TableRow key={`${p.Namespace}/${p.Name}`}>
-                <TableCell className="max-w-40 truncate font-mono text-xs">
-                  <ResourceLink
-                    truncate
-                    truncateTextClassName="max-w-40"
-                    onClick={() => onTogglePodDetail(p.Namespace, p.Name)}
-                  >
-                    {p.Name}
-                  </ResourceLink>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <ResourceLink truncate onClick={() => onToggleNamespaceDetail(p.Namespace)}>
-                    {p.Namespace}
-                  </ResourceLink>
-                </TableCell>
-                <TableCell className="text-xs">{p.Ready}</TableCell>
-                <TableCell>
-                  <ResourceCell label={p.CPU} percent={p.CPUPercent} />
-                </TableCell>
-                <TableCell>
-                  <ResourceCell label={p.Memory} percent={p.MemPercent} />
-                </TableCell>
-                <TableCell>
-                  <PodStatusBadge status={p.Status} />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
-  );
+  return <PodSimpleTable pods={pods} />;
 };
 
 interface JobDrawerCtaButtonsProps {

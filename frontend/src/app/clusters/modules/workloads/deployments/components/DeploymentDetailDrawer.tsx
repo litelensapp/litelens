@@ -5,7 +5,6 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   LoadingSpinner,
-  ResourceCell,
   ResourceDeletionButton,
   ResourceDetailDrawer,
   ResourceDetailDrawerHeader,
@@ -39,7 +38,7 @@ import { ManagedFieldBlock } from "../../../../shared/components/ManagedFieldBlo
 import { useUnifiedTray } from "../../../../shared/components/trays/unified/UnifiedTrayContext";
 import { EventsTable } from "../../../base/events/components/EventsTable";
 import { useGetEvents } from "../../../base/events/hooks/data-access/useGetEvents";
-import { PodStatusBadge } from "../../pods/components/PodStatusBadge";
+import { PodSimpleTable } from "../../pods/components/PodSimpleTable";
 import { useGetPods } from "../../pods/hooks/data-access/useGetPods";
 import { useGetReplicaSets } from "../../replicasets/hooks/data-access/useGetReplicaSets";
 import type { Deployment } from "../api/resources";
@@ -318,7 +317,6 @@ const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) =
 
 const DeploymentPodsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
 
   const { data: allRS = [] } = useGetReplicaSets({
     context: activeContext,
@@ -349,60 +347,7 @@ const DeploymentPodsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
     [allPods, rsNames]
   );
 
-  return (
-    <ScrollArea className="h-full">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-xs">Name</TableHead>
-            <TableHead className="text-xs">Namespace</TableHead>
-            <TableHead className="text-xs">Ready</TableHead>
-            <TableHead className="text-xs">CPU</TableHead>
-            <TableHead className="text-xs">Memory</TableHead>
-            <TableHead className="text-xs">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pods.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
-                Item list is empty
-              </TableCell>
-            </TableRow>
-          ) : (
-            pods.map((p) => (
-              <TableRow key={`${p.Namespace}/${p.Name}`}>
-                <TableCell className="max-w-40 font-mono text-xs">
-                  <ResourceLink
-                    truncate
-                    truncateTextClassName="max-w-40"
-                    onClick={() => onTogglePodDetail(p.Namespace, p.Name)}
-                  >
-                    {p.Name}
-                  </ResourceLink>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <ResourceLink truncate onClick={() => onToggleNamespaceDetail(p.Namespace)}>
-                    {p.Namespace}
-                  </ResourceLink>
-                </TableCell>
-                <TableCell className="text-xs">{p.Ready}</TableCell>
-                <TableCell>
-                  <ResourceCell label={p.CPU} percent={p.CPUPercent} />
-                </TableCell>
-                <TableCell>
-                  <ResourceCell label={p.Memory} percent={p.MemPercent} />
-                </TableCell>
-                <TableCell>
-                  <PodStatusBadge status={p.Status} />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
-  );
+  return <PodSimpleTable pods={pods} />;
 };
 
 const DeploymentEventsTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
