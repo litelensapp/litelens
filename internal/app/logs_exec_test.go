@@ -261,7 +261,7 @@ func TestStreamLogs_NoClient(t *testing.T) {
 	a := minimalApp()
 	a.ctx = context.Background()
 
-	err := a.StreamLogs("missing-context", "default", "pod", "app")
+	err := a.StreamLogs("missing-context", "default", "pod", "app", false)
 	if err == nil {
 		t.Fatal("expected error for missing context client")
 	}

@@ -24,9 +24,8 @@ export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
     )}
   >
     <div className="flex items-center gap-4">
-      <div className="flex cursor-not-allowed items-center gap-1.5 text-xs text-muted-foreground opacity-50">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Checkbox
-          disabled
           aria-label="Show timestamps"
           checked={opts.showTimestamps}
           onCheckedChange={(v) => updateOpts("showTimestamps", Boolean(v))}

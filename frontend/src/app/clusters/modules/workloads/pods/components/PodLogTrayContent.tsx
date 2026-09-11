@@ -58,6 +58,7 @@ export const PodLogTrayContent: FC<PodLogTrayContentProps> = ({ tab, collapsed }
     pod: tab.pod,
     container: state.opts.container,
     wrap: state.opts.wrap,
+    showTimestamps: state.opts.showTimestamps,
   });
 
   const updateOpts = useCallback(

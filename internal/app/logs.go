@@ -18,7 +18,7 @@ func logKey(ns, pod, container string) string {
 
 // StreamLogs starts a streaming log tail for the given pod/container.
 // Any pre-existing stream with the same key is cancelled first.
-func (a *App) StreamLogs(contextName, ns, pod, container string) error {
+func (a *App) StreamLogs(contextName, ns, pod, container string, timestamps bool) error {
 	key := logKey(ns, pod, container)
 
 	a.streamMu.Lock()
@@ -40,8 +40,9 @@ func (a *App) StreamLogs(contextName, ns, pod, container string) error {
 	}
 
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{
-		Container: container,
-		Follow:    true,
+		Container:  container,
+		Follow:     true,
+		Timestamps: timestamps,
 	})
 	stream, err := req.Stream(childCtx)
 	if err != nil {
