@@ -18,7 +18,7 @@ env:
   DEBIAN_DIR: build/linux/debian
 
 jobs:
-  build:
+  build-deb:
     permissions:
       contents: write
       actions: write
