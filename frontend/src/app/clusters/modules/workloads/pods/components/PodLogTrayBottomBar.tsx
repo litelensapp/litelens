@@ -40,9 +40,8 @@ export const PodLogTrayBottomBar: FC<PodLogTrayBottomBarProps> = ({
         />
         <span className="select-none">Word wrap</span>
       </div>
-      <div className="flex cursor-not-allowed items-center gap-1.5 text-xs text-muted-foreground opacity-50">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Checkbox
-          disabled
           aria-label="Show prev. terminated"
           checked={opts.showPrevTerminated}
           onCheckedChange={(v) => updateOpts("showPrevTerminated", Boolean(v))}

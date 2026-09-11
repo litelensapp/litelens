@@ -59,6 +59,7 @@ export const PodLogTrayContent: FC<PodLogTrayContentProps> = ({ tab, collapsed }
     container: state.opts.container,
     wrap: state.opts.wrap,
     showTimestamps: state.opts.showTimestamps,
+    showPrevTerminated: state.opts.showPrevTerminated,
   });
 
   const updateOpts = useCallback(
@@ -81,8 +82,16 @@ export const PodLogTrayContent: FC<PodLogTrayContentProps> = ({ tab, collapsed }
         ns: tab.ns,
         pod: tab.pod,
         container: state.opts.container,
+        previous: state.opts.showPrevTerminated,
       }),
-    [downloadLogs, tab.contextName, tab.ns, tab.pod, state.opts.container]
+    [
+      downloadLogs,
+      tab.contextName,
+      tab.ns,
+      tab.pod,
+      state.opts.container,
+      state.opts.showPrevTerminated,
+    ]
   );
 
   return (
