@@ -23,7 +23,11 @@ jobs:
   publish-homebrew:
     name: Publish to Homebrew
     needs: [release-version, build]
-    if: ${{ needs.build.result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    # Homebrew only needs the macOS artifact and the manifest that
+    # references it — it shouldn't be blocked by Windows/Linux build
+    # failures within job-build.yml, so check those two job results
+    # directly instead of the reusable workflow's overall (all-jobs) result.
+    if: ${{ needs.build.outputs.macos_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
     uses: ./.github/workflows/job-publish-homebrew.yml
     secrets: inherit
     with:
@@ -32,7 +36,12 @@ jobs:
   publish-apt:
     name: Publish to APT
     needs: [release-version, build]
-    if: ${{ needs.build.result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
+    # APT only needs all three .deb builds (noble/jammy/focal) and the
+    # manifest that references them — it shouldn't be blocked by macOS/
+    # Windows/plain-Linux build failures within job-build.yml, so check
+    # those two job results directly instead of the reusable workflow's
+    # overall (all-jobs) result.
+    if: ${{ needs.build.outputs.deb_build_result == 'success' && needs.build.outputs.manifest_result == 'success' && needs.release-version.outputs.tag_name != 'dev' }}
     uses: ./.github/workflows/job-publish-apt.yml
     secrets: inherit
     with:
