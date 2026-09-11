@@ -130,7 +130,12 @@ export const PluginCard: FC<PluginCardProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <PluginLogo
-              src={pluginLogoUrl(plugin.id, plugin.assets?.logo)}
+              src={pluginLogoUrl(
+                plugin.id,
+                installStatus !== "NOT_INSTALLED",
+                plugin.assets?.logo,
+                plugin.logoUrl
+              )}
               alt={`${plugin.name} logo`}
             />
             <h3 className="text-h3 font-medium">{plugin.name}</h3>
