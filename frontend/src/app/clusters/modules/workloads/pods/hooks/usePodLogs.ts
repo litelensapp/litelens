@@ -46,6 +46,8 @@ interface UsePodLogsInput {
   pod: string;
   container: string;
   wrap?: boolean;
+  showTimestamps?: boolean;
+  showPrevTerminated?: boolean;
 }
 
 interface UsePodLogsResult {
@@ -68,6 +70,8 @@ export function usePodLogs({
   pod,
   container,
   wrap,
+  showTimestamps,
+  showPrevTerminated,
 }: UsePodLogsInput): UsePodLogsResult {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -162,7 +166,14 @@ export function usePodLogs({
 
     const startStream = () => {
       dispatch({ type: "connecting" });
-      StreamLogs(contextName, ns, pod, container).catch((err: unknown) => {
+      StreamLogs(
+        contextName,
+        ns,
+        pod,
+        container,
+        showTimestamps ?? false,
+        showPrevTerminated ?? false
+      ).catch((err: unknown) => {
         const errMsg = err instanceof Error ? err.message : String(err);
         dispatch({ type: "error", error: errMsg });
       });
@@ -191,7 +202,7 @@ export function usePodLogs({
       searchRef.current = null;
       applyFitRef.current = () => {};
     };
-  }, [contextName, ns, pod, container, attached]);
+  }, [contextName, ns, pod, container, attached, showTimestamps, showPrevTerminated]);
 
   // Toggling wrap after mount doesn't resize the container, so the
   // ResizeObserver won't fire on its own — re-apply fit explicitly.

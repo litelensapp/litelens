@@ -17,8 +17,10 @@ func logKey(ns, pod, container string) string {
 }
 
 // StreamLogs starts a streaming log tail for the given pod/container.
-// Any pre-existing stream with the same key is cancelled first.
-func (a *App) StreamLogs(contextName, ns, pod, container string) error {
+// Any pre-existing stream with the same key is cancelled first. When
+// previous is true, it tails the log of the container's previous terminated
+// instance instead of the current one.
+func (a *App) StreamLogs(contextName, ns, pod, container string, timestamps, previous bool) error {
 	key := logKey(ns, pod, container)
 
 	a.streamMu.Lock()
@@ -40,8 +42,10 @@ func (a *App) StreamLogs(contextName, ns, pod, container string) error {
 	}
 
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{
-		Container: container,
-		Follow:    true,
+		Container:  container,
+		Follow:     !previous,
+		Timestamps: timestamps,
+		Previous:   previous,
 	})
 	stream, err := req.Stream(childCtx)
 	if err != nil {
@@ -79,10 +83,14 @@ func (a *App) StreamLogs(contextName, ns, pod, container string) error {
 // DownloadPodLogs prompts the user for a save location, then writes the
 // current full log content for the given pod/container to disk. Returns nil
 // (without writing anything) if the user cancels the dialog.
-func (a *App) DownloadPodLogs(contextName, ns, pod, container string) error {
+func (a *App) DownloadPodLogs(contextName, ns, pod, container string, previous bool) error {
+	filename := fmt.Sprintf("%s_%s.log", pod, container)
+	if previous {
+		filename = fmt.Sprintf("%s_%s_previous.log", pod, container)
+	}
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "Save Logs",
-		DefaultFilename: fmt.Sprintf("%s_%s.log", pod, container),
+		DefaultFilename: filename,
 	})
 	if err != nil {
 		return fmt.Errorf("save file dialog: %w", err)
@@ -98,7 +106,7 @@ func (a *App) DownloadPodLogs(contextName, ns, pod, container string) error {
 		return fmt.Errorf("no client for context %q", contextName)
 	}
 
-	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container})
+	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Previous: previous})
 	stream, err := req.Stream(a.ctx)
 	if err != nil {
 		return fmt.Errorf("fetch logs: %w", err)
