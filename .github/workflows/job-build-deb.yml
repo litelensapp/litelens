@@ -105,6 +105,10 @@ jobs:
         run: desktop-file-validate "$DEBIAN_DIR/usr/share/applications/litelens.desktop"
 
       - name: Smoke test .deb (container)
+        # Set the SKIP_DEB_SMOKE_TEST repository/org variable to "true" to
+        # skip this step — the container pull + apt install can sometimes
+        # take a long time to finish.
+        if: ${{ vars.SKIP_DEB_SMOKE_TEST != 'true' }}
         run: |
           set -euo pipefail
           docker run --rm -v ${{ github.workspace }}/build/bin:/artifacts ubuntu:${{ inputs.codename }} bash -c "
