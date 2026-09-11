@@ -1,9 +1,14 @@
 import { FC, ReactNode } from "react";
 import { Button } from "../../atoms/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../atoms/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogSize,
+  DialogTitle,
+} from "../../atoms/dialog";
 import { Loader2Icon } from "../../atoms/icon";
-
-type DialogSize = "sm" | "md" | "lg" | "xl" | "2xl";
 
 interface FormModalProps {
   open: boolean;
@@ -30,7 +35,7 @@ export const FormModal: FC<FormModalProps> = ({
   submitDisabled = false,
   submitLabel = "Submit",
   cancelLabel = "Cancel",
-  size = "sm",
+  size = "md",
 }) => (
   <Dialog
     open={open}
