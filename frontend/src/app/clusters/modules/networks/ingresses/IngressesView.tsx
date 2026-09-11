@@ -207,7 +207,7 @@ export const IngressesView: FC = () => {
             </TableHead>
             <TableHead>Name</TableHead>
             {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
-            <TableHead>LoadBalancers</TableHead>
+            <TableHead className="w-40">Load Balancers</TableHead>
             <TableHead>Rules</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
@@ -266,7 +266,9 @@ export const IngressesView: FC = () => {
                       </ResourceLink>
                     </TableCell>
                   )}
-                  <TableCell className="font-mono text-xs">{i.LoadBalancers}</TableCell>
+                  <TableCell className="max-w-40 font-mono text-xs wrap-break-word whitespace-normal">
+                    {i.LoadBalancers}
+                  </TableCell>
                   <TableCell className="max-w-xs">
                     <IngressRulesCell rules={i.Rules} />
                   </TableCell>

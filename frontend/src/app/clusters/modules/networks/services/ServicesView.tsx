@@ -182,7 +182,7 @@ export const ServicesView: FC = () => {
             {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Type</TableHead>
             <TableHead>Cluster IP</TableHead>
-            <TableHead className="w-200">Ports</TableHead>
+            <TableHead className="w-35">Ports</TableHead>
             <TableHead>External IP</TableHead>
             <TableHead>Selector</TableHead>
             <TableHead>Age</TableHead>
@@ -245,7 +245,7 @@ export const ServicesView: FC = () => {
                   )}
                   <TableCell className="text-xs">{svc.Type}</TableCell>
                   <TableCell className="font-mono text-xs">{svc.ClusterIP}</TableCell>
-                  <TableCell className="max-w-200 font-mono text-xs wrap-break-word whitespace-normal">
+                  <TableCell className="max-w-35 font-mono text-xs wrap-break-word whitespace-normal">
                     {svc.Ports}
                   </TableCell>
                   <TableCell className="font-mono text-xs">{svc.ExternalIP}</TableCell>
