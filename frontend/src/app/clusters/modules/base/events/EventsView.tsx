@@ -1,9 +1,8 @@
-import { ResourceExplanationTooltip, SearchInput, TablePagination } from "@litelens/design-system";
+import { ResourceExplanationTooltip, SearchInput } from "@litelens/design-system";
 import { FC, useState } from "react";
 import { EventsTable } from "./components/EventsTable";
 import { useGetEvents } from "./hooks/data-access/useGetEvents";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
-import { usePagination } from "../../../shared/hooks/usePagination";
 import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 export const EventsView: FC = () => {
@@ -24,17 +23,6 @@ export const EventsView: FC = () => {
         e.Namespace.toLowerCase().includes(q)
     )
     .toSorted((a, b) => b.CreatedAt - a.CreatedAt);
-
-  const {
-    visibleItems: visibleEvents,
-    page,
-    pageCount,
-    pageSize,
-    pageSizeOptions,
-    isPaginated,
-    setPage,
-    setPageSize,
-  } = usePagination(events, { resetKey: search });
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -58,19 +46,7 @@ export const EventsView: FC = () => {
         </div>
       </div>
 
-      <EventsTable events={visibleEvents} isLoading={isLoading} />
-
-      {isPaginated && (
-        <TablePagination
-          page={page}
-          pageCount={pageCount}
-          pageSize={pageSize}
-          pageSizeOptions={pageSizeOptions}
-          totalItems={events.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      )}
+      <EventsTable events={events} isLoading={isLoading} />
     </div>
   );
 };
