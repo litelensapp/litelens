@@ -121,7 +121,7 @@ export const PluginCard: FC<PluginCardProps> = ({
   return (
     <div
       className={cn(
-        "shadow-depth-1 transition-interactive max-w-md overflow-hidden rounded-lg border-3 border-border bg-secondary-surface",
+        "shadow-depth-1 transition-interactive max-w-md min-w-72 flex-1 basis-full overflow-hidden rounded-lg border-3 border-border bg-secondary-surface sm:basis-[calc(50%-0.75rem)] xl:basis-[calc(33.333%-1rem)]",
         !isPluginDisabled && "hover:shadow-depth-2 hover:border-ring"
       )}
     >
