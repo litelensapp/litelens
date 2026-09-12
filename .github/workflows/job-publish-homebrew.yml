@@ -95,17 +95,14 @@ jobs:
 
             depends_on arch: :arm64
 
-            postflight do
+            postflight_steps do
               # The app is ad-hoc signed, not notarized. Homebrew preserves the
               # com.apple.quarantine xattr on extraction, which makes Gatekeeper
               # refuse to open it at all (no "Open Anyway" override). Strip
               # quarantine and re-sign ad-hoc, mirroring scripts/install.sh.
-              system_command "/usr/bin/xattr",
-                              args: ["-cr", "#{appdir}/litelens.app"],
-                              sudo: false
-              system_command "/usr/bin/codesign",
-                              args: ["--force", "--deep", "--sign", "-", "#{appdir}/litelens.app"],
-                              sudo: false
+              run "/usr/bin/xattr", args: ["-cr", "{{appdir}}/litelens.app"]
+              run "/usr/bin/codesign",
+                  args: ["--force", "--deep", "--sign", "-", "{{appdir}}/litelens.app"]
 
               # Record that this install came from Homebrew, so the app's own
               # runtime detection (which can be fooled by app translocation or
@@ -114,9 +111,8 @@ jobs:
               # internal/updater.DetectInstallSource consults before falling
               # back to its own heuristics. Reruns (upgrade/reinstall) simply
               # overwrite this with the same value.
-              litelens_dir = "#{Dir.home}/.litelens"
-              FileUtils.mkdir_p(litelens_dir)
-              File.write("#{litelens_dir}/install-source", "homebrew")
+              mkdir_p ".litelens", base: :home
+              write_file ".litelens/install-source", "homebrew", base: :home
             end
 
             uninstall trash: [
