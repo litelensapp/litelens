@@ -275,12 +275,12 @@ describe("IngressesView — edge cases", () => {
     expect(screen.getAllByText("my-ingress").length).toBeGreaterThan(0);
   });
 
-  it("renders all five table headers: Name, Namespace, LoadBalancers, Rules, Age", () => {
+  it("renders all five table headers: Name, Namespace, Load Balancers, Rules, Age", () => {
     renderView();
 
     expect(screen.getAllByText("Name").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Namespace").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("LoadBalancers").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Load Balancers").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Rules").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Age").length).toBeGreaterThan(0);
   });
