@@ -113,7 +113,7 @@ Two built-in tray "families" (modification/YAML-edit, pod logs+exec) share one b
 
 ### DTO/detail-drawer conventions
 
-Each resource has a `dto.<Type>` (Go) and matching TS interface. List views use lean fields; detail drawers add `CreatedAt`, `Labels`, `Annotations`, `ManagedFields`, etc. Detail drawers render via `ResourceDetailDrawer` with an `isLoading`/empty two-gate pattern. Cross-resource references (Namespace, ClusterRole, owning workload, etc.) always render as `<ResourceLink onClick={...}>` wired to `MainLayoutContext`'s `onToggle<Resource>Detail`, never plain text.
+Each resource has a `dto.<Type>` (Go) and matching TS interface. List views use lean fields; detail drawers add `CreatedAt`, `Labels`, `Annotations`, `ManagedFields`, etc. Detail drawers render via `ResourceDetailDrawer` with an `isLoading`/empty two-gate pattern. Cross-resource references (Namespace, ClusterRole, owning workload, etc.) always render as `<ResourceLink onClick={...}>` wired to `DetailDrawerContext`'s `onToggle<Resource>Detail` (via `useResourceLinks`), never plain text.
 
 ## Project-specific conventions
 
