@@ -22,15 +22,15 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useMemo, useState } from "react";
-import { useGetLeases } from "./hooks/data-access/useGetLeases";
-import { useDeleteLease } from "./hooks/data-mutation/useDeleteLease";
-import { useDeleteLeases } from "./hooks/data-mutation/useDeleteLeases";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { LeaseDeleteConfirmationModal } from "./components/LeaseDeleteConfirmationModal";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { useGetLeases } from "./hooks/data-access/useGetLeases";
+import { useDeleteLease } from "./hooks/data-mutation/useDeleteLease";
+import { useDeleteLeases } from "./hooks/data-mutation/useDeleteLeases";
 
 interface LeaseTableCtaButtonsProps {
   namespace: string;
@@ -78,13 +78,18 @@ const LeaseTableCtaButtons: FC<LeaseTableCtaButtonsProps> = ({ namespace, name }
 };
 
 export const LeasesView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleLease } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleLease: v.onToggleLease,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleLease } = useDetailDrawerContext();
   const { mutate: deleteBulk, isPending: isDeleteBulkPending } = useDeleteLeases();
 
   const { data: raw = [], isLoading } = useGetLeases({ context: activeContext, namespaces });

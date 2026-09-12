@@ -24,6 +24,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -32,7 +33,6 @@ import { ConfigMapDeleteConfirmationModal } from "./components/ConfigMapDeleteCo
 import { useGetConfigMaps } from "./hooks/data-access/useGetConfigMaps";
 import { useDeleteConfigMap } from "./hooks/data-mutation/useDeleteConfigMap";
 import { useDeleteConfigMaps } from "./hooks/data-mutation/useDeleteConfigMaps";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ConfigMapTableCtaButtonsProps {
   name: string;
@@ -84,9 +84,13 @@ const ConfigMapTableCtaButtons: FC<ConfigMapTableCtaButtonsProps> = ({ namespace
 };
 
 export const ConfigMapsView: FC = () => {
-  const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleConfigMapDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleConfigMapDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleConfigMapDetail: v.onToggleConfigMapDetail,
+  }));
+
+  const openBrowserURL = useOpenBrowserURL();
 
   const [search, setSearch] = useState("");
   const [selectedConfigMapIds, setSelectedConfigMapIds] = useState<Set<string>>(new Set());

@@ -142,7 +142,10 @@ const DeploymentAffinitiesField: FC<{ deployment: Deployment }> = ({ deployment 
 
 const DeploymentReplicaSetsSection: FC<{ deployment: Deployment }> = ({ deployment }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleReplicaSetDetail: v.onToggleReplicaSetDetail,
+  }));
 
   const { data: allRS = [] } = useGetReplicaSets({
     context: activeContext,
@@ -208,7 +211,9 @@ const DeploymentReplicaSetsSection: FC<{ deployment: Deployment }> = ({ deployme
 };
 
 const DeploymentOverviewTab: FC<{ deployment: Deployment }> = ({ deployment }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   return (
     <ScrollArea className="h-full">

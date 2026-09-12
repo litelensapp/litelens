@@ -25,6 +25,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -35,7 +36,6 @@ import { NamespaceStatusBadge } from "./components/NamespaceStatusBadge";
 import { useGetNamespaces } from "./hooks/data-access/useGetNamespaces";
 import { useDeleteNamespace } from "./hooks/data-mutation/useDeleteNamespace";
 import { useDeleteNamespaces } from "./hooks/data-mutation/useDeleteNamespaces";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const NamespaceTableCtaButtons: FC<{ name: string }> = ({ name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -80,14 +80,17 @@ const NamespaceTableCtaButtons: FC<{ name: string }> = ({ name }) => {
 };
 
 export const NamespacesView: FC = () => {
+  const { activeContext } = useMainLayoutContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedNamespaceNames, setSelectedNamespaceNames] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
   const { mutate: deleteNamespaces, isPending: isBulkDeletePending } = useDeleteNamespaces();
 

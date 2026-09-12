@@ -23,12 +23,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetNodes } from "./hooks/data-access/useGetNodes";
-import { useCordonNode } from "./hooks/data-mutation/useCordonNode";
-import { useDeleteNode } from "./hooks/data-mutation/useDeleteNode";
-import { useDeleteNodes } from "./hooks/data-mutation/useDeleteNodes";
-import { useDrainNode } from "./hooks/data-mutation/useDrainNode";
-import { useUncordonNode } from "./hooks/data-mutation/useUncordonNode";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -42,7 +37,12 @@ import { NodeDrainConfirmationModal } from "./components/NodeDrainConfirmationMo
 import { NodeSchedulableBadge } from "./components/NodeSchedulableBadge";
 import { NodeUncordonButton } from "./components/NodeUncordonButton";
 import { NodeUncordonConfirmationModal } from "./components/NodeUncordonConfirmationModal";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { useGetNodes } from "./hooks/data-access/useGetNodes";
+import { useCordonNode } from "./hooks/data-mutation/useCordonNode";
+import { useDeleteNode } from "./hooks/data-mutation/useDeleteNode";
+import { useDeleteNodes } from "./hooks/data-mutation/useDeleteNodes";
+import { useDrainNode } from "./hooks/data-mutation/useDrainNode";
+import { useUncordonNode } from "./hooks/data-mutation/useUncordonNode";
 
 const NodeTableCtaButtons: FC<{ name: string; unschedulable: boolean }> = ({
   name,
@@ -143,9 +143,12 @@ const NodeTableCtaButtons: FC<{ name: string; unschedulable: boolean }> = ({
 };
 
 export const NodesView: FC = () => {
-  const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNodeDetail } = useDetailDrawerContext();
+  const { onToggleNodeDetail } = useDetailDrawerContext((v) => ({
+    onToggleNodeDetail: v.onToggleNodeDetail,
+  }));
+
+  const openBrowserURL = useOpenBrowserURL();
 
   const [search, setSearch] = useState("");
   const [selectedNodeNames, setSelectedNodeNames] = useState<Set<string>>(new Set());

@@ -77,7 +77,9 @@ const StorageClassTableCtaButtons: FC<{ name: string }> = ({ name }) => {
 export const StorageClassesView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
-  const { onToggleStorageClassDetail } = useDetailDrawerContext();
+  const { onToggleStorageClassDetail } = useDetailDrawerContext((v) => ({
+    onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+  }));
   const [search, setSearch] = useState("");
   const [selectedSCNames, setSelectedSCNames] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);

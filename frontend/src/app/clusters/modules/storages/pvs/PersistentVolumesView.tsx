@@ -87,7 +87,11 @@ export const PersistentVolumesView: FC = () => {
     onTogglePersistentVolumeDetail,
     onToggleStorageClassDetail,
     onTogglePersistentVolumeClaimDetail,
-  } = useDetailDrawerContext();
+  } = useDetailDrawerContext((v) => ({
+    onTogglePersistentVolumeDetail: v.onTogglePersistentVolumeDetail,
+    onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+    onTogglePersistentVolumeClaimDetail: v.onTogglePersistentVolumeClaimDetail,
+  }));
 
   const openBrowserURL = useOpenBrowserURL();
 

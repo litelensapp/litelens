@@ -92,7 +92,10 @@ export const NetworkPoliciesView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleNetworkPolicyDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleNetworkPolicyDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleNetworkPolicyDetail: v.onToggleNetworkPolicyDetail,
+  }));
 
   const { mutate: deleteNetworkPolicies, isPending: isBulkDeletePending } =
     useDeleteNetworkPolicies();

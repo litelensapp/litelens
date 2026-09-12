@@ -96,7 +96,10 @@ export const ResourceQuotasView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleResourceQuotaDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleResourceQuotaDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleResourceQuotaDetail: v.onToggleResourceQuotaDetail,
+  }));
 
   const { mutate: deleteResourceQuotas, isPending: isBulkDeletePending } =
     useDeleteResourceQuotas();

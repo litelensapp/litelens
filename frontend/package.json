@@ -22,7 +22,8 @@
     "@xterm/xterm": "^6.0.0",
     "cronstrue": "^3.25.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "use-sync-external-store": "^1.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -30,6 +31,7 @@
     "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
+    "@types/use-sync-external-store": "^1.5.0",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",

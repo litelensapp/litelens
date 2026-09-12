@@ -29,7 +29,9 @@ import { useDeleteResourceQuota } from "../hooks/data-mutation/useDeleteResource
 import { ResourceQuotaDeleteConfirmationModal } from "./ResourceQuotaDeleteConfirmationModal";
 
 const ResourceQuotaOverviewTab: FC<{ rq: ResourceQuotaDetail }> = ({ rq }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   const quotaEntries = Object.entries(rq.Hard).sort(([a], [b]) => a.localeCompare(b));
 

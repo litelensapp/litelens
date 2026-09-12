@@ -37,7 +37,12 @@ import { RoleBindingDeleteConfirmationModal } from "./RoleBindingDeleteConfirmat
 
 const RoleBindingOverviewTab: FC<{ rb: RoleBinding }> = ({ rb }) => {
   const { onToggleNamespaceDetail, onToggleRoleDetail, onToggleServiceAccountDetail } =
-    useDetailDrawerContext();
+    useDetailDrawerContext((v) => ({
+      onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+      onToggleRoleDetail: v.onToggleRoleDetail,
+      onToggleServiceAccountDetail: v.onToggleServiceAccountDetail,
+    }));
+
   return (
     <ScrollArea className="h-full">
       <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
@@ -204,9 +209,13 @@ const RoleBindingDrawerCtaButtons: FC<RoleBindingDrawerCtaButtonsProps> = ({
   roleBindingNamespace,
   onClose,
 }) => {
+  const { onToggleRoleBindingDetail } = useDetailDrawerContext((v) => ({
+    onToggleRoleBindingDetail: v.onToggleRoleBindingDetail,
+  }));
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { openTab } = useUnifiedTray();
-  const { onToggleRoleBindingDetail } = useDetailDrawerContext();
+
   const { mutate: deleteRoleBinding, isPending: isDeletePending } = useDeleteRoleBinding();
 
   const handleDeleteConfirm = () => {

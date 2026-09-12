@@ -32,21 +32,30 @@ export const ClusterDetailDrawers: FC = () => {
   const {
     selectedNamespaceName,
     onToggleNamespaceDetail,
-
     selectedNodeName,
     onToggleNodeDetail,
-
     selectedEventName,
     selectedEventNamespace,
     onToggleEventDetail,
-
     selectedLeaseName,
     selectedLeaseNamespace,
     onToggleLease,
-
     selectedPriorityClassName,
     onTogglePriorityClass,
-  } = useDetailDrawerContext();
+  } = useDetailDrawerContext((v) => ({
+    selectedNamespaceName: v.selectedNamespaceName,
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    selectedNodeName: v.selectedNodeName,
+    onToggleNodeDetail: v.onToggleNodeDetail,
+    selectedEventName: v.selectedEventName,
+    selectedEventNamespace: v.selectedEventNamespace,
+    onToggleEventDetail: v.onToggleEventDetail,
+    selectedLeaseName: v.selectedLeaseName,
+    selectedLeaseNamespace: v.selectedLeaseNamespace,
+    onToggleLease: v.onToggleLease,
+    selectedPriorityClassName: v.selectedPriorityClassName,
+    onTogglePriorityClass: v.onTogglePriorityClass,
+  }));
 
   return (
     <>

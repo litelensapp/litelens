@@ -29,7 +29,9 @@ import { useDeleteLimitRange } from "../hooks/data-mutation/useDeleteLimitRange"
 import { LimitRangeDeleteConfirmationModal } from "./LimitRangeDeleteConfirmationModal";
 
 const LimitRangeOverviewTab: FC<{ lr: LimitRangeDetail }> = ({ lr }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   return (
     <ScrollArea className="h-full">

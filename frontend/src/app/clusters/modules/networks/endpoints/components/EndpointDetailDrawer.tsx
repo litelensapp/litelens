@@ -38,7 +38,9 @@ import { useDeleteEndpoint } from "../hooks/data-mutation/useDeleteEndpoint";
 import { EndpointDeleteConfirmationModal } from "./EndpointDeleteConfirmationModal";
 
 const EndpointOverviewTab: FC<{ ep: Endpoint }> = ({ ep }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
   const flatAddresses = (ep.Subsets ?? []).flatMap((s, si) =>
     (s.Addresses ?? []).map((addr, ai) => ({ ...addr, _key: `${si}-${ai}` }))
   );

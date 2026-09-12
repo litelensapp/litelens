@@ -43,29 +43,43 @@ export const ConfigStorageDetailDrawers: FC = () => {
     selectedConfigMapName,
     selectedConfigMapNamespace,
     onToggleConfigMapDetail,
-
     selectedSecretName,
     selectedSecretNamespace,
     onToggleSecretDetail,
-
     selectedResourceQuotaName,
     selectedResourceQuotaNamespace,
     onToggleResourceQuotaDetail,
-
     selectedLimitRangeName,
     selectedLimitRangeNamespace,
     onToggleLimitRangeDetail,
-
     selectedPersistentVolumeClaimName,
     selectedPersistentVolumeClaimNamespace,
     onTogglePersistentVolumeClaimDetail,
-
     selectedPersistentVolumeName,
     onTogglePersistentVolumeDetail,
-
     selectedStorageClassName,
     onToggleStorageClassDetail,
-  } = useDetailDrawerContext();
+  } = useDetailDrawerContext((v) => ({
+    selectedConfigMapName: v.selectedConfigMapName,
+    selectedConfigMapNamespace: v.selectedConfigMapNamespace,
+    onToggleConfigMapDetail: v.onToggleConfigMapDetail,
+    selectedSecretName: v.selectedSecretName,
+    selectedSecretNamespace: v.selectedSecretNamespace,
+    onToggleSecretDetail: v.onToggleSecretDetail,
+    selectedResourceQuotaName: v.selectedResourceQuotaName,
+    selectedResourceQuotaNamespace: v.selectedResourceQuotaNamespace,
+    onToggleResourceQuotaDetail: v.onToggleResourceQuotaDetail,
+    selectedLimitRangeName: v.selectedLimitRangeName,
+    selectedLimitRangeNamespace: v.selectedLimitRangeNamespace,
+    onToggleLimitRangeDetail: v.onToggleLimitRangeDetail,
+    selectedPersistentVolumeClaimName: v.selectedPersistentVolumeClaimName,
+    selectedPersistentVolumeClaimNamespace: v.selectedPersistentVolumeClaimNamespace,
+    onTogglePersistentVolumeClaimDetail: v.onTogglePersistentVolumeClaimDetail,
+    selectedPersistentVolumeName: v.selectedPersistentVolumeName,
+    onTogglePersistentVolumeDetail: v.onTogglePersistentVolumeDetail,
+    selectedStorageClassName: v.selectedStorageClassName,
+    onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+  }));
 
   return (
     <>

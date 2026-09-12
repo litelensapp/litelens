@@ -33,7 +33,9 @@ import { StatefulSetDeleteConfirmationModal } from "./StatefulSetDeleteConfirmat
 import { StatefulSetHealthBadge } from "./StatefulSetHealthBadge";
 
 const StatefulSetOverviewTab: FC<{ ss: StatefulSet }> = ({ ss }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   return (
     <ScrollArea className="h-full">

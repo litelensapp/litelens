@@ -22,6 +22,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -30,7 +31,6 @@ import { ClusterRoleDeleteConfirmationModal } from "./components/ClusterRoleDele
 import { useGetClusterRoles } from "./hooks/data-access/useGetClusterRoles";
 import { useDeleteClusterRole } from "./hooks/data-mutation/useDeleteClusterRole";
 import { useDeleteClusterRoles } from "./hooks/data-mutation/useDeleteClusterRoles";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface ClusterRoleTableCtaButtonsProps {
   name: string;
@@ -79,13 +79,15 @@ const ClusterRoleTableCtaButtons: FC<ClusterRoleTableCtaButtonsProps> = ({ name 
 };
 
 export const ClusterRolesView: FC = () => {
+  const { activeContext } = useMainLayoutContext();
+  const { onToggleClusterRoleDetail } = useDetailDrawerContext((v) => ({
+    onToggleClusterRoleDetail: v.onToggleClusterRoleDetail,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
   const [search, setSearch] = useState("");
   const [selectedClusterRoleNames, setSelectedClusterRoleNames] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext } = useMainLayoutContext();
-  const { onToggleClusterRoleDetail } = useDetailDrawerContext();
 
   const { mutate: deleteClusterRoles, isPending: isBulkDeletePending } = useDeleteClusterRoles();
 

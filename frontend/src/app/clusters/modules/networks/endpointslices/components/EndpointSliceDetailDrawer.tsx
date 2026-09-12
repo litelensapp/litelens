@@ -38,7 +38,9 @@ import { EventsTable } from "../../../base/events/components/EventsTable";
 import { EndpointSliceDeleteConfirmationModal } from "./EndpointSliceDeleteConfirmationModal";
 
 const EndpointSliceOverviewTab: FC<{ slice: EndpointSlice }> = ({ slice }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col">

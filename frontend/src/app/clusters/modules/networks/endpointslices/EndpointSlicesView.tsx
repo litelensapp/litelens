@@ -93,7 +93,10 @@ export const EndpointSlicesView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleEndpointSliceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleEndpointSliceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleEndpointSliceDetail: v.onToggleEndpointSliceDetail,
+  }));
 
   const { mutate: deleteEndpointSlices, isPending: isBulkDeletePending } =
     useDeleteEndpointSlices();

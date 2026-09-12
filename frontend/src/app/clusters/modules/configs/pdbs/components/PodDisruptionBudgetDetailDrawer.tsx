@@ -90,7 +90,9 @@ const PDBDrawerCtaButtons: FC<PDBDrawerCtaButtonsProps> = ({ pdbName, pdbNamespa
 };
 
 const PDBOverviewTab: FC<{ pdb: PodDisruptionBudgetDetail }> = ({ pdb }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   const hasLabels = Object.keys(pdb.Labels ?? {}).length > 0;
   const hasAnnotations = Object.keys(pdb.Annotations ?? {}).length > 0;

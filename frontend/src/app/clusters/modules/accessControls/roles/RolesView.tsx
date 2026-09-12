@@ -23,15 +23,15 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
-import { useGetRoles } from "./hooks/data-access/useGetRoles";
-import { useDeleteRole } from "./hooks/data-mutation/useDeleteRole";
-import { useDeleteRoles } from "./hooks/data-mutation/useDeleteRoles";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { RoleDeleteConfirmationModal } from "./components/RoleDeleteConfirmationModal";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
+import { useGetRoles } from "./hooks/data-access/useGetRoles";
+import { useDeleteRole } from "./hooks/data-mutation/useDeleteRole";
+import { useDeleteRoles } from "./hooks/data-mutation/useDeleteRoles";
 
 const RoleTableCtaButtons: FC<{ namespace: string; name: string }> = ({ namespace, name }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -79,13 +79,17 @@ const RoleTableCtaButtons: FC<{ namespace: string; name: string }> = ({ namespac
 };
 
 export const RolesView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleRoleDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleRoleDetail: v.onToggleRoleDetail,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleRoleDetail } = useDetailDrawerContext();
 
   const { mutate: deleteRoles, isPending: isBulkDeletePending } = useDeleteRoles();
 

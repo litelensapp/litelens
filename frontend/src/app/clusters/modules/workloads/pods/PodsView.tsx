@@ -105,7 +105,10 @@ const PodTableCtaButtons: FC<PodTableCtaButtonsProps> = ({ name, namespace, onLo
 export const PodsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onTogglePodDetail: v.onTogglePodDetail,
+  }));
 
   const resourceLinks = useResourceLinks();
 

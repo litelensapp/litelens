@@ -148,7 +148,9 @@ const PortForwardDrawerBody: FC<PortForwardDetailDrawerProps & { portForward: Po
   portForward: pf,
   onClose,
 }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
   const resourceLinks = useResourceLinks();
 
   const [editOpen, setEditOpen] = useState(false);

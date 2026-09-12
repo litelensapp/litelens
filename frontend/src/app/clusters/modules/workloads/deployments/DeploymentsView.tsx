@@ -133,7 +133,10 @@ const DeploymentTableCtaButtons: FC<DeploymentTableCtaButtonsProps> = ({
 export const DeploymentsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleDeploymentDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleDeploymentDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleDeploymentDetail: v.onToggleDeploymentDetail,
+  }));
 
   const [search, setSearch] = useState("");
 

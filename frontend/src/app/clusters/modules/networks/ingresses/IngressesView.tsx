@@ -124,7 +124,10 @@ export const IngressesView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleIngressDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleIngressDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleIngressDetail: v.onToggleIngressDetail,
+  }));
 
   const { mutate: deleteIngresses, isPending: isBulkDeletePending } = useDeleteIngresses();
 

@@ -25,7 +25,11 @@ interface EventsTableProps {
 }
 
 export const EventsTable: FC<EventsTableProps> = ({ events, isLoading }) => {
-  const { onToggleNamespaceDetail, onToggleEventDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleEventDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleEventDetail: v.onToggleEventDetail,
+  }));
+
   const resourceLinks = useResourceLinks();
 
   const {

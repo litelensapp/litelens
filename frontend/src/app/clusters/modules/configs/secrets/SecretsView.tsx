@@ -86,7 +86,10 @@ const SecretTableCtaButtons: FC<SecretTableCtaButtonsProps> = ({ namespace, name
 export const SecretsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleSecretDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleSecretDetail: v.onToggleSecretDetail,
+  }));
 
   const [search, setSearch] = useState("");
   const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());

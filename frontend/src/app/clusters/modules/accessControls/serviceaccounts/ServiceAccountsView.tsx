@@ -23,6 +23,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useReducer, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -32,7 +33,6 @@ import { ServiceAccountDetailDrawer } from "./components/ServiceAccountDetailDra
 import { useGetServiceAccounts } from "./hooks/data-access/useGetServiceAccounts";
 import { useDeleteServiceAccount } from "./hooks/data-mutation/useDeleteServiceAccount";
 import { useDeleteServiceAccounts } from "./hooks/data-mutation/useDeleteServiceAccounts";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 type DrawerState = { name: string | null; namespace: string | null; open: boolean };
 
@@ -95,7 +95,13 @@ const ServiceAccountTableCtaButtons: FC<{ namespace: string; name: string }> = (
 };
 
 export const ServiceAccountsView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selectedSAIds, setSelectedSAIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -105,9 +111,6 @@ export const ServiceAccountsView: FC = () => {
     namespace: null,
     open: false,
   });
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
 
   const { mutate: deleteServiceAccounts, isPending: isBulkDeletePending } =
     useDeleteServiceAccounts();

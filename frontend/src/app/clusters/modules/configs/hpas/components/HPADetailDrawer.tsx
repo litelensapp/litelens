@@ -92,7 +92,12 @@ const HPAOverviewTab: FC<{ hpa: HPADetail }> = ({ hpa }) => {
     onToggleDeploymentDetail,
     onToggleStatefulSetDetail,
     onToggleDaemonSetDetail,
-  } = useDetailDrawerContext();
+  } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleDeploymentDetail: v.onToggleDeploymentDetail,
+    onToggleStatefulSetDetail: v.onToggleStatefulSetDetail,
+    onToggleDaemonSetDetail: v.onToggleDaemonSetDetail,
+  }));
 
   const SCALE_TARGET_LINKS: Record<string, (namespace: string, name: string) => void> = {
     deployment: onToggleDeploymentDetail,

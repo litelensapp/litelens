@@ -89,7 +89,9 @@ export const ValidatingWebhookConfigsView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext } = useMainLayoutContext();
-  const { onToggleValidatingWebhookConfigDetail } = useDetailDrawerContext();
+  const { onToggleValidatingWebhookConfigDetail } = useDetailDrawerContext((v) => ({
+    onToggleValidatingWebhookConfigDetail: v.onToggleValidatingWebhookConfigDetail,
+  }));
 
   const { mutate: deleteValidatingWebhookConfigs, isPending: isBulkDeletePending } =
     useDeleteValidatingWebhookConfigs();

@@ -91,7 +91,10 @@ export const ServicesView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleServiceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleServiceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleServiceDetail: v.onToggleServiceDetail,
+  }));
 
   const { mutate: deleteServices, isPending: isBulkDeletePending } = useDeleteServices();
 

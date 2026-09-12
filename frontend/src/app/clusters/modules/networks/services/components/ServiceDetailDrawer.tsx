@@ -61,7 +61,9 @@ const ServiceOverviewTab: FC<ServiceOverviewTabProps> = ({
   onNavigateToPortForwarding,
 }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   const { data: portForwards = [] } = useGetPortForwards({ context: activeContext });
 

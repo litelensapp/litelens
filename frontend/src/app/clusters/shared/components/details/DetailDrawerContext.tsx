@@ -1,4 +1,5 @@
-import { createContext, FC, ReactNode, use, useMemo, useReducer } from "react";
+import { createContext, FC, ReactNode, use, useCallback, useMemo, useState } from "react";
+import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector";
 
 interface DetailDrawerContextValue {
   selectedNamespaceName: string | null;
@@ -450,168 +451,193 @@ function detailDrawerReducer(
   }
 }
 
-const DetailDrawerCtx = createContext<DetailDrawerContextValue | null>(null);
+interface DetailDrawerStore {
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => DetailDrawerContextValue;
+}
 
-export const useDetailDrawerContext = (): DetailDrawerContextValue => {
-  const ctx = use(DetailDrawerCtx);
-  if (!ctx) throw new Error("useDetailDrawerContext must be used inside DetailDrawerProvider");
-  return ctx;
-};
+const DetailDrawerCtx = createContext<DetailDrawerStore | null>(null);
+
+function shallowEqual<T>(a: T, b: T): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
+    return false;
+  }
+  const keysA = Object.keys(a as Record<string, unknown>);
+  const keysB = Object.keys(b as Record<string, unknown>);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((key) =>
+    Object.is((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
+  );
+}
+
+const identitySelector = (value: DetailDrawerContextValue) => value;
+
+// Context-selector emulation: every consumer subscribes directly to the
+// external store (bypassing React context propagation entirely) and only
+// re-renders when the slice it selected actually changes, per shallowEqual.
+// Without this, one shared reducer/context meant toggling any one of the ~40
+// resource kinds' drawers re-rendered every consumer in the app (every list
+// view and every drawer), which under React StrictMode's doubled render +
+// effect passes made rapid list<->drawer navigation feel like it hung.
+export function useDetailDrawerContext<T = DetailDrawerContextValue>(
+  selector: (value: DetailDrawerContextValue) => T = identitySelector as (
+    value: DetailDrawerContextValue
+  ) => T
+): T {
+  const store = use(DetailDrawerCtx);
+  if (!store) throw new Error("useDetailDrawerContext must be used inside DetailDrawerProvider");
+  return useSyncExternalStoreWithSelector(
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
+    selector,
+    shallowEqual
+  );
+}
+
+function createDetailDrawerStore() {
+  let state = initialState;
+  const listeners = new Set<() => void>();
+
+  return {
+    getState: () => state,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    dispatch: (action: DetailDrawerAction) => {
+      const next = detailDrawerReducer(state, action);
+      if (next !== state) {
+        state = next;
+        listeners.forEach((listener) => listener());
+      }
+    },
+  };
+}
 
 interface DetailDrawerProviderProps {
   children: ReactNode;
 }
 
 export const DetailDrawerProvider: FC<DetailDrawerProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(detailDrawerReducer, initialState);
+  // State lives outside React (in this lazily-created store), not in
+  // useReducer — dispatch notifies listeners synchronously, and the Provider
+  // itself never re-renders on toggle, since every actual re-render happens
+  // in the individual useSyncExternalStoreWithSelector subscribers instead.
+  // The store's mutable state lives in a closure variable, never as a
+  // settable property, so nothing here ever assigns into the useState value
+  // itself (only method calls: store.dispatch/getState/subscribe).
+  const [store] = useState(createDetailDrawerStore);
+  const dispatch = store.dispatch;
 
-  const ctxValue = useMemo<DetailDrawerContextValue>(
+  const dispatchers = useMemo(
     () => ({
-      selectedNamespaceName: state.selectedNamespaceName,
-      onToggleNamespaceDetail: (name) => dispatch({ type: "toggleNamespace", name }),
+      onToggleNamespaceDetail: (name?: string) => dispatch({ type: "toggleNamespace", name }),
 
-      selectedClusterRoleName: state.selectedClusterRoleName,
-      onToggleClusterRoleDetail: (name) => dispatch({ type: "toggleClusterRole", name }),
+      onToggleClusterRoleDetail: (name?: string) => dispatch({ type: "toggleClusterRole", name }),
 
-      selectedClusterRoleBindingName: state.selectedClusterRoleBindingName,
-      onToggleClusterRoleBindingDetail: (name) =>
+      onToggleClusterRoleBindingDetail: (name?: string) =>
         dispatch({ type: "toggleClusterRoleBinding", name }),
 
-      selectedIngressClassName: state.selectedIngressClassName,
-      onToggleIngressClassDetail: (name) => dispatch({ type: "toggleIngressClass", name }),
+      onToggleIngressClassDetail: (name?: string) => dispatch({ type: "toggleIngressClass", name }),
 
-      selectedValidatingWebhookConfigName: state.selectedValidatingWebhookConfigName,
-      onToggleValidatingWebhookConfigDetail: (name) =>
+      onToggleValidatingWebhookConfigDetail: (name?: string) =>
         dispatch({ type: "toggleValidatingWebhookConfig", name }),
 
-      selectedRoleName: state.selectedRoleName,
-      selectedRoleNamespace: state.selectedRoleNamespace,
-      onToggleRoleDetail: (namespace, name) => dispatch({ type: "toggleRole", namespace, name }),
+      onToggleRoleDetail: (namespace?: string, name?: string) =>
+        dispatch({ type: "toggleRole", namespace, name }),
 
-      selectedRoleBindingName: state.selectedRoleBindingName,
-      selectedRoleBindingNamespace: state.selectedRoleBindingNamespace,
-      onToggleRoleBindingDetail: (namespace, name) =>
+      onToggleRoleBindingDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleRoleBinding", namespace, name }),
 
-      selectedServiceAccountName: state.selectedServiceAccountName,
-      selectedServiceAccountNamespace: state.selectedServiceAccountNamespace,
-      onToggleServiceAccountDetail: (namespace, name) =>
+      onToggleServiceAccountDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleServiceAccount", namespace, name }),
 
-      selectedPodName: state.selectedPodName,
-      selectedPodNamespace: state.selectedPodNamespace,
-      onTogglePodDetail: (namespace, name) => dispatch({ type: "togglePod", namespace, name }),
+      onTogglePodDetail: (namespace?: string, name?: string) =>
+        dispatch({ type: "togglePod", namespace, name }),
 
-      selectedJobName: state.selectedJobName,
-      selectedJobNamespace: state.selectedJobNamespace,
-      onToggleJobDetail: (namespace, name) => dispatch({ type: "toggleJob", namespace, name }),
+      onToggleJobDetail: (namespace?: string, name?: string) =>
+        dispatch({ type: "toggleJob", namespace, name }),
 
-      selectedCronJobName: state.selectedCronJobName,
-      selectedCronJobNamespace: state.selectedCronJobNamespace,
-      onToggleCronJobDetail: (namespace, name) =>
+      onToggleCronJobDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleCronJob", namespace, name }),
 
-      selectedNodeName: state.selectedNodeName,
-      onToggleNodeDetail: (name) => dispatch({ type: "toggleNode", name }),
+      onToggleNodeDetail: (name?: string) => dispatch({ type: "toggleNode", name }),
 
-      selectedServiceName: state.selectedServiceName,
-      selectedServiceNamespace: state.selectedServiceNamespace,
-      onToggleServiceDetail: (namespace, name) =>
+      onToggleServiceDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleService", namespace, name }),
 
-      selectedDeploymentName: state.selectedDeploymentName,
-      selectedDeploymentNamespace: state.selectedDeploymentNamespace,
-      onToggleDeploymentDetail: (namespace, name) =>
+      onToggleDeploymentDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleDeployment", namespace, name }),
 
-      selectedReplicaSetName: state.selectedReplicaSetName,
-      selectedReplicaSetNamespace: state.selectedReplicaSetNamespace,
-      onToggleReplicaSetDetail: (namespace, name) =>
+      onToggleReplicaSetDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleReplicaSet", namespace, name }),
 
-      selectedDaemonSetName: state.selectedDaemonSetName,
-      selectedDaemonSetNamespace: state.selectedDaemonSetNamespace,
-      onToggleDaemonSetDetail: (namespace, name) =>
+      onToggleDaemonSetDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleDaemonSet", namespace, name }),
 
-      selectedStatefulSetName: state.selectedStatefulSetName,
-      selectedStatefulSetNamespace: state.selectedStatefulSetNamespace,
-      onToggleStatefulSetDetail: (namespace, name) =>
+      onToggleStatefulSetDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleStatefulSet", namespace, name }),
 
-      selectedEventName: state.selectedEventName,
-      selectedEventNamespace: state.selectedEventNamespace,
-      onToggleEventDetail: (namespace, name) => dispatch({ type: "toggleEvent", namespace, name }),
+      onToggleEventDetail: (namespace?: string, name?: string) =>
+        dispatch({ type: "toggleEvent", namespace, name }),
 
-      selectedConfigMapName: state.selectedConfigMapName,
-      selectedConfigMapNamespace: state.selectedConfigMapNamespace,
-      onToggleConfigMapDetail: (namespace, name) =>
+      onToggleConfigMapDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleConfigMap", namespace, name }),
 
-      selectedNetworkPolicyName: state.selectedNetworkPolicyName,
-      selectedNetworkPolicyNamespace: state.selectedNetworkPolicyNamespace,
-      onToggleNetworkPolicyDetail: (namespace, name) =>
+      onToggleNetworkPolicyDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleNetworkPolicy", namespace, name }),
 
-      selectedPersistentVolumeClaimName: state.selectedPersistentVolumeClaimName,
-      selectedPersistentVolumeClaimNamespace: state.selectedPersistentVolumeClaimNamespace,
-      onTogglePersistentVolumeClaimDetail: (namespace, name) =>
+      onTogglePersistentVolumeClaimDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "togglePersistentVolumeClaim", namespace, name }),
 
-      selectedPodDisruptionBudgetName: state.selectedPodDisruptionBudgetName,
-      selectedPodDisruptionBudgetNamespace: state.selectedPodDisruptionBudgetNamespace,
-      onTogglePodDisruptionBudgetDetail: (namespace, name) =>
+      onTogglePodDisruptionBudgetDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "togglePodDisruptionBudget", namespace, name }),
 
-      selectedSecretName: state.selectedSecretName,
-      selectedSecretNamespace: state.selectedSecretNamespace,
-      onToggleSecretDetail: (namespace, name) =>
+      onToggleSecretDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleSecret", namespace, name }),
 
-      selectedHPAName: state.selectedHPAName,
-      selectedHPANamespace: state.selectedHPANamespace,
-      onToggleHPADetail: (namespace, name) => dispatch({ type: "toggleHPA", namespace, name }),
+      onToggleHPADetail: (namespace?: string, name?: string) =>
+        dispatch({ type: "toggleHPA", namespace, name }),
 
-      selectedIngressName: state.selectedIngressName,
-      selectedIngressNamespace: state.selectedIngressNamespace,
-      onToggleIngressDetail: (namespace, name) =>
+      onToggleIngressDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleIngress", namespace, name }),
 
-      selectedResourceQuotaName: state.selectedResourceQuotaName,
-      selectedResourceQuotaNamespace: state.selectedResourceQuotaNamespace,
-      onToggleResourceQuotaDetail: (namespace, name) =>
+      onToggleResourceQuotaDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleResourceQuota", namespace, name }),
 
-      selectedLimitRangeName: state.selectedLimitRangeName,
-      selectedLimitRangeNamespace: state.selectedLimitRangeNamespace,
-      onToggleLimitRangeDetail: (namespace, name) =>
+      onToggleLimitRangeDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleLimitRange", namespace, name }),
 
-      selectedEndpointName: state.selectedEndpointName,
-      selectedEndpointNamespace: state.selectedEndpointNamespace,
-      onToggleEndpointDetail: (namespace, name) =>
+      onToggleEndpointDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleEndpoint", namespace, name }),
 
-      selectedEndpointSliceName: state.selectedEndpointSliceName,
-      selectedEndpointSliceNamespace: state.selectedEndpointSliceNamespace,
-      onToggleEndpointSliceDetail: (namespace, name) =>
+      onToggleEndpointSliceDetail: (namespace?: string, name?: string) =>
         dispatch({ type: "toggleEndpointSlice", namespace, name }),
 
-      selectedLeaseName: state.selectedLeaseName,
-      selectedLeaseNamespace: state.selectedLeaseNamespace,
-      onToggleLease: (namespace, name) => dispatch({ type: "toggleLease", namespace, name }),
+      onToggleLease: (namespace?: string, name?: string) =>
+        dispatch({ type: "toggleLease", namespace, name }),
 
-      selectedPriorityClassName: state.selectedPriorityClassName,
-      onTogglePriorityClass: (name) => dispatch({ type: "togglePriorityClass", name }),
+      onTogglePriorityClass: (name?: string) => dispatch({ type: "togglePriorityClass", name }),
 
-      selectedPersistentVolumeName: state.selectedPersistentVolumeName,
-      onTogglePersistentVolumeDetail: (name) => dispatch({ type: "togglePersistentVolume", name }),
+      onTogglePersistentVolumeDetail: (name?: string) =>
+        dispatch({ type: "togglePersistentVolume", name }),
 
-      selectedStorageClassName: state.selectedStorageClassName,
-      onToggleStorageClassDetail: (name) => dispatch({ type: "toggleStorageClass", name }),
+      onToggleStorageClassDetail: (name?: string) => dispatch({ type: "toggleStorageClass", name }),
     }),
-    [state]
+    [dispatch]
   );
 
-  return <DetailDrawerCtx.Provider value={ctxValue}>{children}</DetailDrawerCtx.Provider>;
+  const getSnapshot = useCallback(
+    (): DetailDrawerContextValue => ({ ...store.getState(), ...dispatchers }),
+    [store, dispatchers]
+  );
+
+  const contextStore = useMemo<DetailDrawerStore>(
+    () => ({ subscribe: store.subscribe, getSnapshot }),
+    [store, getSnapshot]
+  );
+
+  return <DetailDrawerCtx.Provider value={contextStore}>{children}</DetailDrawerCtx.Provider>;
 };
