@@ -90,7 +90,12 @@ const PodDisruptionBudgetTableCtaButtons: FC<PodDisruptionBudgetTableCtaButtonsP
 export const PodDisruptionBudgetsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onTogglePodDisruptionBudgetDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onTogglePodDisruptionBudgetDetail } = useDetailDrawerContext(
+    (v) => ({
+      onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+      onTogglePodDisruptionBudgetDetail: v.onTogglePodDisruptionBudgetDetail,
+    })
+  );
 
   const [search, setSearch] = useState("");
   const [selectedPDBIds, setSelectedPDBIds] = useState<Set<string>>(new Set());

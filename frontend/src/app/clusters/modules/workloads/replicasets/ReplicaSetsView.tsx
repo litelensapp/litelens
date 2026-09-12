@@ -126,7 +126,10 @@ export const ReplicaSetsView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleReplicaSetDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleReplicaSetDetail: v.onToggleReplicaSetDetail,
+  }));
 
   const { mutate: deleteReplicaSets, isPending: isBulkDeletePending } = useDeleteReplicaSets();
 

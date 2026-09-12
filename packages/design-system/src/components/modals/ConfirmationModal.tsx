@@ -1,6 +1,13 @@
 import { FC, ReactNode } from "react";
 import { Button } from "../../atoms/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../atoms/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogSize,
+  DialogTitle,
+} from "../../atoms/dialog";
 import { Loader2Icon } from "../../atoms/icon";
 
 interface ConfirmationModalProps {
@@ -12,6 +19,7 @@ interface ConfirmationModalProps {
   isPending: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  size?: DialogSize;
 }
 
 export const ConfirmationModal: FC<ConfirmationModalProps> = ({
@@ -23,6 +31,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
   isPending,
   onClose,
   onConfirm,
+  size = "md",
 }) => (
   <Dialog
     open={open}
@@ -30,7 +39,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
       if (!o && !isPending) onClose();
     }}
   >
-    <DialogContent>
+    <DialogContent size={size}>
       <DialogHeader>
         <DialogTitle className="text-h2 flex gap-2">{title}</DialogTitle>
       </DialogHeader>

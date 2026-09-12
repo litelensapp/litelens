@@ -48,7 +48,9 @@ import { CronJobResumeConfirmationModal } from "./CronJobResumeConfirmationModal
 import { CronJobResumedBadge } from "./CronJobResumedBadge";
 
 const CronJobOverviewTab: FC<{ cj: CronJob }> = ({ cj }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
   const cronDescription = cj.Schedule ? getCronDescription(cj.Schedule) : null;
   return (
     <ScrollArea className="h-full">
@@ -269,7 +271,9 @@ const CronJobDrawerCtaButtons: FC<CronJobDrawerCtaButtonsProps> = ({
 
 const CronJobJobsTab: FC<{ cj: CronJob }> = ({ cj }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleJobDetail } = useDetailDrawerContext();
+  const { onToggleJobDetail } = useDetailDrawerContext((v) => ({
+    onToggleJobDetail: v.onToggleJobDetail,
+  }));
   const { data: allJobs = [] } = useGetJobs({ context: activeContext, namespaces: [cj.Namespace] });
   const jobs = allJobs
     .filter((j) => {

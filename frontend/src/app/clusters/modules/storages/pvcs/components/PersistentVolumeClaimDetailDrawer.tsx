@@ -90,7 +90,11 @@ const PVCDrawerCtaButtons: FC<PVCDrawerCtaButtonsProps> = ({ name, namespace, on
 
 const PVCOverviewTab: FC<{ pvc: PersistentVolumeClaimDetail }> = ({ pvc }) => {
   const { onToggleNamespaceDetail, onTogglePodDetail, onToggleStorageClassDetail } =
-    useDetailDrawerContext();
+    useDetailDrawerContext((v) => ({
+      onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+      onTogglePodDetail: v.onTogglePodDetail,
+      onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+    }));
 
   const hasLabels = Object.keys(pvc.Labels ?? {}).length > 0;
   const hasAnnotations = Object.keys(pvc.Annotations ?? {}).length > 0;

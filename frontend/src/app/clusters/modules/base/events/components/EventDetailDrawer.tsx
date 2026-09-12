@@ -39,7 +39,10 @@ const EventDrawerBody: FC<
   }
 > = ({ eventName, eventNamespace, open, onClose }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
+
   const resourceLinks = useResourceLinks();
 
   const { data: event, isLoading } = useGetEventDetail(activeContext, eventNamespace, eventName);

@@ -36,7 +36,9 @@ import { JobDeleteConfirmationModal } from "./JobDeleteConfirmationModal";
 import { JobResumedBadge } from "./JobResumedBadge";
 
 const JobOverviewTab: FC<{ j: Job }> = ({ j }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   const resourceLinks = useResourceLinks();
 

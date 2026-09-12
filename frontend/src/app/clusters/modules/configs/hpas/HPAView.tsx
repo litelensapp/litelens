@@ -22,6 +22,7 @@ import {
   TableSkeletonLoader,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -31,7 +32,6 @@ import { HPAStatusBadge } from "./components/HPAStatusBadge";
 import { useGetHPAs } from "./hooks/data-access/useGetHPAs";
 import { useDeleteHPA } from "./hooks/data-mutation/useDeleteHPA";
 import { useDeleteHPAs } from "./hooks/data-mutation/useDeleteHPAs";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface HPATableCtaButtonsProps {
   name: string;
@@ -83,13 +83,17 @@ const HPATableCtaButtons: FC<HPATableCtaButtonsProps> = ({ namespace, name }) =>
 };
 
 export const HPAView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleHPADetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleHPADetail: v.onToggleHPADetail,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selectedHPAIds, setSelectedHPAIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleHPADetail } = useDetailDrawerContext();
 
   const { mutate: deleteHPAs, isPending: isBulkDeletePending } = useDeleteHPAs();
 

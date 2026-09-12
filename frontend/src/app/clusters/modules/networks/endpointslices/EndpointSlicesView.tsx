@@ -93,7 +93,10 @@ export const EndpointSlicesView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleEndpointSliceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleEndpointSliceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleEndpointSliceDetail: v.onToggleEndpointSliceDetail,
+  }));
 
   const { mutate: deleteEndpointSlices, isPending: isBulkDeletePending } =
     useDeleteEndpointSlices();
@@ -188,8 +191,8 @@ export const EndpointSlicesView: FC = () => {
             <TableHead>Name</TableHead>
             {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
             <TableHead>Address Type</TableHead>
-            <TableHead>Ports</TableHead>
-            <TableHead>Endpoints</TableHead>
+            <TableHead className="w-35">Ports</TableHead>
+            <TableHead className="w-60">Endpoints</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -257,8 +260,12 @@ export const EndpointSlicesView: FC = () => {
                       </TableCell>
                     )}
                     <TableCell className="text-xs">{slice.AddressType}</TableCell>
-                    <TableCell className="font-mono text-xs">{ports || "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{endpoints || "—"}</TableCell>
+                    <TableCell className="max-w-35 font-mono text-xs wrap-break-word whitespace-normal">
+                      {ports || "—"}
+                    </TableCell>
+                    <TableCell className="max-w-60 font-mono text-xs wrap-break-word whitespace-normal">
+                      {endpoints || "—"}
+                    </TableCell>
                     <TableCell className="text-xs">{slice.Age}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <EndpointSliceTableCtaButtons name={slice.Name} namespace={slice.Namespace} />

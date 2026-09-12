@@ -60,7 +60,7 @@ const PortForwardingTableCtaButtons: FC<PortForwardingTableCtaButtonsProps> = ({
           <PencilIcon className="mr-2 size-3.5" />
           Edit
         </DropdownMenuItem>
-        {pf.Status === "Stopped" ? (
+        {pf.Status !== "Active" ? (
           <DropdownMenuItem onClick={() => handleActivate(pf).catch(console.error)}>
             <PlayIcon className="mr-2 size-3.5" />
             Active
@@ -100,7 +100,9 @@ async function handleActivate(pf: PortForward) {
 export const PortForwardingView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);

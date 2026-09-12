@@ -47,7 +47,25 @@ export const RbacDetailDrawers: FC = () => {
     selectedServiceAccountName,
     selectedServiceAccountNamespace,
     onToggleServiceAccountDetail,
-  } = useDetailDrawerContext();
+  } = useDetailDrawerContext((v) => ({
+    selectedClusterRoleName: v.selectedClusterRoleName,
+    onToggleClusterRoleDetail: v.onToggleClusterRoleDetail,
+
+    selectedClusterRoleBindingName: v.selectedClusterRoleBindingName,
+    onToggleClusterRoleBindingDetail: v.onToggleClusterRoleBindingDetail,
+
+    selectedRoleName: v.selectedRoleName,
+    selectedRoleNamespace: v.selectedRoleNamespace,
+    onToggleRoleDetail: v.onToggleRoleDetail,
+
+    selectedRoleBindingName: v.selectedRoleBindingName,
+    selectedRoleBindingNamespace: v.selectedRoleBindingNamespace,
+    onToggleRoleBindingDetail: v.onToggleRoleBindingDetail,
+
+    selectedServiceAccountName: v.selectedServiceAccountName,
+    selectedServiceAccountNamespace: v.selectedServiceAccountNamespace,
+    onToggleServiceAccountDetail: v.onToggleServiceAccountDetail,
+  }));
 
   return (
     <>

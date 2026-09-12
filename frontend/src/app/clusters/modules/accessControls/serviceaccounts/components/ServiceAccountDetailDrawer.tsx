@@ -29,7 +29,10 @@ import { useDeleteServiceAccount } from "../hooks/data-mutation/useDeleteService
 import { ServiceAccountDeleteConfirmationModal } from "./ServiceAccountDeleteConfirmationModal";
 
 const ServiceAccountOverviewTab: FC<{ sa: ServiceAccount }> = ({ sa }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
+
   return (
     <ScrollArea className="h-full">
       <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">

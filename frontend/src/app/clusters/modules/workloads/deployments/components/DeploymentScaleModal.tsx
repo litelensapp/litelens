@@ -40,7 +40,6 @@ export const DeploymentScaleModal: FC<DeploymentScaleModalProps> = ({
       }
       isLoading={isPending}
       submitLabel="Scale"
-      size="md"
       onSubmit={() => onScale(desired)}
     >
       <div className="flex items-center gap-2 text-sm">

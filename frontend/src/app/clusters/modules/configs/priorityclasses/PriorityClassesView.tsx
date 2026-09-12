@@ -78,7 +78,9 @@ const PriorityClassTableCtaButtons: FC<PriorityClassTableCtaButtonsProps> = ({ n
 export const PriorityClassesView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
-  const { onTogglePriorityClass } = useDetailDrawerContext();
+  const { onTogglePriorityClass } = useDetailDrawerContext((v) => ({
+    onTogglePriorityClass: v.onTogglePriorityClass,
+  }));
 
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Set<string>>(new Set());

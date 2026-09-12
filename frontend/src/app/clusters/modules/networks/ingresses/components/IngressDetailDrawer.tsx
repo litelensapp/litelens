@@ -79,7 +79,9 @@ const IngressRulesSection: FC<{ rules: IngressRule[] }> = ({ rules }) => (
 );
 
 const IngressOverviewTab: FC<{ ingress: IngressDetail }> = ({ ingress }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   return (
     <ScrollArea className="h-full">

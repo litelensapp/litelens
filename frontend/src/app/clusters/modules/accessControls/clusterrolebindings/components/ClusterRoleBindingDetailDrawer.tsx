@@ -37,7 +37,12 @@ import { ClusterRoleBindingDeleteConfirmationModal } from "./ClusterRoleBindingD
 
 const ClusterRoleBindingOverviewTab: FC<{ crb: ClusterRoleBinding }> = ({ crb }) => {
   const { onToggleNamespaceDetail, onToggleClusterRoleDetail, onToggleServiceAccountDetail } =
-    useDetailDrawerContext();
+    useDetailDrawerContext((v) => ({
+      onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+      onToggleClusterRoleDetail: v.onToggleClusterRoleDetail,
+      onToggleServiceAccountDetail: v.onToggleServiceAccountDetail,
+    }));
+
   return (
     <ScrollArea className="h-full">
       <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
@@ -174,9 +179,13 @@ const ClusterRoleBindingDrawerCtaButtons: FC<ClusterRoleBindingDrawerCtaButtonsP
   clusterRoleBindingName,
   onClose,
 }) => {
+  const { onToggleClusterRoleBindingDetail } = useDetailDrawerContext((v) => ({
+    onToggleClusterRoleBindingDetail: v.onToggleClusterRoleBindingDetail,
+  }));
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { openTab } = useUnifiedTray();
-  const { onToggleClusterRoleBindingDetail } = useDetailDrawerContext();
+
   const { mutate: deleteClusterRoleBinding, isPending: isDeletePending } =
     useDeleteClusterRoleBinding();
 

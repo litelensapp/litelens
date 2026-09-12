@@ -32,7 +32,10 @@ import { PersistentVolumeStatusBadge } from "./PersistentVolumeStatusBadge";
 
 const PersistentVolumeOverviewTab: FC<{ pv: PersistentVolumeDetail }> = ({ pv }) => {
   const { onToggleStorageClassDetail, onTogglePersistentVolumeClaimDetail } =
-    useDetailDrawerContext();
+    useDetailDrawerContext((v) => ({
+      onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+      onTogglePersistentVolumeClaimDetail: v.onTogglePersistentVolumeClaimDetail,
+    }));
   const { namespaces: activeNamespaces } = useMainLayoutContext();
   const [claimNamespace, claimName] = pv.Claim?.includes("/") ? pv.Claim.split("/") : [];
   const isClaimNamespaceActive =

@@ -475,7 +475,10 @@ const PodOverviewTab: FC<{
   onNavigateToPortForwarding: () => void;
 }> = ({ pod, onNavigateToPortForwarding }) => {
   const { activeContext } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleNodeDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleNodeDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleNodeDetail: v.onToggleNodeDetail,
+  }));
   const resourceLinks = useResourceLinks();
 
   const [showTolerations, setShowTolerations] = useState(false);

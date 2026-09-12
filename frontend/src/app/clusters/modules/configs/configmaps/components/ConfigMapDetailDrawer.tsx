@@ -178,7 +178,9 @@ function configMapEditReducer(
 }
 
 const ConfigMapOverviewTab: FC<{ cm: ConfigMap }> = ({ cm }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   const keys = (cm.Keys ?? []).slice().sort((a, b) => a.localeCompare(b));
 

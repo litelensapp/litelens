@@ -90,7 +90,10 @@ export const StatefulSetsView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleStatefulSetDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleStatefulSetDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleStatefulSetDetail: v.onToggleStatefulSetDetail,
+  }));
 
   const { mutate: deleteStatefulSets, isPending: isBulkDeletePending } = useDeleteStatefulSets();
 

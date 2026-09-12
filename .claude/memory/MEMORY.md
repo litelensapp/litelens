@@ -8,12 +8,12 @@
 - [Modification tray architecture](modification_tray_architecture.md) — generic cross-resource bottom tray; how to add a new resource kind
 - [Detail drawer pattern](detail_drawer_pattern.md) — DetailDrawerContext + DetailBlock; full steps for adding a new drawer end-to-end
 - [go.work removal / packages/core replace](go_work_removal_todo.md) — no go.work file, but a bare `replace` for packages/core in go.mod is permanent by design (host+core ship as a pair, like @litelens/core workspace:*)
-- [Wails IPC call ordering](wails_ipc_call_ordering.md) — no ordering guarantee for rapid concurrent calls to the same bound method; fix with a frontend-generated monotonic seq, not a Go-side one
+- [Wails IPC call ordering](wails_ipc_call_ordering.md) — no ordering guarantee for rapid concurrent calls to the same bound method; fix with a frontend-generated monotonic seq, not a Go-side one; seed that counter from `Date.now()` so it survives FE-only reloads
 
 ## Component & UI conventions
 
 - [Component guidelines](component_guidelines.md) — shadcn-first rule, status badge pattern, ResourceLink, CTA button components, aria-label rule
-- [React code quality](react_code_quality.md) — no inline render fns, useReducer for grouped state, React 19 ref-as-prop, no ref access during render
+- [React code quality](react_code_quality.md) — no inline render fns, useReducer for grouped state, React 19 ref-as-prop, no ref access during render, memoize derived list filter/sort, context-selector scoping via useSyncExternalStoreWithSelector for large shared contexts
 - [Color palettes](project_color_palettes.md) — green-500 positive/active, red-500 destructive, amber=stop/pause, palette CSS token locations
 - [Typography scale](typography_scale.md) — .text-h1/-h2/-h3/-body/-caption/-label utility classes, rolled out codebase-wide
 - [Tailwind v4 @theme inline](tailwind_v4_theme_inline.md) — color-mix() must live directly in @theme inline, not behind an indirect var()

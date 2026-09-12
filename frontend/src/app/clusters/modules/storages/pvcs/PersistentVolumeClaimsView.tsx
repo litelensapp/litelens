@@ -22,7 +22,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
@@ -97,7 +97,11 @@ export const PersistentVolumeClaimsView: FC = () => {
     onToggleNamespaceDetail,
     onTogglePersistentVolumeClaimDetail,
     onToggleStorageClassDetail,
-  } = useDetailDrawerContext();
+  } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onTogglePersistentVolumeClaimDetail: v.onTogglePersistentVolumeClaimDetail,
+    onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+  }));
 
   const openBrowserURL = useOpenBrowserURL();
 
@@ -113,9 +117,13 @@ export const PersistentVolumeClaimsView: FC = () => {
     namespaces,
   });
 
-  const pvcs = raw
-    .filter((p) => !search || p.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const pvcs = useMemo(
+    () =>
+      raw
+        .filter((p) => !search || p.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visiblePVCs,

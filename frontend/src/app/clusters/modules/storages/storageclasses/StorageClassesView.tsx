@@ -21,7 +21,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -77,7 +77,9 @@ const StorageClassTableCtaButtons: FC<{ name: string }> = ({ name }) => {
 export const StorageClassesView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext } = useMainLayoutContext();
-  const { onToggleStorageClassDetail } = useDetailDrawerContext();
+  const { onToggleStorageClassDetail } = useDetailDrawerContext((v) => ({
+    onToggleStorageClassDetail: v.onToggleStorageClassDetail,
+  }));
   const [search, setSearch] = useState("");
   const [selectedSCNames, setSelectedSCNames] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -87,9 +89,13 @@ export const StorageClassesView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetStorageClasses(activeContext);
 
-  const classes = raw
-    .filter((sc) => !search || sc.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const classes = useMemo(
+    () =>
+      raw
+        .filter((sc) => !search || sc.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visibleClasses,

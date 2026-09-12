@@ -89,7 +89,10 @@ export const EndpointsView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleEndpointDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleEndpointDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleEndpointDetail: v.onToggleEndpointDetail,
+  }));
 
   const { mutate: deleteEndpoints, isPending: isBulkDeletePending } = useDeleteEndpoints();
 
@@ -178,7 +181,7 @@ export const EndpointsView: FC = () => {
             </TableHead>
             <TableHead>Name</TableHead>
             {namespaces.length !== 1 && <TableHead>Namespace</TableHead>}
-            <TableHead>Endpoints</TableHead>
+            <TableHead className="w-60">Endpoints</TableHead>
             <TableHead>Age</TableHead>
             <TableHead className="w-8" />
           </TableRow>
@@ -238,10 +241,7 @@ export const EndpointsView: FC = () => {
                         </ResourceLink>
                       </TableCell>
                     )}
-                    <TableCell
-                      className="font-mono text-xs"
-                      title={ep.Endpoints === "<none>" ? undefined : ep.Endpoints}
-                    >
+                    <TableCell className="max-w-60 font-mono text-xs wrap-break-word whitespace-normal">
                       {ep.Endpoints === "<none>" ? (
                         <span className="text-muted-foreground">&lt;none&gt;</span>
                       ) : (

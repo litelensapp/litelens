@@ -113,7 +113,9 @@ const ReplicaSetDrawerCtaButtons: FC<{
 };
 
 const ReplicaSetOverviewTab: FC<{ rs: ReplicaSet }> = ({ rs }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
   const resourceLinks = useResourceLinks();
   return (
     <ScrollArea className="h-full">

@@ -25,6 +25,7 @@ import {
   cn,
 } from "@litelens/design-system";
 import { FC, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -34,7 +35,6 @@ import { LimitRangeDeleteConfirmationModal } from "./components/LimitRangeDelete
 import { useGetLimitRanges } from "./hooks/data-access/useGetLimitRanges";
 import { useDeleteLimitRange } from "./hooks/data-mutation/useDeleteLimitRange";
 import { useDeleteLimitRanges } from "./hooks/data-mutation/useDeleteLimitRanges";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 interface LimitRangeTableCtaButtonsProps {
   name: string;
@@ -86,14 +86,18 @@ const LimitRangeTableCtaButtons: FC<LimitRangeTableCtaButtonsProps> = ({ name, n
 };
 
 export const LimitRangesView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleLimitRangeDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleLimitRangeDetail: v.onToggleLimitRangeDetail,
+  }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedLimitRangeIds, setSelectedLimitRangeIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleLimitRangeDetail } = useDetailDrawerContext();
 
   const { mutate: deleteLimitRanges, isPending: isBulkDeletePending } = useDeleteLimitRanges();
 

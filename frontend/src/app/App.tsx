@@ -225,22 +225,39 @@ export const App: FC = () => {
   const prevContextRef = useRef("");
   const connectAttemptRef = useRef(0);
 
-  // Evict every cluster-scoped query (any context, not just the one being
-  // left) when switching clusters, so a cluster revisited later starts fresh
-  // instead of briefly showing data cached from an earlier visit.
+  // Evict every cluster-scoped query for a previously-visited context (any of
+  // them, not just the one being left) when switching clusters, so a cluster
+  // revisited later starts fresh instead of briefly showing data cached from
+  // an earlier visit.
+  //
+  // Deliberately excludes activeContext itself: connectedContexts already
+  // contains the context we're switching INTO by the time this effect runs
+  // (CONNECT_SUCCESS adds it before this render), and React fires child
+  // effects before parent effects in the same commit — so the freshly
+  // mounted MainLayout for that context (key={activeContext}) has already
+  // kicked off its own queries (e.g. useGetNamespaceNames) by the time this
+  // runs. Without the exclusion, removeQueries would immediately discard
+  // that brand-new in-flight fetch's result, and since DEFAULT_QUERY_OPTIONS
+  // sets retry: false, nothing re-triggers it — leaving queries like
+  // namespaceNames stuck empty for that mount. This was invisible in dev
+  // because React.StrictMode (main.tsx) double-invokes effects there only,
+  // and the extra, later re-fetch from the second invocation usually landed
+  // after this effect's cleanup pass — masking the race that a production
+  // build's single effect invocation exposes every time.
   useEffect(() => {
     const prev = prevContextRef.current;
     if (prev && prev !== activeContext) {
       queryClient.removeQueries({
         predicate: (query) =>
-          query.queryKey.some(
-            (k) =>
-              (typeof k === "string" && connectedContexts.has(k)) ||
-              (typeof k === "object" &&
-                k !== null &&
-                "context" in k &&
-                connectedContexts.has((k as { context: string }).context))
-          ),
+          query.queryKey.some((k) => {
+            const ctx =
+              typeof k === "string"
+                ? k
+                : typeof k === "object" && k !== null && "context" in k
+                  ? (k as { context: string }).context
+                  : undefined;
+            return ctx !== undefined && ctx !== activeContext && connectedContexts.has(ctx);
+          }),
       });
     }
     prevContextRef.current = activeContext;

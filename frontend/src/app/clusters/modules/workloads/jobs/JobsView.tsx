@@ -86,7 +86,10 @@ const JobTableCtaButtons: FC<JobTableCtaButtonsProps> = ({ namespace, name }) =>
 export const JobsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleJobDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleJobDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleJobDetail: v.onToggleJobDetail,
+  }));
 
   const [search, setSearch] = useState("");
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());

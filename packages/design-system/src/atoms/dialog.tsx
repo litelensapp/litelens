@@ -43,12 +43,12 @@ const dialogSizeClasses = {
   "2xl": "sm:max-w-2xl",
 } as const;
 
-type DialogSize = keyof typeof dialogSizeClasses;
+export type DialogSize = keyof typeof dialogSizeClasses;
 
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
+  showCloseButton = false,
   size = "sm",
   ...props
 }: DialogPrimitive.Popup.Props & {

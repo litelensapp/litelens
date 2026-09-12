@@ -170,8 +170,12 @@ const ClusterRoleDrawerCtaButtons: FC<ClusterRoleDrawerCtaButtonsProps> = ({
   clusterRoleName,
   onClose,
 }) => {
+  const { onToggleClusterRoleDetail } = useDetailDrawerContext((v) => ({
+    onToggleClusterRoleDetail: v.onToggleClusterRoleDetail,
+  }));
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { onToggleClusterRoleDetail } = useDetailDrawerContext();
+
   const { mutate: deleteClusterRole, isPending: isDeletePending } = useDeleteClusterRole();
   const { openTab } = useUnifiedTray();
 

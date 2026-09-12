@@ -51,7 +51,7 @@ export const InstalledPluginsSection: FC<{
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-wrap gap-6">
       {installed.map(({ installedPlugin, manifest }) => {
         const hasAttempted = attemptedInstalls.has(installedPlugin.pluginId);
         const displayStatus = maskTerminalStatus(installedPlugin.status, hasAttempted);

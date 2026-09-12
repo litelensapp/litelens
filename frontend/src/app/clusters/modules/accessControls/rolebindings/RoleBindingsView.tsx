@@ -23,7 +23,8 @@ import {
   TruncatedText,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
+import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -32,7 +33,6 @@ import { RoleBindingDeleteConfirmationModal } from "./components/RoleBindingDele
 import { useGetRoleBindings } from "./hooks/data-access/useGetRoleBindings";
 import { useDeleteRoleBinding } from "./hooks/data-mutation/useDeleteRoleBinding";
 import { useDeleteRoleBindings } from "./hooks/data-mutation/useDeleteRoleBindings";
-import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 
 const RoleBindingTableCtaButtons: FC<{ namespace: string; name: string }> = ({
   namespace,
@@ -83,22 +83,31 @@ const RoleBindingTableCtaButtons: FC<{ namespace: string; name: string }> = ({
 };
 
 export const RoleBindingsView: FC = () => {
+  const { activeContext, namespaces } = useMainLayoutContext();
+  const { onToggleNamespaceDetail, onToggleRoleDetail, onToggleRoleBindingDetail } =
+    useDetailDrawerContext((v) => ({
+      onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+      onToggleRoleDetail: v.onToggleRoleDetail,
+      onToggleRoleBindingDetail: v.onToggleRoleBindingDetail,
+    }));
+
   const openBrowserURL = useOpenBrowserURL();
+
   const [search, setSearch] = useState("");
   const [selectedRoleBindingIds, setSelectedRoleBindingIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-
-  const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleRoleDetail, onToggleRoleBindingDetail } =
-    useDetailDrawerContext();
 
   const { mutate: deleteRoleBindings, isPending: isBulkDeletePending } = useDeleteRoleBindings();
 
   const { data: raw = [], isLoading } = useGetRoleBindings({ context: activeContext, namespaces });
 
-  const roleBindings = raw
-    .filter((rb) => !search || rb.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const roleBindings = useMemo(
+    () =>
+      raw
+        .filter((rb) => !search || rb.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visibleRoleBindings,

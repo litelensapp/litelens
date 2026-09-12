@@ -31,7 +31,10 @@ import { useDeleteRole } from "../hooks/data-mutation/useDeleteRole";
 import { RoleDeleteConfirmationModal } from "./RoleDeleteConfirmationModal";
 
 const RoleOverviewTab: FC<{ role: Role }> = ({ role }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
+
   return (
     <ScrollArea className="h-full">
       <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-y-3 p-4">
@@ -200,9 +203,13 @@ const RoleDrawerCtaButtons: FC<RoleDrawerCtaButtonsProps> = ({
   roleNamespace,
   onClose,
 }) => {
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { openTab } = useUnifiedTray();
-  const { onToggleRoleDetail } = useDetailDrawerContext();
+  const { onToggleRoleDetail } = useDetailDrawerContext((v) => ({
+    onToggleRoleDetail: v.onToggleRoleDetail,
+  }));
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const { mutate: deleteRole, isPending: isDeletePending } = useDeleteRole();
 
   const handleDeleteConfirm = () => {

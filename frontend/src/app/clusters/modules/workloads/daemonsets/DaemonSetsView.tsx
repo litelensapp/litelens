@@ -103,7 +103,10 @@ const DaemonSetTableCtaButtons: FC<DaemonSetTableCtaButtonsProps> = ({ namespace
 export const DaemonSetsView: FC = () => {
   const openBrowserURL = useOpenBrowserURL();
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleDaemonSetDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleDaemonSetDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleDaemonSetDetail: v.onToggleDaemonSetDetail,
+  }));
   const [search, setSearch] = useState("");
   const [selectedDaemonSetIds, setSelectedDaemonSetIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);

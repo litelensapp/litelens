@@ -70,7 +70,9 @@ const PeerBlock: FC<{ peer: NetworkPolicyPeer }> = ({ peer }) => (
 );
 
 const NetworkPolicyOverviewTab: FC<{ np: NetworkPolicyDetail }> = ({ np }) => {
-  const { onToggleNamespaceDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+  }));
 
   return (
     <ScrollArea className="h-full">

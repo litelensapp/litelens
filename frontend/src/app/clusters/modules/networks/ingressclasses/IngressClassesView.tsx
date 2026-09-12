@@ -101,7 +101,9 @@ export const IngressClassesView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext } = useMainLayoutContext();
-  const { onToggleIngressClassDetail } = useDetailDrawerContext();
+  const { onToggleIngressClassDetail } = useDetailDrawerContext((v) => ({
+    onToggleIngressClassDetail: v.onToggleIngressClassDetail,
+  }));
   const { mutate: deleteBulk, isPending: isDeleteBulkPending } = useDeleteIngressClasses();
 
   const { data: raw = [], isLoading } = useGetIngressClasses(activeContext);

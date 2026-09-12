@@ -37,7 +37,7 @@ export const PluginCardFallback: FC<PluginCardFallbackProps> = ({
   };
 
   return (
-    <div className="max-w-sm overflow-hidden rounded-lg border-3 border-border opacity-60 shadow-sm">
+    <div className="max-w-sm min-w-72 flex-1 basis-full overflow-hidden rounded-lg border-3 border-border opacity-60 shadow-sm sm:basis-[calc(50%-0.75rem)] xl:basis-[calc(33.333%-1rem)]">
       {/* Header */}
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-3">

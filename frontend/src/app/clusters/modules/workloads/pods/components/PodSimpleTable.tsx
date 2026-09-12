@@ -20,7 +20,10 @@ interface PodSimpleTableProps {
 }
 
 export const PodSimpleTable: FC<PodSimpleTableProps> = ({ pods }) => {
-  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onTogglePodDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onTogglePodDetail: v.onTogglePodDetail,
+  }));
 
   const {
     visibleItems: visiblePods,

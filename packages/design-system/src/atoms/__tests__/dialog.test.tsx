@@ -149,24 +149,24 @@ describe("Dialog components", () => {
       expect(content?.className).toContain("sm:max-w-md");
     });
 
-    it("renders close button by default", () => {
+    it("hides close button by default", () => {
       const { container } = render(
         <Dialog open={true}>
           <DialogContent>Content</DialogContent>
         </Dialog>
       );
-      const closeButton = container.querySelector("[data-slot='dialog-close']");
-      expect(closeButton).toBeTruthy();
-    });
-
-    it("hides close button when showCloseButton=false", () => {
-      const { container } = render(
-        <Dialog open={true}>
-          <DialogContent showCloseButton={false}>Content</DialogContent>
-        </Dialog>
-      );
       const closeButtons = container.querySelectorAll("[data-slot='dialog-close']");
       expect(closeButtons.length).toBe(0);
+    });
+
+    it("renders close button when showCloseButton=true", () => {
+      const { container } = render(
+        <Dialog open={true}>
+          <DialogContent showCloseButton={true}>Content</DialogContent>
+        </Dialog>
+      );
+      const closeButton = container.querySelector("[data-slot='dialog-close']");
+      expect(closeButton).toBeTruthy();
     });
   });
 

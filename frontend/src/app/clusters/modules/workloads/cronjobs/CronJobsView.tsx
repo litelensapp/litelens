@@ -142,7 +142,10 @@ export const CronJobsView: FC = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const { activeContext, namespaces } = useMainLayoutContext();
-  const { onToggleNamespaceDetail, onToggleCronJobDetail } = useDetailDrawerContext();
+  const { onToggleNamespaceDetail, onToggleCronJobDetail } = useDetailDrawerContext((v) => ({
+    onToggleNamespaceDetail: v.onToggleNamespaceDetail,
+    onToggleCronJobDetail: v.onToggleCronJobDetail,
+  }));
 
   const { mutate: deleteCronJobs, isPending: isBulkDeletePending } = useDeleteCronJobs();
 
