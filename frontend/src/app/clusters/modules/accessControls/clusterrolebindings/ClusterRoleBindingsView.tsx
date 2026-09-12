@@ -23,7 +23,7 @@ import {
   TruncatedText,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
@@ -106,9 +106,13 @@ export const ClusterRoleBindingsView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetClusterRoleBindings(activeContext);
 
-  const clusterRoleBindings = raw
-    .filter((crb) => !search || crb.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const clusterRoleBindings = useMemo(
+    () =>
+      raw
+        .filter((crb) => !search || crb.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visibleClusterRoleBindings,

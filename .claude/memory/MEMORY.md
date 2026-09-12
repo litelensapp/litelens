@@ -13,7 +13,7 @@
 ## Component & UI conventions
 
 - [Component guidelines](component_guidelines.md) — shadcn-first rule, status badge pattern, ResourceLink, CTA button components, aria-label rule
-- [React code quality](react_code_quality.md) — no inline render fns, useReducer for grouped state, React 19 ref-as-prop, no ref access during render
+- [React code quality](react_code_quality.md) — no inline render fns, useReducer for grouped state, React 19 ref-as-prop, no ref access during render, memoize derived list filter/sort, context-selector scoping via useSyncExternalStoreWithSelector for large shared contexts
 - [Color palettes](project_color_palettes.md) — green-500 positive/active, red-500 destructive, amber=stop/pause, palette CSS token locations
 - [Typography scale](typography_scale.md) — .text-h1/-h2/-h3/-body/-caption/-label utility classes, rolled out codebase-wide
 - [Tailwind v4 @theme inline](tailwind_v4_theme_inline.md) — color-mix() must live directly in @theme inline, not behind an indirect var()

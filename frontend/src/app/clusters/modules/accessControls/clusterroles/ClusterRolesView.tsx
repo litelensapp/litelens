@@ -21,7 +21,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
@@ -93,9 +93,13 @@ export const ClusterRolesView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetClusterRoles(activeContext);
 
-  const clusterRoles = raw
-    .filter((cr) => !search || cr.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const clusterRoles = useMemo(
+    () =>
+      raw
+        .filter((cr) => !search || cr.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visibleClusterRoles,

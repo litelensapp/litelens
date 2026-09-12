@@ -45,19 +45,25 @@ export const NetworkDetailDrawers: FC<{ onNavigateToPortForwarding: () => void }
     selectedIngressName,
     selectedIngressNamespace,
     onToggleIngressDetail,
+
     selectedIngressClassName,
     onToggleIngressClassDetail,
+
     selectedValidatingWebhookConfigName,
     onToggleValidatingWebhookConfigDetail,
+
     selectedNetworkPolicyName,
     selectedNetworkPolicyNamespace,
     onToggleNetworkPolicyDetail,
+
     selectedServiceName,
     selectedServiceNamespace,
     onToggleServiceDetail,
+
     selectedEndpointName,
     selectedEndpointNamespace,
     onToggleEndpointDetail,
+
     selectedEndpointSliceName,
     selectedEndpointSliceNamespace,
     onToggleEndpointSliceDetail,
@@ -65,19 +71,25 @@ export const NetworkDetailDrawers: FC<{ onNavigateToPortForwarding: () => void }
     selectedIngressName: v.selectedIngressName,
     selectedIngressNamespace: v.selectedIngressNamespace,
     onToggleIngressDetail: v.onToggleIngressDetail,
+
     selectedIngressClassName: v.selectedIngressClassName,
     onToggleIngressClassDetail: v.onToggleIngressClassDetail,
+
     selectedValidatingWebhookConfigName: v.selectedValidatingWebhookConfigName,
     onToggleValidatingWebhookConfigDetail: v.onToggleValidatingWebhookConfigDetail,
+
     selectedNetworkPolicyName: v.selectedNetworkPolicyName,
     selectedNetworkPolicyNamespace: v.selectedNetworkPolicyNamespace,
     onToggleNetworkPolicyDetail: v.onToggleNetworkPolicyDetail,
+
     selectedServiceName: v.selectedServiceName,
     selectedServiceNamespace: v.selectedServiceNamespace,
     onToggleServiceDetail: v.onToggleServiceDetail,
+
     selectedEndpointName: v.selectedEndpointName,
     selectedEndpointNamespace: v.selectedEndpointNamespace,
     onToggleEndpointDetail: v.onToggleEndpointDetail,
+
     selectedEndpointSliceName: v.selectedEndpointSliceName,
     selectedEndpointSliceNamespace: v.selectedEndpointSliceNamespace,
     onToggleEndpointSliceDetail: v.onToggleEndpointSliceDetail,

@@ -9,7 +9,9 @@ metadata:
 
 ## Pattern: Global Detail Drawer via DetailDrawerContext
 
-Detail drawers are triggered globally through `DetailDrawerContext` (`frontend/src/views/DetailDrawerContext.tsx`, `useDetailDrawerContext()`) — not by passing props or lifting state into individual views. Views must NOT render their own `<XxxDetailDrawer>` instance — only `DetailBlock` does. `activeContext` still comes from the separate, trimmed `useMainLayoutContext()` (see [[detail_drawer_context_split]]).
+Detail drawers are triggered globally through `DetailDrawerContext` (now at `frontend/src/app/clusters/shared/components/details/DetailDrawerContext.tsx`, `useDetailDrawerContext()`) — not by passing props or lifting state into individual views. Views must NOT render their own `<XxxDetailDrawer>` instance — only `DetailBlock` does. `activeContext` still comes from the separate, trimmed `useMainLayoutContext()` (see [[detail_drawer_context_split]]).
+
+**2026-09-12 rewrite — context-selector scoping:** `useDetailDrawerContext` now takes an optional selector, `useDetailDrawerContext((v) => ({ onTogglePodDetail: v.onTogglePodDetail }))`, backed by a closure-based external store + `useSyncExternalStoreWithSelector` instead of a plain `useReducer` + `useMemo([state])`. This fixed a re-render fan-out (toggling any one of the ~40 kinds' drawers previously re-rendered every consumer in the app, which under StrictMode's doubled dev-mode passes made rapid list↔drawer navigation feel like a hang). All ~70 call sites across the codebase now pass a selector; see `react_code_quality.md`'s "Context-selector scoping for large shared contexts" section for the implementation pattern and the `react-hooks/immutability`/`react-hooks/refs` lint constraints it had to satisfy. The context/reducer/action shape described below (fields, toggle signatures) is unchanged — only how consumers subscribe to it changed.
 
 ### Context shape (`frontend/src/views/DetailDrawerContext.tsx`, split out of MainLayoutContext on 2026-07-10)
 

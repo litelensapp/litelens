@@ -21,7 +21,7 @@ import {
   TableSkeletonLoader,
   cn,
 } from "@litelens/design-system";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
 import { useUnifiedTray } from "../../../shared/components/trays/unified/UnifiedTrayContext";
@@ -89,9 +89,13 @@ export const StorageClassesView: FC = () => {
 
   const { data: raw = [], isLoading } = useGetStorageClasses(activeContext);
 
-  const classes = raw
-    .filter((sc) => !search || sc.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const classes = useMemo(
+    () =>
+      raw
+        .filter((sc) => !search || sc.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visibleClasses,

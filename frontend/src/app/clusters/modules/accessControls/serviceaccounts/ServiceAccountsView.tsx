@@ -22,7 +22,7 @@ import {
   UserRoundIcon,
   cn,
 } from "@litelens/design-system";
-import { FC, useReducer, useState } from "react";
+import { FC, useMemo, useReducer, useState } from "react";
 import { useOpenBrowserURL } from "../../../../shared/hooks/useOpenBrowserURL";
 import { useMainLayoutContext } from "../../../MainLayoutContext";
 import { useDetailDrawerContext } from "../../../shared/components/details/DetailDrawerContext";
@@ -120,9 +120,13 @@ export const ServiceAccountsView: FC = () => {
     namespaces,
   });
 
-  const serviceAccounts = raw
-    .filter((sa) => !search || sa.Name.toLowerCase().includes(search.toLowerCase()))
-    .toSorted((a, b) => a.Name.localeCompare(b.Name));
+  const serviceAccounts = useMemo(
+    () =>
+      raw
+        .filter((sa) => !search || sa.Name.toLowerCase().includes(search.toLowerCase()))
+        .toSorted((a, b) => a.Name.localeCompare(b.Name)),
+    [raw, search]
+  );
 
   const {
     visibleItems: visibleServiceAccounts,

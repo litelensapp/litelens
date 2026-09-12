@@ -57,27 +57,35 @@ export const WorkloadDetailDrawers: FC<{ onNavigateToPortForwarding: () => void 
     selectedPodName,
     selectedPodNamespace,
     onTogglePodDetail,
+
     selectedJobName,
     selectedJobNamespace,
     onToggleJobDetail,
+
     selectedCronJobName,
     selectedCronJobNamespace,
     onToggleCronJobDetail,
+
     selectedDeploymentName,
     selectedDeploymentNamespace,
     onToggleDeploymentDetail,
+
     selectedReplicaSetName,
     selectedReplicaSetNamespace,
     onToggleReplicaSetDetail,
+
     selectedDaemonSetName,
     selectedDaemonSetNamespace,
     onToggleDaemonSetDetail,
+
     selectedStatefulSetName,
     selectedStatefulSetNamespace,
     onToggleStatefulSetDetail,
+
     selectedHPAName,
     selectedHPANamespace,
     onToggleHPADetail,
+
     selectedPodDisruptionBudgetName,
     selectedPodDisruptionBudgetNamespace,
     onTogglePodDisruptionBudgetDetail,
@@ -85,27 +93,35 @@ export const WorkloadDetailDrawers: FC<{ onNavigateToPortForwarding: () => void 
     selectedPodName: v.selectedPodName,
     selectedPodNamespace: v.selectedPodNamespace,
     onTogglePodDetail: v.onTogglePodDetail,
+
     selectedJobName: v.selectedJobName,
     selectedJobNamespace: v.selectedJobNamespace,
     onToggleJobDetail: v.onToggleJobDetail,
+
     selectedCronJobName: v.selectedCronJobName,
     selectedCronJobNamespace: v.selectedCronJobNamespace,
     onToggleCronJobDetail: v.onToggleCronJobDetail,
+
     selectedDeploymentName: v.selectedDeploymentName,
     selectedDeploymentNamespace: v.selectedDeploymentNamespace,
     onToggleDeploymentDetail: v.onToggleDeploymentDetail,
+
     selectedReplicaSetName: v.selectedReplicaSetName,
     selectedReplicaSetNamespace: v.selectedReplicaSetNamespace,
     onToggleReplicaSetDetail: v.onToggleReplicaSetDetail,
+
     selectedDaemonSetName: v.selectedDaemonSetName,
     selectedDaemonSetNamespace: v.selectedDaemonSetNamespace,
     onToggleDaemonSetDetail: v.onToggleDaemonSetDetail,
+
     selectedStatefulSetName: v.selectedStatefulSetName,
     selectedStatefulSetNamespace: v.selectedStatefulSetNamespace,
     onToggleStatefulSetDetail: v.onToggleStatefulSetDetail,
+
     selectedHPAName: v.selectedHPAName,
     selectedHPANamespace: v.selectedHPANamespace,
     onToggleHPADetail: v.onToggleHPADetail,
+
     selectedPodDisruptionBudgetName: v.selectedPodDisruptionBudgetName,
     selectedPodDisruptionBudgetNamespace: v.selectedPodDisruptionBudgetNamespace,
     onTogglePodDisruptionBudgetDetail: v.onTogglePodDisruptionBudgetDetail,
